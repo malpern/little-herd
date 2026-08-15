@@ -12,6 +12,8 @@ final class MachineMonitorModel: Identifiable {
     let avatar: HerdwareAvatar
     let supportsGPU: Bool
     let isStorage: Bool
+    /// This Mac. Actions that touch the filesystem only apply here.
+    let isLocal: Bool
     let cpu: MetricModel
     let memory: MetricModel
     let metrics: [MetricModel]
@@ -42,6 +44,7 @@ final class MachineMonitorModel: Identifiable {
         avatar = configuration.avatar
         supportsGPU = configuration.supportsGPU
         isStorage = configuration.isStorage
+        isLocal = configuration.connection == .local
         self.cpu = cpu
         self.memory = memory
         metrics = [

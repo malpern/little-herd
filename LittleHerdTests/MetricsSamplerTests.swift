@@ -129,6 +129,17 @@ struct MetricsSamplerTests {
     }
 
     @Test
+    func onlyTheLocalMacOffersFilesystemActions() {
+        // Revealing a remote machine's mount path would open whatever happens
+        // to sit at that path on this Mac, or nothing.
+        let local = MachineMonitorModel(configuration: .local())
+        let remote = MachineMonitorModel(configuration: testMachineConfigurations[1])
+
+        #expect(local.isLocal)
+        #expect(!remote.isLocal)
+    }
+
+    @Test
     func alertsFireOnceOnTheWayInAndOnceOnTheWayOut() {
         var posted: [String] = []
         let center = MachineAlertCenter { title, _ in posted.append(title) }

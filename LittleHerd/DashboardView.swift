@@ -764,8 +764,17 @@ private struct MachineMemoryPane: View {
                             .fill(.red)
                             .frame(width: 5, height: 5)
                             .help(Text(
-                                "Grew \(Int64(evidence.growthBytes), format: .byteCount(style: .memory)) over \(Int(evidence.duration / 60)) min across \(evidence.sampleCount) samples \u{2014} possibly a leak."
+                                "Grew \(Int64(evidence.growthBytes), format: .byteCount(style: .memory)) over \(Int(evidence.duration / 60)) min across \(evidence.sampleCount) samples — possibly a leak."
                             ))
+                    }
+                }
+                .contextMenu {
+                    if machine.isLocal, let bundlePath = consumer.bundlePath {
+                        Button("Reveal in Finder") {
+                            NSWorkspace.shared.activateFileViewerSelecting(
+                                [URL(fileURLWithPath: bundlePath)]
+                            )
+                        }
                     }
                 }
             }
@@ -813,6 +822,19 @@ private struct MachineStoragePane: View {
                                     height: 4
                                 )
                         }
+                }
+                // Only for this Mac: a remote machine's mount path either does
+                // not exist here or, worse, names something different.
+                .contextMenu {
+                    if machine.isLocal, let path = volume.mountPath
+                        .components(separatedBy: ", ").first
+                    {
+                        Button("Reveal in Finder") {
+                            NSWorkspace.shared.activateFileViewerSelecting(
+                                [URL(fileURLWithPath: path)]
+                            )
+                        }
+                    }
                 }
             }
         }
