@@ -64,10 +64,10 @@ private struct AIAgentRow: View {
                     .lineLimit(1)
 
                 HStack(spacing: 3) {
-                    Image(systemName: machineSession.machine.symbolName)
+                    Image(systemName: machineSession.machineSymbolName)
                         .font(.caption2)
 
-                    Text(machineSession.machine.shortName)
+                    Text(machineSession.machineName)
 
                     if let progress = machineSession.session.progress {
                         Text("·")
@@ -95,7 +95,7 @@ private struct AIAgentRow: View {
 
     private var helpText: Text {
         Text(
-            "\(machineSession.session.provider.displayName), \(machineSession.session.projectName), \(machineSession.machine.shortName), \(machineSession.session.state.title)"
+            "\(machineSession.session.provider.displayName), \(machineSession.session.projectName), \(machineSession.machineName), \(machineSession.session.state.title)"
         )
     }
 
@@ -103,7 +103,7 @@ private struct AIAgentRow: View {
         let providerName = String(
             localized: machineSession.session.provider.displayName
         )
-        let machineName = machineSession.machine.shortName
+        let machineName = machineSession.machineName
         var label = "\(providerName), \(machineSession.session.projectName), \(machineName)"
         if let progress = machineSession.session.progress {
             label += ", step \(progress.currentStepIndex) of \(progress.totalStepCount)"
@@ -143,11 +143,11 @@ private struct HoveredAgentIdentityRow: View {
 
             Spacer(minLength: 5)
 
-            Image(systemName: machineSession.machine.symbolName)
+            Image(systemName: machineSession.machineSymbolName)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
-            Text(machineSession.machine.shortName)
+            Text(machineSession.machineName)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 

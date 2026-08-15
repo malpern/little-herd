@@ -130,6 +130,21 @@ final class MachineConfigurationStore {
         replace(with: updated)
     }
 
+    /// Whether a machine can be taken out of the herd. The local Mac always
+    /// stays: it needs no configuration to reach, and an empty store would just
+    /// be re-seeded with it on the next launch.
+    func canRemove(_ machineID: MachineID) -> Bool {
+        guard let machine = machines.first(where: { $0.id == machineID }) else {
+            return false
+        }
+        return machine.connection != .local
+    }
+
+    func remove(_ machineID: MachineID) {
+        guard canRemove(machineID) else { return }
+        replace(with: machines.filter { $0.id != machineID })
+    }
+
     func replace(with configurations: [MachineConfiguration]) {
         guard !configurations.isEmpty, configurations != machines else { return }
         machines = configurations

@@ -53,6 +53,22 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
 nonisolated struct MachineAgentSession: Equatable, Identifiable, Sendable {
     let machine: MachineID
     let session: AgentSession
+    /// Resolved from the saved configuration when the row is built, so a
+    /// renamed machine reads the same here as everywhere else.
+    let machineName: String
+    let machineSymbolName: String
+
+    init(
+        machine: MachineID,
+        session: AgentSession,
+        machineName: String? = nil,
+        machineSymbolName: String? = nil
+    ) {
+        self.machine = machine
+        self.session = session
+        self.machineName = machineName ?? machine.shortName
+        self.machineSymbolName = machineSymbolName ?? machine.symbolName
+    }
 
     var id: String { "\(machine.rawValue):\(session.id)" }
 }

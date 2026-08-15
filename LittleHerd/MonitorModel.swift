@@ -69,6 +69,24 @@ final class MonitorModel {
         overviewMetric == .disk ? diskMachines : machines
     }
 
+    /// Names come from the saved configuration, never from the machine's
+    /// identifier. A machine the user renamed has to read the same in the menu
+    /// bar as it does on the dashboard; deriving a name from the id would show
+    /// two different names for one machine.
+    func name(for machineID: MachineID) -> String {
+        configuredMachine(machineID)?.name ?? machineID.displayName
+    }
+
+    func shortName(for machineID: MachineID) -> String {
+        configuredMachine(machineID)?.shortName ?? machineID.shortName
+    }
+
+    private func configuredMachine(
+        _ machineID: MachineID
+    ) -> MachineMonitorModel? {
+        diskMachines.first { $0.machine == machineID }
+    }
+
     func cycleOverviewMetric() {
         overviewMetric = overviewMetric.next
     }

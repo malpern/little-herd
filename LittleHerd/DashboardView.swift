@@ -19,7 +19,12 @@ struct DashboardView: View {
         let agentSessions = MachineAgentSessionBuilder.visibleSessions(
             from: model.machines.flatMap { machine in
                 machine.agentSessions.map {
-                    MachineAgentSession(machine: machine.machine, session: $0)
+                    MachineAgentSession(
+                        machine: machine.machine,
+                        session: $0,
+                        machineName: machine.shortName,
+                        machineSymbolName: machine.symbolName
+                    )
                 }
             }
         )

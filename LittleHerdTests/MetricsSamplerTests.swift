@@ -35,6 +35,81 @@ struct MetricsSamplerTests {
     }
 
     @Test
+    func machineCanBeRemovedFromTheHerd() throws {
+        let defaults = try #require(
+            UserDefaults(suiteName: "LittleHerdTests.\(UUID().uuidString)")
+        )
+        let store = MachineConfigurationStore(defaults: defaults)
+        let remote = testMachineConfigurations[1]
+        store.add([remote])
+        #expect(store.machines.contains(remote))
+
+        store.remove(remote.id)
+
+        #expect(!store.machines.contains(remote))
+        #expect(!MachineConfigurationStore(defaults: defaults).machines.contains(remote))
+    }
+
+    @Test
+    func theLocalMacIsNeverRemoved() throws {
+        let defaults = try #require(
+            UserDefaults(suiteName: "LittleHerdTests.\(UUID().uuidString)")
+        )
+        let store = MachineConfigurationStore(defaults: defaults)
+        let local = try #require(store.machines.first { $0.connection == .local })
+
+        #expect(!store.canRemove(local.id))
+        store.remove(local.id)
+
+        #expect(store.machines.contains(local))
+    }
+
+    @Test
+    func displayNamesComeFromTheConfigurationNotTheIdentifier() {
+        // A machine discovered as "build-01" and then renamed must read as the
+        // renamed value everywhere, not as a name derived from its id.
+        let renamed = MachineConfiguration(
+            id: MachineID("build-01"),
+            name: "Build Server",
+            shortName: "Build",
+            hostname: "build-01.local",
+            hardwareSummary: "Linux machine",
+            platform: .linux,
+            connection: .ssh,
+            avatar: .oxGPU,
+            identityFile: nil,
+            serverNames: [],
+            supportsGPU: false
+        )
+        let model = MonitorModel(configurations: [.local(), renamed])
+
+        #expect(model.name(for: renamed.id) == "Build Server")
+        #expect(model.shortName(for: renamed.id) == "Build")
+        #expect(model.name(for: renamed.id) != renamed.id.displayName)
+    }
+
+    @Test
+    func agentRowsCarryTheConfiguredMachineName() {
+        let session = AgentSession(
+            id: "codex:1",
+            provider: .codex,
+            projectName: "Little Herd",
+            state: .active,
+            updatedAt: .now,
+            progress: nil
+        )
+        let row = MachineAgentSession(
+            machine: MachineID("build-01"),
+            session: session,
+            machineName: "Build",
+            machineSymbolName: "server.rack"
+        )
+
+        #expect(row.machineName == "Build")
+        #expect(row.machineSymbolName == "server.rack")
+    }
+
+    @Test
     func snapshotIncludesProcessDerivedDetail() async {
         // Covers the path that shells out to `ps` off the actor's executor:
         // a regression there would leave the hover details silently empty.

@@ -170,3 +170,15 @@ xcodegen generate
 xcodebuild -project LittleHerd.xcodeproj -scheme LittleHerd -configuration Debug build
 xcodebuild -project LittleHerd.xcodeproj -scheme LittleHerd test
 ```
+
+## License
+
+Little Herd is source-available under the [Functional Source License 1.1 with an
+MIT future license](LICENSE.md) (`FSL-1.1-MIT`).
+
+Use it, modify it, and build on it freely for any purpose except making a
+competing commercial product. Two years after each release ships, that release
+becomes available under the MIT license.
+
+Bundled third-party code and its terms are listed in
+[THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).

@@ -126,6 +126,32 @@ enum AboutLittleHerdPresenter {
             )
         )
 
+        // Sparkle is MIT licensed, which requires its notice to travel with
+        // every copy of the app — not only with the source repository.
+        credits.append(
+            NSAttributedString(string: "\n\n", attributes: bodyAttributes)
+        )
+        credits.append(
+            NSAttributedString(
+                string: "Updates powered by Sparkle, © the Sparkle contributors, MIT licensed.\n",
+                attributes: bodyAttributes.merging([
+                    .font: NSFont.systemFont(ofSize: 10),
+                    .foregroundColor: NSColor.tertiaryLabelColor,
+                ]) { _, new in new }
+            )
+        )
+        credits.append(
+            NSAttributedString(
+                string: "Full third-party notices",
+                attributes: linkAttributes.merging([
+                    .font: NSFont.systemFont(ofSize: 10),
+                    .link: URL(
+                        string: "https://github.com/malpern/little-herd/blob/main/THIRD-PARTY-LICENSES.md"
+                    )!,
+                ]) { _, new in new }
+            )
+        )
+
         var options: [NSApplication.AboutPanelOptionKey: Any] = [
             .applicationName: "Little Herd",
             .credits: credits,

@@ -83,7 +83,10 @@ struct LittleHerdApp: App {
         .menuBarExtraStyle(.window)
 
         Settings {
-            LittleHerdSettingsView(machineStore: machineStore)
+            LittleHerdSettingsView(
+                machineStore: machineStore,
+                onConfigurationsChanged: model.applyConfigurations
+            )
         }
     }
 }
@@ -150,7 +153,7 @@ private struct MenuBarStatusLabel: View {
                 HStack(spacing: 3) {
                     Image(systemName: "waveform.path.ecg")
                     if let machine, let cpuPercent {
-                        Text(machine.shortName)
+                        Text(model.shortName(for: machine))
                         Text("\(cpuPercent)%")
                     } else {
                         Text("Live")
@@ -163,21 +166,21 @@ private struct MenuBarStatusLabel: View {
             case let .highCPU(machine, percent, critical):
                 HStack(spacing: 3) {
                     Image(systemName: critical ? "exclamationmark.triangle.fill" : "cpu.fill")
-                    Text(machine.shortName)
+                    Text(model.shortName(for: machine))
                     Text("\(percent)%")
                 }
 
             case let .memoryPressure(machine, critical):
                 HStack(spacing: 3) {
                     Image(systemName: critical ? "exclamationmark.triangle.fill" : "memorychip.fill")
-                    Text(machine.shortName)
+                    Text(model.shortName(for: machine))
                     Text("RAM")
                 }
 
             case let .lowDisk(machine, _, critical):
                 HStack(spacing: 3) {
                     Image(systemName: critical ? "exclamationmark.triangle.fill" : "internaldrive.fill")
-                    Text(machine.shortName)
+                    Text(model.shortName(for: machine))
                     Text("Disk")
                 }
             }
@@ -201,7 +204,7 @@ private struct MenuBarPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            MenuBarHeadlineView(headline: headline)
+            MenuBarHeadlineView(headline: headline, model: model)
                 .padding(16)
 
             Divider()
@@ -255,6 +258,7 @@ private struct MenuBarPanel: View {
 
 private struct MenuBarHeadlineView: View {
     let headline: MenuBarHeadline
+    let model: MonitorModel
 
     var body: some View {
         HStack(spacing: 11) {
@@ -318,11 +322,11 @@ private struct MenuBarHeadlineView: View {
                 Text("\(total - live) machines unavailable")
             }
         case let .highCPU(machine, _, _):
-            Text("High CPU on \(machine.displayName)")
+            Text("High CPU on \(model.name(for: machine))")
         case let .memoryPressure(machine, _):
-            Text("Memory pressure on \(machine.displayName)")
+            Text("Memory pressure on \(model.name(for: machine))")
         case let .lowDisk(machine, _, _):
-            Text("Storage low on \(machine.displayName)")
+            Text("Storage low on \(model.name(for: machine))")
         }
     }
 
@@ -361,7 +365,7 @@ private struct MenuBarMachineRow: View {
             MachineAvatarView(machine: machine.machine, size: 24)
                 .frame(width: 24)
 
-            Text(machine.machine.displayName)
+            Text(machine.name)
                 .lineLimit(1)
 
             Spacer(minLength: 8)
@@ -432,6 +436,7 @@ private struct MenuBarMachineRow: View {
 
 private struct LittleHerdSettingsView: View {
     let machineStore: MachineConfigurationStore
+    let onConfigurationsChanged: ([MachineConfiguration]) -> Void
     @Environment(\.openWindow) private var openWindow
     @AppStorage(LittleHerdPreferences.menuBarEnabledKey)
     private var menuBarEnabled = false
@@ -476,9 +481,75 @@ private struct LittleHerdSettingsView: View {
                     NSApp.activate()
                 }
             }
+
+            VStack(spacing: 0) {
+                ForEach(machineStore.machines) { machine in
+                    SettingsMachineRow(
+                        machine: machine,
+                        canRemove: machineStore.canRemove(machine.id),
+                        onRemove: { remove(machine.id) }
+                    )
+
+                    if machine.id != machineStore.machines.last?.id {
+                        Divider()
+                    }
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 2)
+            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 8))
         }
         .padding(24)
         .frame(width: 420)
+    }
+
+    private func remove(_ machineID: MachineID) {
+        machineStore.remove(machineID)
+        onConfigurationsChanged(machineStore.machines)
+    }
+}
+
+private struct SettingsMachineRow: View {
+    let machine: MachineConfiguration
+    let canRemove: Bool
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 9) {
+            Image(machine.avatar.assetName)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 24, height: 24)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text(machine.name)
+                    .font(.callout)
+                    .lineLimit(1)
+
+                Text(machine.hostname)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            if canRemove {
+                Button(action: onRemove) {
+                    Image(systemName: "minus.circle")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help("Remove \(machine.name) from the herd")
+                .accessibilityLabel("Remove \(machine.name)")
+            } else {
+                Text("This Mac")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .frame(height: 36)
     }
 }
 
