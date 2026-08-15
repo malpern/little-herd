@@ -315,7 +315,7 @@ nonisolated enum SMBStorageMonitorError: Error, Sendable {
 }
 
 actor SMBStorageSampler {
-    private struct MountedShare {
+    private struct MountedShare: Sendable {
         let name: String
         let mountPath: String
         let totalBytes: Double
@@ -324,7 +324,7 @@ actor SMBStorageSampler {
     }
 
     private let serverNames: Set<String>
-    private let resourceKeys: Set<URLResourceKey> = [
+    private static let resourceKeys: Set<URLResourceKey> = [
         .volumeNameKey,
         .volumeTotalCapacityKey,
         .volumeAvailableCapacityKey,
@@ -336,13 +336,15 @@ actor SMBStorageSampler {
         self.serverNames = Set(serverNames.map { $0.lowercased() })
     }
 
-    func sample() throws -> SystemSnapshot {
-        let mountedURLs = FileManager.default.mountedVolumeURLs(
-            includingResourceValuesForKeys: Array(resourceKeys),
-            options: [.skipHiddenVolumes]
-        ) ?? []
+    func sample() async throws -> SystemSnapshot {
+        // Enumerating mounted volumes, and reading their capacities, blocks for
+        // the full SMB timeout when a share is unreachable. Keep that off the
+        // cooperative pool so one stalled mount cannot starve the whole app.
+        let serverNames = serverNames
+        let shares = await Task.detached(priority: .utility) {
+            Self.mountedShares(matching: serverNames)
+        }.value
 
-        let shares = mountedURLs.compactMap(mountedShare)
         guard !shares.isEmpty else {
             throw SMBStorageMonitorError.noMountedShares
         }
@@ -385,7 +387,23 @@ actor SMBStorageSampler {
         )
     }
 
-    private func mountedShare(at mountedURL: URL) -> MountedShare? {
+    private static func mountedShares(
+        matching serverNames: Set<String>
+    ) -> [MountedShare] {
+        let mountedURLs = FileManager.default.mountedVolumeURLs(
+            includingResourceValuesForKeys: Array(resourceKeys),
+            options: [.skipHiddenVolumes]
+        ) ?? []
+
+        return mountedURLs.compactMap {
+            mountedShare(at: $0, matching: serverNames)
+        }
+    }
+
+    private static func mountedShare(
+        at mountedURL: URL,
+        matching serverNames: Set<String>
+    ) -> MountedShare? {
         guard let values = try? mountedURL.resourceValues(forKeys: resourceKeys),
               let remountURL = values.volumeURLForRemounting,
               remountURL.scheme?.lowercased() == "smb",

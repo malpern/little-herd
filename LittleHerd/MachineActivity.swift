@@ -828,31 +828,15 @@ nonisolated enum AgentTaskProbe {
     fi
     """#
 
-    static func readLocalSnapshot() -> AgentProbeSnapshot {
-        let process = Process()
-        let standardOutput = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        process.arguments = ["-c", shellCommand]
-        process.standardOutput = standardOutput
-        process.standardError = FileHandle.nullDevice
-
-        do {
-            try process.run()
-        } catch {
-            logger.error("Unable to launch the local task metadata probe")
+    static func readLocalSnapshot() async -> AgentProbeSnapshot {
+        guard let output = await LocalProcessRunner.run(
+            executablePath: "/bin/zsh",
+            arguments: ["-c", shellCommand]
+        ) else {
+            logger.error("The local task metadata probe did not complete")
             return .empty
         }
 
-        let outputData = standardOutput.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
-            logger.error(
-                "Task metadata probe exited with status \(process.terminationStatus)"
-            )
-            return .empty
-        }
-
-        let output = String(decoding: outputData, as: UTF8.self)
         let snapshot = AgentProbeSnapshot(
             tasksByProvider: AgentTaskOutputParser.parse(output),
             sessions: AgentSessionOutputParser.parse(output)
@@ -863,8 +847,8 @@ nonisolated enum AgentTaskProbe {
         return snapshot
     }
 
-    static func readLocal() -> [AgentTaskProvider: AgentTaskSummary] {
-        readLocalSnapshot().tasksByProvider
+    static func readLocal() async -> [AgentTaskProvider: AgentTaskSummary] {
+        await readLocalSnapshot().tasksByProvider
     }
 }
 

@@ -236,7 +236,7 @@ actor MetricsSampler {
         previousNetworkTimestamp = clock.now
     }
 
-    func sample() -> SystemSnapshot {
+    func sample() async -> SystemSnapshot {
         let timestamp = Date()
         let cpu = cpuUtilization()
         let gpu = gpuUtilization()
@@ -245,7 +245,7 @@ actor MetricsSampler {
         let network = networkThroughput()
         let storageVolumes = storageVolumes()
         let disk = storageVolumes.first(where: { $0.mountPath == "/" })
-        let processHighlights = processHighlights()
+        let processHighlights = await processHighlights()
 
         return SystemSnapshot(
             timestamp: timestamp,
@@ -276,46 +276,27 @@ actor MetricsSampler {
         )
     }
 
-    private func processHighlights() -> ProcessHighlights {
+    private func processHighlights() async -> ProcessHighlights {
         let now = clock.now
+        let cachedHighlights = ProcessHighlights(
+            activities: cachedActivities,
+            memoryConsumers: cachedMemoryConsumers,
+            agentSessions: cachedAgentSessions
+        )
 
         if let previousActivityTimestamp,
            previousActivityTimestamp.duration(to: now) < .seconds(15)
         {
-            return ProcessHighlights(
-                activities: cachedActivities,
-                memoryConsumers: cachedMemoryConsumers,
-                agentSessions: cachedAgentSessions
-            )
+            return cachedHighlights
         }
 
         previousActivityTimestamp = now
 
-        let process = Process()
-        let standardOutput = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/bin/ps")
-        process.arguments = ["-Ao", "pcpu=,rss=,pid=,comm="]
-        process.standardOutput = standardOutput
-        process.standardError = FileHandle.nullDevice
-
-        do {
-            try process.run()
-        } catch {
-            return ProcessHighlights(
-                activities: cachedActivities,
-                memoryConsumers: cachedMemoryConsumers,
-                agentSessions: cachedAgentSessions
-            )
-        }
-
-        let outputData = standardOutput.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
-            return ProcessHighlights(
-                activities: cachedActivities,
-                memoryConsumers: cachedMemoryConsumers,
-                agentSessions: cachedAgentSessions
-            )
+        guard let output = await LocalProcessRunner.run(
+            executablePath: "/bin/ps",
+            arguments: ["-Ao", "pcpu=,rss=,pid=,comm="]
+        ) else {
+            return cachedHighlights
         }
 
         let shouldRefreshAgentTasks: Bool
@@ -327,21 +308,24 @@ actor MetricsSampler {
         }
 
         if shouldRefreshAgentTasks {
-            let agentSnapshot = AgentTaskProbe.readLocalSnapshot()
+            let agentSnapshot = await AgentTaskProbe.readLocalSnapshot()
             cachedAgentTasks = agentSnapshot.tasksByProvider
             cachedAgentSessions = agentSnapshot.sessions
             previousAgentTaskTimestamp = now
         }
 
-        let output = String(decoding: outputData, as: UTF8.self)
         let samples = ProcessSampleParser.parse(output)
         let activityOutput = samples.map(\.activityLine).joined(separator: "\n")
-        let candidateActivities = MachineActivityParser.highlights(
+        var candidateActivities: [MachineActivity] = []
+        for activity in MachineActivityParser.highlights(
             from: activityOutput,
             limit: 20,
             minimumCPUPercent: 0
-        )
-            .map(addWorkingDirectoryContext)
+        ) {
+            candidateActivities.append(
+                await addWorkingDirectoryContext(to: activity)
+            )
+        }
         cachedActivities = MachineActivityPrioritizer.select(
             from: candidateActivities,
             agentTasks: cachedAgentTasks
@@ -356,10 +340,14 @@ actor MetricsSampler {
         )
     }
 
-    private func addWorkingDirectoryContext(to activity: MachineActivity) -> MachineActivity {
+    private func addWorkingDirectoryContext(
+        to activity: MachineActivity
+    ) async -> MachineActivity {
         guard activity.kind == .compiling || activity.kind == .building,
               let processID = activity.processID,
-              let workingDirectory = workingDirectory(forProcessID: processID)
+              let workingDirectory = await workingDirectory(
+                  forProcessID: processID
+              )
         else {
             return activity
         }
@@ -369,25 +357,11 @@ actor MetricsSampler {
         )
     }
 
-    private func workingDirectory(forProcessID processID: Int) -> String? {
-        let process = Process()
-        let standardOutput = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
-        process.arguments = ["-a", "-p", String(processID), "-d", "cwd", "-Fn"]
-        process.standardOutput = standardOutput
-        process.standardError = FileHandle.nullDevice
-
-        do {
-            try process.run()
-        } catch {
-            return nil
-        }
-
-        let outputData = standardOutput.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else { return nil }
-
-        return String(decoding: outputData, as: UTF8.self)
+    private func workingDirectory(forProcessID processID: Int) async -> String? {
+        await LocalProcessRunner.run(
+            executablePath: "/usr/sbin/lsof",
+            arguments: ["-a", "-p", String(processID), "-d", "cwd", "-Fn"]
+        )?
             .split(whereSeparator: \.isNewline)
             .first { $0.first == "n" }
             .map { String($0.dropFirst()) }

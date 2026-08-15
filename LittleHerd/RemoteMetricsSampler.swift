@@ -7,14 +7,40 @@ nonisolated enum RemotePlatform: Sendable {
 
 nonisolated enum RemoteMonitorError: LocalizedError, Sendable {
     case commandFailed(String)
+    case invalidHost(String)
     case invalidOutput
 
     var errorDescription: String? {
         switch self {
         case let .commandFailed(message):
             "SSH collection failed: \(message)"
+        case let .invalidHost(host):
+            "“\(host)” is not a usable SSH host name."
         case .invalidOutput:
             "The remote machine returned incomplete metrics."
+        }
+    }
+}
+
+/// Host names reach Little Herd from Bonjour advertisements and from free-text
+/// fields, so they are untrusted input. `ssh` parses any argument beginning
+/// with `-` as an option, which would turn a host name such as
+/// `-oProxyCommand=…` into arbitrary command execution.
+nonisolated enum SSHHostName {
+    private static let allowedPunctuation: Set<Character> = [
+        ".", "-", "_", "@", "%", ":",
+    ]
+
+    static func isValid(_ host: String) -> Bool {
+        guard !host.isEmpty, host.count <= 253, !host.hasPrefix("-") else {
+            return false
+        }
+
+        return host.allSatisfy { character in
+            guard character.isASCII else { return false }
+            return character.isLetter
+                || character.isNumber
+                || allowedPunctuation.contains(character)
         }
     }
 }
@@ -489,13 +515,36 @@ actor RemoteMetricsSampler {
     """#
 }
 
+/// Carries the result of a pipe read performed on a background queue back to
+/// the thread waiting on the process.
+nonisolated private final class CollectedOutput: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage = Data()
+
+    func store(_ data: Data) {
+        lock.lock()
+        storage = data
+        lock.unlock()
+    }
+
+    var data: Data {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage
+    }
+}
+
 nonisolated enum SSHCommandRunner {
     static func run(
         host: String,
         command: String,
         identityFile: String? = nil
     ) async throws -> String {
-        try await Task.detached(priority: .utility) {
+        guard SSHHostName.isValid(host) else {
+            throw RemoteMonitorError.invalidHost(host)
+        }
+
+        return try await Task.detached(priority: .utility) {
             let process = Process()
             let standardOutput = Pipe()
             let standardError = Pipe()
@@ -516,19 +565,34 @@ nonisolated enum SSHCommandRunner {
                     "-i", identityFile,
                 ]
             }
-            arguments += [host, command]
+            // "--" ends option parsing so the host can never be read as a flag.
+            arguments += ["--", host, command]
             process.arguments = arguments
             process.standardOutput = standardOutput
             process.standardError = standardError
 
             try process.run()
-            process.waitUntilExit()
 
-            let outputData = standardOutput.fileHandleForReading.readDataToEndOfFile()
-            let errorData = standardError.fileHandleForReading.readDataToEndOfFile()
+            // Both pipes must be drained before waiting. A child that fills the
+            // 64 KiB pipe buffer blocks on write, so waiting first would leave
+            // parent and child deadlocked on each other. Standard error is read
+            // concurrently for the same reason.
+            let errorHandle = standardError.fileHandleForReading
+            let errorOutput = CollectedOutput()
+            let errorQueue = DispatchQueue(
+                label: "com.malpern.LittleHerd.ssh-stderr"
+            )
+            errorQueue.async {
+                errorOutput.store(errorHandle.readDataToEndOfFile())
+            }
+
+            let outputData = standardOutput.fileHandleForReading
+                .readDataToEndOfFile()
+            process.waitUntilExit()
+            errorQueue.sync {}
 
             guard process.terminationStatus == 0 else {
-                let message = String(decoding: errorData, as: UTF8.self)
+                let message = String(decoding: errorOutput.data, as: UTF8.self)
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 throw RemoteMonitorError.commandFailed(message)
             }

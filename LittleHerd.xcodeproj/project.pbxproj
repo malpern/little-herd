@@ -23,6 +23,7 @@
 		58521A8BB8088855A0F9DA8D /* BonjourMachineDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC14D9861665A4B5069FBEF7 /* BonjourMachineDiscovery.swift */; };
 		58F616158D246EB318C6BE2B /* AIUsageLimits.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD201A3C46AB062F71E564EF /* AIUsageLimits.swift */; };
 		5E3CE5327A2EA4F166BDD893 /* MachineConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD2A66D13D5D677C68BF37D /* MachineConfiguration.swift */; };
+		6178FDFB871ECC5115BC4EA7 /* LocalProcessRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B675E6E28982CA80D968D2E /* LocalProcessRunner.swift */; };
 		6B236EB580089736F35DAC08 /* MetricModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4669068113CB4027D57F9535 /* MetricModel.swift */; };
 		6D0AF35A5767BC690DEB78FC /* MetricRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F29F16289B54BBD5DC8DE5A /* MetricRow.swift */; };
 		81EA61F13900B92BB091C44D /* AddMachinesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 542ADA4729226F9EBB0D48D6 /* AddMachinesView.swift */; };
@@ -57,6 +58,7 @@
 		387B8471B05B8FEFC2973329 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkVolumeOnboardingView.swift; sourceTree = "<group>"; };
 		4669068113CB4027D57F9535 /* MetricModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricModel.swift; sourceTree = "<group>"; };
+		4B675E6E28982CA80D968D2E /* LocalProcessRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalProcessRunner.swift; sourceTree = "<group>"; };
 		4F29F16289B54BBD5DC8DE5A /* MetricRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricRow.swift; sourceTree = "<group>"; };
 		542ADA4729226F9EBB0D48D6 /* AddMachinesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMachinesView.swift; sourceTree = "<group>"; };
 		6125192CA7CFE81311C048BC /* MachineMonitorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineMonitorModel.swift; sourceTree = "<group>"; };
@@ -118,6 +120,7 @@
 				CE6423E97058743B9C08DD97 /* Info.plist */,
 				66BA172D3CC6CD4B8AEBC144 /* LittleHerdApp.swift */,
 				E37B21B22B4948B6336D6258 /* LittleHerdBranding.swift */,
+				4B675E6E28982CA80D968D2E /* LocalProcessRunner.swift */,
 				90FE8216081F585ED580AE1C /* Machine.swift */,
 				6BE7C98CC9A2691BAFB89BCC /* MachineActivity.swift */,
 				FBD2A66D13D5D677C68BF37D /* MachineConfiguration.swift */,
@@ -278,6 +281,7 @@
 				B3560BD65BAB29961DD5DB6C /* HoveredMachineMetricHeader.swift in Sources */,
 				D91CA4B85E7162E4DB2649A6 /* LittleHerdApp.swift in Sources */,
 				2ED305BEE5B202DD76C12D58 /* LittleHerdBranding.swift in Sources */,
+				6178FDFB871ECC5115BC4EA7 /* LocalProcessRunner.swift in Sources */,
 				ADFBD220A565C255B252322A /* Machine.swift in Sources */,
 				510ED568359C558B6A05BCFE /* MachineActivity.swift in Sources */,
 				5E3CE5327A2EA4F166BDD893 /* MachineConfiguration.swift in Sources */,
