@@ -446,9 +446,6 @@ private struct LittleHerdSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Little Herd Settings")
-                .font(.title2.weight(.semibold))
-
             VStack(alignment: .leading, spacing: 7) {
                 Toggle("Show status in menu bar", isOn: $menuBarEnabled)
                     .font(.body.weight(.medium))
@@ -465,6 +462,7 @@ private struct LittleHerdSettingsView: View {
             )
             .font(.caption)
             .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
 
             Divider()
 
@@ -475,6 +473,7 @@ private struct LittleHerdSettingsView: View {
                     Text("\(machineStore.machines.count) saved. Discover nearby computers and add several at once.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer()

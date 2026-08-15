@@ -304,7 +304,7 @@ struct AddMachinesView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            AddMachinesHeader()
+            AddMachinesHeader(foundCount: model.machines.count)
                 .padding(.horizontal, 30)
                 .padding(.top, 18)
                 .padding(.bottom, 10)
@@ -369,15 +369,28 @@ private enum AddMachinesSheet: Hashable, Identifiable {
 }
 
 private struct AddMachinesHeader: View {
+    let foundCount: Int
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Your herd is ready")
+            Text(title)
                 .font(.title.weight(.bold))
 
-            Text("Little Herd chose sensible defaults for everything it found.")
+            Text(subtitle)
                 .font(.body)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    // Claiming a herd is ready while nothing was found reads as a bug.
+    private var title: LocalizedStringResource {
+        foundCount == 0 ? "Add a machine" : "Your herd is ready"
+    }
+
+    private var subtitle: LocalizedStringResource {
+        foundCount == 0
+            ? "Nothing new nearby. You can add a computer by hostname."
+            : "Little Herd chose sensible defaults for everything it found."
     }
 }
 

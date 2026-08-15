@@ -853,7 +853,9 @@ private struct MachineAgentPane: View {
                     symbolName: "sparkles",
                     tint: session.provider == .codex ? .green : .orange,
                     title: Text(session.projectName),
-                    subtitle: session.progress.map { Text($0.currentStep) },
+                    // Several sessions share a project, so each row has to say
+                    // which one: its step, or when it last moved.
+                    subtitle: Text(sessionDetail(for: session)),
                     value: session.progress.map {
                         Text("\($0.currentStepIndex)/\($0.totalStepCount)")
                     }
@@ -863,6 +865,17 @@ private struct MachineAgentPane: View {
     }
 
     private var sessions: [AgentSession] { machine.agentSessions }
+
+    private func sessionDetail(for session: AgentSession) -> String {
+        if let step = session.progress?.currentStep, !step.isEmpty {
+            return step
+        }
+        let elapsed = Date.now.timeIntervalSince(session.updatedAt)
+        guard elapsed >= 60 else { return "just now" }
+        return Duration.seconds(elapsed).formatted(
+            .units(allowed: [.hours, .minutes], width: .narrow)
+        ) + " ago"
+    }
 
     private var agentEmptyMessage: LocalizedStringResource {
         machine.state == .live
