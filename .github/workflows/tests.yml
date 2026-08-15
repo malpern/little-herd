@@ -1,0 +1,68 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      # The project builds with Swift 6 strict concurrency and MainActor
+      # default isolation, so it needs a recent toolchain. Pick the newest
+      # Xcode the runner image has rather than pinning a version that will
+      # quietly disappear from the image later.
+      - name: Select the newest Xcode
+        run: |
+          newest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          echo "Using $newest"
+          sudo xcode-select -s "$newest"
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: brew install --quiet xcodegen
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('project.yml') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Generate the project
+        run: xcodegen generate
+
+      # The suite includes integration tests that execute the app's embedded
+      # shell probes, so jq has to be present the same way it is on a developer
+      # machine. It ships with the runner image; fail loudly if that changes.
+      - name: Check probe dependencies
+        run: |
+          command -v jq >/dev/null || { echo "jq is missing; the shell probe tests need it"; exit 1; }
+          command -v zsh >/dev/null || { echo "zsh is missing"; exit 1; }
+
+      - name: Test
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project LittleHerd.xcodeproj \
+            -scheme LittleHerd \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            test 2>&1 | tee test.log | grep -E '✔|✘|Test run|error:|warning: .*(Sendable|isolat)|\*\* TEST' || true
+          grep -q '\*\* TEST SUCCEEDED \*\*' test.log
+
+      - name: Upload the log when something fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-log
+          path: test.log
