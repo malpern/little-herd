@@ -56,12 +56,12 @@ The overview header menu also switches between those same four views
 while leaving the Codex and Claude allowance visible. The selected icon sits in
 the center; clicking either outer icon rotates it into place, animates the
 header, and dissolves the main thermometers into the selected metric. Disk
-overview uses the same vertical,
-segmented thermometer language as CPU. Each storage container gets its own
-thermometer, used percentage, and available capacity. Multiple APFS volumes
-sharing one container are combined into one bar so shared free space is not
-counted repeatedly. Attached drives are included, while virtual and hidden
-system volumes are excluded. The normal
+overview uses the same one-bar-per-machine language as the others, showing each
+machine's fullest volume — the one that runs out first — with its free space
+beneath; the per-volume breakdown lives in that machine's page. Attached drives
+are included, while virtual and hidden system volumes are excluded, as are
+mounted disk images, which are read-only and report a capacity that can never
+change. The normal
 header shows the overview's connection status plus the remaining Codex and
 Claude allowance reported by CodexBar.
 Little Herd reads CodexBar's existing local summary caches once per minute; it
@@ -71,28 +71,33 @@ remaining-budget gauge; hovering reveals the provider names and **left** labels
 without moving the surrounding header. The gauge turns orange at 25% remaining,
 red at 10%, and adds a pulsing red halo at 1% or less. In that urgent state the
 icon opens the provider's usage and billing page so credits or auto-top-up can
-be managed. Hovering a machine
-column temporarily replaces the machine portion of the header. CPU overview
-shows up to three activities from only that machine and their approximate
-CPU-core usage. Memory overview uses the operating system's normal, warning,
+be managed. Clicking a machine's bar opens that machine seen through the current metric, and
+clicking its icon opens every metric for that machine. The bar you clicked
+travels out of the overview and grows, so the thing you touched is the thing you
+are looking at; the chevron, the machine name, and the enlarged bar or icon all
+go back. The metric picker stays available on a machine's page, so switching
+from CPU to RAM re-lenses the machine you are already looking at rather than
+returning you to the overview.
+
+A machine's CPU page lists what is running and its approximate CPU-core usage,
+skipping anything too small to round to a tenth of a core. Memory overview uses the operating system's normal, warning,
 and critical pressure state—shown as check, warning, and critical symbols—instead
-of treating intentionally occupied cache as a problem. Hovering a memory column
-shows up to three of that machine's largest
-user-app families and their approximate resident memory, making likely apps to
-quit immediately visible. App names are the only bold text in these compact
+of treating intentionally occupied cache as a problem. Its memory page lists that machine's largest user-app families with their
+approximate resident memory and their own application icons, making likely apps
+to quit immediately visible. App names are the only bold text in these compact
 details; memory amounts use the same small, secondary treatment as the overview
-status line. Little Herd also keeps a tiny rolling history of those existing
-samples. After at least 90 seconds and seven distinct readings, a red dot marks
+status line. Little Herd keeps a tiny rolling history of those existing samples. After at least 90 seconds and seven distinct readings, a red dot marks
 an app whose memory has grown substantially and consistently. Hovering the dot
 shows the measured growth, duration, and rising-sample count. This is labeled as
 a possible leak because trend sampling cannot prove that allocations are
 unreachable.
-Disk overview shows mounted volumes, usage percentages, and free capacity.
-Moving the pointer off the column restores the overview header. The allowance is
-hidden while process details are visible so the activity header stays focused
-and uncluttered. Codex and Claude activity rows show the project they are
-working in. The hover header uses provider-colored sparkle icons for AI tasks
-and labels operating-system work as **CPU**. Little Herd reads only the newest
+Its storage page lists each volume with free space, total capacity, and a fill
+bar. Volumes sharing one APFS container are reported as a single row, because
+they share a free-space pool and listing them separately would count the same
+free space several times; such a row says how many volumes it covers, since its
+figures describe the container rather than the volume it is named after. Codex and Claude activity rows show the project they are
+working in, with provider-colored sparkle icons for AI tasks and
+operating-system work labelled **CPU**. Little Herd reads only the newest
 session metadata every 30 seconds and does not retain raw transcripts. Active
 agent tasks take priority over
 background CPU rows; remaining slots show the heaviest processes. Remote titles
@@ -156,9 +161,10 @@ Activity collection uses process names, CPU percentages, direct parent/child
 process relationships, and—for active build tools only—the process working
 folder. It does not inspect command arguments, prompts, responses, environment
 variables, or credentials. The same existing process-list sample is reused for
-memory attribution, so the memory hover adds no additional periodic process
-scan. Helper processes are grouped under their containing app before the three
-largest app families are shown.
+memory attribution, so the memory page adds no additional periodic process scan.
+Helper processes are grouped under their containing app before the largest app
+families are shown, and each is labelled with its own application icon, read
+from the bundle the process was launched from.
 
 ## Build
 
