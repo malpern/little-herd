@@ -12,6 +12,10 @@ settings:
     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
     ENABLE_HARDENED_RUNTIME: YES
     CODE_SIGN_STYLE: Automatic
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.9.5
 targets:
   LittleHerd:
     type: application
@@ -29,6 +33,7 @@ targets:
     dependencies:
       - sdk: IOKit.framework
       - sdk: libsqlite3.tbd
+      - package: Sparkle
   LittleHerdTests:
     type: bundle.unit-test
     platform: macOS

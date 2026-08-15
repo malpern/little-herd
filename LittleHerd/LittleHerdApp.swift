@@ -15,6 +15,7 @@ struct LittleHerdApp: App {
     private var appDelegate
     @State private var model: MonitorModel
     @State private var machineStore: MachineConfigurationStore
+    @State private var updater = SoftwareUpdater()
     @AppStorage(LittleHerdPreferences.menuBarEnabledKey)
     private var menuBarEnabled = false
 
@@ -53,6 +54,11 @@ struct LittleHerdApp: App {
                 Button("About Little Herd") {
                     AboutLittleHerdPresenter.present()
                 }
+
+                Button("Check for Updates…") {
+                    updater.checkForUpdates()
+                }
+                .disabled(!updater.canCheckForUpdates)
             }
             AddMachinesCommands()
             DashboardCommands(model: model)

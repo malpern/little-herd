@@ -1,0 +1,70 @@
+#!/bin/zsh
+# Builds the Sparkle appcast for a release archive.
+#
+#   scripts/make-appcast <notarized-zip> <tag> [output]
+#
+# Little Herd's SUFeedURL is
+# https://github.com/malpern/little-herd/releases/latest/download/appcast.xml,
+# so appcast.xml must be attached to every release. A release published without
+# it makes that URL 404 and silently stops updates for everyone.
+#
+# Signing uses the EdDSA private key in the login keychain, the one shared by
+# all of this account's Sparkle apps. The matching public key is pinned in
+# Info.plist as SUPublicEDKey; if the two ever disagree, clients reject the
+# update rather than installing it.
+
+set -eu
+
+archive=${1:?usage: make-appcast <notarized-zip> <tag> [output]}
+tag=${2:?usage: make-appcast <notarized-zip> <tag> [output]}
+output=${3:-$(dirname "$archive")/appcast.xml}
+
+repo=malpern/little-herd
+app=${TMPDIR:-/tmp}/make-appcast-$$
+trap 'rm -rf "$app"' EXIT
+
+sign_update=$(find ~/Library/Developer/Xcode/DerivedData \
+  -path '*artifacts/sparkle/Sparkle/bin/sign_update' 2>/dev/null | head -n 1)
+if [ -z "$sign_update" ]; then
+  echo "make-appcast: sign_update not found; resolve the Sparkle package first" >&2
+  exit 1
+fi
+
+# Read the versions back out of the built app rather than trusting an argument:
+# Sparkle compares CFBundleVersion, so a mismatch here means clients either
+# never see the update or loop on it forever.
+mkdir -p "$app"
+ditto -x -k "$archive" "$app"
+plist="$app/Little Herd.app/Contents/Info.plist"
+short_version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")
+build_version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")
+minimum_system=$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$plist" 2>/dev/null || echo 15.0)
+
+signature=$("$sign_update" "$archive")
+published=$(date -u '+%a, %d %b %Y %H:%M:%S +0000')
+
+cat > "$output" <<XML
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Little Herd</title>
+    <link>https://github.com/$repo</link>
+    <description>Updates for Little Herd.</description>
+    <language>en</language>
+    <item>
+      <title>$short_version</title>
+      <pubDate>$published</pubDate>
+      <sparkle:version>$build_version</sparkle:version>
+      <sparkle:shortVersionString>$short_version</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>$minimum_system</sparkle:minimumSystemVersion>
+      <sparkle:releaseNotesLink>https://github.com/$repo/releases/tag/$tag</sparkle:releaseNotesLink>
+      <enclosure
+        url="https://github.com/$repo/releases/download/$tag/$(basename "$archive")"
+        $signature
+        type="application/octet-stream" />
+    </item>
+  </channel>
+</rss>
+XML
+
+echo "wrote $output for $short_version (build $build_version)"

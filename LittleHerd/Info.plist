@@ -15,9 +15,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.1</string>
+	<string>0.1.2</string>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>3</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>NSBonjourServices</key>
@@ -31,5 +31,9 @@
 	<string>Little Herd discovers computers and storage on your local network so you can add them to your herd.</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
+	<key>SUFeedURL</key>
+	<string>https://github.com/malpern/little-herd/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>4YXR9g0GN7tq3O6frg5sfkBWUhfioKXq6KuIP7xmdA8=</string>
 </dict>
 </plist>

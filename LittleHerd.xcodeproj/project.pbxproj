@@ -10,6 +10,7 @@
 		00BCBA8D5FE93AD8AFE7CA27 /* MetricKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F1DDCC19A6E8B6C26AC5A1 /* MetricKind.swift */; };
 		0148F67314A4AFBD285AFE94 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 758130364CC3DF20E47E3A56 /* libsqlite3.tbd */; };
 		094E80A6E07234899B305A38 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D833CE2704E28207ED01D856 /* DashboardView.swift */; };
+		121132FFDEBBDF2D52E1A1C9 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C7D8104BAD8E6CE6707EBDD7 /* Sparkle */; };
 		182FDB3CF702DD3D6820FBA3 /* TaskTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5C36AC033CCD76A2AA262A9 /* TaskTransferView.swift */; };
 		231FCA9BBB2F8387C363203F /* CPUOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 133A808E3BA4EEA2AF234D6E /* CPUOverviewView.swift */; };
 		27726ED927D36757C9A9BF67 /* MonitorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4ED33139998C97ECB4C77A /* MonitorModel.swift */; };
@@ -34,6 +35,7 @@
 		B3560BD65BAB29961DD5DB6C /* HoveredMachineMetricHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 672A36609CA039974CDF72E7 /* HoveredMachineMetricHeader.swift */; };
 		B8613453826F6A56D32919D6 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A2C8E4C049BD68DD7C9764E /* IOKit.framework */; };
 		C75E46029BE72838F29E96DE /* MachineMonitorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6125192CA7CFE81311C048BC /* MachineMonitorModel.swift */; };
+		CBADC8EDC9632AE4731B8C4C /* SoftwareUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4164BB6C590812113B80A9E9 /* SoftwareUpdater.swift */; };
 		CD38AE00448FECC46421F03A /* AIAgentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34DDECFA904FEB7B9E48B369 /* AIAgentsView.swift */; };
 		CF632AA195C36FA80B20AB9F /* StorageVolume.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74631ABBC0DF62E9034B91B7 /* StorageVolume.swift */; };
 		D91CA4B85E7162E4DB2649A6 /* LittleHerdApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66BA172D3CC6CD4B8AEBC144 /* LittleHerdApp.swift */; };
@@ -57,6 +59,7 @@
 		34DDECFA904FEB7B9E48B369 /* AIAgentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAgentsView.swift; sourceTree = "<group>"; };
 		387B8471B05B8FEFC2973329 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkVolumeOnboardingView.swift; sourceTree = "<group>"; };
+		4164BB6C590812113B80A9E9 /* SoftwareUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftwareUpdater.swift; sourceTree = "<group>"; };
 		4669068113CB4027D57F9535 /* MetricModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricModel.swift; sourceTree = "<group>"; };
 		4B675E6E28982CA80D968D2E /* LocalProcessRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalProcessRunner.swift; sourceTree = "<group>"; };
 		4F29F16289B54BBD5DC8DE5A /* MetricRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricRow.swift; sourceTree = "<group>"; };
@@ -96,6 +99,7 @@
 			files = (
 				B8613453826F6A56D32919D6 /* IOKit.framework in Frameworks */,
 				0148F67314A4AFBD285AFE94 /* libsqlite3.tbd in Frameworks */,
+				121132FFDEBBDF2D52E1A1C9 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -132,6 +136,7 @@
 				BC4ED33139998C97ECB4C77A /* MonitorModel.swift */,
 				3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */,
 				A5BBA732DB8512138D7F61E0 /* RemoteMetricsSampler.swift */,
+				4164BB6C590812113B80A9E9 /* SoftwareUpdater.swift */,
 				74631ABBC0DF62E9034B91B7 /* StorageVolume.swift */,
 				D047AA9280E8D79DC01E7EC3 /* TaskTransfer.swift */,
 				E5C36AC033CCD76A2AA262A9 /* TaskTransferView.swift */,
@@ -192,6 +197,7 @@
 			);
 			name = LittleHerd;
 			packageProductDependencies = (
+				C7D8104BAD8E6CE6707EBDD7 /* Sparkle */,
 			);
 			productName = LittleHerd;
 			productReference = 6D7D3C2D4C1908811B46F252 /* LittleHerd.app */;
@@ -241,6 +247,9 @@
 			);
 			mainGroup = 450DA9A62A4C67DB2AB4CF5B;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B52224B0E03954541EFCC04B /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B3067EBE8EED9236BBF3F959 /* Products */;
 			projectDirPath = "";
@@ -293,6 +302,7 @@
 				27726ED927D36757C9A9BF67 /* MonitorModel.swift in Sources */,
 				AE7E668C1245F5127C1E588D /* NetworkVolumeOnboardingView.swift in Sources */,
 				F0C018891D4F81D70E48139C /* RemoteMetricsSampler.swift in Sources */,
+				CBADC8EDC9632AE4731B8C4C /* SoftwareUpdater.swift in Sources */,
 				CF632AA195C36FA80B20AB9F /* StorageVolume.swift in Sources */,
 				F467C6257000BC6F266301BC /* TaskTransfer.swift in Sources */,
 				182FDB3CF702DD3D6820FBA3 /* TaskTransferView.swift in Sources */,
@@ -546,6 +556,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B52224B0E03954541EFCC04B /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.5;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C7D8104BAD8E6CE6707EBDD7 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B52224B0E03954541EFCC04B /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 20729F5D0E2084BE671CDD05 /* Project object */;
 }
