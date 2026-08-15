@@ -239,8 +239,9 @@ fi
 step "Verifying the published feed"
 feed=https://github.com/$repo/releases/latest/download/appcast.xml
 live=$work/live-appcast.xml
-status=$(curl -sL -o "$live" -w '%{http_code}' "$feed")
-[ "$status" = 200 ] || die "feed returned HTTP $status — updates are broken"
+feed_status=$(curl -sL -o "$live" -w '%{http_code}' "$feed")
+[ "$feed_status" = 200 ] \
+  || die "feed returned HTTP $feed_status — updates are broken"
 grep -q "<sparkle:shortVersionString>$version<" "$live" \
   || die "feed does not advertise $version"
 enclosure=$(grep -o 'url="[^"]*"' "$live" | head -1 | cut -d'"' -f2)
