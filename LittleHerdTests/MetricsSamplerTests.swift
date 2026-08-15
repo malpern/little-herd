@@ -129,6 +129,57 @@ struct MetricsSamplerTests {
     }
 
     @Test
+    func alertsFireOnceOnTheWayInAndOnceOnTheWayOut() {
+        var posted: [String] = []
+        let center = MachineAlertCenter { title, _ in posted.append(title) }
+        let machine = MachineMonitorModel(configuration: testMachineConfigurations[1])
+
+        // Reachable, then gone.
+        machine.apply(SystemSnapshot(timestamp: .now, readings: [:]))
+        center.evaluate(machine, isEnabled: true)
+        #expect(posted.isEmpty)
+
+        machine.markOffline(.noAnswer)
+        center.evaluate(machine, isEnabled: true)
+        #expect(posted.count == 1)
+
+        // Still gone on the next sample: a monitor that repeats itself gets muted.
+        center.evaluate(machine, isEnabled: true)
+        #expect(posted.count == 1)
+
+        machine.apply(SystemSnapshot(timestamp: .now, readings: [:]))
+        center.evaluate(machine, isEnabled: true)
+        #expect(posted.count == 2)
+        #expect(posted.last?.contains("back") == true)
+    }
+
+    @Test
+    func aMachineThatNeverConnectedIsNotAnAlert() {
+        var posted: [String] = []
+        let center = MachineAlertCenter { title, _ in posted.append(title) }
+        let machine = MachineMonitorModel(configuration: testMachineConfigurations[1])
+
+        machine.markOffline(.nameNotFound)
+        center.evaluate(machine, isEnabled: true)
+
+        #expect(posted.isEmpty)
+    }
+
+    @Test
+    func alertsStaySilentUntilEnabled() {
+        var posted: [String] = []
+        let center = MachineAlertCenter { title, _ in posted.append(title) }
+        let machine = MachineMonitorModel(configuration: testMachineConfigurations[1])
+        machine.apply(SystemSnapshot(timestamp: .now, readings: [:]))
+        center.evaluate(machine, isEnabled: false)
+
+        machine.markOffline(.noAnswer)
+        center.evaluate(machine, isEnabled: false)
+
+        #expect(posted.isEmpty)
+    }
+
+    @Test
     func machineCanBeRemovedFromTheHerd() throws {
         let defaults = try #require(
             UserDefaults(suiteName: "LittleHerdTests.\(UUID().uuidString)")

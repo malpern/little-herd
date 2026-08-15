@@ -13,6 +13,7 @@ final class MonitorModel {
     private(set) var diskMachines: [MachineMonitorModel] = []
     let aiUsageLimits = AIUsageLimitsModel()
     let taskTransfers = TaskTransferMonitorModel()
+    let alerts = MachineAlertCenter()
     var selection: DashboardSelection = .overview
     var overviewMetric: OverviewMetric = .cpu
 
@@ -51,6 +52,13 @@ final class MonitorModel {
 
     @ObservationIgnored
     private var activeSurfaces: Set<MonitorSurface> = []
+
+    /// Opt-in, and off until asked for: a monitor that interrupts you without
+    /// permission gets muted.
+    @ObservationIgnored
+    private var alertsEnabled: Bool {
+        UserDefaults.standard.bool(forKey: LittleHerdPreferences.alertsEnabledKey)
+    }
 
     init(
         configurations: [MachineConfiguration] = [.local()],
@@ -110,6 +118,7 @@ final class MonitorModel {
         guard !configurations.isEmpty else { return }
         let shouldRestart = !activeSurfaces.isEmpty
         stop()
+        alerts.reset()
         rebuildMonitors(from: configurations)
         if selection.machineID.map({ machineID in
             !machines.contains { $0.machine == machineID }
@@ -278,6 +287,7 @@ final class MonitorModel {
             while !Task.isCancelled {
                 let snapshot = await sampler.sample()
                 machine.apply(snapshot)
+                alerts.evaluate(machine, isEnabled: alertsEnabled)
 
                 do {
                     try await Task.sleep(for: .seconds(5))
@@ -302,6 +312,7 @@ final class MonitorModel {
                 } catch {
                     machine.markOffline(RemoteUnavailability.classify(error))
                 }
+                alerts.evaluate(machine, isEnabled: alertsEnabled)
 
                 do {
                     // Linux CPU and all remote network rates need two counter

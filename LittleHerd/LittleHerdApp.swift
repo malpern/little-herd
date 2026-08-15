@@ -94,6 +94,7 @@ struct LittleHerdApp: App {
 enum LittleHerdPreferences {
     static let menuBarEnabledKey = "menuBarItemEnabled"
     static let machineConfigurationsKey = "machineConfigurationsV1"
+    static let alertsEnabledKey = "alertsEnabled"
     static let networkVolumeAccessOnboardingCompletedKey =
         "networkVolumeAccessOnboardingCompleted"
 
@@ -443,9 +444,21 @@ private struct LittleHerdSettingsView: View {
     @Environment(\.openWindow) private var openWindow
     @AppStorage(LittleHerdPreferences.menuBarEnabledKey)
     private var menuBarEnabled = false
+    @AppStorage(LittleHerdPreferences.alertsEnabledKey)
+    private var alertsEnabled = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 7) {
+                Toggle("Notify me when a machine needs attention", isOn: $alertsEnabled)
+                    .font(.body.weight(.medium))
+
+                Text("A notification when a disk is nearly full, memory is critical, or a machine stops responding — once per event, and once when it recovers.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             VStack(alignment: .leading, spacing: 7) {
                 Toggle("Show status in menu bar", isOn: $menuBarEnabled)
                     .font(.body.weight(.medium))

@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		00BCBA8D5FE93AD8AFE7CA27 /* MetricKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F1DDCC19A6E8B6C26AC5A1 /* MetricKind.swift */; };
 		0148F67314A4AFBD285AFE94 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 758130364CC3DF20E47E3A56 /* libsqlite3.tbd */; };
+		037A941C63BC9F9892A2E070 /* MachineAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F455A7153E6520E2477FF1A /* MachineAlerts.swift */; };
 		094E80A6E07234899B305A38 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D833CE2704E28207ED01D856 /* DashboardView.swift */; };
 		121132FFDEBBDF2D52E1A1C9 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C7D8104BAD8E6CE6707EBDD7 /* Sparkle */; };
 		182FDB3CF702DD3D6820FBA3 /* TaskTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5C36AC033CCD76A2AA262A9 /* TaskTransferView.swift */; };
@@ -81,6 +82,7 @@
 		758130364CC3DF20E47E3A56 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		76F86234553E6FA795BAE88C /* DashboardWindowBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardWindowBridge.swift; sourceTree = "<group>"; };
 		7A22449665459CDACD6F0410 /* LittleHerdTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LittleHerdTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F455A7153E6520E2477FF1A /* MachineAlerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineAlerts.swift; sourceTree = "<group>"; };
 		90FE8216081F585ED580AE1C /* Machine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Machine.swift; sourceTree = "<group>"; };
 		A17B5AEB7ADED71EAF3397A2 /* AgentSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSession.swift; sourceTree = "<group>"; };
 		A5BBA732DB8512138D7F61E0 /* RemoteMetricsSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteMetricsSampler.swift; sourceTree = "<group>"; };
@@ -135,6 +137,7 @@
 				4B675E6E28982CA80D968D2E /* LocalProcessRunner.swift */,
 				90FE8216081F585ED580AE1C /* Machine.swift */,
 				6BE7C98CC9A2691BAFB89BCC /* MachineActivity.swift */,
+				8F455A7153E6520E2477FF1A /* MachineAlerts.swift */,
 				FBD2A66D13D5D677C68BF37D /* MachineConfiguration.swift */,
 				0268A4FEC4C1CE1B192EB31C /* MachineDetailPane.swift */,
 				6125192CA7CFE81311C048BC /* MachineMonitorModel.swift */,
@@ -305,6 +308,7 @@
 				6178FDFB871ECC5115BC4EA7 /* LocalProcessRunner.swift in Sources */,
 				ADFBD220A565C255B252322A /* Machine.swift in Sources */,
 				510ED568359C558B6A05BCFE /* MachineActivity.swift in Sources */,
+				037A941C63BC9F9892A2E070 /* MachineAlerts.swift in Sources */,
 				5E3CE5327A2EA4F166BDD893 /* MachineConfiguration.swift in Sources */,
 				9E4826EE9CDB2CC88329E54B /* MachineDetailPane.swift in Sources */,
 				C75E46029BE72838F29E96DE /* MachineMonitorModel.swift in Sources */,
