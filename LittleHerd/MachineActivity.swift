@@ -289,6 +289,24 @@ nonisolated enum MachineActivityParser {
         "sort",
     ]
 
+    /// Orders by CPU, then by name.
+    ///
+    /// The name is not decoration: these activities come out of a Dictionary,
+    /// whose iteration order is unspecified, and Swift's sort is not stable. Two
+    /// processes reporting the same percentage would otherwise swap places from
+    /// one sample to the next and the row would visibly flicker with nothing
+    /// actually changing on the machine.
+    static func isOrderedByCPU(
+        _ lhs: MachineActivity,
+        _ rhs: MachineActivity
+    ) -> Bool {
+        if lhs.cpuPercent != rhs.cpuPercent {
+            return lhs.cpuPercent > rhs.cpuPercent
+        }
+        return lhs.processName.localizedCaseInsensitiveCompare(rhs.processName)
+            == .orderedAscending
+    }
+
     static func highlights(
         from processOutput: String,
         limit: Int = maximumHighlights,
@@ -330,7 +348,7 @@ nonisolated enum MachineActivityParser {
                 )
             }
             .filter { $0.cpuPercent >= minimumCPUPercent }
-            .sorted { $0.cpuPercent > $1.cpuPercent }
+            .sorted(by: isOrderedByCPU)
             .prefix(limit)
             .map(\.self)
     }
@@ -391,7 +409,10 @@ nonisolated enum MachineActivityPrioritizer {
             return activity.addingAgentTask(agentTasks[provider])
         }
 
-        for task in agentTasks.values where task.status == .active {
+        let orderedTasks = agentTasks
+            .sorted { $0.key.rawValue < $1.key.rawValue }
+            .map(\.value)
+        for task in orderedTasks where task.status == .active {
             let alreadyRepresented = decoratedActivities.contains {
                 $0.kind.agentTaskProvider == task.provider
             }
@@ -412,7 +433,7 @@ nonisolated enum MachineActivityPrioritizer {
                 let lhsDate = lhs.agentTask?.updatedAt ?? .distantPast
                 let rhsDate = rhs.agentTask?.updatedAt ?? .distantPast
                 if lhsDate == rhsDate {
-                    return lhs.cpuPercent > rhs.cpuPercent
+                    return MachineActivityParser.isOrderedByCPU(lhs, rhs)
                 }
                 return lhsDate > rhsDate
             }
@@ -436,7 +457,7 @@ nonisolated enum MachineActivityPrioritizer {
                 }
                 return !selectedProviders.contains(provider)
             }
-            .sorted { $0.cpuPercent > $1.cpuPercent }
+            .sorted(by: MachineActivityParser.isOrderedByCPU)
 
         selected.append(contentsOf: heavyActivities.prefix(remainingCapacity))
         return selected
@@ -771,7 +792,12 @@ nonisolated enum AgentTaskProbe {
               claude_status=waiting
             fi
 
-            claude_progress=$(tail -n 1000 "$claude_file" 2>/dev/null | jq -r '
+            # Every TaskCreate must be seen, not just recent ones. taskId is an
+            # ordinal into creation order, so truncating the file to a tail drops
+            # earlier creates and silently shifts every id onto the wrong task.
+            # grep keeps this cheap: it is a few milliseconds even on a 38 MB
+            # transcript, and only matching lines reach jq.
+            claude_progress=$(grep -E '"(TaskCreate|TaskUpdate)"' "$claude_file" 2>/dev/null | jq -r '
               .message.content[]? |
               select(.type? == "tool_use") |
               if .name == "TaskCreate" then

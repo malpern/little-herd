@@ -35,6 +35,37 @@ struct MetricsSamplerTests {
     }
 
     @Test
+    func equalCPUActivitiesAreOrderedByName() {
+        // Dictionary iteration is unordered and Swift's sort is not stable, so
+        // without an explicit tiebreaker two processes reporting the same
+        // percentage swap places between samples and the row flickers.
+        let quiet = MachineActivity(processName: "node", cpuPercent: 2)
+        let alsoQuiet = MachineActivity(processName: "chromium", cpuPercent: 2)
+        let busy = MachineActivity(processName: "codex", cpuPercent: 9)
+
+        #expect(MachineActivityParser.isOrderedByCPU(busy, quiet))
+        #expect(!MachineActivityParser.isOrderedByCPU(quiet, busy))
+        #expect(MachineActivityParser.isOrderedByCPU(alsoQuiet, quiet))
+        #expect(!MachineActivityParser.isOrderedByCPU(quiet, alsoQuiet))
+    }
+
+    @Test
+    func tiedHighlightsKeepAFixedOrder() {
+        let output = """
+        2.0 101 node
+        2.0 102 chromium
+        9.0 103 codex
+        """
+        let highlights = MachineActivityParser.highlights(
+            from: output,
+            limit: 3,
+            minimumCPUPercent: 0
+        )
+
+        #expect(highlights.map(\.processName) == ["codex", "chromium", "node"])
+    }
+
+    @Test
     func machineCanBeRemovedFromTheHerd() throws {
         let defaults = try #require(
             UserDefaults(suiteName: "LittleHerdTests.\(UUID().uuidString)")
