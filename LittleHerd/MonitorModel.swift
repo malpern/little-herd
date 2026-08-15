@@ -96,6 +96,16 @@ final class MonitorModel {
         overviewMetric = metric
     }
 
+    /// Used by the metric picker in the header, which stays visible while a
+    /// single machine is in focus: changing metric there re-lenses the machine
+    /// you are looking at rather than throwing you back to the overview.
+    func selectOverviewMetric(_ metric: OverviewMetric) {
+        overviewMetric = metric
+        if !selection.isMetricFocus {
+            selection = .overview
+        }
+    }
+
     func applyConfigurations(_ configurations: [MachineConfiguration]) {
         guard !configurations.isEmpty else { return }
         let shouldRestart = !activeSurfaces.isEmpty
@@ -382,7 +392,8 @@ actor SMBStorageSampler {
                 name: name,
                 mountPath: group.map(\.mountPath).sorted().joined(separator: ", "),
                 availableBytes: availableBytes,
-                totalBytes: totalBytes
+                totalBytes: totalBytes,
+                volumeCount: group.count
             )
         }
 

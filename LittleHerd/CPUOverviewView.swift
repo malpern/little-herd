@@ -4,8 +4,8 @@ struct CPUOverviewView: View {
     let machines: [MachineMonitorModel]
     let metric: OverviewMetric
     var namespace: Namespace.ID?
-    var onSelect: ((MachineID) -> Void)?
-    @State private var isHovered = false
+    var onSelectMetric: ((MachineID) -> Void)?
+    var onSelectMachine: ((MachineID) -> Void)?
 
     var body: some View {
         HStack(alignment: .top, spacing: columnSpacing) {
@@ -16,7 +16,8 @@ struct CPUOverviewView: View {
                     columnWidth: columnWidth,
                     avatarSize: avatarSize,
                     namespace: namespace,
-                    onSelect: onSelect
+                    onSelectMetric: onSelectMetric,
+                    onSelectMachine: onSelectMachine
                 )
             }
         }
@@ -48,70 +49,90 @@ private struct CPUThermometerColumn: View {
     let columnWidth: CGFloat
     let avatarSize: CGFloat
     var namespace: Namespace.ID?
-    var onSelect: ((MachineID) -> Void)?
-    @State private var isHovered = false
+    var onSelectMetric: ((MachineID) -> Void)?
+    var onSelectMachine: ((MachineID) -> Void)?
 
     var body: some View {
         // A real Button, not a tap gesture: the window is movable by its
         // background, which swallows plain mouse-down in ordinary views, and a
         // control is what this should be anyway — it gets focus and hit
         // behaviour for free.
-        Button {
-            onSelect?(machine.machine)
-        } label: {
-            column
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering in
-            isHovered = hovering
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text("\(machine.name) details"))
-        .accessibilityHint(columnHelp)
-    }
+        VStack(spacing: 3) {
+            // The bar opens this machine's view of the current metric…
+            Button {
+                onSelectMetric?(machine.machine)
+            } label: {
+                VStack(spacing: 4) {
+                    OverviewMetricValue(
+                        metric: metric,
+                        value: liveMetricValue,
+                        memoryPressure: liveMemoryPressure
+                    )
 
-    private var column: some View {
-        VStack(spacing: 4) {
-            OverviewMetricValue(
-                metric: metric,
-                value: liveMetricValue,
-                memoryPressure: liveMemoryPressure
-            )
+                    SegmentedThermometer(
+                        value: liveThermometerValue,
+                        blockHeight: 6,
+                        spacing: 2.25
+                    )
+                    .padding(.vertical, 1)
+                    .matchedThermometer(namespace, machine: machine.machine)
 
-            VStack(spacing: 3) {
-                SegmentedThermometer(
-                    value: liveThermometerValue,
-                    blockHeight: 6,
-                    spacing: 2.25
-                )
-                .padding(.vertical, 1)
+                    if metric == .disk, let volume = fullestVolume {
+                        VStack(spacing: 0) {
+                            Text(
+                                Int64(volume.availableBytes),
+                                format: .byteCount(style: .file)
+                            )
+                            .font(.caption2.weight(.medium))
+                            Text("free")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("\(machine.name) \(String(localized: metric.title))"))
+            .accessibilityHint(columnHelp)
 
+            // …the icon opens everything about the machine.
+            Button {
+                onSelectMachine?(machine.machine)
+            } label: {
                 MachineStatusLabel(
                     machine: machine,
                     avatarSize: avatarSize,
                     namespace: namespace
                 )
+                .contentShape(Rectangle())
             }
-            .frame(maxHeight: .infinity, alignment: .top)
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("\(machine.name) details"))
         }
         .frame(width: columnWidth)
         .frame(maxHeight: .infinity, alignment: .top)
         .padding(.vertical, 4)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.primary.opacity(isHovered ? 0.06 : 0))
-        )
-        .contentShape(Rectangle())
     }
 
     private var liveMetricValue: Double? {
-        guard machine.state == .live else { return nil }
+        guard machine.state == .live || machine.isStorage else { return nil }
 
         switch metric {
         case .cpu: return machine.cpu.value
         case .memory: return machine.memory.value
-        case .disk, .ai: return nil
+        case .disk: return fullestVolume?.usedPercent
+        case .ai: return nil
         }
+    }
+
+    /// The volume that will run out first — what "how full is this machine"
+    /// means when a machine has several.
+    private var fullestVolume: StorageVolume? {
+        machine.storageVolumes.max { $0.usedPercent < $1.usedPercent }
     }
 
     private var liveMemoryPressure: MemoryPressureLevel? {
@@ -125,7 +146,9 @@ private struct CPUThermometerColumn: View {
             liveMetricValue
         case .memory:
             liveMemoryPressure?.visualizationPercent
-        case .disk, .ai:
+        case .disk:
+            fullestVolume?.usedPercent
+        case .ai:
             nil
         }
     }
@@ -190,7 +213,7 @@ private struct CPUThermometerColumn: View {
     }
 }
 
-private struct OverviewMetricValue: View {
+struct OverviewMetricValue: View {
     let metric: OverviewMetric
     let value: Double?
     let memoryPressure: MemoryPressureLevel?
@@ -203,7 +226,10 @@ private struct OverviewMetricValue: View {
         case .memory:
             MemoryPressureSymbol(level: memoryPressure)
                 .font(.title3.weight(.semibold))
-        case .disk, .ai:
+        case .disk:
+            CPUPercentage(value: value)
+                .font(.title3.weight(.semibold).monospacedDigit())
+        case .ai:
             Text("—")
                 .foregroundStyle(.tertiary)
         }

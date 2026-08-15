@@ -19,7 +19,6 @@
 		3A45C65052806FE4A571A349 /* HerdwareAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D56F2E897732951FB02B9B7F /* HerdwareAvatar.swift */; };
 		4425832D76E61C50D9AE5F2F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 387B8471B05B8FEFC2973329 /* Assets.xcassets */; };
 		45C4B87B06C248B32DE821B4 /* AgentSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17B5AEB7ADED71EAF3397A2 /* AgentSession.swift */; };
-		48E1B03457C005CE567496BC /* DiskOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 792AC427750DD50ADA0F2B7C /* DiskOverviewView.swift */; };
 		4DECA6731350AC1B325E372D /* MetricsSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8E7D7B96F3C77459C1DD141 /* MetricsSampler.swift */; };
 		510ED568359C558B6A05BCFE /* MachineActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE7C98CC9A2691BAFB89BCC /* MachineActivity.swift */; };
 		58521A8BB8088855A0F9DA8D /* BonjourMachineDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC14D9861665A4B5069FBEF7 /* BonjourMachineDiscovery.swift */; };
@@ -31,6 +30,7 @@
 		81EA61F13900B92BB091C44D /* AddMachinesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 542ADA4729226F9EBB0D48D6 /* AddMachinesView.swift */; };
 		88873018BA18973DB4643815 /* MetricsSamplerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE23C778660407B336F50BA0 /* MetricsSamplerTests.swift */; };
 		8935F6CCBD6DFA02BEC41FA3 /* RemoteUnavailabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */; };
+		9E4826EE9CDB2CC88329E54B /* MachineDetailPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0268A4FEC4C1CE1B192EB31C /* MachineDetailPane.swift */; };
 		A23B343EAFCC59009DBBB951 /* DashboardWindowBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F86234553E6FA795BAE88C /* DashboardWindowBridge.swift */; };
 		ADFBD220A565C255B252322A /* Machine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90FE8216081F585ED580AE1C /* Machine.swift */; };
 		AE7E668C1245F5127C1E588D /* NetworkVolumeOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */; };
@@ -58,6 +58,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0268A4FEC4C1CE1B192EB31C /* MachineDetailPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineDetailPane.swift; sourceTree = "<group>"; };
 		133A808E3BA4EEA2AF234D6E /* CPUOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUOverviewView.swift; sourceTree = "<group>"; };
 		199544A93AE05F23B93D38E4 /* DashboardTransition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardTransition.swift; sourceTree = "<group>"; };
 		2A2C8E4C049BD68DD7C9764E /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
@@ -79,7 +80,6 @@
 		74631ABBC0DF62E9034B91B7 /* StorageVolume.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageVolume.swift; sourceTree = "<group>"; };
 		758130364CC3DF20E47E3A56 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		76F86234553E6FA795BAE88C /* DashboardWindowBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardWindowBridge.swift; sourceTree = "<group>"; };
-		792AC427750DD50ADA0F2B7C /* DiskOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskOverviewView.swift; sourceTree = "<group>"; };
 		7A22449665459CDACD6F0410 /* LittleHerdTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LittleHerdTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		90FE8216081F585ED580AE1C /* Machine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Machine.swift; sourceTree = "<group>"; };
 		A17B5AEB7ADED71EAF3397A2 /* AgentSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSession.swift; sourceTree = "<group>"; };
@@ -127,7 +127,6 @@
 				199544A93AE05F23B93D38E4 /* DashboardTransition.swift */,
 				D833CE2704E28207ED01D856 /* DashboardView.swift */,
 				76F86234553E6FA795BAE88C /* DashboardWindowBridge.swift */,
-				792AC427750DD50ADA0F2B7C /* DiskOverviewView.swift */,
 				D56F2E897732951FB02B9B7F /* HerdwareAvatar.swift */,
 				672A36609CA039974CDF72E7 /* HoveredMachineMetricHeader.swift */,
 				CE6423E97058743B9C08DD97 /* Info.plist */,
@@ -137,6 +136,7 @@
 				90FE8216081F585ED580AE1C /* Machine.swift */,
 				6BE7C98CC9A2691BAFB89BCC /* MachineActivity.swift */,
 				FBD2A66D13D5D677C68BF37D /* MachineConfiguration.swift */,
+				0268A4FEC4C1CE1B192EB31C /* MachineDetailPane.swift */,
 				6125192CA7CFE81311C048BC /* MachineMonitorModel.swift */,
 				D0F1DDCC19A6E8B6C26AC5A1 /* MetricKind.swift */,
 				4669068113CB4027D57F9535 /* MetricModel.swift */,
@@ -298,7 +298,6 @@
 				F45BA889DF0A918F2B8A1CE7 /* DashboardTransition.swift in Sources */,
 				094E80A6E07234899B305A38 /* DashboardView.swift in Sources */,
 				A23B343EAFCC59009DBBB951 /* DashboardWindowBridge.swift in Sources */,
-				48E1B03457C005CE567496BC /* DiskOverviewView.swift in Sources */,
 				3A45C65052806FE4A571A349 /* HerdwareAvatar.swift in Sources */,
 				B3560BD65BAB29961DD5DB6C /* HoveredMachineMetricHeader.swift in Sources */,
 				D91CA4B85E7162E4DB2649A6 /* LittleHerdApp.swift in Sources */,
@@ -307,6 +306,7 @@
 				ADFBD220A565C255B252322A /* Machine.swift in Sources */,
 				510ED568359C558B6A05BCFE /* MachineActivity.swift in Sources */,
 				5E3CE5327A2EA4F166BDD893 /* MachineConfiguration.swift in Sources */,
+				9E4826EE9CDB2CC88329E54B /* MachineDetailPane.swift in Sources */,
 				C75E46029BE72838F29E96DE /* MachineMonitorModel.swift in Sources */,
 				00BCBA8D5FE93AD8AFE7CA27 /* MetricKind.swift in Sources */,
 				6B236EB580089736F35DAC08 /* MetricModel.swift in Sources */,

@@ -18,6 +18,12 @@ enum DashboardTransition {
     static func avatarID(_ machine: MachineID) -> String {
         "machine-avatar-\(machine.rawValue)"
     }
+
+    /// The bar you clicked travels and grows into the detail, so the thing you
+    /// touched is the thing you are now looking at.
+    static func thermometerID(_ machine: MachineID) -> String {
+        "machine-thermometer-\(machine.rawValue)"
+    }
 }
 
 extension View {
@@ -28,6 +34,21 @@ extension View {
         if let namespace {
             matchedGeometryEffect(
                 id: DashboardTransition.avatarID(machine),
+                in: namespace
+            )
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func matchedThermometer(
+        _ namespace: Namespace.ID?,
+        machine: MachineID
+    ) -> some View {
+        if let namespace {
+            matchedGeometryEffect(
+                id: DashboardTransition.thermometerID(machine),
                 in: namespace
             )
         } else {

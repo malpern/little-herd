@@ -269,6 +269,9 @@ nonisolated struct MachineActivity: Equatable, Sendable {
 
 nonisolated enum MachineActivityParser {
     static let maximumHighlights = 3
+    /// The machine page has room for a real list, so the sampler keeps more
+    /// than the three the old hover strip could show.
+    static let detailHighlights = 8
     static let defaultMinimumCPUPercent = 0.5
 
     private enum SummaryKey: Hashable {

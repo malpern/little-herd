@@ -132,7 +132,8 @@ nonisolated enum RemoteOutputParser {
 
         return MachineActivityPrioritizer.select(
             from: candidateActivities,
-            agentTasks: resolvedAgentTasks
+            agentTasks: resolvedAgentTasks,
+            limit: MachineActivityParser.detailHighlights
         )
     }
 
@@ -197,7 +198,8 @@ nonisolated enum RemoteOutputParser {
                 name: name,
                 mountPath: mountPath,
                 availableBytes: first.availableBytes,
-                totalBytes: first.totalBytes
+                totalBytes: first.totalBytes,
+                volumeCount: volumes.count
             )
         }
     }
@@ -435,7 +437,13 @@ actor RemoteMetricsSampler {
     echo "memory_pressure=$pressure"
     echo "network=$network"
     echo "disk=$disk"
-    /bin/df -Pk -l | /usr/bin/awk 'NR > 1 {mount=$6; for (i=7; i<=NF; i++) mount=mount " " $i; if ($1 ~ "^/dev/" && (mount == "/" || mount ~ "^/Volumes/") && mount != "/Volumes/Recovery") {group=$1; sub(/^\/dev\//,"",group); sub(/s[0-9]+.*$/,"",group); printf "%s\t%.0f\t%.0f\t%s\n", group, $2*1024, $4*1024, mount}}' | while IFS="$(printf '\t')" read -r storage_group storage_total storage_available storage_mount; do
+    # Mounted disk images — installer .dmgs left attached, Simulator runtimes,
+    # cryptex mounts — are read-only and report meaningless capacity ("10 MB
+    # free of 12 MB" on something that can never fill). They are dropped here.
+    # The startup volume is itself read-only on a sealed system, so "/" is
+    # always kept regardless.
+    readonly_volumes=$(/sbin/mount | /usr/bin/awk '/read-only/ {position=index($0, " on "); rest=substr($0, position + 4); paren=index(rest, " ("); if (paren > 1) print substr(rest, 1, paren - 1)}' | /usr/bin/grep '^/Volumes/' | /usr/bin/tr '\n' '|')
+    /bin/df -Pk -l | /usr/bin/awk -v readonly="$readonly_volumes" 'NR > 1 {mount=$6; for (i=7; i<=NF; i++) mount=mount " " $i; if ($1 ~ "^/dev/" && (mount == "/" || mount ~ "^/Volumes/") && mount != "/Volumes/Recovery" && index(readonly, mount "|") == 0) {group=$1; sub(/^\/dev\//,"",group); sub(/s[0-9]+.*$/,"",group); printf "%s\t%.0f\t%.0f\t%s\n", group, $2*1024, $4*1024, mount}}' | while IFS="$(printf '\t')" read -r storage_group storage_total storage_available storage_mount; do
       storage_name=${storage_mount##*/}
       if [ "$storage_mount" = "/" ]; then storage_name="Macintosh HD"; fi
       storage_name64=$(printf "%s" "$storage_name" | /usr/bin/base64 | /usr/bin/tr -d '\n')

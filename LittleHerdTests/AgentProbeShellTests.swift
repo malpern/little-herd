@@ -99,8 +99,42 @@ struct AgentProbeShellTests {
 
         #expect(values["network"]?.count == 2)
         #expect(values["cpu_percent"]?.first != nil)
-        #expect(!RemoteOutputParser.parseStorageVolumes(output).isEmpty)
         #expect(!RemoteOutputParser.parseMemoryConsumers(output).isEmpty)
+
+        // The startup volume is read-only on a sealed system, so the read-only
+        // filter has to keep it. Dropping "/" would empty the disk view on
+        // every Mac, which is the expensive way to get this wrong.
+        let volumes = RemoteOutputParser.parseStorageVolumes(output)
+        #expect(volumes.contains { $0.mountPath.split(separator: ",").contains("/") })
+
+        // Mounted disk images — leftover installer .dmgs — are read-only and
+        // must not be reported as storage.
+        let readOnly = try #require(
+            await LocalProcessRunner.run(
+                executablePath: "/sbin/mount",
+                arguments: []
+            )
+        )
+        .split(whereSeparator: \.isNewline)
+        .filter { $0.contains("read-only") }
+        .compactMap { line -> String? in
+            guard let onRange = line.range(of: " on "),
+                  let parenRange = line.range(of: " (", range: onRange.upperBound ..< line.endIndex)
+            else {
+                return nil
+            }
+            return String(line[onRange.upperBound ..< parenRange.lowerBound])
+        }
+        .filter { $0.hasPrefix("/Volumes/") }
+
+        for volume in volumes {
+            for mountPath in volume.mountPath.components(separatedBy: ", ") {
+                #expect(
+                    !readOnly.contains(mountPath),
+                    "\(mountPath) is read-only and should not be reported as storage"
+                )
+            }
+        }
     }
 }
 

@@ -35,7 +35,16 @@ struct DashboardView: View {
                     TaskTransferView(event: transfer, machines: model.machines)
                         .id(transfer.id)
                 } else {
-                    if let selectedMachine = model.selectedMachine {
+                    if model.selection.isMetricFocus {
+                        CPUOverviewHeaderArea(
+                            machines: model.overviewMachines,
+                            agentSessions: agentSessions,
+                            hoveredAgentID: hoveredAgentID,
+                            aiUsageLimits: model.aiUsageLimits,
+                            metric: model.overviewMetric,
+                            onSelect: model.selectOverviewMetric
+                        )
+                    } else if let selectedMachine = model.selectedMachine {
                         MachineDetailBar(
                             machine: selectedMachine,
                             aiUsageLimits: model.aiUsageLimits,
@@ -48,14 +57,22 @@ struct DashboardView: View {
                             hoveredAgentID: hoveredAgentID,
                             aiUsageLimits: model.aiUsageLimits,
                             metric: model.overviewMetric,
-                            onSelect: model.showOverview
+                            onSelect: model.selectOverviewMetric
                         )
                     }
 
                     Divider()
                         .padding(.horizontal, 14)
 
-                    if let selectedMachine = model.selectedMachine {
+                    if let selectedMachine = model.selectedMachine,
+                       model.selection.isMetricFocus {
+                        MachineMetricDetail(
+                            machine: selectedMachine,
+                            metric: model.overviewMetric,
+                            namespace: machineTransition,
+                            onBack: { model.selection = .overview }
+                        )
+                    } else if let selectedMachine = model.selectedMachine {
                         HStack(spacing: 0) {
                             MachineIdentityRail(
                                 machine: selectedMachine,
@@ -78,7 +95,8 @@ struct DashboardView: View {
                             hoveredAgentID: $hoveredAgentID,
                             metric: model.overviewMetric,
                             namespace: machineTransition,
-                            onSelect: { model.selection = .machine($0) }
+                            onSelectMetric: { model.selection = .machineMetric($0) },
+                            onSelectMachine: { model.selection = .machine($0) }
                         )
                         .id(model.overviewMetric)
                         .transition(.opacity)
@@ -162,8 +180,13 @@ struct DashboardView: View {
         if isShowingNetworkVolumeOnboarding {
             return NSSize(width: 420, height: 374)
         }
-        return model.selection == .overview
-            ? NSSize(width: 300, height: 282)
+        if model.selection == .overview {
+            // Disk stacks a volume name, bar, and capacity above the machine
+            // name, so it needs more room than the other three.
+            return NSSize(width: 300, height: 296)
+        }
+        return model.selection.isMetricFocus
+            ? NSSize(width: 400, height: 330)
             : NSSize(width: 420, height: 340)
     }
 
@@ -495,24 +518,23 @@ private struct OverviewMetricContent: View {
     @Binding var hoveredAgentID: MachineAgentSession.ID?
     let metric: OverviewMetric
     var namespace: Namespace.ID?
-    var onSelect: ((MachineID) -> Void)?
+    var onSelectMetric: ((MachineID) -> Void)?
+    var onSelectMachine: ((MachineID) -> Void)?
 
     var body: some View {
         if metric == .ai {
             AIAgentsView(
                 sessions: agentSessions,
-                hoveredAgentID: $hoveredAgentID
-            )
-        } else if metric == .disk {
-            DiskOverviewView(
-                machines: machines
+                hoveredAgentID: $hoveredAgentID,
+                onSelectMachine: onSelectMetric
             )
         } else {
             CPUOverviewView(
                 machines: machines,
                 metric: metric,
                 namespace: namespace,
-                onSelect: onSelect
+                onSelectMetric: onSelectMetric,
+                onSelectMachine: onSelectMachine
             )
         }
     }
@@ -581,6 +603,284 @@ private struct MachineDetailBar: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+}
+
+/// One machine, one metric — the destination for clicking a thermometer.
+///
+/// The bar travels out of the overview and grows, so the thing you touched is
+/// the thing you are looking at, and the right-hand side carries exactly the
+/// detail the hover panel used to show.
+private struct MachineMetricDetail: View {
+    let machine: MachineMonitorModel
+    let metric: OverviewMetric
+    var namespace: Namespace.ID?
+    let onBack: () -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Button(action: onBack) {
+                VStack(spacing: 6) {
+                    OverviewMetricValue(
+                        metric: metric,
+                        value: machine.state == .live ? metricValue : nil,
+                        memoryPressure: metric == .memory && machine.state == .live
+                            ? machine.memoryPressure
+                            : nil
+                    )
+
+                    SegmentedThermometer(
+                        value: machine.state == .live ? thermometerValue : nil,
+                        blockWidth: 34,
+                        blockHeight: 9,
+                        spacing: 3
+                    )
+                    .matchedThermometer(namespace, machine: machine.machine)
+
+                    MachineStatusLabel(
+                        machine: machine,
+                        avatarSize: 34,
+                        namespace: namespace
+                    )
+                    .padding(.top, 2)
+                }
+                .frame(width: 96)
+                .frame(maxHeight: .infinity, alignment: .center)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Back to the overview")
+            .accessibilityLabel("Back to the overview")
+
+            Divider()
+
+            MachineMetricDetailContent(machine: machine, metric: metric)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+    }
+
+    private var metricValue: Double? {
+        switch metric {
+        case .cpu: machine.cpu.value
+        case .memory: machine.memory.value
+        // The machine-level number for storage is its fullest volume: that is
+        // the one that will run out first.
+        case .disk: machine.storageVolumes.map(\.usedPercent).max()
+        case .ai: nil
+        }
+    }
+
+    private var thermometerValue: Double? {
+        switch metric {
+        case .cpu: machine.cpu.value
+        case .memory: machine.memoryPressure?.visualizationPercent
+        case .disk: machine.storageVolumes.map(\.usedPercent).max()
+        case .ai: nil
+        }
+    }
+}
+
+/// What fills the right-hand side of a focused machine.
+///
+/// The CPU case is a real list rather than the three rows the hover strip
+/// could fit: the sampler already collects more, and this pane has the room.
+private struct MachineMetricDetailContent: View {
+    let machine: MachineMonitorModel
+    let metric: OverviewMetric
+
+    var body: some View {
+        switch metric {
+        case .cpu: MachineProcessPane(machine: machine)
+        case .memory: MachineMemoryPane(machine: machine)
+        case .disk: MachineStoragePane(machine: machine)
+        case .ai: MachineAgentPane(machine: machine)
+        }
+    }
+}
+
+private struct MachineProcessPane: View {
+    let machine: MachineMonitorModel
+
+    var body: some View {
+        MetricDetailPane(
+            title: "WHAT\u{2019}S RUNNING",
+            summary: machine.state == .live
+                ? machine.cpu.value.map {
+                    Text($0 / 100, format: .percent.precision(.fractionLength(0)))
+                }
+                : nil,
+            emptyMessage: activities.isEmpty ? unavailableMessage(for: machine) : nil
+        ) {
+            ForEach(Array(activities.enumerated()), id: \.offset) { _, activity in
+                MetricDetailRow(
+                    symbolName: activity.symbolName,
+                    tint: activity.agentTask == nil
+                        ? MetricKind.cpu.color
+                        : .orange,
+                    title: Text(activity.shortLabel),
+                    value: Text(
+                        "\(activity.cpuCores, format: .number.precision(.fractionLength(1)))c"
+                    )
+                )
+                .help(Text(activity.tooltip))
+            }
+        }
+    }
+
+    /// Anything under a twentieth of a core rounds to "0.0c" and reads as
+    /// padding rather than information, so the list stops where it stops being
+    /// worth reading.
+    private var activities: [MachineActivity] {
+        machine.state == .live
+            ? machine.activities.filter { $0.cpuCores >= 0.05 }
+            : []
+    }
+}
+
+private struct MachineMemoryPane: View {
+    let machine: MachineMonitorModel
+
+    var body: some View {
+        MetricDetailPane(
+            title: "WHAT\u{2019}S USING MEMORY",
+            summary: machine.state == .live
+                ? machine.memoryPressure.map { Text($0.title) }
+                : nil,
+            emptyMessage: consumers.isEmpty ? unavailableMessage(for: machine) : nil
+        ) {
+            ForEach(consumers) { consumer in
+                MetricDetailRow(
+                    symbolName: "square.stack.3d.up",
+                    tint: MetricKind.memory.color,
+                    bundlePath: consumer.bundlePath,
+                    title: Text(consumer.name),
+                    value: Text(
+                        Int64(consumer.residentBytes),
+                        format: .byteCount(style: .memory)
+                    )
+                ) {
+                    if let evidence = consumer.growthEvidence {
+                        Circle()
+                            .fill(.red)
+                            .frame(width: 5, height: 5)
+                            .help(Text(
+                                "Grew \(Int64(evidence.growthBytes), format: .byteCount(style: .memory)) over \(Int(evidence.duration / 60)) min across \(evidence.sampleCount) samples \u{2014} possibly a leak."
+                            ))
+                    }
+                }
+            }
+        }
+    }
+
+    private var consumers: [MemoryConsumer] {
+        machine.state == .live ? machine.memoryConsumers : []
+    }
+}
+
+private struct MachineStoragePane: View {
+    let machine: MachineMonitorModel
+
+    var body: some View {
+        MetricDetailPane(
+            title: "VOLUMES",
+            summary: fullest.map {
+                Text($0 / 100, format: .percent.precision(.fractionLength(0)))
+            },
+            emptyMessage: volumes.isEmpty ? unavailableMessage(for: machine) : nil
+        ) {
+            ForEach(volumes) { volume in
+                MetricDetailRow(
+                    symbolName: "internaldrive",
+                    tint: MetricKind.disk.color,
+                    title: Text(volume.name),
+                    subtitle: Text(capacityDescription(for: volume)),
+                    value: Text(
+                        volume.usedPercent / 100,
+                        format: .percent.precision(.fractionLength(0))
+                    )
+                ) {
+                    // A bar makes "how full" scannable in a way a number is not.
+                    Capsule()
+                        .fill(.quaternary)
+                        .frame(width: 42, height: 4)
+                        .overlay(alignment: .leading) {
+                            Capsule()
+                                .fill(volume.usedPercent >= 90
+                                    ? Color.orange
+                                    : MetricKind.disk.color)
+                                .frame(
+                                    width: 42 * volume.usedPercent / 100,
+                                    height: 4
+                                )
+                        }
+                }
+            }
+        }
+    }
+
+    private var volumes: [StorageVolume] {
+        machine.state == .live || machine.isStorage ? machine.storageVolumes : []
+    }
+
+    private var fullest: Double? { volumes.map(\.usedPercent).max() }
+
+    /// Says outright when a row covers several volumes. Without it "69%" reads
+    /// as the named volume's usage when it is the whole container's — the
+    /// volume itself may be using a fraction of that.
+    private func capacityDescription(for volume: StorageVolume) -> LocalizedStringResource {
+        let free = Int64(volume.availableBytes).formatted(.byteCount(style: .file))
+        let total = Int64(volume.totalBytes).formatted(.byteCount(style: .file))
+        guard volume.volumeCount > 1 else {
+            return "\(free) free of \(total)"
+        }
+        return "\(free) free of \(total) · \(volume.volumeCount) volumes"
+    }
+}
+
+private struct MachineAgentPane: View {
+    let machine: MachineMonitorModel
+
+    var body: some View {
+        MetricDetailPane(
+            title: "AGENTS",
+            summary: sessions.isEmpty
+                ? nil
+                : Text("\(sessions.count { $0.state == .active }) active"),
+            emptyMessage: sessions.isEmpty ? agentEmptyMessage : nil
+        ) {
+            ForEach(sessions) { session in
+                MetricDetailRow(
+                    symbolName: "sparkles",
+                    tint: session.provider == .codex ? .green : .orange,
+                    title: Text(session.projectName),
+                    subtitle: session.progress.map { Text($0.currentStep) },
+                    value: session.progress.map {
+                        Text("\($0.currentStepIndex)/\($0.totalStepCount)")
+                    }
+                )
+            }
+        }
+    }
+
+    private var sessions: [AgentSession] { machine.agentSessions }
+
+    private var agentEmptyMessage: LocalizedStringResource {
+        machine.state == .live
+            ? "No recent agent sessions"
+            : unavailableMessage(for: machine)
+    }
+}
+
+/// One message for every pane, so an unreachable machine reads the same way
+/// whichever metric you are looking through.
+private func unavailableMessage(
+    for machine: MachineMonitorModel
+) -> LocalizedStringResource {
+    switch machine.state {
+    case .connecting: "Checking\u{2026}"
+    case .live: "Nothing to report"
+    case .offline: "Unavailable"
+    case .stopped: "Monitoring paused"
     }
 }
 

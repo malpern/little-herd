@@ -439,7 +439,10 @@ struct MetricsSamplerTests {
 
         let activities = RemoteOutputParser.parseActivities(output)
 
-        #expect(activities.count == 3)
+        // Every distinct activity in the sample survives, ordered by CPU. The
+        // old limit of three came from the hover strip's height; the machine
+        // page shows a list, so the sampler keeps up to detailHighlights.
+        #expect(activities.count == 4)
         #expect(activities[0].processName == "zellij")
         #expect(activities[0].cpuPercent == 300)
         #expect(activities[0].childProcessName == "ssh")
@@ -451,6 +454,19 @@ struct MetricsSamplerTests {
         #expect(activities[2].agentTask?.projectName == "Little Herd")
         #expect(activities[2].agentTask?.status == .recent)
         #expect(activities[2].agentTask?.updatedAt != nil)
+        #expect(activities[3].kind == .desktop)
+    }
+
+    @Test
+    func activitiesAreCappedAtTheDetailLimit() {
+        let output = (1 ... 20)
+            .map { "activity=\(Double(30 - $0)) \(100 + $0) process-\($0)" }
+            .joined(separator: "\n")
+
+        let activities = RemoteOutputParser.parseActivities(output)
+
+        #expect(activities.count == MachineActivityParser.detailHighlights)
+        #expect(activities.first?.processName == "process-1")
     }
 
     @Test

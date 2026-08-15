@@ -4,6 +4,7 @@ import SwiftUI
 struct AIAgentsView: View {
     let sessions: [MachineAgentSession]
     @Binding var hoveredAgentID: MachineAgentSession.ID?
+    var onSelectMachine: ((MachineID) -> Void)?
 
     var body: some View {
         if sessions.isEmpty {
@@ -12,7 +13,13 @@ struct AIAgentsView: View {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(sessions) { machineSession in
-                        AIAgentRow(machineSession: machineSession)
+                        Button {
+                            onSelectMachine?(machineSession.machine)
+                        } label: {
+                            AIAgentRow(machineSession: machineSession)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                             .onHover { isHovered in
                                 if isHovered {
                                     hoveredAgentID = machineSession.id

@@ -56,11 +56,22 @@ nonisolated enum OverviewMetric: String, CaseIterable, Equatable, Identifiable, 
 
 nonisolated enum DashboardSelection: Equatable, Sendable {
     case overview
+    /// Everything about one machine — reached by clicking its icon.
     case machine(MachineID)
+    /// One machine through the lens of the current overview metric — reached
+    /// by clicking its thermometer.
+    case machineMetric(MachineID)
 
     var machineID: MachineID? {
-        guard case let .machine(machineID) = self else { return nil }
-        return machineID
+        switch self {
+        case .overview: nil
+        case let .machine(machineID), let .machineMetric(machineID): machineID
+        }
+    }
+
+    var isMetricFocus: Bool {
+        if case .machineMetric = self { return true }
+        return false
     }
 }
 

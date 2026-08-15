@@ -114,7 +114,8 @@ nonisolated struct MemoryGrowthDetector: Sendable {
             return MemoryConsumer(
                 name: consumer.name,
                 residentBytes: consumer.residentBytes,
-                growthEvidence: evidence(for: consumer.name)
+                growthEvidence: evidence(for: consumer.name),
+                bundlePath: consumer.bundlePath
             )
         }
     }

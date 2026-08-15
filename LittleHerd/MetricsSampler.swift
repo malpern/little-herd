@@ -44,15 +44,21 @@ nonisolated struct MemoryConsumer: Identifiable, Equatable, Sendable {
     let name: String
     let residentBytes: Double
     let growthEvidence: MemoryGrowthEvidence?
+    /// Path to the `.app` the process came from, when it came from one. Kept so
+    /// the interface can show the real icon instead of a generic glyph; nil for
+    /// command-line tools and for anything on a Linux machine.
+    let bundlePath: String?
 
     init(
         name: String,
         residentBytes: Double,
-        growthEvidence: MemoryGrowthEvidence? = nil
+        growthEvidence: MemoryGrowthEvidence? = nil,
+        bundlePath: String? = nil
     ) {
         self.name = name
         self.residentBytes = residentBytes
         self.growthEvidence = growthEvidence
+        self.bundlePath = bundlePath
     }
 
     var id: String { name }
@@ -114,14 +120,26 @@ nonisolated enum MemoryConsumerAggregator {
         limit: Int = 3
     ) -> [MemoryConsumer] {
         var totals: [String: Double] = [:]
+        var bundlePaths: [String: String] = [:]
 
         for sample in samples where sample.residentBytes > 0 {
-            guard let name = applicationName(for: sample.command) else { continue }
-            totals[name, default: 0] += sample.residentBytes
+            guard let application = application(for: sample.command) else {
+                continue
+            }
+            totals[application.name, default: 0] += sample.residentBytes
+            if let bundlePath = application.bundlePath {
+                bundlePaths[application.name] = bundlePath
+            }
         }
 
         return totals
-            .map { MemoryConsumer(name: $0.key, residentBytes: $0.value) }
+            .map {
+                MemoryConsumer(
+                    name: $0.key,
+                    residentBytes: $0.value,
+                    bundlePath: bundlePaths[$0.key]
+                )
+            }
             .sorted {
                 if $0.residentBytes == $1.residentBytes {
                     return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
@@ -132,19 +150,33 @@ nonisolated enum MemoryConsumerAggregator {
             .map { $0 }
     }
 
-    private static func applicationName(for command: String) -> String? {
+    private static func application(
+        for command: String
+    ) -> (name: String, bundlePath: String?)? {
         if command.contains("/Library/Application Support/Claude/claude-code/") {
-            return "Claude Code"
+            return ("Claude Code", nil)
+        }
+
+        // "/Applications/Dia.app/Contents/MacOS/Dia" gives both the name and
+        // the bundle the icon can be read from.
+        if command.hasPrefix("/"), let appRange = command.range(of: ".app") {
+            let bundlePath = String(command[..<appRange.upperBound])
+            let name = (bundlePath as NSString)
+                .lastPathComponent
+                .replacingOccurrences(of: ".app", with: "")
+            if !name.isEmpty {
+                return (name, bundlePath)
+            }
         }
 
         let components = command.split(separator: "/")
         if let applicationComponent = components.first(where: { $0.hasSuffix(".app") }) {
             let name = applicationComponent.dropLast(".app".count)
-            return name.isEmpty ? nil : String(name)
+            return name.isEmpty ? nil : (String(name), nil)
         }
 
         let executable = components.last.map(String.init) ?? command
-        return switch executable.lowercased() {
+        let fallback: String? = switch executable.lowercased() {
         case "codex": "Codex"
         case "claude": "Claude Code"
         case "chromium": "Chromium"
@@ -159,6 +191,7 @@ nonisolated enum MemoryConsumerAggregator {
         case "rustc", "cargo": "Rust"
         default: nil
         }
+        return fallback.map { ($0, nil) }
     }
 }
 
@@ -328,7 +361,8 @@ actor MetricsSampler {
         }
         cachedActivities = MachineActivityPrioritizer.select(
             from: candidateActivities,
-            agentTasks: cachedAgentTasks
+            agentTasks: cachedAgentTasks,
+            limit: MachineActivityParser.detailHighlights
         )
         cachedMemoryConsumers = MemoryConsumerAggregator.consumers(
             from: samples.map(\.memorySample)
