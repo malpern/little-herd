@@ -420,7 +420,7 @@ actor RemoteMetricsSampler {
         return min(max(used / total * 100, 0), 100)
     }
 
-    private static let macOSCommand = #"""
+    static let macOSCommand = #"""
     export LC_ALL=C
     cpu=$(/usr/sbin/iostat -c 2 -w 1 | /usr/bin/awk 'NR>2 {idle=$(NF-3)} END {printf "%.2f", 100-idle}')
     total=$(/usr/sbin/sysctl -n hw.memsize)

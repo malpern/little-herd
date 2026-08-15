@@ -465,6 +465,18 @@ nonisolated enum MachineActivityPrioritizer {
 }
 
 nonisolated enum MachineActivityContext {
+    /// Names the project a build process is working in, from its working
+    /// directory.
+    ///
+    /// A build directory on its own is a useless label — `out`, `.build` and
+    /// `DerivedData` say nothing about what is being built — so each rule walks
+    /// back to a name a person would recognise.
+    ///
+    /// The rules run most-specific first and **the order is load-bearing**:
+    /// `~/src/myapp/.build` has to resolve through the Swift-package rule to
+    /// "Myapp", not through the source-tree rule to whatever contains `src`.
+    /// Each rule has a test, so one that stops earning its keep can be deleted
+    /// without having to guess what it was for.
     static func projectName(fromWorkingDirectory path: String) -> String? {
         let components = URL(fileURLWithPath: path)
             .standardizedFileURL
@@ -472,53 +484,87 @@ nonisolated enum MachineActivityContext {
             .filter { $0 != "/" }
         guard !components.isEmpty else { return nil }
 
-        if let claudeIndex = components.firstIndex(where: {
+        return agentWorktree(components)
+            ?? derivedData(components)
+            ?? sourceTreeWithBuildOutput(components)
+            ?? swiftPackageBuild(components)
+            ?? sourceTree(components)
+            ?? lastMeaningfulComponent(components)
+    }
+
+    /// `…/little-herd/.claude/worktrees/feature` → the repository above it.
+    private static func agentWorktree(_ components: [String]) -> String? {
+        guard let claudeIndex = components.firstIndex(where: {
             $0.caseInsensitiveCompare(".claude") == .orderedSame
         }), claudeIndex > 0,
-           components.indices.contains(claudeIndex + 1),
-           components[claudeIndex + 1].caseInsensitiveCompare("worktrees")
+        components.indices.contains(claudeIndex + 1),
+        components[claudeIndex + 1].caseInsensitiveCompare("worktrees")
             == .orderedSame
-        {
-            return displayName(for: components[claudeIndex - 1])
+        else {
+            return nil
         }
+        return displayName(for: components[claudeIndex - 1])
+    }
 
-        if let derivedDataIndex = components.firstIndex(where: {
+    /// `…/DerivedData/LittleHerd-abcdefgh/…` → the target, minus Xcode's hash.
+    private static func derivedData(_ components: [String]) -> String? {
+        guard let index = components.firstIndex(where: {
             $0.caseInsensitiveCompare("DerivedData") == .orderedSame
-        }), components.indices.contains(derivedDataIndex + 1) {
-            return displayName(for: removingDerivedDataHash(
-                from: components[derivedDataIndex + 1]
-            ))
+        }), components.indices.contains(index + 1) else {
+            return nil
         }
+        return displayName(
+            for: removingDerivedDataHash(from: components[index + 1])
+        )
+    }
 
-        if let sourceIndex = components.lastIndex(where: {
-            $0.caseInsensitiveCompare("src") == .orderedSame
-        }), sourceIndex > 0,
-           components[(sourceIndex + 1)...].contains(where: {
-               let normalized = $0.lowercased()
-               return normalized == "out" || normalized == "build"
-           })
-        {
-            return displayName(for: components[sourceIndex - 1])
+    /// A checkout that builds into a sibling directory, as Chromium and Ninja
+    /// trees do: `…/chromium/src/out/Release` → what contains `src`.
+    private static func sourceTreeWithBuildOutput(
+        _ components: [String]
+    ) -> String? {
+        guard let index = sourceIndex(in: components), index > 0,
+              components[(index + 1)...].contains(where: {
+                  let normalized = $0.lowercased()
+                  return normalized == "out" || normalized == "build"
+              })
+        else {
+            return nil
         }
+        return displayName(for: components[index - 1])
+    }
 
-        if let swiftBuildIndex = components.firstIndex(where: { $0 == ".build" }),
-           swiftBuildIndex > 0
-        {
-            return displayName(for: components[swiftBuildIndex - 1])
+    /// A Swift package: `…/myapp/.build/debug` → "Myapp". This has to be tried
+    /// before the general `src` rule, or `~/src/myapp/.build` would be named
+    /// after whatever contains `src`.
+    private static func swiftPackageBuild(_ components: [String]) -> String? {
+        guard let index = components.firstIndex(of: ".build"), index > 0 else {
+            return nil
         }
+        return displayName(for: components[index - 1])
+    }
 
-        if let sourceIndex = components.lastIndex(where: {
-            $0.caseInsensitiveCompare("src") == .orderedSame
-        }), sourceIndex > 0 {
-            if components.contains(where: {
-                $0.localizedCaseInsensitiveContains("chromium")
-            }) {
-                return "Chromium"
-            }
-            return displayName(for: components[sourceIndex - 1])
+    /// Any other `src` checkout.
+    private static func sourceTree(_ components: [String]) -> String? {
+        guard let index = sourceIndex(in: components), index > 0 else {
+            return nil
         }
+        // Chromium's tree is deep enough that the directory above `src` is
+        // often a scratch checkout name rather than the project.
+        if components.contains(where: {
+            $0.localizedCaseInsensitiveContains("chromium")
+        }) {
+            return "Chromium"
+        }
+        return displayName(for: components[index - 1])
+    }
 
-        let ignoredComponents = Set([
+    /// Nothing matched: use the deepest component that names something, rather
+    /// than a build directory.
+    private static func lastMeaningfulComponent(
+        _ components: [String]
+    ) -> String? {
+        let ignored: Set<String> = [
             ".build",
             "bin",
             "build",
@@ -527,13 +573,19 @@ nonisolated enum MachineActivityContext {
             "products",
             "release",
             "release+asserts",
-        ])
+        ]
         guard let candidate = components.last(where: {
-            !ignoredComponents.contains($0.lowercased())
+            !ignored.contains($0.lowercased())
         }) else {
             return nil
         }
         return displayName(for: candidate)
+    }
+
+    private static func sourceIndex(in components: [String]) -> Int? {
+        components.lastIndex {
+            $0.caseInsensitiveCompare("src") == .orderedSame
+        }
     }
 
     private static func removingDerivedDataHash(from name: String) -> String {
@@ -855,9 +907,24 @@ nonisolated enum AgentTaskProbe {
     """#
 
     static func readLocalSnapshot() async -> AgentProbeSnapshot {
+        await readSnapshot()
+    }
+
+    /// `homeDirectory` exists so the shell itself can be tested against a
+    /// fixture transcript tree. Production passes nil and reads the real home.
+    static func readSnapshot(
+        homeDirectory: String? = nil
+    ) async -> AgentProbeSnapshot {
+        let environment = homeDirectory.map { home -> [String: String] in
+            var environment = ProcessInfo.processInfo.environment
+            environment["HOME"] = home
+            return environment
+        }
+
         guard let output = await LocalProcessRunner.run(
             executablePath: "/bin/zsh",
-            arguments: ["-c", shellCommand]
+            arguments: ["-c", shellCommand],
+            environment: environment
         ) else {
             logger.error("The local task metadata probe did not complete")
             return .empty
@@ -871,10 +938,6 @@ nonisolated enum AgentTaskProbe {
             "Task metadata probe found \(snapshot.sessions.count) sessions"
         )
         return snapshot
-    }
-
-    static func readLocal() async -> [AgentTaskProvider: AgentTaskSummary] {
-        await readLocalSnapshot().tasksByProvider
     }
 }
 

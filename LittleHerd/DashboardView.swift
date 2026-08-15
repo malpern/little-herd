@@ -121,7 +121,11 @@ struct DashboardView: View {
     }
 
     private var visibleTransfer: TaskTransferEvent? {
-        guard model.selection == .cpuOverview else { return nil }
+        // The handoff animation draws machines as CPU thermometers, so it only
+        // stands in for the CPU overview — not for memory, disk, or AI.
+        guard model.selection == .overview, model.overviewMetric == .cpu else {
+            return nil
+        }
         return model.taskTransfers.currentEvent
     }
 
@@ -130,22 +134,18 @@ struct DashboardView: View {
     }
 
     private var windowContentSize: CGSize {
-        if isShowingLaunchSplash {
-            return CGSize(width: 300, height: 218)
-        }
-        if isShowingNetworkVolumeOnboarding {
-            return CGSize(width: 420, height: 374)
-        }
-        return model.selection == .cpuOverview
-            ? CGSize(width: 300, height: 250)
-            : CGSize(width: 420, height: 326)
+        isShowingLaunchSplash
+            ? CGSize(width: 300, height: 218)
+            : dashboardContentSize
     }
 
+    /// NSSize and CGSize are the same type on macOS, so the window bridge and
+    /// the SwiftUI frame read one table rather than two that can drift apart.
     private var dashboardContentSize: NSSize {
         if isShowingNetworkVolumeOnboarding {
             return NSSize(width: 420, height: 374)
         }
-        return model.selection == .cpuOverview
+        return model.selection == .overview
             ? NSSize(width: 300, height: 250)
             : NSSize(width: 420, height: 326)
     }

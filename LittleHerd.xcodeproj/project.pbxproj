@@ -14,6 +14,7 @@
 		182FDB3CF702DD3D6820FBA3 /* TaskTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5C36AC033CCD76A2AA262A9 /* TaskTransferView.swift */; };
 		231FCA9BBB2F8387C363203F /* CPUOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 133A808E3BA4EEA2AF234D6E /* CPUOverviewView.swift */; };
 		27726ED927D36757C9A9BF67 /* MonitorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4ED33139998C97ECB4C77A /* MonitorModel.swift */; };
+		2CFA6E28CE4D7F2470879499 /* AgentProbeShellTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694A0E6E34E815E5A5218AA0 /* AgentProbeShellTests.swift */; };
 		2ED305BEE5B202DD76C12D58 /* LittleHerdBranding.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37B21B22B4948B6336D6258 /* LittleHerdBranding.swift */; };
 		3A45C65052806FE4A571A349 /* HerdwareAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D56F2E897732951FB02B9B7F /* HerdwareAvatar.swift */; };
 		4425832D76E61C50D9AE5F2F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 387B8471B05B8FEFC2973329 /* Assets.xcassets */; };
@@ -67,6 +68,7 @@
 		6125192CA7CFE81311C048BC /* MachineMonitorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineMonitorModel.swift; sourceTree = "<group>"; };
 		66BA172D3CC6CD4B8AEBC144 /* LittleHerdApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LittleHerdApp.swift; sourceTree = "<group>"; };
 		672A36609CA039974CDF72E7 /* HoveredMachineMetricHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoveredMachineMetricHeader.swift; sourceTree = "<group>"; };
+		694A0E6E34E815E5A5218AA0 /* AgentProbeShellTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentProbeShellTests.swift; sourceTree = "<group>"; };
 		6BE7C98CC9A2691BAFB89BCC /* MachineActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineActivity.swift; sourceTree = "<group>"; };
 		6D7D3C2D4C1908811B46F252 /* LittleHerd.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LittleHerd.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		74631ABBC0DF62E9034B91B7 /* StorageVolume.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageVolume.swift; sourceTree = "<group>"; };
@@ -166,6 +168,7 @@
 		9A6B4EC4EA1C760DC6AD020B /* LittleHerdTests */ = {
 			isa = PBXGroup;
 			children = (
+				694A0E6E34E815E5A5218AA0 /* AgentProbeShellTests.swift */,
 				BE23C778660407B336F50BA0 /* MetricsSamplerTests.swift */,
 			);
 			path = LittleHerdTests;
@@ -313,6 +316,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2CFA6E28CE4D7F2470879499 /* AgentProbeShellTests.swift in Sources */,
 				88873018BA18973DB4643815 /* MetricsSamplerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

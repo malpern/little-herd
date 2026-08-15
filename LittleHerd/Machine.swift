@@ -58,11 +58,6 @@ nonisolated enum DashboardSelection: Equatable, Sendable {
     case overview
     case machine(MachineID)
 
-    static let cpuOverview = Self.overview
-    static let macBookAir = Self.machine(.macBookAir)
-    static let macMini = Self.machine(.macMini)
-    static let linux = Self.machine(.linux)
-
     var machineID: MachineID? {
         guard case let .machine(machineID) = self else { return nil }
         return machineID
@@ -127,10 +122,6 @@ nonisolated struct MachineID: RawRepresentable, Codable, Hashable, Identifiable,
         case .synology: "externaldrive.connected.to.line.below"
         default: "desktopcomputer"
         }
-    }
-
-    var supportsGPU: Bool {
-        self == .macBookAir
     }
 
     private var fallbackName: String {

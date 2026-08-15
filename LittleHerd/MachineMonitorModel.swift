@@ -48,27 +48,6 @@ final class MachineMonitorModel: Identifiable {
         ]
     }
 
-    convenience init(machine: MachineID) {
-        let platform: MachinePlatform = machine == .linux
-            ? .linux
-            : (machine == .synology ? .storage : .macOS)
-        self.init(
-            configuration: MachineConfiguration(
-                id: machine,
-                name: machine.displayName,
-                shortName: machine.shortName,
-                hostname: machine.rawValue,
-                hardwareSummary: machine.displayName,
-                platform: platform,
-                connection: machine == .synology ? .smb : .local,
-                avatar: machine.herdwareAvatar,
-                identityFile: nil,
-                serverNames: [],
-                supportsGPU: machine.supportsGPU
-            )
-        )
-    }
-
     func apply(_ snapshot: SystemSnapshot) {
         for metric in metrics {
             guard let reading = snapshot.readings[metric.kind] else { continue }

@@ -41,7 +41,7 @@ struct LittleHerdApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Little Herd", id: "dashboard") {
+        Window("Little Herd", id: LittleHerdWindowID.dashboard) {
             DashboardView(model: model)
                 .toolbar(removing: .title)
                 .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
@@ -124,6 +124,7 @@ enum LittleHerdPreferences {
 }
 
 enum LittleHerdWindowID {
+    static let dashboard = "dashboard"
     static let addMachines = "add-machines"
 }
 
@@ -243,15 +244,11 @@ private struct MenuBarPanel: View {
     }
 
     private func showDashboard() {
-        if let dashboardWindow = NSApp.windows.first(where: {
-            $0.title == "Little Herd" && !$0.isVisible
-        }) {
-            dashboardWindow.makeKeyAndOrderFront(nil)
-        } else if !NSApp.windows.contains(where: {
-            $0.title == "Little Herd" && $0.isVisible
-        }) {
-            openWindow(id: "dashboard")
-        }
+        // The dashboard is a single Window scene, so this focuses the existing
+        // one and only creates it when there is none. Matching on the window's
+        // title instead would break the moment the title is localized, and
+        // every click would open another dashboard.
+        openWindow(id: LittleHerdWindowID.dashboard)
         NSApp.activate()
     }
 }
@@ -639,7 +636,7 @@ private struct OverviewDestinationButton: View {
     }
 
     private var isSelected: Bool {
-        model.selection == .cpuOverview && model.overviewMetric == metric
+        model.selection == .overview && model.overviewMetric == metric
     }
 }
 

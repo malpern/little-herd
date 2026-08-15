@@ -564,47 +564,40 @@ actor MetricsSampler {
         return NetworkCounters(received: received, sent: sent)
     }
 
+    /// The startup disk only.
+    ///
+    /// Enumerating every mounted volume can trigger macOS's network-volume
+    /// privacy prompt even when network entries are filtered out afterwards, so
+    /// routine local sampling stays scoped to `/` and broader discovery stays
+    /// gated behind SMBStorageSampler.
     private func storageVolumes() -> [StorageVolume] {
+        let root = URL(fileURLWithPath: "/", isDirectory: true)
         let keys: Set<URLResourceKey> = [
             .volumeNameKey,
             .volumeTotalCapacityKey,
             .volumeAvailableCapacityForImportantUsageKey,
         ]
-        // Reading the mounted-volume list can trigger macOS's network-volume
-        // privacy prompt even when network entries are filtered out later.
-        // Keep routine local monitoring scoped to the startup disk; broader
-        // mounted-volume discovery is explicitly gated in SMBStorageSampler.
-        let urls = [URL(fileURLWithPath: "/", isDirectory: true)]
 
-        return urls.compactMap { url in
-            guard let values = try? url.resourceValues(forKeys: keys),
-                  let totalValue = values.volumeTotalCapacity,
-                  let availableValue = values.volumeAvailableCapacityForImportantUsage
-            else {
-                return nil
-            }
+        guard let values = try? root.resourceValues(forKeys: keys),
+              let totalValue = values.volumeTotalCapacity,
+              let availableValue = values.volumeAvailableCapacityForImportantUsage,
+              totalValue > 0
+        else {
+            return []
+        }
 
-            let total = Double(totalValue)
-            guard total > 0 else { return nil }
-            let available = min(max(Double(availableValue), 0), total)
-            let fallbackName = url.path == "/" ? "Internal" : url.lastPathComponent
-            let volumeName = values.volumeName?.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
-            let name = volumeName.flatMap { $0.isEmpty ? nil : $0 } ?? fallbackName
+        let total = Double(totalValue)
+        let trimmedName = values.volumeName?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
 
-            return StorageVolume(
-                id: url.path,
-                name: name,
-                mountPath: url.path,
-                availableBytes: available,
+        return [
+            StorageVolume(
+                id: root.path,
+                name: trimmedName.flatMap { $0.isEmpty ? nil : $0 } ?? "Internal",
+                mountPath: root.path,
+                availableBytes: min(max(Double(availableValue), 0), total),
                 totalBytes: total
-            )
-        }
-        .sorted { left, right in
-            if left.mountPath == "/" { return true }
-            if right.mountPath == "/" { return false }
-            return left.name.localizedStandardCompare(right.name) == .orderedAscending
-        }
+            ),
+        ]
     }
 }

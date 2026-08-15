@@ -16,6 +16,11 @@ nonisolated struct DiscoveredMachine: Equatable, Identifiable, Sendable {
     let connection: MachineConnection
     var avatar: HerdwareAvatar
     let readiness: DiscoveredMachineReadiness
+    /// Set once the user types in the review sheet. Bonjour re-reports a
+    /// service whenever it drops and comes back — a sleeping Mac or a Wi-Fi
+    /// blip is enough — and without this the refreshed values would overwrite
+    /// whatever they had just entered.
+    var isUserEdited = false
 
     var configuration: MachineConfiguration {
         MachineConfiguration(
@@ -194,6 +199,7 @@ final class AddMachinesModel {
             if machines[index].connection == .ssh, machine.connection == .smb {
                 return
             }
+            guard !machines[index].isUserEdited else { return }
             machines[index] = machine
             return
         }
@@ -639,6 +645,21 @@ private struct MachineSettingsReviewView: View {
     @Binding var machines: [DiscoveredMachine]
     @Environment(\.dismiss) private var dismiss
 
+    /// Marks the row as user-owned as it is typed into, so later discovery
+    /// updates leave it alone.
+    private func edited(
+        _ machine: Binding<DiscoveredMachine>,
+        _ field: WritableKeyPath<DiscoveredMachine, String>
+    ) -> Binding<String> {
+        Binding(
+            get: { machine.wrappedValue[keyPath: field] },
+            set: {
+                machine.wrappedValue[keyPath: field] = $0
+                machine.wrappedValue.isUserEdited = true
+            }
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
@@ -657,10 +678,10 @@ private struct MachineSettingsReviewView: View {
                             .scaledToFit()
                             .frame(width: 32, height: 32)
 
-                        TextField("Name", text: $machine.name)
+                        TextField("Name", text: edited($machine, \.name))
                             .textFieldStyle(.roundedBorder)
 
-                        TextField("Hostname", text: $machine.hostname)
+                        TextField("Hostname", text: edited($machine, \.hostname))
                             .textFieldStyle(.roundedBorder)
                     }
                 }

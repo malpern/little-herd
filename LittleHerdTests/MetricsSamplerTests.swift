@@ -34,6 +34,69 @@ struct MetricsSamplerTests {
         }
     }
 
+    // Each projectName rule gets a case, so a rule that stops earning its keep
+    // can be deleted without guessing what it did. The ordering case is the
+    // important one: the rules are tried most-specific first and rearranging
+    // them silently changes what a build is called.
+    @Test
+    func projectNameReadsAnAgentWorktree() {
+        #expect(
+            MachineActivityContext.projectName(
+                fromWorkingDirectory: "/Users/t/local-code/little-herd/.claude/worktrees/feature"
+            ) == "Little Herd"
+        )
+    }
+
+    @Test
+    func projectNameStripsTheDerivedDataHash() {
+        #expect(
+            MachineActivityContext.projectName(
+                fromWorkingDirectory: "/Users/t/Library/Developer/Xcode/DerivedData/little-herd-ayuthjqlrvrwyeg/Build"
+            ) == "Little Herd"
+        )
+    }
+
+    @Test
+    func projectNameReadsACheckoutThatBuildsIntoASibling() {
+        #expect(
+            MachineActivityContext.projectName(
+                fromWorkingDirectory: "/Users/t/webkit/src/out/Debug"
+            ) == "Webkit"
+        )
+    }
+
+    @Test
+    func swiftPackageBuildsWinOverAnEnclosingSourceDirectory() {
+        // The rule order is load-bearing: "src" here is the developer's code
+        // folder, not the project, so the .build rule has to be tried first.
+        #expect(
+            MachineActivityContext.projectName(
+                fromWorkingDirectory: "/Users/t/src/myapp/.build/debug"
+            ) == "Myapp"
+        )
+    }
+
+    @Test
+    func projectNameRecognisesAChromiumTree() {
+        #expect(
+            MachineActivityContext.projectName(
+                fromWorkingDirectory: "/Users/t/chromium-checkout/src/third_party"
+            ) == "Chromium"
+        )
+    }
+
+    @Test
+    func projectNameFallsBackPastBuildDirectories() {
+        #expect(
+            MachineActivityContext.projectName(
+                fromWorkingDirectory: "/Users/t/code/my-tool/build"
+            ) == "My Tool"
+        )
+        #expect(
+            MachineActivityContext.projectName(fromWorkingDirectory: "/") == nil
+        )
+    }
+
     @Test
     func equalCPUActivitiesAreOrderedByName() {
         // Dictionary iteration is unordered and Swift's sort is not stable, so

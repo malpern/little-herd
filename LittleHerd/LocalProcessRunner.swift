@@ -13,13 +13,15 @@ nonisolated enum LocalProcessRunner {
     /// or exited with a non-zero status. Standard error is discarded.
     static func run(
         executablePath: String,
-        arguments: [String]
+        arguments: [String],
+        environment: [String: String]? = nil
     ) async -> String? {
         await Task.detached(priority: .utility) {
             let process = Process()
             let standardOutput = Pipe()
             process.executableURL = URL(fileURLWithPath: executablePath)
             process.arguments = arguments
+            if let environment { process.environment = environment }
             process.standardOutput = standardOutput
             process.standardError = FileHandle.nullDevice
 
