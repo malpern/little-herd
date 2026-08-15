@@ -26,40 +26,27 @@ nonisolated enum RemoteUnavailability: Equatable, Sendable {
     /// Anything else; carries ssh's own first line so nothing is swallowed.
     case other(String)
 
-    /// A short line for a status row.
-    var summary: LocalizedStringResource {
-        switch self {
-        case .nameNotFound: "Name not found"
-        case .noAnswer: "No answer"
-        case .refused: "Connection refused"
-        case .keyRejected: "Key rejected"
-        case .hostKeyChanged: "Host key changed"
-        case .incompleteOutput: "Incomplete data"
-        case .unusableHostName: "Bad host name"
-        case .other: "Unavailable"
-        }
-    }
-
-    /// A fuller sentence for a tooltip, naming the likely cause where there is
-    /// one worth naming.
+    /// One short line for the tooltip. The status line stays a stable
+    /// "Unavailable" — text that changes shape every few seconds is harder to
+    /// read at a glance than a word that never moves.
     func detail(host: String) -> LocalizedStringResource {
         switch self {
         case .nameNotFound:
-            "“\(host)” doesn’t resolve to an address. The machine may be fine — check whether a VPN such as Tailscale is disconnected on this Mac."
+            "Can’t resolve “\(host)”. Check whether Tailscale is connected."
         case .noAnswer:
-            "“\(host)” resolved, but nothing answered. The machine is likely asleep or off the network."
+            "“\(host)” didn’t answer. Likely asleep or off the network."
         case .refused:
-            "“\(host)” answered but refused the connection. Remote Login may be turned off, or SSH is not listening on the interface being used."
+            "“\(host)” refused the connection. Remote Login may be off."
         case .keyRejected:
-            "“\(host)” refused the SSH key. Check that this Mac’s public key is in that machine’s authorized_keys."
+            "“\(host)” rejected the SSH key."
         case .hostKeyChanged:
-            "“\(host)” presented a different host key, so the connection was refused. Verify the machine was genuinely rebuilt before clearing the old key."
+            "“\(host)” presented a different host key."
         case .incompleteOutput:
-            "“\(host)” connected but returned incomplete metrics. Its shell tools may differ from what Little Herd expects."
+            "“\(host)” returned incomplete metrics."
         case .unusableHostName:
-            "“\(host)” isn’t a usable SSH host name, so no connection was attempted."
+            "“\(host)” isn’t a usable SSH host name."
         case let .other(message):
-            "“\(host)” could not be reached: \(message)"
+            "“\(host)”: \(message)"
         }
     }
 

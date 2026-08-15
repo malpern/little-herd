@@ -426,7 +426,7 @@ private struct MenuBarMachineRow: View {
         switch machine.state {
         case .connecting: "Connecting"
         case .live: "Live"
-        case .offline: machine.unavailability?.summary ?? "Unavailable"
+        case .offline: "Unavailable"
         case .stopped: "Paused"
         }
     }

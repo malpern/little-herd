@@ -940,7 +940,7 @@ private struct HoveredMachineActivityRows: View {
         switch state {
         case .connecting: "Checking activity…"
         case .live: "No notable CPU activity"
-        case .offline: unavailability?.summary ?? "Unreachable"
+        case .offline: "Unreachable"
         case .stopped: "Monitoring paused"
         }
     }
@@ -1057,7 +1057,7 @@ private struct MachineConnectionLabel: View {
                 case .live:
                     Text("Live")
                 case .offline:
-                    Text(unavailability?.summary ?? "Unavailable")
+                    Text("Unavailable")
                 case .stopped:
                     Text("Paused")
                 }
