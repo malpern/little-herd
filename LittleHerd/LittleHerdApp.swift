@@ -388,6 +388,7 @@ private struct MenuBarMachineRow: View {
                 Text(stateText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .help(unavailabilityHelp)
             }
         }
         .font(.callout)
@@ -425,9 +426,14 @@ private struct MenuBarMachineRow: View {
         switch machine.state {
         case .connecting: "Connecting"
         case .live: "Live"
-        case .offline: "Unavailable"
+        case .offline: machine.unavailability?.summary ?? "Unavailable"
         case .stopped: "Paused"
         }
+    }
+
+    private var unavailabilityHelp: Text {
+        guard let unavailability = machine.unavailability else { return Text("") }
+        return Text(unavailability.detail(host: machine.hostname))
     }
 }
 

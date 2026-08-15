@@ -550,7 +550,12 @@ private struct MachineDashboardHeader: View {
                     .font(.headline)
                     .lineLimit(1)
 
-                MachineConnectionLabel(lastUpdated: lastUpdated, state: state)
+                MachineConnectionLabel(
+                    lastUpdated: lastUpdated,
+                    state: state,
+                    unavailability: machine.unavailability,
+                    hostname: machine.hostname
+                )
             }
 
             Spacer(minLength: 8)
@@ -594,7 +599,8 @@ struct HoveredMachineActivityHeader: View {
 
             HoveredMachineActivityRows(
                 state: machine.state,
-                activities: machine.activities
+                activities: machine.activities,
+                unavailability: machine.unavailability
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -913,6 +919,7 @@ private enum AIUsageProviderIcons {
 private struct HoveredMachineActivityRows: View {
     let state: MonitorConnectionState
     let activities: [MachineActivity]
+    var unavailability: RemoteUnavailability?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
@@ -933,7 +940,7 @@ private struct HoveredMachineActivityRows: View {
         switch state {
         case .connecting: "Checking activity…"
         case .live: "No notable CPU activity"
-        case .offline: "Unreachable"
+        case .offline: unavailability?.summary ?? "Unreachable"
         case .stopped: "Monitoring paused"
         }
     }
@@ -1032,6 +1039,8 @@ private struct ActivitySourceIcon: View {
 private struct MachineConnectionLabel: View {
     let lastUpdated: Date?
     let state: MonitorConnectionState
+    var unavailability: RemoteUnavailability?
+    var hostname: String = ""
 
     var body: some View {
         HStack(spacing: 4) {
@@ -1048,7 +1057,7 @@ private struct MachineConnectionLabel: View {
                 case .live:
                     Text("Live")
                 case .offline:
-                    Text("Unavailable")
+                    Text(unavailability?.summary ?? "Unavailable")
                 case .stopped:
                     Text("Paused")
                 }
@@ -1056,6 +1065,14 @@ private struct MachineConnectionLabel: View {
         }
         .font(.caption2)
         .foregroundStyle(.secondary)
+        .help(helpText)
+    }
+
+    /// The status line has room for two words; the reason someone can act on
+    /// goes here, where it costs nothing until they look for it.
+    private var helpText: Text {
+        guard state == .offline, let unavailability else { return Text("") }
+        return Text(unavailability.detail(host: hostname))
     }
 
     private var statusColor: Color {

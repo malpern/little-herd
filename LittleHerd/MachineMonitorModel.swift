@@ -7,6 +7,7 @@ final class MachineMonitorModel: Identifiable {
     let machine: MachineID
     let name: String
     let shortName: String
+    let hostname: String
     let symbolName: String
     let avatar: HerdwareAvatar
     let supportsGPU: Bool
@@ -21,6 +22,9 @@ final class MachineMonitorModel: Identifiable {
     private(set) var storageVolumes: [StorageVolume] = []
     private(set) var memoryPressure: MemoryPressureLevel?
     private(set) var memoryConsumers: [MemoryConsumer] = []
+    /// Why the machine is unreachable, when it is. Kept beside `state` so the
+    /// interface can say more than "Unavailable".
+    private(set) var unavailability: RemoteUnavailability?
 
     @ObservationIgnored
     private var memoryGrowthDetector = MemoryGrowthDetector()
@@ -33,6 +37,7 @@ final class MachineMonitorModel: Identifiable {
         machine = configuration.id
         name = configuration.name
         shortName = configuration.shortName
+        hostname = configuration.hostname
         symbolName = configuration.platform.symbolName
         avatar = configuration.avatar
         supportsGPU = configuration.supportsGPU
@@ -63,10 +68,12 @@ final class MachineMonitorModel: Identifiable {
         )
         lastUpdated = snapshot.timestamp
         state = .live
+        unavailability = nil
     }
 
-    func markOffline() {
+    func markOffline(_ reason: RemoteUnavailability? = nil) {
         state = .offline
+        unavailability = reason
         agentSessions = agentSessions.map { $0.waitingIfActive() }
     }
 

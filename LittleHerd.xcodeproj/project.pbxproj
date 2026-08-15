@@ -30,6 +30,7 @@
 		6D0AF35A5767BC690DEB78FC /* MetricRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F29F16289B54BBD5DC8DE5A /* MetricRow.swift */; };
 		81EA61F13900B92BB091C44D /* AddMachinesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 542ADA4729226F9EBB0D48D6 /* AddMachinesView.swift */; };
 		88873018BA18973DB4643815 /* MetricsSamplerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE23C778660407B336F50BA0 /* MetricsSamplerTests.swift */; };
+		8935F6CCBD6DFA02BEC41FA3 /* RemoteUnavailabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */; };
 		A23B343EAFCC59009DBBB951 /* DashboardWindowBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F86234553E6FA795BAE88C /* DashboardWindowBridge.swift */; };
 		ADFBD220A565C255B252322A /* Machine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90FE8216081F585ED580AE1C /* Machine.swift */; };
 		AE7E668C1245F5127C1E588D /* NetworkVolumeOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */; };
@@ -40,6 +41,7 @@
 		CD38AE00448FECC46421F03A /* AIAgentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34DDECFA904FEB7B9E48B369 /* AIAgentsView.swift */; };
 		CF632AA195C36FA80B20AB9F /* StorageVolume.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74631ABBC0DF62E9034B91B7 /* StorageVolume.swift */; };
 		D91CA4B85E7162E4DB2649A6 /* LittleHerdApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66BA172D3CC6CD4B8AEBC144 /* LittleHerdApp.swift */; };
+		E659D1A1902120A9C526DA65 /* RemoteUnavailability.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E107D7CC3B01B621E4483E /* RemoteUnavailability.swift */; };
 		F0C018891D4F81D70E48139C /* RemoteMetricsSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5BBA732DB8512138D7F61E0 /* RemoteMetricsSampler.swift */; };
 		F467C6257000BC6F266301BC /* TaskTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D047AA9280E8D79DC01E7EC3 /* TaskTransfer.swift */; };
 /* End PBXBuildFile section */
@@ -62,6 +64,7 @@
 		3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkVolumeOnboardingView.swift; sourceTree = "<group>"; };
 		4164BB6C590812113B80A9E9 /* SoftwareUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftwareUpdater.swift; sourceTree = "<group>"; };
 		4669068113CB4027D57F9535 /* MetricModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricModel.swift; sourceTree = "<group>"; };
+		48E107D7CC3B01B621E4483E /* RemoteUnavailability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteUnavailability.swift; sourceTree = "<group>"; };
 		4B675E6E28982CA80D968D2E /* LocalProcessRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalProcessRunner.swift; sourceTree = "<group>"; };
 		4F29F16289B54BBD5DC8DE5A /* MetricRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricRow.swift; sourceTree = "<group>"; };
 		542ADA4729226F9EBB0D48D6 /* AddMachinesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMachinesView.swift; sourceTree = "<group>"; };
@@ -90,6 +93,7 @@
 		D833CE2704E28207ED01D856 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		E37B21B22B4948B6336D6258 /* LittleHerdBranding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LittleHerdBranding.swift; sourceTree = "<group>"; };
 		E5C36AC033CCD76A2AA262A9 /* TaskTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskTransferView.swift; sourceTree = "<group>"; };
+		F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteUnavailabilityTests.swift; sourceTree = "<group>"; };
 		FBD2A66D13D5D677C68BF37D /* MachineConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineConfiguration.swift; sourceTree = "<group>"; };
 		FD201A3C46AB062F71E564EF /* AIUsageLimits.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIUsageLimits.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -138,6 +142,7 @@
 				BC4ED33139998C97ECB4C77A /* MonitorModel.swift */,
 				3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */,
 				A5BBA732DB8512138D7F61E0 /* RemoteMetricsSampler.swift */,
+				48E107D7CC3B01B621E4483E /* RemoteUnavailability.swift */,
 				4164BB6C590812113B80A9E9 /* SoftwareUpdater.swift */,
 				74631ABBC0DF62E9034B91B7 /* StorageVolume.swift */,
 				D047AA9280E8D79DC01E7EC3 /* TaskTransfer.swift */,
@@ -170,6 +175,7 @@
 			children = (
 				694A0E6E34E815E5A5218AA0 /* AgentProbeShellTests.swift */,
 				BE23C778660407B336F50BA0 /* MetricsSamplerTests.swift */,
+				F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */,
 			);
 			path = LittleHerdTests;
 			sourceTree = "<group>";
@@ -305,6 +311,7 @@
 				27726ED927D36757C9A9BF67 /* MonitorModel.swift in Sources */,
 				AE7E668C1245F5127C1E588D /* NetworkVolumeOnboardingView.swift in Sources */,
 				F0C018891D4F81D70E48139C /* RemoteMetricsSampler.swift in Sources */,
+				E659D1A1902120A9C526DA65 /* RemoteUnavailability.swift in Sources */,
 				CBADC8EDC9632AE4731B8C4C /* SoftwareUpdater.swift in Sources */,
 				CF632AA195C36FA80B20AB9F /* StorageVolume.swift in Sources */,
 				F467C6257000BC6F266301BC /* TaskTransfer.swift in Sources */,
@@ -318,6 +325,7 @@
 			files = (
 				2CFA6E28CE4D7F2470879499 /* AgentProbeShellTests.swift in Sources */,
 				88873018BA18973DB4643815 /* MetricsSamplerTests.swift in Sources */,
+				8935F6CCBD6DFA02BEC41FA3 /* RemoteUnavailabilityTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

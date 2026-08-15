@@ -290,7 +290,7 @@ final class MonitorModel {
                     let snapshot = try await sampler.sample()
                     machine.apply(snapshot)
                 } catch {
-                    machine.markOffline()
+                    machine.markOffline(RemoteUnavailability.classify(error))
                 }
 
                 do {
