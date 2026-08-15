@@ -79,6 +79,38 @@ struct AgentProbeShellTests {
     /// The same script runs on every remote Mac. If it stops emitting one of
     /// these keys the sampler throws `invalidOutput` and the machine silently
     /// reads as unavailable, so run it here and check the parser's contract.
+    /// The local Mac and a remote Mac must answer "how much space is left" the
+    /// same way. They used different APIs, and the generous one credited
+    /// purgeable space, so the same machine read ~39 GB emptier when it was the
+    /// local one.
+    @Test
+    func localAndRemoteAgreeOnFreeSpace() async throws {
+        let sampler = MetricsSampler()
+        let snapshot = await sampler.sample()
+        let local = try #require(
+            snapshot.storageVolumes.first { $0.mountPath == "/" }
+        )
+
+        let df = try #require(
+            await LocalProcessRunner.run(
+                executablePath: "/bin/df",
+                arguments: ["-Pk", "/"]
+            )
+        )
+        let available = try #require(
+            df.split(whereSeparator: \.isNewline)
+                .dropFirst()
+                .first?
+                .split(whereSeparator: \.isWhitespace)
+                .dropFirst(3)
+                .first
+                .flatMap { Double($0) }
+        ) * 1_024
+
+        // Both read the same volume moments apart, so allow small drift.
+        #expect(abs(local.availableBytes - available) < 2_000_000_000)
+    }
+
     @Test
     func macOSMetricsCommandEmitsTheKeysTheParserNeeds() async throws {
         let output = try #require(

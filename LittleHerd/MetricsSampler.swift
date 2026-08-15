@@ -606,15 +606,24 @@ actor MetricsSampler {
     /// gated behind SMBStorageSampler.
     private func storageVolumes() -> [StorageVolume] {
         let root = URL(fileURLWithPath: "/", isDirectory: true)
+        // Plain available capacity, not "for important usage".
+        //
+        // The important-usage figure credits purgeable space — caches and local
+        // snapshots macOS would evict under pressure — and on this Mac that is
+        // a 39 GB difference. Remote Macs are measured with df, which does not
+        // credit it, so using the generous number here made the local machine
+        // look emptier than an identical remote one. This is the conservative
+        // reading: space you can use right now, and the one diskutil agrees
+        // with.
         let keys: Set<URLResourceKey> = [
             .volumeNameKey,
             .volumeTotalCapacityKey,
-            .volumeAvailableCapacityForImportantUsageKey,
+            .volumeAvailableCapacityKey,
         ]
 
         guard let values = try? root.resourceValues(forKeys: keys),
               let totalValue = values.volumeTotalCapacity,
-              let availableValue = values.volumeAvailableCapacityForImportantUsage,
+              let availableValue = values.volumeAvailableCapacity,
               totalValue > 0
         else {
             return []
