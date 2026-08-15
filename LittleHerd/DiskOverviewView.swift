@@ -2,14 +2,12 @@ import SwiftUI
 
 struct DiskOverviewView: View {
     let machines: [MachineMonitorModel]
-    @Binding var hoveredMachineID: MachineID?
 
     var body: some View {
         HStack(alignment: .top, spacing: 2) {
             ForEach(machines) { machine in
                 DiskMachineColumn(
                     machine: machine,
-                    hoveredMachineID: $hoveredMachineID,
                     columnWidth: columnWidth,
                     avatarSize: avatarSize
                 )
@@ -18,9 +16,6 @@ struct DiskOverviewView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, horizontalPadding)
         .padding(.vertical, 6)
-        .onDisappear {
-            hoveredMachineID = nil
-        }
     }
 
     private var machineCount: CGFloat { CGFloat(max(machines.count, 1)) }
@@ -38,7 +33,6 @@ struct DiskOverviewView: View {
 
 private struct DiskMachineColumn: View {
     let machine: MachineMonitorModel
-    @Binding var hoveredMachineID: MachineID?
     let columnWidth: CGFloat
     let avatarSize: CGFloat
 
@@ -58,13 +52,6 @@ private struct DiskMachineColumn: View {
         .frame(width: columnWidth)
         .frame(maxHeight: .infinity, alignment: .top)
         .contentShape(Rectangle())
-        .onHover { isHovered in
-            if isHovered {
-                hoveredMachineID = machine.machine
-            } else if hoveredMachineID == machine.machine {
-                hoveredMachineID = nil
-            }
-        }
         .accessibilityElement(children: .contain)
         .accessibilityHint(storageHelp)
     }

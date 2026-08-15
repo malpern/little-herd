@@ -106,10 +106,54 @@ final class DashboardWindowObserverView: NSView {
         reduceMotion: Bool,
         dashboardContentSize: NSSize
     ) {
+        let sizeChanged = self.dashboardContentSize != dashboardContentSize
         self.presentation = presentation
         self.reduceMotion = reduceMotion
         self.dashboardContentSize = dashboardContentSize
         applyPresentationIfNeeded()
+
+        // Moving between the overview and a machine changes the content size
+        // without changing the presentation, so nothing above resizes the
+        // window and the content gets clipped instead. Drive the frame here.
+        if sizeChanged, presentation == .dashboard {
+            resizeToDashboardContent()
+        }
+    }
+
+    private func resizeToDashboardContent() {
+        guard let window = observedWindow ?? self.window else { return }
+
+        // The window draws under its titlebar (fullSizeContentView), so the
+        // content size IS the frame size. Converting through
+        // frameRect(forContentRect:) adds a titlebar that is already included
+        // and leaves the content a few points short — enough to clip the
+        // machine names off the bottom of the overview.
+        let target = NSRect(origin: .zero, size: dashboardContentSize)
+        guard abs(target.width - window.frame.width) > 0.5
+            || abs(target.height - window.frame.height) > 0.5
+        else {
+            return
+        }
+
+        // Grow from the top-left so the titlebar stays put rather than the
+        // window appearing to jump.
+        let frame = NSRect(
+            x: window.frame.origin.x,
+            y: window.frame.maxY - target.height,
+            width: target.width,
+            height: target.height
+        )
+
+        guard !reduceMotion else {
+            window.setFrame(frame, display: true)
+            return
+        }
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.34
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            window.animator().setFrame(frame, display: true)
+        }
     }
 
     private func applyPresentationIfNeeded() {

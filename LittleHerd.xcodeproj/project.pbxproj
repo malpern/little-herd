@@ -43,6 +43,7 @@
 		D91CA4B85E7162E4DB2649A6 /* LittleHerdApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66BA172D3CC6CD4B8AEBC144 /* LittleHerdApp.swift */; };
 		E659D1A1902120A9C526DA65 /* RemoteUnavailability.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E107D7CC3B01B621E4483E /* RemoteUnavailability.swift */; };
 		F0C018891D4F81D70E48139C /* RemoteMetricsSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5BBA732DB8512138D7F61E0 /* RemoteMetricsSampler.swift */; };
+		F45BA889DF0A918F2B8A1CE7 /* DashboardTransition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199544A93AE05F23B93D38E4 /* DashboardTransition.swift */; };
 		F467C6257000BC6F266301BC /* TaskTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D047AA9280E8D79DC01E7EC3 /* TaskTransfer.swift */; };
 /* End PBXBuildFile section */
 
@@ -58,6 +59,7 @@
 
 /* Begin PBXFileReference section */
 		133A808E3BA4EEA2AF234D6E /* CPUOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUOverviewView.swift; sourceTree = "<group>"; };
+		199544A93AE05F23B93D38E4 /* DashboardTransition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardTransition.swift; sourceTree = "<group>"; };
 		2A2C8E4C049BD68DD7C9764E /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		34DDECFA904FEB7B9E48B369 /* AIAgentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAgentsView.swift; sourceTree = "<group>"; };
 		387B8471B05B8FEFC2973329 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -122,6 +124,7 @@
 				387B8471B05B8FEFC2973329 /* Assets.xcassets */,
 				BC14D9861665A4B5069FBEF7 /* BonjourMachineDiscovery.swift */,
 				133A808E3BA4EEA2AF234D6E /* CPUOverviewView.swift */,
+				199544A93AE05F23B93D38E4 /* DashboardTransition.swift */,
 				D833CE2704E28207ED01D856 /* DashboardView.swift */,
 				76F86234553E6FA795BAE88C /* DashboardWindowBridge.swift */,
 				792AC427750DD50ADA0F2B7C /* DiskOverviewView.swift */,
@@ -292,6 +295,7 @@
 				45C4B87B06C248B32DE821B4 /* AgentSession.swift in Sources */,
 				58521A8BB8088855A0F9DA8D /* BonjourMachineDiscovery.swift in Sources */,
 				231FCA9BBB2F8387C363203F /* CPUOverviewView.swift in Sources */,
+				F45BA889DF0A918F2B8A1CE7 /* DashboardTransition.swift in Sources */,
 				094E80A6E07234899B305A38 /* DashboardView.swift in Sources */,
 				A23B343EAFCC59009DBBB951 /* DashboardWindowBridge.swift in Sources */,
 				48E1B03457C005CE567496BC /* DiskOverviewView.swift in Sources */,

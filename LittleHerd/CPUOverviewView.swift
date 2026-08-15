@@ -2,27 +2,27 @@ import SwiftUI
 
 struct CPUOverviewView: View {
     let machines: [MachineMonitorModel]
-    @Binding var hoveredMachineID: MachineID?
     let metric: OverviewMetric
+    var namespace: Namespace.ID?
+    var onSelect: ((MachineID) -> Void)?
+    @State private var isHovered = false
 
     var body: some View {
         HStack(alignment: .top, spacing: columnSpacing) {
             ForEach(machines) { machine in
                 CPUThermometerColumn(
                     machine: machine,
-                    hoveredMachineID: $hoveredMachineID,
                     metric: metric,
                     columnWidth: columnWidth,
-                    avatarSize: avatarSize
+                    avatarSize: avatarSize,
+                    namespace: namespace,
+                    onSelect: onSelect
                 )
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, horizontalPadding)
         .padding(.vertical, 10)
-        .onDisappear {
-            hoveredMachineID = nil
-        }
     }
 
     private var machineCount: CGFloat { CGFloat(max(machines.count, 1)) }
@@ -44,12 +44,33 @@ struct CPUOverviewView: View {
 
 private struct CPUThermometerColumn: View {
     let machine: MachineMonitorModel
-    @Binding var hoveredMachineID: MachineID?
     let metric: OverviewMetric
     let columnWidth: CGFloat
     let avatarSize: CGFloat
+    var namespace: Namespace.ID?
+    var onSelect: ((MachineID) -> Void)?
+    @State private var isHovered = false
 
     var body: some View {
+        // A real Button, not a tap gesture: the window is movable by its
+        // background, which swallows plain mouse-down in ordinary views, and a
+        // control is what this should be anyway — it gets focus and hit
+        // behaviour for free.
+        Button {
+            onSelect?(machine.machine)
+        } label: {
+            column
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text("\(machine.name) details"))
+        .accessibilityHint(columnHelp)
+    }
+
+    private var column: some View {
         VStack(spacing: 4) {
             OverviewMetricValue(
                 metric: metric,
@@ -67,23 +88,20 @@ private struct CPUThermometerColumn: View {
 
                 MachineStatusLabel(
                     machine: machine,
-                    avatarSize: avatarSize
+                    avatarSize: avatarSize,
+                    namespace: namespace
                 )
             }
             .frame(maxHeight: .infinity, alignment: .top)
         }
         .frame(width: columnWidth)
         .frame(maxHeight: .infinity, alignment: .top)
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.primary.opacity(isHovered ? 0.06 : 0))
+        )
         .contentShape(Rectangle())
-        .onHover { isHovered in
-            if isHovered {
-                hoveredMachineID = machine.machine
-            } else if hoveredMachineID == machine.machine {
-                hoveredMachineID = nil
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityHint(columnHelp)
     }
 
     private var liveMetricValue: Double? {
@@ -195,10 +213,12 @@ private struct OverviewMetricValue: View {
 struct MachineStatusLabel: View {
     let machine: MachineMonitorModel
     var avatarSize: CGFloat = 32
+    var namespace: Namespace.ID?
 
     var body: some View {
         VStack(spacing: 1) {
             MachineAvatarView(avatar: machine.avatar, size: avatarSize)
+                .matchedAvatar(namespace, machine: machine.machine)
 
             HStack(spacing: 4) {
                 Circle()

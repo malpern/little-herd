@@ -8,7 +8,7 @@ struct DashboardView: View {
         LittleHerdPreferences.networkVolumeAccessOnboardingCompletedKey
     )
     private var hasCompletedNetworkVolumeOnboarding = false
-    @State private var hoveredMachineID: MachineID?
+    @Namespace private var machineTransition
     @State private var hoveredAgentID: MachineAgentSession.ID?
     @State private var isShowingLaunchSplash =
         LittleHerdLaunchSplashSession.claimPresentation()
@@ -36,16 +36,14 @@ struct DashboardView: View {
                         .id(transfer.id)
                 } else {
                     if let selectedMachine = model.selectedMachine {
-                        MachineDashboardHeader(
+                        MachineDetailBar(
                             machine: selectedMachine,
-                            lastUpdated: selectedMachine.lastUpdated,
-                            state: selectedMachine.state,
-                            aiUsageLimits: model.aiUsageLimits
+                            aiUsageLimits: model.aiUsageLimits,
+                            onBack: { model.selection = .overview }
                         )
                     } else {
                         CPUOverviewHeaderArea(
                             machines: model.overviewMachines,
-                            hoveredMachineID: hoveredMachineID,
                             agentSessions: agentSessions,
                             hoveredAgentID: hoveredAgentID,
                             aiUsageLimits: model.aiUsageLimits,
@@ -58,14 +56,29 @@ struct DashboardView: View {
                         .padding(.horizontal, 14)
 
                     if let selectedMachine = model.selectedMachine {
-                        MachineMetricsView(machine: selectedMachine)
+                        HStack(spacing: 0) {
+                            MachineIdentityRail(
+                                machine: selectedMachine,
+                                lastUpdated: selectedMachine.lastUpdated,
+                                state: selectedMachine.state,
+                                namespace: machineTransition,
+                                onBack: { model.selection = .overview }
+                            )
+
+                            Divider()
+
+                            // Unchanged: the same rows, in the same order,
+                            // whichever overview you arrived from.
+                            MachineMetricsView(machine: selectedMachine)
+                        }
                     } else {
                         OverviewMetricContent(
                             machines: model.overviewMachines,
-                            hoveredMachineID: $hoveredMachineID,
                             agentSessions: agentSessions,
                             hoveredAgentID: $hoveredAgentID,
-                            metric: model.overviewMetric
+                            metric: model.overviewMetric,
+                            namespace: machineTransition,
+                            onSelect: { model.selection = .machine($0) }
                         )
                         .id(model.overviewMetric)
                         .transition(.opacity)
@@ -105,6 +118,10 @@ struct DashboardView: View {
         }
         .environment(\.colorScheme, .light)
         .animation(.easeInOut(duration: 0.22), value: model.overviewMetric)
+        .animation(
+            DashboardTransition.animation(reduceMotion: reduceMotion),
+            value: model.selection
+        )
         .task {
             await advanceLaunchFlowWhenReady()
         }
@@ -146,8 +163,8 @@ struct DashboardView: View {
             return NSSize(width: 420, height: 374)
         }
         return model.selection == .overview
-            ? NSSize(width: 300, height: 250)
-            : NSSize(width: 420, height: 326)
+            ? NSSize(width: 300, height: 282)
+            : NSSize(width: 420, height: 340)
     }
 
     private var shouldPresentNetworkVolumeOnboarding: Bool {
@@ -223,7 +240,6 @@ struct DashboardView: View {
 
 private struct CPUOverviewHeaderArea: View {
     let machines: [MachineMonitorModel]
-    let hoveredMachineID: MachineID?
     let agentSessions: [MachineAgentSession]
     let hoveredAgentID: MachineAgentSession.ID?
     let aiUsageLimits: AIUsageLimitsModel
@@ -238,15 +254,6 @@ private struct CPUOverviewHeaderArea: View {
                })
             {
                 HoveredAgentHeader(machineSession: hoveredAgent)
-            } else if metric != .ai,
-                      let hoveredMachine = machines.first(where: {
-                $0.machine == hoveredMachineID
-                      })
-            {
-                HoveredMachineMetricHeader(
-                    machine: hoveredMachine,
-                    metric: metric
-                )
             } else {
                 CPUOverviewHeader(
                     liveMachineCount: machines.count(where: {
@@ -484,10 +491,11 @@ private struct OverviewMetricStatusLine: View {
 
 private struct OverviewMetricContent: View {
     let machines: [MachineMonitorModel]
-    @Binding var hoveredMachineID: MachineID?
     let agentSessions: [MachineAgentSession]
     @Binding var hoveredAgentID: MachineAgentSession.ID?
     let metric: OverviewMetric
+    var namespace: Namespace.ID?
+    var onSelect: ((MachineID) -> Void)?
 
     var body: some View {
         if metric == .ai {
@@ -497,14 +505,14 @@ private struct OverviewMetricContent: View {
             )
         } else if metric == .disk {
             DiskOverviewView(
-                machines: machines,
-                hoveredMachineID: $hoveredMachineID
+                machines: machines
             )
         } else {
             CPUOverviewView(
                 machines: machines,
-                hoveredMachineID: $hoveredMachineID,
-                metric: metric
+                metric: metric,
+                namespace: namespace,
+                onSelect: onSelect
             )
         }
     }
@@ -530,41 +538,96 @@ private struct MachineMetricsView: View {
                 }
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 2)
     }
 }
 
-private struct MachineDashboardHeader: View {
+/// The bar above a machine's details: somewhere to get back, and the allowance
+/// readout that the overview header also carries so it does not blink out when
+/// you drop into a machine.
+private struct MachineDetailBar: View {
     let machine: MachineMonitorModel
-    let lastUpdated: Date?
-    let state: MonitorConnectionState
     let aiUsageLimits: AIUsageLimitsModel
+    let onBack: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
-            MachineAvatarView(avatar: machine.avatar, size: 40)
+        HStack(spacing: 8) {
+            Button(action: onBack) {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.backward")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(machine.name)
-                    .font(.headline)
-                    .lineLimit(1)
-
-                MachineConnectionLabel(
-                    lastUpdated: lastUpdated,
-                    state: state,
-                    unavailability: machine.unavailability,
-                    hostname: machine.hostname
-                )
+                    Text(machine.name)
+                        // Same type as the metric title in the overview header,
+                        // so the two pages read as one place.
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                }
+                .padding(.vertical, 3)
+                .padding(.horizontal, 4)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .help("Back to the overview")
+            .accessibilityLabel("Back to the overview")
 
             Spacer(minLength: 8)
 
             AIUsageLimitsSummary(model: aiUsageLimits)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 11)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+}
+
+/// The identity column. The avatar here is the same view that was in the
+/// overview — it travels rather than being redrawn, which is what makes the
+/// machine you clicked feel like the machine you are now looking at.
+private struct MachineIdentityRail: View {
+    let machine: MachineMonitorModel
+    let lastUpdated: Date?
+    let state: MonitorConnectionState
+    var namespace: Namespace.ID?
+    let onBack: () -> Void
+
+    @State private var isHoveringIcon = false
+
+    var body: some View {
+        VStack(spacing: 6) {
+            // The icon is the thing that carried you in here, so it is also the
+            // way back out — same destination as the chevron.
+            Button(action: onBack) {
+                MachineAvatarView(avatar: machine.avatar, size: 84)
+                    .matchedAvatar(namespace, machine: machine.machine)
+                    .scaleEffect(isHoveringIcon ? 0.96 : 1)
+                    .animation(.smooth(duration: 0.16), value: isHoveringIcon)
+            }
+            .buttonStyle(.plain)
+            .onHover { isHoveringIcon = $0 }
+            .help("Back to the overview")
+            .accessibilityLabel("Back to the overview")
+
+            VStack(spacing: 3) {
+                Text(machine.shortName)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+
+                MachineConnectionLabel(
+                    lastUpdated: nil,
+                    state: state,
+                    unavailability: machine.unavailability,
+                    hostname: machine.hostname
+                )
+                .lineLimit(1)
+            }
+        }
+        .frame(width: 112)
+        .frame(maxHeight: .infinity, alignment: .center)
+        .padding(.horizontal, 4)
     }
 }
 

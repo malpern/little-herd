@@ -7,7 +7,7 @@ struct MetricRow: View {
     let memoryPressure: MemoryPressureLevel?
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             MetricSymbol(kind: metric.kind, isSupported: isSupported)
 
             VStack(alignment: .leading, spacing: 1) {
@@ -20,23 +20,21 @@ struct MetricRow: View {
                     isSupported: isSupported
                 )
             }
-            .frame(width: 114, alignment: .leading)
+            .frame(width: 96, alignment: .leading)
 
             MetricSparkline(
                 points: metric.history,
                 color: isSupported ? metric.kind.color : Color.gray.opacity(0.35),
                 fixedScale: metric.kind.fixedScale
             )
-            .frame(width: 112, height: 28)
-
-            Spacer(minLength: 4)
+            .frame(minWidth: 48, maxWidth: .infinity, minHeight: 26, maxHeight: 26)
 
             MetricValue(
                 kind: metric.kind,
                 value: metric.value,
                 memoryPressure: memoryPressure
             )
-                .frame(width: 74, alignment: .trailing)
+                .frame(width: 64, alignment: .trailing)
         }
         .frame(height: 48)
         .accessibilityElement(children: .combine)
