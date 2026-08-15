@@ -59,9 +59,13 @@ private struct AIAgentRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            AgentProviderIcon(
-                provider: machineSession.session.provider,
-                size: 22
+            ApplicationIcon(
+                bundlePath: ApplicationIconCache.bundlePath(
+                    forAnyOf: machineSession.session.provider.bundleIdentifiers
+                ),
+                fallbackSymbol: "sparkles",
+                tint: machineSession.session.provider == .codex ? .green : .orange,
+                size: 20
             )
 
             VStack(alignment: .leading, spacing: 1) {
@@ -70,25 +74,23 @@ private struct AIAgentRow: View {
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
-                HStack(spacing: 3) {
-                    Image(systemName: machineSession.machineSymbolName)
-                        .font(.caption2)
-
-                    Text(machineSession.machineName)
-
-                    if let progress = machineSession.session.progress {
-                        Text("·")
-                        Text(
-                            "Step \(progress.currentStepIndex) of \(progress.totalStepCount)"
-                        )
-                    }
-                }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+                // Several sessions can share a project and a machine, so the
+                // row has to say which one it is: what it is doing, or when it
+                // last did anything.
+                Text(sessionDetail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
 
             Spacer(minLength: 4)
+
+            if let progress = machineSession.session.progress {
+                Text("\(progress.currentStepIndex)/\(progress.totalStepCount)")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
 
             AgentSessionStatusIndicator(state: machineSession.session.state)
         }
@@ -98,6 +100,22 @@ private struct AIAgentRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(Text(machineSession.session.state.title))
+    }
+
+    /// The step it is on when it publishes one, otherwise how long since it
+    /// last moved — either way, something that differs between sessions.
+    private var sessionDetail: String {
+        let machine = machineSession.machineName
+        if let step = machineSession.session.progress?.currentStep, !step.isEmpty {
+            return "\(machine) · \(step)"
+        }
+        let elapsed = Date.now.timeIntervalSince(machineSession.session.updatedAt)
+        let relative = elapsed < 60
+            ? "just now"
+            : Duration.seconds(elapsed).formatted(
+                .units(allowed: [.hours, .minutes], width: .narrow)
+            ) + " ago"
+        return "\(machine) · \(relative)"
     }
 
     private var helpText: Text {

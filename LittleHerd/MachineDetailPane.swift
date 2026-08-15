@@ -140,6 +140,25 @@ extension MetricDetailRow where Accessory == EmptyView {
 enum ApplicationIconCache {
     private static var icons: [String: NSImage?] = [:]
 
+    private static var pathsByBundleIdentifier: [String: String?] = [:]
+
+    /// Resolves an app by bundle identifier, for callers that know what app
+    /// they want rather than where it lives.
+    static func bundlePath(forAnyOf identifiers: [String]) -> String? {
+        for identifier in identifiers {
+            if let cached = pathsByBundleIdentifier[identifier] {
+                if let cached { return cached }
+                continue
+            }
+            let path = NSWorkspace.shared
+                .urlForApplication(withBundleIdentifier: identifier)?
+                .path
+            pathsByBundleIdentifier[identifier] = path
+            if let path { return path }
+        }
+        return nil
+    }
+
     static func icon(atBundlePath path: String) -> NSImage? {
         if let cached = icons[path] { return cached }
 

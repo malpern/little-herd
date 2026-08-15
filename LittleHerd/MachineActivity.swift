@@ -18,6 +18,14 @@ nonisolated enum AgentTaskProvider: String, Codable, Equatable, Hashable, Sendab
         case .claude: "claude"
         }
     }
+
+    /// Apps whose icon stands for this provider, most specific first.
+    var bundleIdentifiers: [String] {
+        switch self {
+        case .codex: ["com.openai.chat", "com.openai.codex"]
+        case .claude: ["com.anthropic.claude-code", "com.anthropic.claudefordesktop"]
+        }
+    }
 }
 
 nonisolated enum AgentTaskStatus: String, Equatable, Sendable {
