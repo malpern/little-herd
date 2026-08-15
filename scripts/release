@@ -61,9 +61,13 @@ cd "$root"
 
 step "Preflight"
 
-for tool in xcodegen xcodebuild gh git ditto; do
+for tool in xcodegen xcodebuild gh git ditto xmllint; do
   command -v $tool >/dev/null || die "$tool is not installed"
 done
+if [ -n "$notes_file" ]; then
+  command -v pandoc >/dev/null \
+    || die "pandoc is needed to render release notes (brew install pandoc)"
+fi
 
 git rev-parse --git-dir >/dev/null 2>&1 || die "not a git repository"
 [ -z "$(git status --porcelain)" ] || die "working tree is dirty; commit or stash first"
@@ -80,6 +84,8 @@ if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
 fi
 
 gh auth status >/dev/null 2>&1 || die "gh is not authenticated"
+previous_tag=$(gh release list --repo "$repo" --limit 1 --json tagName \
+  --jq '.[0].tagName' 2>/dev/null || true)
 security find-identity -v -p codesigning | grep -q "Developer ID Application: .*($team)" \
   || die "no Developer ID Application certificate for team $team"
 [ -r "$key_path" ] || die "App Store Connect key not readable at $key_path"
@@ -192,7 +198,9 @@ ditto -c -k --keepParent "$app" "$zip"
 # ------------------------------------------------------------------ appcast
 
 step "Building and verifying the appcast"
-"$root/scripts/make-appcast" "$zip" "$tag" "$work/appcast.xml"
+appcast_args=("$zip" "$tag" --output "$work/appcast.xml")
+[ -n "$notes_file" ] && appcast_args+=(--notes "$notes_file")
+"$root/scripts/make-appcast" "${appcast_args[@]}"
 
 # Catch a key mismatch here rather than after publishing: if the signature does
 # not match the pinned SUPublicEDKey, every client rejects the update.
@@ -221,8 +229,27 @@ print "  $(git rev-parse --short HEAD) pushed to $branch"
 
 step "Publishing $tag"
 if [ -n "$notes_file" ]; then
+  release_body=$work/release-body.md
+  cp "$notes_file" "$release_body"
+  cat >> "$release_body" <<MD
+
+## Install
+
+Already running 0.1.2 or later? **App → Check for Updates…**, or wait for Little
+Herd to offer it.
+
+Otherwise download \`$(basename "$zip")\`, unzip, and drag **Little Herd.app**
+to \`/Applications\`, replacing any earlier copy. Signed with a Developer ID
+certificate and notarized by Apple. Requires macOS 15 or later.
+
+\`appcast.xml\` is the Sparkle update feed; it is attached to every release and
+is not something you need to download.
+MD
+  [ -n "$previous_tag" ] && printf '\n**Full changelog:** https://github.com/%s/compare/%s...%s\n' \
+    "$repo" "$previous_tag" "$tag" >> "$release_body"
+
   gh release create "$tag" --repo "$repo" --target "$commit" \
-    --title "Little Herd $version" --notes-file "$notes_file" \
+    --title "Little Herd $version" --notes-file "$release_body" \
     "$zip#Little Herd $version (macOS, notarized)" \
     "$work/appcast.xml#Sparkle update feed"
 else
@@ -247,6 +274,10 @@ grep -q "<sparkle:shortVersionString>$version<" "$live" \
 enclosure=$(grep -o 'url="[^"]*"' "$live" | head -1 | cut -d'"' -f2)
 enclosure_status=$(curl -sIL -o /dev/null -w '%{http_code}' "$enclosure")
 [ "$enclosure_status" = 200 ] || die "enclosure returned HTTP $enclosure_status"
+if [ -n "$notes_file" ]; then
+  grep -q 'sparkle:descriptionFormat="html"' "$live" \
+    || die "published feed carries no release notes"
+fi
 
 print "\n✓ Little Herd $version (build $build) released"
 print "  https://github.com/$repo/releases/tag/$tag"

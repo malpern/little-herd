@@ -1,23 +1,39 @@
 #!/bin/zsh
 # Builds the Sparkle appcast for a release archive.
 #
-#   scripts/make-appcast <notarized-zip> <tag> [output]
+#   scripts/make-appcast <notarized-zip> <tag> [--notes <file.md>] [--output <file>]
 #
 # Little Herd's SUFeedURL is
 # https://github.com/malpern/little-herd/releases/latest/download/appcast.xml,
 # so appcast.xml must be attached to every release. A release published without
 # it makes that URL 404 and silently stops updates for everyone.
 #
-# Signing uses the EdDSA private key in the login keychain, the one shared by
-# all of this account's Sparkle apps. The matching public key is pinned in
-# Info.plist as SUPublicEDKey; if the two ever disagree, clients reject the
-# update rather than installing it.
+# Release notes are embedded in the item as HTML rather than linked. Sparkle
+# loads the <description> straight into its web view as a whole document, so
+# this controls the styling end to end — a <sparkle:releaseNotesLink> pointing
+# at the GitHub release page would render that entire page, navigation bars and
+# all, inside a small update panel, and would need a second network fetch to do
+# it. <sparkle:fullReleaseNotesLink> still points at GitHub for the full history.
+#
+# Signing uses the EdDSA private key in the login keychain, shared by all of
+# this account's Sparkle apps. The matching public key is pinned in Info.plist
+# as SUPublicEDKey; if the two disagree, clients reject the update.
 
 set -eu
 
-archive=${1:?usage: make-appcast <notarized-zip> <tag> [output]}
-tag=${2:?usage: make-appcast <notarized-zip> <tag> [output]}
-output=${3:-$(dirname "$archive")/appcast.xml}
+archive=${1:?usage: make-appcast <notarized-zip> <tag> [--notes <file>] [--output <file>]}
+tag=${2:?usage: make-appcast <notarized-zip> <tag> [--notes <file>] [--output <file>]}
+shift 2
+
+notes_file=""
+output=$(dirname "$archive")/appcast.xml
+while [ $# -gt 0 ]; do
+  case $1 in
+    --notes) notes_file=${2:?--notes needs a path}; shift 2 ;;
+    --output) output=${2:?--output needs a path}; shift 2 ;;
+    *) echo "make-appcast: unknown option: $1" >&2; exit 1 ;;
+  esac
+done
 
 repo=malpern/little-herd
 app=${TMPDIR:-/tmp}/make-appcast-$$
@@ -29,10 +45,18 @@ if [ -z "$sign_update" ]; then
   echo "make-appcast: sign_update not found; resolve the Sparkle package first" >&2
   exit 1
 fi
+if [ -n "$notes_file" ] && ! command -v pandoc >/dev/null; then
+  echo "make-appcast: pandoc is needed to render release notes (brew install pandoc)" >&2
+  exit 1
+fi
+if [ -n "$notes_file" ] && [ ! -r "$notes_file" ]; then
+  echo "make-appcast: cannot read notes file: $notes_file" >&2
+  exit 1
+fi
 
 # Read the versions back out of the built app rather than trusting an argument:
-# Sparkle compares CFBundleVersion, so a mismatch here means clients either
-# never see the update or loop on it forever.
+# Sparkle compares CFBundleVersion, so a mismatch means clients either never see
+# the update or loop on it forever.
 mkdir -p "$app"
 ditto -x -k "$archive" "$app"
 plist="$app/Little Herd.app/Contents/Info.plist"
@@ -43,7 +67,61 @@ minimum_system=$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$pl
 signature=$("$sign_update" "$archive")
 published=$(date -u '+%a, %d %b %Y %H:%M:%S +0000')
 
-cat > "$output" <<XML
+# ---------------------------------------------------------------- description
+
+description=""
+if [ -n "$notes_file" ]; then
+  body=$(pandoc --from=gfm --to=html5 --syntax-highlighting=none --wrap=none "$notes_file")
+
+  # A "]]>" anywhere in the notes would close the CDATA section early and
+  # produce a malformed feed, so split it across two sections.
+  body=${body//]]>/]]]]><![CDATA[>}
+
+  read -r -d '' styled <<HTML || true
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  /* Deliberately plain: system font, native colours, and enough spacing to
+     read easily in a small panel. Sparkle needs HTML to render bold text and
+     bullets at all — plain-text format would show the markdown verbatim. */
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0;
+    padding: 14px 18px 18px;
+    font: 13px/1.5 -apple-system, system-ui, sans-serif;
+    color: #1d1d1f;
+    background: #ffffff;
+  }
+  h1, h2, h3 { font-size: 13px; font-weight: 600; margin: 16px 0 6px; }
+  :is(h1, h2, h3):first-child { margin-top: 0; }
+  p { margin: 0 0 10px; }
+  ul, ol { margin: 0 0 10px; padding-left: 18px; }
+  li { margin: 0 0 5px; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+  a { color: #0066cc; }
+  @media (prefers-color-scheme: dark) {
+    body { color: #f5f5f7; background: #1e1e1e; }
+    a { color: #4da3ff; }
+  }
+</style>
+</head>
+<body>
+$body
+</body>
+</html>
+HTML
+
+  description="      <description sparkle:descriptionFormat=\"html\"><![CDATA[
+$styled
+]]></description>"
+fi
+
+# ------------------------------------------------------------------- appcast
+
+{
+  cat <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
@@ -52,12 +130,15 @@ cat > "$output" <<XML
     <description>Updates for Little Herd.</description>
     <language>en</language>
     <item>
-      <title>$short_version</title>
+      <title>Little Herd $short_version</title>
       <pubDate>$published</pubDate>
       <sparkle:version>$build_version</sparkle:version>
       <sparkle:shortVersionString>$short_version</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>$minimum_system</sparkle:minimumSystemVersion>
-      <sparkle:releaseNotesLink>https://github.com/$repo/releases/tag/$tag</sparkle:releaseNotesLink>
+      <sparkle:fullReleaseNotesLink>https://github.com/$repo/releases</sparkle:fullReleaseNotesLink>
+XML
+  [ -n "$description" ] && printf '%s\n' "$description"
+  cat <<XML
       <enclosure
         url="https://github.com/$repo/releases/download/$tag/$(basename "$archive")"
         $signature
@@ -66,5 +147,13 @@ cat > "$output" <<XML
   </channel>
 </rss>
 XML
+} > "$output"
 
-echo "wrote $output for $short_version (build $build_version)"
+# A feed that does not parse breaks updates for everyone, and the CDATA block
+# makes that easy to do by accident, so refuse to hand back a broken one.
+if ! xmllint --noout "$output" 2>/dev/null; then
+  echo "make-appcast: generated appcast is not valid XML" >&2
+  exit 1
+fi
+
+echo "wrote $output for $short_version (build $build_version)${notes_file:+ with embedded notes}"
