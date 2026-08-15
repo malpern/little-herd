@@ -1,0 +1,54 @@
+name: LittleHerd
+options:
+  bundleIdPrefix: com.malpern
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_STYLE: Automatic
+targets:
+  LittleHerd:
+    type: application
+    platform: macOS
+    sources:
+      - path: LittleHerd
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.malpern.LittleHerd
+        PRODUCT_NAME: Little Herd
+        PRODUCT_MODULE_NAME: LittleHerd
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: LittleHerd/Info.plist
+    dependencies:
+      - sdk: IOKit.framework
+      - sdk: libsqlite3.tbd
+  LittleHerdTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: LittleHerdTests
+    dependencies:
+      - target: LittleHerd
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.malpern.LittleHerdTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Little Herd.app/Contents/MacOS/Little Herd"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+schemes:
+  LittleHerd:
+    build:
+      targets:
+        LittleHerd: all
+        LittleHerdTests:
+          - test
+    test:
+      targets:
+        - LittleHerdTests

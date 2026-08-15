@@ -1,0 +1,8 @@
+.DS_Store
+.build/
+build/
+DerivedData/
+Documentation/QA/
+tmp/
+*.xcuserstate
+xcuserdata/

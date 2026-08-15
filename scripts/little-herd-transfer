@@ -1,0 +1,117 @@
+#!/bin/zsh
+set -euo pipefail
+
+state_dir="${HOME}/.local/state/little-herd"
+state_file="${state_dir}/transfer.json"
+
+usage() {
+  print -u2 "usage:"
+  print -u2 "  little-herd-transfer start PROVIDER TITLE FROM TO CORES"
+  print -u2 "  little-herd-transfer arrive"
+  print -u2 "  little-herd-transfer fail"
+  print -u2 "  little-herd-transfer clear"
+  print -u2 ""
+  print -u2 "machines: air, mini, linux, synology    providers: codex, claude"
+  exit 2
+}
+
+machine_id() {
+  case "$1" in
+    air) print "macBookAir" ;;
+    mini) print "macMini" ;;
+    linux) print "linux" ;;
+    synology|nas) print "synology" ;;
+    *) usage ;;
+  esac
+}
+
+command_name="${1:-}"
+case "${command_name}" in
+  start)
+    [[ "$#" -eq 6 ]] || usage
+    provider="$2"
+    [[ "${provider}" == "codex" || "${provider}" == "claude" ]] || usage
+    title="$3"
+    source_machine="$(machine_id "$4")"
+    destination_machine="$(machine_id "$5")"
+    [[ "${source_machine}" != "${destination_machine}" ]] || usage
+    cores="$6"
+    mkdir -p "${state_dir}"
+    /usr/bin/python3 - "${state_file}" "${provider}" "${title}" \
+      "${source_machine}" "${destination_machine}" "${cores}" <<'PY'
+import datetime
+import json
+import math
+import os
+import sys
+import tempfile
+import uuid
+
+path, provider, title, source, destination, raw_cores = sys.argv[1:]
+cores = float(raw_cores)
+if not math.isfinite(cores) or cores < 0:
+    raise SystemExit("CORES must be a non-negative number")
+title = " ".join(title.split())[:100]
+if not title:
+    raise SystemExit("TITLE cannot be empty")
+now = datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+event = {
+    "id": str(uuid.uuid4()),
+    "provider": provider,
+    "title": title,
+    "source": source,
+    "destination": destination,
+    "cpuCores": cores,
+    "status": "handingOff",
+    "startedAt": now,
+    "updatedAt": now,
+}
+directory = os.path.dirname(path)
+fd, temporary = tempfile.mkstemp(prefix=".transfer.", dir=directory)
+try:
+    with os.fdopen(fd, "w") as handle:
+        json.dump(event, handle, separators=(",", ":"))
+        handle.write("\n")
+    os.chmod(temporary, 0o600)
+    os.replace(temporary, path)
+finally:
+    if os.path.exists(temporary):
+        os.unlink(temporary)
+PY
+    ;;
+  arrive|fail)
+    [[ "$#" -eq 1 ]] || usage
+    [[ -f "${state_file}" ]] || exit 0
+    /usr/bin/python3 - "${state_file}" "${command_name}" <<'PY'
+import datetime
+import json
+import os
+import sys
+import tempfile
+
+path, command = sys.argv[1:]
+with open(path) as handle:
+    event = json.load(handle)
+event["status"] = "arrived" if command == "arrive" else "failed"
+event["updatedAt"] = datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+directory = os.path.dirname(path)
+fd, temporary = tempfile.mkstemp(prefix=".transfer.", dir=directory)
+try:
+    with os.fdopen(fd, "w") as handle:
+        json.dump(event, handle, separators=(",", ":"))
+        handle.write("\n")
+    os.chmod(temporary, 0o600)
+    os.replace(temporary, path)
+finally:
+    if os.path.exists(temporary):
+        os.unlink(temporary)
+PY
+    ;;
+  clear)
+    [[ "$#" -eq 1 ]] || usage
+    [[ -f "${state_file}" ]] && mv "${state_file}" "${state_file}.cleared"
+    ;;
+  *)
+    usage
+    ;;
+esac

@@ -1,0 +1,224 @@
+import Charts
+import SwiftUI
+
+struct MetricRow: View {
+    let metric: MetricModel
+    let isSupported: Bool
+    let memoryPressure: MemoryPressureLevel?
+
+    var body: some View {
+        HStack(spacing: 10) {
+            MetricSymbol(kind: metric.kind, isSupported: isSupported)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(metric.kind.title)
+                    .font(.subheadline.weight(.medium))
+                MetricDetail(
+                    kind: metric.kind,
+                    auxiliaryValue: metric.auxiliaryValue,
+                    capacity: metric.capacity,
+                    isSupported: isSupported
+                )
+            }
+            .frame(width: 114, alignment: .leading)
+
+            MetricSparkline(
+                points: metric.history,
+                color: isSupported ? metric.kind.color : Color.gray.opacity(0.35),
+                fixedScale: metric.kind.fixedScale
+            )
+            .frame(width: 112, height: 28)
+
+            Spacer(minLength: 4)
+
+            MetricValue(
+                kind: metric.kind,
+                value: metric.value,
+                memoryPressure: memoryPressure
+            )
+                .frame(width: 74, alignment: .trailing)
+        }
+        .frame(height: 48)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct MetricSymbol: View {
+    let kind: MetricKind
+    let isSupported: Bool
+
+    var body: some View {
+        Image(systemName: kind.symbolName)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(kind.color.opacity(isSupported ? 1 : 0.35))
+            .frame(width: 27, height: 27)
+            .background(
+                kind.color.opacity(isSupported ? 0.12 : 0.05),
+                in: RoundedRectangle(cornerRadius: 7)
+            )
+            .accessibilityHidden(true)
+    }
+}
+
+private struct MetricValue: View {
+    let kind: MetricKind
+    let value: Double?
+    let memoryPressure: MemoryPressureLevel?
+
+    var body: some View {
+        VStack(alignment: .trailing) {
+            if kind == .memory {
+                MemoryPressureSymbol(level: memoryPressure)
+            } else if let value {
+                switch kind {
+                case .cpu, .gpu, .disk:
+                    Text(value / 100, format: .percent.precision(.fractionLength(0)))
+                case .network:
+                    let rate = Int64(value).formatted(
+                        .byteCount(style: .file, allowedUnits: .all, spellsOutZero: false)
+                    )
+                    Text("\(rate)/s")
+                        .help("Combined upload and download per second")
+                case .memory:
+                    EmptyView()
+                }
+            } else {
+                Text("—")
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+}
+
+struct MemoryPressureSymbol: View {
+    let level: MemoryPressureLevel?
+
+    var body: some View {
+        if let level {
+            Image(systemName: symbolName(for: level))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(color(for: level))
+                .contentTransition(.symbolEffect(.replace))
+                .help(Text(level.title))
+                .accessibilityLabel(Text(level.title))
+        } else {
+            Text("—")
+                .foregroundStyle(.tertiary)
+                .accessibilityLabel("Memory pressure unavailable")
+        }
+    }
+
+    private func symbolName(for level: MemoryPressureLevel) -> String {
+        switch level {
+        case .normal: "checkmark.circle.fill"
+        case .warning: "exclamationmark.triangle.fill"
+        case .critical: "exclamationmark.octagon.fill"
+        }
+    }
+
+    private func color(for level: MemoryPressureLevel) -> Color {
+        switch level {
+        case .normal: .green
+        case .warning: .orange
+        case .critical: .red
+        }
+    }
+}
+
+private struct MetricDetail: View {
+    let kind: MetricKind
+    let auxiliaryValue: Double?
+    let capacity: Double?
+    let isSupported: Bool
+
+    var body: some View {
+        Group {
+            if !isSupported {
+                Text("Local only")
+            } else {
+                switch kind {
+                case .cpu:
+                    Text("All cores")
+                case .gpu:
+                    Text("Device activity")
+                case .memory:
+                    if let auxiliaryValue, let capacity {
+                        Text(
+                            "\(Int64(auxiliaryValue), format: .byteCount(style: .memory)) of \(Int64(capacity), format: .byteCount(style: .memory))"
+                        )
+                    } else {
+                        Text("Physical memory")
+                    }
+                case .network:
+                    if let auxiliaryValue, let capacity {
+                        Text(
+                            "↓ \(Int64(auxiliaryValue), format: .byteCount(style: .file))  ↑ \(Int64(capacity), format: .byteCount(style: .file))"
+                        )
+                    } else {
+                        Text("Physical interfaces")
+                    }
+                case .disk:
+                    if let auxiliaryValue {
+                        Text("\(Int64(auxiliaryValue), format: .byteCount(style: .file)) free")
+                    } else {
+                        Text("Startup disk")
+                    }
+                }
+            }
+        }
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+    }
+}
+
+private struct MetricSparkline: View {
+    let points: [HistoryPoint]
+    let color: Color
+    let fixedScale: ClosedRange<Double>?
+
+    var body: some View {
+        if points.count > 1 {
+            Chart(points) { point in
+                AreaMark(
+                    x: .value("Time", point.timestamp),
+                    y: .value("Usage", point.value)
+                )
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [color.opacity(0.22), color.opacity(0.02)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+
+                LineMark(
+                    x: .value("Time", point.timestamp),
+                    y: .value("Usage", point.value)
+                )
+                .foregroundStyle(color)
+                .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis(.hidden)
+            .chartLegend(.hidden)
+            .chartYScale(domain: chartDomain)
+            .accessibilityHidden(true)
+        } else {
+            Capsule()
+                .fill(color.opacity(0.10))
+                .frame(height: 2)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var chartDomain: ClosedRange<Double> {
+        if let fixedScale {
+            return fixedScale
+        }
+
+        let maximum = max(points.map(\.value).max() ?? 1, 1)
+        return 0 ... maximum * 1.12
+    }
+}
