@@ -83,7 +83,11 @@ struct SynologyCredentialsView: View {
             }
         }
         .padding(20)
-        .frame(width: 460)
+        // An explicit height as well as width: presented from the dashboard —
+        // a deliberately small window — the sheet sized itself to the host and
+        // cut off the password field, which is the one thing it exists to
+        // collect.
+        .frame(width: 460, height: 360)
     }
 
     @ViewBuilder

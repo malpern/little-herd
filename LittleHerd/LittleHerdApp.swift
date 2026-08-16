@@ -57,7 +57,11 @@ struct LittleHerdApp: App {
 
     var body: some Scene {
         Window("Little Herd", id: LittleHerdWindowID.dashboard) {
-            DashboardView(model: model)
+            DashboardView(
+                model: model,
+                machineStore: machineStore,
+                onConfigurationsChanged: model.applyConfigurations
+            )
                 .toolbar(removing: .title)
                 .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         }

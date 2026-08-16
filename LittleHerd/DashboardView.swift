@@ -3,6 +3,10 @@ import SwiftUI
 
 struct DashboardView: View {
     let model: MonitorModel
+    /// Needed so a NAS can be signed in from the page that says it is not
+    /// connected, rather than only from Settings.
+    var machineStore: MachineConfigurationStore?
+    var onConfigurationsChanged: ([MachineConfiguration]) -> Void = { _ in }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(
         LittleHerdPreferences.networkVolumeAccessOnboardingCompletedKey
@@ -14,6 +18,7 @@ struct DashboardView: View {
         LittleHerdLaunchSplashSession.claimPresentation()
     @State private var isShowingNetworkVolumeOnboarding = false
     @State private var isRequestingNetworkVolumeAccess = false
+    @State private var signingInMachine: MachineConfiguration?
 
     var body: some View {
         let agentSessions = MachineAgentSessionBuilder.visibleSessions(
@@ -79,7 +84,8 @@ struct DashboardView: View {
                                 lastUpdated: selectedMachine.lastUpdated,
                                 state: selectedMachine.state,
                                 namespace: machineTransition,
-                                onBack: { model.selection = .overview }
+                                onBack: { model.selection = .overview },
+                                onSignIn: signInAction(for: selectedMachine)
                             )
 
                             Divider()
@@ -124,6 +130,12 @@ struct DashboardView: View {
             width: windowContentSize.width,
             height: windowContentSize.height
         )
+        .sheet(item: $signingInMachine) { machine in
+            SynologyCredentialsView(machine: machine) { updated in
+                machineStore?.update(updated)
+                onConfigurationsChanged(machineStore?.machines ?? [])
+            }
+        }
         .background(LittleHerdTheme.background)
         .background {
             DashboardWindowBridge(
@@ -226,6 +238,21 @@ struct DashboardView: View {
             isShowingNetworkVolumeOnboarding =
                 shouldPresentNetworkVolumeOnboarding
         }
+    }
+
+    /// Offered only for a NAS that is not currently reporting: a machine that
+    /// is working does not need a sign-in button in front of it.
+    private func signInAction(
+        for machine: MachineMonitorModel
+    ) -> (() -> Void)? {
+        guard machine.isStorage, machine.state != .live,
+              let configuration = machineStore?.machines.first(where: {
+                  $0.id == machine.machine
+              })
+        else {
+            return nil
+        }
+        return { signingInMachine = configuration }
     }
 
     private func requestNetworkVolumeAccess() {
@@ -1002,6 +1029,10 @@ private struct MachineIdentityRail: View {
     let state: MonitorConnectionState
     var namespace: Namespace.ID?
     let onBack: () -> Void
+    /// Present when this machine can be signed in to. The status line is the
+    /// thing that says it is not connected, so it is also the thing that fixes
+    /// it — the same rule the storage rows already follow.
+    var onSignIn: (() -> Void)?
 
     @State private var isHoveringIcon = false
 
@@ -1037,13 +1068,29 @@ private struct MachineIdentityRail: View {
                     .font(.caption.weight(.semibold))
                     .lineLimit(1)
 
-                MachineConnectionLabel(
-                    lastUpdated: nil,
-                    state: state,
-                    unavailability: machine.unavailability,
-                    hostname: machine.hostname
-                )
-                .lineLimit(1)
+                if let onSignIn {
+                    Button(action: onSignIn) {
+                        MachineConnectionLabel(
+                            lastUpdated: nil,
+                            state: state,
+                            unavailability: machine.unavailability,
+                            hostname: machine.hostname
+                        )
+                        .lineLimit(1)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Sign in to DSM")
+                    .accessibilityHint(Text("Sign in to DSM"))
+                } else {
+                    MachineConnectionLabel(
+                        lastUpdated: nil,
+                        state: state,
+                        unavailability: machine.unavailability,
+                        hostname: machine.hostname
+                    )
+                    .lineLimit(1)
+                }
 
                 // Says what the badge means, where you land after clicking it.
                 // A mark that only signals "something is wrong" makes you hunt
