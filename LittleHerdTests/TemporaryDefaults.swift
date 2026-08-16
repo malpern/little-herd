@@ -13,12 +13,20 @@ final class TemporaryDefaults {
     let suiteName: String
     nonisolated(unsafe) let defaults: UserDefaults
 
-    init() {
-        suiteName = "LittleHerdTests.\(UUID().uuidString)"
+    /// A fixed name rather than a fresh UUID.
+    ///
+    /// cfprefsd writes a domain back out at process exit, after any teardown has
+    /// run, so a per-run name accumulates one file every time no matter how
+    /// carefully it is removed. Reusing one name bounds that at a single file
+    /// that is overwritten, instead of an unbounded pile. Cleared on creation so
+    /// each test still starts from nothing.
+    init(name: String = "shared") {
+        suiteName = "LittleHerdTests.\(name)"
         // A suite name that is unique per instance cannot fail to open, but a
         // test crashing on nil here would be a confusing way to find out.
         defaults = UserDefaults(suiteName: suiteName)
             ?? .standard
+        defaults.removePersistentDomain(forName: suiteName)
     }
 
     deinit {
