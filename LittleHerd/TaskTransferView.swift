@@ -334,7 +334,7 @@ private struct CompactTransferThermometer: View {
                 RoundedRectangle(cornerRadius: 2, style: .continuous)
                     .fill(
                         level < filledBlockCount
-                            ? blockColor(for: level)
+                            ? ThermometerScale.band(forLevel: level).color
                             : LittleHerdTheme.emptyBlock
                     )
                     .frame(width: 30, height: 8)
@@ -343,17 +343,7 @@ private struct CompactTransferThermometer: View {
     }
 
     private var filledBlockCount: Int {
-        guard let value else { return 0 }
-        return min(max(Int(ceil(value / 10)), 0), 10)
-    }
-
-    private func blockColor(for level: Int) -> Color {
-        switch level {
-        case 0 ... 3: LittleHerdTheme.loadGreen
-        case 4 ... 6: .yellow
-        case 7 ... 8: .orange
-        default: .red
-        }
+        ThermometerScale.filledBlockCount(for: value)
     }
 }
 

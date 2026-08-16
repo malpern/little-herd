@@ -658,14 +658,12 @@ private struct MachineMetricDetail: View {
                 VStack(spacing: 6) {
                     OverviewMetricValue(
                         metric: metric,
-                        value: machine.state == .live ? metricValue : nil,
-                        memoryPressure: metric == .memory && machine.state == .live
-                            ? machine.memoryPressure
-                            : nil
+                        value: presentation.value,
+                        memoryPressure: presentation.memoryPressure
                     )
 
                     SegmentedThermometer(
-                        value: machine.state == .live ? thermometerValue : nil,
+                        value: presentation.thermometerValue,
                         blockWidth: 34,
                         blockHeight: 9,
                         spacing: 3
@@ -694,24 +692,11 @@ private struct MachineMetricDetail: View {
         }
     }
 
-    private var metricValue: Double? {
-        switch metric {
-        case .cpu: machine.cpu.value
-        case .memory: machine.memory.value
-        // The machine-level number for storage is its fullest volume: that is
-        // the one that will run out first.
-        case .disk: machine.storageVolumes.map(\.usedPercent).max()
-        case .ai: nil
-        }
-    }
-
-    private var thermometerValue: Double? {
-        switch metric {
-        case .cpu: machine.cpu.value
-        case .memory: machine.memoryPressure?.visualizationPercent
-        case .disk: machine.storageVolumes.map(\.usedPercent).max()
-        case .ai: nil
-        }
+    private var presentation: OverviewMetricPresentation {
+        machine.metricPresentation(
+            for: metric,
+            isReporting: machine.state == .live
+        )
     }
 }
 
@@ -1118,9 +1103,9 @@ struct HoveredMachineActivityHeader: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 5) {
                 Circle()
-                    .fill(statusColor)
+                    .fill(machine.status.tint)
                     .frame(width: 5, height: 5)
-                    .accessibilityLabel(statusLabel)
+                    .accessibilityLabel(machine.status.label)
 
                 MachineAvatarView(avatar: machine.avatar, size: 18)
 
@@ -1151,23 +1136,6 @@ struct HoveredMachineActivityHeader: View {
         .padding(.vertical, 4)
     }
 
-    private var statusColor: Color {
-        switch machine.state {
-        case .connecting: .orange
-        case .live: .green
-        case .offline: .red
-        case .stopped: .secondary
-        }
-    }
-
-    private var statusLabel: LocalizedStringResource {
-        switch machine.state {
-        case .connecting: "Connecting"
-        case .live: "Live"
-        case .offline: "Unreachable"
-        case .stopped: "Paused"
-        }
-    }
 }
 
 private struct HoveredMachineCPUValue: View {

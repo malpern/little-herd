@@ -16,6 +16,7 @@
 		0F4B67C29C60BD0E6BEF80D9 /* SecretCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9964820C13B89705570C2A79 /* SecretCacheTests.swift */; };
 		121132FFDEBBDF2D52E1A1C9 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C7D8104BAD8E6CE6707EBDD7 /* Sparkle */; };
 		182FDB3CF702DD3D6820FBA3 /* TaskTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5C36AC033CCD76A2AA262A9 /* TaskTransferView.swift */; };
+		1CC37DE83816DEFA72E09098 /* MachinePresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B15AD1FE8E57EC1A9E3162EE /* MachinePresentationTests.swift */; };
 		231FCA9BBB2F8387C363203F /* CPUOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 133A808E3BA4EEA2AF234D6E /* CPUOverviewView.swift */; };
 		27726ED927D36757C9A9BF67 /* MonitorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4ED33139998C97ECB4C77A /* MonitorModel.swift */; };
 		2CFA6E28CE4D7F2470879499 /* AgentProbeShellTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694A0E6E34E815E5A5218AA0 /* AgentProbeShellTests.swift */; };
@@ -23,6 +24,7 @@
 		3A45C65052806FE4A571A349 /* HerdwareAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D56F2E897732951FB02B9B7F /* HerdwareAvatar.swift */; };
 		40B66FBE223EF28FE3FB6877 /* SynologyDSMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1E4988B07342992D546101 /* SynologyDSMClient.swift */; };
 		4425832D76E61C50D9AE5F2F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 387B8471B05B8FEFC2973329 /* Assets.xcassets */; };
+		45BC186C83BEC7696C68B73B /* MachinePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2364561D7CD692AC3FC1471A /* MachinePresentation.swift */; };
 		45C4B87B06C248B32DE821B4 /* AgentSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17B5AEB7ADED71EAF3397A2 /* AgentSession.swift */; };
 		4DECA6731350AC1B325E372D /* MetricsSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8E7D7B96F3C77459C1DD141 /* MetricsSampler.swift */; };
 		510ED568359C558B6A05BCFE /* MachineActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE7C98CC9A2691BAFB89BCC /* MachineActivity.swift */; };
@@ -79,6 +81,7 @@
 		0268A4FEC4C1CE1B192EB31C /* MachineDetailPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineDetailPane.swift; sourceTree = "<group>"; };
 		133A808E3BA4EEA2AF234D6E /* CPUOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUOverviewView.swift; sourceTree = "<group>"; };
 		199544A93AE05F23B93D38E4 /* DashboardTransition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardTransition.swift; sourceTree = "<group>"; };
+		2364561D7CD692AC3FC1471A /* MachinePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachinePresentation.swift; sourceTree = "<group>"; };
 		28A334FD1C930D9B96C4E2F1 /* InMemoryConfigurationStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InMemoryConfigurationStorage.swift; sourceTree = "<group>"; };
 		2A2C8E4C049BD68DD7C9764E /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		324EEBC4BC470AA0BD558877 /* TemporaryDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemporaryDefaults.swift; sourceTree = "<group>"; };
@@ -115,6 +118,7 @@
 		A5BBA732DB8512138D7F61E0 /* RemoteMetricsSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteMetricsSampler.swift; sourceTree = "<group>"; };
 		A8E7D7B96F3C77459C1DD141 /* MetricsSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricsSampler.swift; sourceTree = "<group>"; };
 		AF5116683456A747005BF658 /* SynologyMetricsSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyMetricsSampler.swift; sourceTree = "<group>"; };
+		B15AD1FE8E57EC1A9E3162EE /* MachinePresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachinePresentationTests.swift; sourceTree = "<group>"; };
 		BC14D9861665A4B5069FBEF7 /* BonjourMachineDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourMachineDiscovery.swift; sourceTree = "<group>"; };
 		BC4ED33139998C97ECB4C77A /* MonitorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorModel.swift; sourceTree = "<group>"; };
 		BE23C778660407B336F50BA0 /* MetricsSamplerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricsSamplerTests.swift; sourceTree = "<group>"; };
@@ -174,6 +178,7 @@
 				FBD2A66D13D5D677C68BF37D /* MachineConfiguration.swift */,
 				0268A4FEC4C1CE1B192EB31C /* MachineDetailPane.swift */,
 				6125192CA7CFE81311C048BC /* MachineMonitorModel.swift */,
+				2364561D7CD692AC3FC1471A /* MachinePresentation.swift */,
 				81C6082944C3057004428EA4 /* MetricHistory.swift */,
 				D0F1DDCC19A6E8B6C26AC5A1 /* MetricKind.swift */,
 				4669068113CB4027D57F9535 /* MetricModel.swift */,
@@ -222,6 +227,7 @@
 				694A0E6E34E815E5A5218AA0 /* AgentProbeShellTests.swift */,
 				3CBDB146412416AE14C5CEB4 /* ConfigurationDurabilityTests.swift */,
 				28A334FD1C930D9B96C4E2F1 /* InMemoryConfigurationStorage.swift */,
+				B15AD1FE8E57EC1A9E3162EE /* MachinePresentationTests.swift */,
 				0030CD269D45A066A95941B9 /* MetricHistoryTests.swift */,
 				BE23C778660407B336F50BA0 /* MetricsSamplerTests.swift */,
 				F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */,
@@ -361,6 +367,7 @@
 				5E3CE5327A2EA4F166BDD893 /* MachineConfiguration.swift in Sources */,
 				9E4826EE9CDB2CC88329E54B /* MachineDetailPane.swift in Sources */,
 				C75E46029BE72838F29E96DE /* MachineMonitorModel.swift in Sources */,
+				45BC186C83BEC7696C68B73B /* MachinePresentation.swift in Sources */,
 				87E0B8B33DB2D36F04840F41 /* MetricHistory.swift in Sources */,
 				00BCBA8D5FE93AD8AFE7CA27 /* MetricKind.swift in Sources */,
 				6B236EB580089736F35DAC08 /* MetricModel.swift in Sources */,
@@ -390,6 +397,7 @@
 				2CFA6E28CE4D7F2470879499 /* AgentProbeShellTests.swift in Sources */,
 				0B46A10585034F62414676B1 /* ConfigurationDurabilityTests.swift in Sources */,
 				BF0A72836087C3E499B9E54D /* InMemoryConfigurationStorage.swift in Sources */,
+				1CC37DE83816DEFA72E09098 /* MachinePresentationTests.swift in Sources */,
 				CDF0CF3F19E6741099BA1BCB /* MetricHistoryTests.swift in Sources */,
 				88873018BA18973DB4643815 /* MetricsSamplerTests.swift in Sources */,
 				8935F6CCBD6DFA02BEC41FA3 /* RemoteUnavailabilityTests.swift in Sources */,

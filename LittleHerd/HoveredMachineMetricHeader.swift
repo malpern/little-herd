@@ -359,33 +359,15 @@ private struct HoveredMachineIdentity: View {
     var body: some View {
         HStack(spacing: 5) {
             Circle()
-                .fill(statusColor)
+                .fill(machine.status.tint)
                 .frame(width: 5, height: 5)
-                .accessibilityLabel(statusLabel)
+                .accessibilityLabel(machine.status.label)
 
             MachineAvatarView(avatar: machine.avatar, size: 18)
 
             Text(machine.shortName)
                 .font(.caption.weight(.semibold))
                 .lineLimit(1)
-        }
-    }
-
-    private var statusColor: Color {
-        switch machine.state {
-        case .connecting: .orange
-        case .live: .green
-        case .offline: .red
-        case .stopped: .secondary
-        }
-    }
-
-    private var statusLabel: LocalizedStringResource {
-        switch machine.state {
-        case .connecting: "Connecting"
-        case .live: "Live"
-        case .offline: "Unreachable"
-        case .stopped: "Paused"
         }
     }
 }

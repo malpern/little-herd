@@ -65,12 +65,12 @@ private struct CPUThermometerColumn: View {
                 VStack(spacing: 4) {
                     OverviewMetricValue(
                         metric: metric,
-                        value: liveMetricValue,
-                        memoryPressure: liveMemoryPressure
+                        value: presentation.value,
+                        memoryPressure: presentation.memoryPressure
                     )
 
                     SegmentedThermometer(
-                        value: liveThermometerValue,
+                        value: presentation.thermometerValue,
                         blockHeight: 6,
                         spacing: 2.25
                     )
@@ -118,43 +118,17 @@ private struct CPUThermometerColumn: View {
         .padding(.vertical, 4)
     }
 
-    private var liveMetricValue: Double? {
-        guard machine.state == .live || machine.isStorage else { return nil }
-
-        switch metric {
-        case .cpu: return machine.cpu.value
-        case .memory: return machine.memory.value
-        case .disk: return fullestVolume?.usedPercent
-        case .ai: return nil
-        }
+    /// A storage machine keeps its column when it is not answering: its numbers
+    /// change slowly and the last known ones are still worth reading, whereas a
+    /// Mac's are stale the moment it stops reporting.
+    private var presentation: OverviewMetricPresentation {
+        machine.metricPresentation(
+            for: metric,
+            isReporting: machine.state == .live || machine.isStorage
+        )
     }
 
-    /// The volume that will run out first — what "how full is this machine"
-    /// means when a machine has several.
-    private var fullestVolume: StorageVolume? {
-        machine.storageVolumes.max { $0.usedPercent < $1.usedPercent }
-    }
-
-    private var liveMemoryPressure: MemoryPressureLevel? {
-        guard metric == .memory, machine.state == .live else { return nil }
-        return machine.memoryPressure
-    }
-
-    private var liveThermometerValue: Double? {
-        switch metric {
-        case .cpu:
-            liveMetricValue
-        case .memory:
-            // Pressure where the machine reports it; plain usage where it does
-            // not. A NAS was drawing an empty bar beside a memory figure it had
-            // in hand.
-            liveMemoryPressure?.visualizationPercent ?? liveMetricValue
-        case .disk:
-            fullestVolume?.usedPercent
-        case .ai:
-            nil
-        }
-    }
+    private var fullestVolume: StorageVolume? { machine.fullestVolume }
 
     private var columnHelp: Text {
         switch metric {
@@ -273,9 +247,9 @@ struct MachineStatusLabel: View {
 
             HStack(spacing: 4) {
                 Circle()
-                    .fill(statusColor)
+                    .fill(machine.status.tint)
                     .frame(width: 6, height: 6)
-                    .accessibilityLabel(statusDescription)
+                    .accessibilityLabel(machine.status.label)
 
                 Text(machine.shortName)
                     .font(.caption.weight(.medium))
@@ -292,27 +266,6 @@ struct MachineStatusLabel: View {
         machine.storageConcern?.health
     }
 
-    private var statusColor: Color {
-        // A machine that has never connected is waiting to be set up, not
-        // broken. Red is for something that was working and stopped.
-        if machine.hasNeverConnected { return .secondary }
-        switch machine.state {
-        case .connecting: return .orange
-        case .live: return .green
-        case .offline: return .red
-        case .stopped: return .secondary
-        }
-    }
-
-    private var statusDescription: LocalizedStringResource {
-        if machine.hasNeverConnected { return "Not set up yet" }
-        switch machine.state {
-        case .connecting: return "Connecting"
-        case .live: return "Live"
-        case .offline: return "Unreachable"
-        case .stopped: return "Paused"
-        }
-    }
 }
 
 private struct CPUPercentage: View {
@@ -343,7 +296,7 @@ struct SegmentedThermometer: View {
                 RoundedRectangle(cornerRadius: 1.75, style: .continuous)
                     .fill(
                         level < filledBlockCount
-                            ? blockColor(for: level)
+                            ? ThermometerScale.band(forLevel: level).color
                             : LittleHerdTheme.emptyBlock
                     )
                     .frame(width: blockWidth, height: blockHeight)
@@ -354,16 +307,6 @@ struct SegmentedThermometer: View {
     }
 
     private var filledBlockCount: Int {
-        guard let value else { return 0 }
-        return min(max(Int(ceil(value / 10)), 0), 10)
-    }
-
-    private func blockColor(for level: Int) -> Color {
-        switch level {
-        case 0 ... 3: LittleHerdTheme.loadGreen
-        case 4 ... 6: .yellow
-        case 7 ... 8: .orange
-        default: .red
-        }
+        ThermometerScale.filledBlockCount(for: value)
     }
 }

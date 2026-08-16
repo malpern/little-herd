@@ -65,27 +65,24 @@ private struct MetricValue: View {
 
     var body: some View {
         VStack(alignment: .trailing) {
-            // Memory prefers the operating system's own pressure verdict, since
-            // cache the system is deliberately holding is not a problem. A
-            // machine that reports no pressure — a NAS, which has no such
-            // notion — still has a usage figure, and showing a dash next to
-            // "1.5 GB of 1.94 GB" was simply wrong.
-            if kind == .memory, let memoryPressure {
-                MemoryPressureSymbol(level: memoryPressure)
-            } else if let value {
-                switch kind {
-                case .cpu, .gpu, .disk:
-                    Text(value / 100, format: .percent.precision(.fractionLength(0)))
-                case .network:
-                    let rate = Int64(value).formatted(
-                        .byteCount(style: .file, allowedUnits: .all, spellsOutZero: false)
-                    )
-                    Text("\(rate)/s")
-                        .help("Combined upload and download per second")
-                case .memory:
-                    EmptyView()
-                }
-            } else {
+            switch MetricValueDisplay.resolve(
+                kind: kind,
+                value: value,
+                memoryPressure: memoryPressure
+            ) {
+            case .pressure(let level):
+                MemoryPressureSymbol(level: level)
+            case .percent(let percent):
+                Text(percent / 100, format: .percent.precision(.fractionLength(0)))
+            case .bytesPerSecond(let rate):
+                let formatted = Int64(rate).formatted(
+                    .byteCount(style: .file, allowedUnits: .all, spellsOutZero: false)
+                )
+                Text("\(formatted)/s")
+                    .help("Combined upload and download per second")
+            case .spelledOutBelow:
+                EmptyView()
+            case .unavailable:
                 Text("—")
                     .foregroundStyle(.tertiary)
             }
