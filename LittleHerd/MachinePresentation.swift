@@ -190,6 +190,33 @@ extension MachineMonitorModel {
     }
 }
 
+/// Where a row sits in a reorderable list, so it knows which way it can go.
+nonisolated struct ListPosition: Equatable, Sendable {
+    let index: Int
+    let count: Int
+
+    var canMoveUp: Bool { index > 0 }
+    var canMoveDown: Bool { index < count - 1 }
+
+    /// Said out loud for VoiceOver, which otherwise gives no sense of order in a
+    /// list whose entire point is the order.
+    var description: String { "\(index + 1) of \(count)" }
+
+    /// The insertion point that moves this row by `offset`, or nothing if that
+    /// would take it off either end.
+    ///
+    /// `move(fromOffsets:toOffset:)` counts the gaps between rows rather than
+    /// the rows themselves, so moving down has to clear the row it displaces —
+    /// `toOffset: index + 1` is where a row already is, and asking for it moves
+    /// nothing at all. Moving up needs no such correction, which is exactly the
+    /// asymmetry that makes this easy to get wrong and worth pinning down.
+    func destination(movingBy offset: Int) -> Int? {
+        let target = index + offset
+        guard target >= 0, target < count else { return nil }
+        return offset > 0 ? target + 1 : target
+    }
+}
+
 /// How a ten-block bar fills and colours.
 nonisolated enum ThermometerScale {
     static let blockCount = 10

@@ -379,6 +379,97 @@ struct ThermometerScaleTests {
     }
 }
 
+/// Reordering without a mouse.
+///
+/// Dragging was the only way to reorder the herd, which quietly excluded anyone
+/// driving the app from the keyboard. The arithmetic behind "move down" is the
+/// part worth pinning: `move(fromOffsets:toOffset:)` counts the gaps between
+/// rows rather than the rows, so down needs a correction that up does not.
+struct ListPositionTests {
+    @Test
+    func theEndsOfTheListKnowTheyAreTheEnds() {
+        let first = ListPosition(index: 0, count: 4)
+        #expect(!first.canMoveUp)
+        #expect(first.canMoveDown)
+
+        let last = ListPosition(index: 3, count: 4)
+        #expect(last.canMoveUp)
+        #expect(!last.canMoveDown)
+    }
+
+    @Test
+    func aloneInTheListMeansNowhereToGo() {
+        let only = ListPosition(index: 0, count: 1)
+        #expect(!only.canMoveUp)
+        #expect(!only.canMoveDown)
+        #expect(only.destination(movingBy: 1) == nil)
+        #expect(only.destination(movingBy: -1) == nil)
+    }
+
+    /// Walking off either end moves nothing rather than trapping or wrapping.
+    @Test
+    func aRowCannotBeMovedOffTheList() {
+        #expect(ListPosition(index: 0, count: 4).destination(movingBy: -1) == nil)
+        #expect(ListPosition(index: 3, count: 4).destination(movingBy: 1) == nil)
+    }
+
+    /// The asymmetry, stated: down clears the row it displaces, up does not.
+    @Test
+    func movingDownClearsTheRowItDisplaces() {
+        #expect(ListPosition(index: 1, count: 4).destination(movingBy: 1) == 3)
+        #expect(ListPosition(index: 1, count: 4).destination(movingBy: -1) == 0)
+    }
+
+    /// Said against the real thing rather than against a belief about it: the
+    /// arithmetic above is only correct if `move(fromOffsets:toOffset:)` agrees,
+    /// so this runs it through the store and reads the order back out.
+    @Test
+    func theArithmeticMatchesWhatTheStoreActuallyDoes() {
+        let storage = InMemoryConfigurationStorage()
+        let store = MachineConfigurationStore(storage: storage)
+        store.add([herdMember("alpha"), herdMember("beta"), herdMember("gamma")])
+        #expect(store.machines.map(\.id.rawValue) == ["local", "alpha", "beta", "gamma"])
+
+        // "alpha" (index 1) moves down one. It should end up after "beta".
+        let down = try! #require(
+            ListPosition(index: 1, count: 4).destination(movingBy: 1)
+        )
+        store.move(fromOffsets: IndexSet(integer: 1), toOffset: down)
+        #expect(store.machines.map(\.id.rawValue) == ["local", "beta", "alpha", "gamma"])
+
+        // And back up again, returning the herd to where it started.
+        let up = try! #require(
+            ListPosition(index: 2, count: 4).destination(movingBy: -1)
+        )
+        store.move(fromOffsets: IndexSet(integer: 2), toOffset: up)
+        #expect(store.machines.map(\.id.rawValue) == ["local", "alpha", "beta", "gamma"])
+    }
+
+    /// The order the rows are read out in, which is the only thing telling a
+    /// VoiceOver user that this list has an order at all.
+    @Test
+    func aRowSaysWhereItSits() {
+        #expect(ListPosition(index: 0, count: 4).description == "1 of 4")
+        #expect(ListPosition(index: 3, count: 4).description == "4 of 4")
+    }
+}
+
+private func herdMember(_ id: String) -> MachineConfiguration {
+    MachineConfiguration(
+        id: MachineID(id),
+        name: id.capitalized,
+        shortName: id.capitalized,
+        hostname: id,
+        hardwareSummary: "Test",
+        platform: .linux,
+        connection: .ssh,
+        avatar: .oxGPU,
+        identityFile: nil,
+        serverNames: [],
+        supportsGPU: false
+    )
+}
+
 // MARK: - Machines to look at
 
 @MainActor

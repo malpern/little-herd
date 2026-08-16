@@ -556,8 +556,13 @@ private struct LittleHerdSettingsView: View {
                     SettingsMachineRow(
                         machine: machine,
                         canRemove: machineStore.canRemove(machine.id),
+                        // Nothing to reorder in a herd of one, and an affordance
+                        // offering a move that cannot happen is worse than none.
+                        isReorderable: machineStore.machines.count > 1,
+                        position: position(of: machine.id),
                         onRemove: { remove(machine.id) },
                         onConnect: { configuringNAS = machine },
+                        onMove: { move(machine.id, by: $0) },
                         credentialsRevision: credentialsRevision
                     )
                     .listRowInsets(
@@ -592,16 +597,150 @@ private struct LittleHerdSettingsView: View {
         machineStore.remove(machineID)
         onConfigurationsChanged(machineStore.machines)
     }
+
+    private func position(of machineID: MachineID) -> ListPosition {
+        guard let index = machineStore.machines
+            .firstIndex(where: { $0.id == machineID })
+        else {
+            return ListPosition(index: 0, count: machineStore.machines.count)
+        }
+        return ListPosition(index: index, count: machineStore.machines.count)
+    }
+
+    /// The same reordering the drag performs, reachable without a mouse.
+    ///
+    /// Dragging is the only way this list could be reordered, which quietly
+    /// excluded anyone driving the app from the keyboard — and anyone who simply
+    /// found a four-row drag fiddly.
+    private func move(_ machineID: MachineID, by offset: Int) {
+        guard let index = machineStore.machines
+            .firstIndex(where: { $0.id == machineID }),
+            let destination = ListPosition(
+                index: index,
+                count: machineStore.machines.count
+            ).destination(movingBy: offset)
+        else { return }
+
+        machineStore.move(
+            fromOffsets: IndexSet(integer: index),
+            toOffset: destination
+        )
+        onConfigurationsChanged(machineStore.machines)
+    }
+}
+
+/// The pointer half of "you can move this".
+///
+/// A `List` hands over reordering without ever mentioning it: the rows look
+/// inert, the pointer stays an arrow, and the only hint is a sentence above the
+/// list. An open hand on approach and a closed one once you have hold is the
+/// oldest convention macOS has for direct manipulation.
+///
+/// The press is watched through a local event monitor rather than a
+/// `DragGesture`, deliberately. The drag itself belongs to AppKit's table view,
+/// and a SwiftUI gesture layered on top is liable to swallow the very drag it is
+/// decorating — a monitor sees the click without consuming it.
+///
+/// Cursors are `set()` rather than pushed. The push/pop stack has to be balanced
+/// across every way a view can lose the pointer — disappearing mid-hover, the
+/// window resigning key, the row moving out from under the mouse as the list
+/// reorders — and an unbalanced stack leaves the whole app wearing a hand
+/// cursor.
+private struct Grabbable: ViewModifier {
+    let isEnabled: Bool
+
+    @State private var isHovering = false
+    @State private var isHolding = false
+    @State private var pressMonitor: Any?
+
+    func body(content: Content) -> some View {
+        content
+            .onHover { hovering in
+                isHovering = hovering && isEnabled
+                if isHovering {
+                    startWatchingForPress()
+                } else {
+                    stopWatchingForPress()
+                    isHolding = false
+                }
+                applyCursor()
+            }
+            .onChange(of: isEnabled) { _, enabled in
+                guard !enabled else { return }
+                isHovering = false
+                releasePointer()
+            }
+            .onDisappear { releasePointer() }
+    }
+
+    private func applyCursor() {
+        guard isHovering else { return NSCursor.arrow.set() }
+        (isHolding ? NSCursor.closedHand : NSCursor.openHand).set()
+    }
+
+    private func releasePointer() {
+        stopWatchingForPress()
+        isHolding = false
+        NSCursor.arrow.set()
+    }
+
+    private func startWatchingForPress() {
+        guard pressMonitor == nil else { return }
+        pressMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.leftMouseDown, .leftMouseUp]
+        ) { event in
+            isHolding = event.type == .leftMouseDown
+            applyCursor()
+            // Handed straight back: the drag depends on this event arriving.
+            return event
+        }
+    }
+
+    private func stopWatchingForPress() {
+        guard let pressMonitor else { return }
+        NSEvent.removeMonitor(pressMonitor)
+        self.pressMonitor = nil
+    }
+}
+
+extension View {
+    func grabbable(_ isEnabled: Bool = true) -> some View {
+        modifier(Grabbable(isEnabled: isEnabled))
+    }
+}
+
+/// The visible half: something to aim at.
+///
+/// Reserved rather than revealed — the space is always there and only the glyph
+/// fades in, because a grip that appears on hover and pushes the row sideways
+/// moves the thing you were reaching for.
+private struct DragGrip: View {
+    let isVisible: Bool
+
+    var body: some View {
+        Image(systemName: "line.3.horizontal")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.tertiary)
+            .frame(width: 11)
+            .opacity(isVisible ? 1 : 0)
+            .accessibilityHidden(true)
+    }
 }
 
 private struct SettingsMachineRow: View {
     let machine: MachineConfiguration
     let canRemove: Bool
+    let isReorderable: Bool
+    let position: ListPosition
     let onRemove: () -> Void
     let onConnect: () -> Void
+    let onMove: (Int) -> Void
     /// Read so that saving a password redraws this row. The keychain is not
     /// observable, so without it the label can outlive the thing it describes.
     let credentialsRevision: Int
+
+    @State private var isHovering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// What the row can honestly claim.
     ///
@@ -651,24 +790,35 @@ private struct SettingsMachineRow: View {
 
     var body: some View {
         HStack(spacing: 9) {
-            Image(machine.avatar.assetName)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 24, height: 24)
-                .accessibilityHidden(true)
+            // Everything up to the controls is the grab area. It carries the
+            // pointer, so the whole of a row's identity reads as the handle —
+            // the controls past it set their own pointer, and an open hand over
+            // a button invites the wrong gesture entirely.
+            HStack(spacing: 9) {
+                DragGrip(isVisible: isReorderable && isHovering)
 
-            VStack(alignment: .leading, spacing: 0) {
-                Text(machine.name)
-                    .font(.callout)
-                    .lineLimit(1)
+                Image(machine.avatar.assetName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
+                    .accessibilityHidden(true)
 
-                Text(machine.hostname)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(machine.name)
+                        .font(.callout)
+                        .lineLimit(1)
+
+                    Text(machine.hostname)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 8)
             }
-
-            Spacer(minLength: 8)
+            .contentShape(Rectangle())
+            .grabbable(isReorderable)
+            .onHover { isHovering = $0 }
 
             // Only a NAS has anything to sign in to. Storage machines start out
             // reading a mounted share; connecting to DSM is what gets them drive
@@ -696,6 +846,37 @@ private struct SettingsMachineRow: View {
             }
         }
         .frame(height: 36)
+        // A row that lights up under the pointer is the other half of saying it
+        // can be picked up, and it is what makes the drop target legible once
+        // one is moving.
+        .background {
+            RoundedRectangle(cornerRadius: 5)
+                .fill(.quaternary.opacity(isHovering && isReorderable ? 0.55 : 0))
+                .padding(.horizontal, -4)
+        }
+        .animation(
+            reduceMotion ? nil : .easeOut(duration: 0.12),
+            value: isHovering
+        )
+        .contextMenu {
+            Button("Move Up") { onMove(-1) }
+                .disabled(!position.canMoveUp)
+            Button("Move Down") { onMove(1) }
+                .disabled(!position.canMoveDown)
+        }
+        // Read as one element, so VoiceOver says which machine and where it sits
+        // rather than walking the avatar and the hostname separately.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(machine.name), \(machine.hostname)")
+        .accessibilityValue(position.description)
+        .accessibilityActions {
+            if position.canMoveUp {
+                Button("Move Up") { onMove(-1) }
+            }
+            if position.canMoveDown {
+                Button("Move Down") { onMove(1) }
+            }
+        }
     }
 }
 
