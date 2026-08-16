@@ -72,6 +72,23 @@ nonisolated enum KeychainSecret {
         }
     }
 
+    /// Runs a keychain call with the legacy authorization dialog turned off.
+    ///
+    /// `kSecUseAuthenticationUI` governs the data-protection keychain and does
+    /// nothing for this one — measured: a read carrying that flag still put up a
+    /// password dialog and blocked until it was answered, while the same read
+    /// inside this returns `errSecAuthFailed` in a hundredth of a second. That
+    /// mistake is why the prompt survived several attempts to stop it.
+    ///
+    /// Process-wide, so it is restored immediately: saving a password from
+    /// Settings is a foreground action the user just asked for and is still
+    /// allowed to authenticate.
+    private static func withoutDialogs<T>(_ work: () -> T) -> T {
+        SecKeychainSetUserInteractionAllowed(false)
+        defer { SecKeychainSetUserInteractionAllowed(true) }
+        return work()
+    }
+
     private static func readFromKeychain(account: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -79,20 +96,13 @@ nonisolated enum KeychainSecret {
             kSecAttrAccount as String: account,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
-            // Never put up a dialog. This runs from the sampling loop every ten
-            // seconds, and a keychain item whose access list does not name this
-            // build — one written by a different copy of the app, say — would
-            // otherwise raise a modal password prompt on a timer, in the
-            // background, with no way to make it stop.
-            //
-            // Failing instead is the honest outcome: the machine reads as not
-            // connected, and the user signs in again from Settings when they
-            // choose to, which is a foreground action they asked for.
-            kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
         ]
 
         var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+        let status = withoutDialogs {
+            SecItemCopyMatching(query as CFDictionary, &item)
+        }
+        guard status == errSecSuccess,
               let data = item as? Data,
               let secret = String(data: data, encoding: .utf8)
         else {
@@ -119,11 +129,9 @@ nonisolated enum KeychainSecret {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecMatchLimit as String: kSecMatchLimitOne,
-            // Same rule as the read: never raise a dialog. This answers a
-            // yes/no question for the interface, which is not worth
-            // interrupting anyone over.
-            kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
         ]
-        return SecItemCopyMatching(query as CFDictionary, nil) == errSecSuccess
+        return withoutDialogs {
+            SecItemCopyMatching(query as CFDictionary, nil) == errSecSuccess
+        }
     }
 }

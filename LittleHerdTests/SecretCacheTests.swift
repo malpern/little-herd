@@ -131,22 +131,32 @@ struct KeychainReadPolicyTests {
             encoding: .utf8
         )
 
-        // The read path must opt out of interaction.
-        #expect(source.contains("kSecUseAuthenticationUIFail"))
-
-        // And it must be on the read, not the write: saving is a foreground
-        // action the user just asked for, and is allowed to authenticate.
-        let readRange = try #require(source.range(of: "func readFromKeychain"))
-        let flagRange = try #require(source.range(of: "kSecUseAuthenticationUIFail"))
+        // Must be the legacy-keychain control, not the data-protection one.
+        //
+        // kSecUseAuthenticationUI governs the data-protection keychain and does
+        // nothing for this one — measured: a read carrying it still put up a
+        // password dialog and blocked, while the same read wrapped in
+        // SecKeychainSetUserInteractionAllowed(false) returns errSecAuthFailed
+        // in a hundredth of a second. Shipping the wrong one is why the prompt
+        // survived several attempts to stop it.
+        #expect(source.contains("SecKeychainSetUserInteractionAllowed(false)"))
         #expect(
-            flagRange.lowerBound > readRange.lowerBound,
-            "the opt-out belongs on the read, not the write"
+            !source.contains("kSecUseAuthenticationUIFail"),
+            "that flag does not apply to this keychain and reads as a fix that is not one"
         )
 
-        // Saving is a foreground action the user just asked for, so it is
-        // allowed to authenticate.
+        // Reading and checking are suppressed; saving is a foreground action
+        // the user just asked for and may still authenticate.
+        let readRange = try #require(source.range(of: "func readFromKeychain"))
+        let readBody = String(source[readRange.lowerBound...].prefix(700))
+        #expect(readBody.contains("withoutDialogs"))
+
+        // Bounded by the helper's own definition, which sits between the two.
         let storeRange = try #require(source.range(of: "static func store("))
-        let storeBody = String(source[storeRange.lowerBound..<readRange.lowerBound])
-        #expect(!storeBody.contains("kSecUseAuthenticationUIFail"))
+        let helperRange = try #require(
+            source.range(of: "private static func withoutDialogs")
+        )
+        let storeBody = String(source[storeRange.lowerBound..<helperRange.lowerBound])
+        #expect(!storeBody.contains("withoutDialogs {"))
     }
 }
