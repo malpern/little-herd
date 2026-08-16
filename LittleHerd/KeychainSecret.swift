@@ -31,21 +31,16 @@ nonisolated enum KeychainSecret {
             kSecAttrAccount as String: account,
         ]
 
-        // Updating in place keeps whatever access the user has already granted;
-        // deleting and re-adding would re-prompt on every password change.
-        let update: [String: Any] = [
-            kSecValueData as String: Data(secret.utf8)
-        ]
-        let updateStatus = SecItemUpdate(
-            query as CFDictionary,
-            update as CFDictionary
-        )
-        if updateStatus == errSecSuccess {
-            cache.set(secret, for: account)
-            return true
-        }
-
-        guard updateStatus == errSecItemNotFound else { return false }
+        // Deliberately delete and re-add rather than update in place.
+        //
+        // Updating preserves the item's existing access list, which names the
+        // binaries allowed to read it. A password saved by one build and
+        // updated by the next therefore keeps the *first* build's access list
+        // for ever, so every later release inherits an entry it cannot read —
+        // and, because reads no longer raise a dialog, silently reports the NAS
+        // as not signed in. Adding a fresh item gives it this build's access
+        // list, which is the whole point of signing in again.
+        SecItemDelete(query as CFDictionary)
 
         var insert = query
         insert[kSecValueData as String] = Data(secret.utf8)
