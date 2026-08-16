@@ -152,19 +152,47 @@ enum ApplicationIconCache {
 
     /// Resolves an app by bundle identifier, for callers that know what app
     /// they want rather than where it lives.
+    /// Resolves an app by bundle identifier, preferring one that can actually
+    /// draw itself.
+    ///
+    /// `com.anthropic.claude-code` resolves to a helper bundle inside Claude
+    /// Code's application-support directory — no `.icns`, no `CFBundleIconFile`,
+    /// nothing to draw — so agent rows rendered an empty square while the
+    /// lookup was working perfectly. Later identifiers name the real
+    /// applications, so a bundle with no icon is passed over rather than
+    /// accepted just for matching first.
     static func bundlePath(forAnyOf identifiers: [String]) -> String? {
+        var firstResolved: String?
+
         for identifier in identifiers {
+            let path: String?
             if let cached = pathsByBundleIdentifier[identifier] {
-                if let cached { return cached }
-                continue
+                path = cached
+            } else {
+                path = NSWorkspace.shared
+                    .urlForApplication(withBundleIdentifier: identifier)?
+                    .path
+                pathsByBundleIdentifier[identifier] = path
             }
-            let path = NSWorkspace.shared
-                .urlForApplication(withBundleIdentifier: identifier)?
-                .path
-            pathsByBundleIdentifier[identifier] = path
-            if let path { return path }
+
+            guard let path else { continue }
+            if firstResolved == nil { firstResolved = path }
+            if hasDrawableIcon(atBundlePath: path) { return path }
         }
-        return nil
+
+        // Nothing had an icon: keep the first match so the row at least points
+        // at the right application.
+        return firstResolved
+    }
+
+    /// Deliberately only the bundle's own `.icns`.
+    ///
+    /// Asking NSWorkspace would answer yes for the icon-less helper too — it
+    /// hands back the generic application placeholder, which is a real image
+    /// with real representations, and is exactly the empty-looking square this
+    /// is trying to avoid.
+    private static func hasDrawableIcon(atBundlePath path: String) -> Bool {
+        iconFromBundle(atPath: path) != nil
     }
 
     static func icon(atBundlePath path: String) -> NSImage? {
