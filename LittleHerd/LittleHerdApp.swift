@@ -586,6 +586,52 @@ private struct SettingsMachineRow: View {
     let onRemove: () -> Void
     let onConnect: () -> Void
 
+    /// What the row can honestly claim.
+    ///
+    /// This said "Connected" whenever the machine was configured for DSM, which
+    /// describes the setting rather than the situation: after the saved password
+    /// is removed — or when it was written by a different build and can no
+    /// longer be read — the row went on claiming a connection that no longer
+    /// existed. The keychain check cannot raise a dialog, so asking is free.
+    private enum SignInState {
+        case notSignedIn
+        case signedIn(account: String)
+        case passwordMissing(account: String)
+
+        var label: String {
+            switch self {
+            case .notSignedIn: "Connect…"
+            case .signedIn: "Signed in"
+            case .passwordMissing: "Sign in again"
+            }
+        }
+
+        var needsAttention: Bool {
+            if case .passwordMissing = self { return true }
+            return false
+        }
+
+        var help: String {
+            switch self {
+            case .notSignedIn:
+                "Sign in to DSM to read capacity and drive health without a mounted share"
+            case .signedIn(let account):
+                "Signed in to DSM as \(account). Click to change."
+            case .passwordMissing(let account):
+                "No saved password for \(account) — Little Herd cannot sign in until you enter it again."
+            }
+        }
+    }
+
+    private var signInState: SignInState {
+        guard let endpoint = machine.dsmEndpoint else { return .notSignedIn }
+        return KeychainSecret.exists(
+            account: KeychainSecret.account(for: endpoint)
+        )
+            ? .signedIn(account: endpoint.username)
+            : .passwordMissing(account: endpoint.username)
+    }
+
     var body: some View {
         HStack(spacing: 9) {
             Image(machine.avatar.assetName)
@@ -611,16 +657,11 @@ private struct SettingsMachineRow: View {
             // reading a mounted share; connecting to DSM is what gets them drive
             // health and measurements that do not depend on the Finder.
             if machine.isStorage {
-                Button(machine.connection == .dsm ? "Connected" : "Connect…") {
-                    onConnect()
-                }
-                .buttonStyle(.link)
-                .font(.caption)
-                .help(
-                    machine.connection == .dsm
-                        ? "Signed in to DSM as \(machine.dsmUsername ?? "?"). Click to change."
-                        : "Sign in to DSM to read capacity and drive health without a mounted share"
-                )
+                Button(signInState.label) { onConnect() }
+                    .buttonStyle(.link)
+                    .font(.caption)
+                    .foregroundStyle(signInState.needsAttention ? .orange : .accentColor)
+                    .help(signInState.help)
             }
 
             if canRemove {
