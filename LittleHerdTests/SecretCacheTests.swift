@@ -110,3 +110,43 @@ struct SecretCacheTests {
         }
     }
 }
+
+/// The keychain read must never be able to interrupt the user.
+struct KeychainReadPolicyTests {
+    /// The sampling loop reads every ten seconds. A read that can raise a modal
+    /// password dialog turns that into a prompt on a timer, in the background,
+    /// which is exactly what happened: an item whose access list named a
+    /// different build of the app produced an endless series of dialogs.
+    ///
+    /// Asserted against the source, because the alternative is a test that
+    /// hangs a headless runner on a real authorisation dialog — which is also
+    /// something this project has already done to itself once.
+    @Test
+    func theKeychainReadIsConfiguredNeverToShowUI() throws {
+        let source = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("LittleHerd/KeychainSecret.swift"),
+            encoding: .utf8
+        )
+
+        // The read path must opt out of interaction.
+        #expect(source.contains("kSecUseAuthenticationUIFail"))
+
+        // And it must be on the read, not the write: saving is a foreground
+        // action the user just asked for, and is allowed to authenticate.
+        let readRange = try #require(source.range(of: "func readFromKeychain"))
+        let flagRange = try #require(source.range(of: "kSecUseAuthenticationUIFail"))
+        #expect(
+            flagRange.lowerBound > readRange.lowerBound,
+            "the opt-out belongs on the read, not the write"
+        )
+
+        // Saving is a foreground action the user just asked for, so it is
+        // allowed to authenticate.
+        let storeRange = try #require(source.range(of: "static func store("))
+        let storeBody = String(source[storeRange.lowerBound..<readRange.lowerBound])
+        #expect(!storeBody.contains("kSecUseAuthenticationUIFail"))
+    }
+}

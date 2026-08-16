@@ -84,6 +84,16 @@ nonisolated enum KeychainSecret {
             kSecAttrAccount as String: account,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
+            // Never put up a dialog. This runs from the sampling loop every ten
+            // seconds, and a keychain item whose access list does not name this
+            // build — one written by a different copy of the app, say — would
+            // otherwise raise a modal password prompt on a timer, in the
+            // background, with no way to make it stop.
+            //
+            // Failing instead is the honest outcome: the machine reads as not
+            // connected, and the user signs in again from Settings when they
+            // choose to, which is a foreground action they asked for.
+            kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
         ]
 
         var item: CFTypeRef?
