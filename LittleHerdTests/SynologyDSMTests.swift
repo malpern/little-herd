@@ -150,7 +150,7 @@ struct SynologyDSMTests {
     /// Uncorrectable sectors are damage even if every status string says
     /// otherwise, so the count alone is enough to raise a warning.
     @Test
-    func badSectorsAloneAreEnoughToStopCallingADriveHealthy() throws {
+    func badSectorsAloneAreEnoughToStopCallingASynologyHealthy() throws {
         let json = """
         {"success":true,"data":{"disks":[
           {"id":"sda","name":"Drive 1","status":"normal","smart_status":"normal",
@@ -160,6 +160,43 @@ struct SynologyDSMTests {
             try decode(DSMEnvelope<DSMStoragePayload>.self, json).data
         )
         #expect(SynologyDSMParser.drives(from: payload)[0].health == .warning)
+    }
+
+    /// The real unit reports its volume as "attention" while every drive string
+    /// says "normal". Before "attention" was understood it fell through to
+    /// `.unknown`, so a degraded pool was indistinguishable from one that
+    /// reported nothing.
+    @Test
+    func aVolumeInAttentionIsRecognisedAsTrouble() throws {
+        let payload = try #require(
+            try decode(DSMEnvelope<DSMStoragePayload>.self, realStorageJSON).data
+        )
+        let volume = SynologyDSMParser.storageVolumes(from: payload)[0]
+        #expect(volume.health == .warning)
+    }
+
+    @Test
+    func dsmsVolumeAndPoolWordsMapOntoHealth() {
+        #expect(SynologyHealth.parse("attention") == .warning)
+        #expect(SynologyHealth.parse("danger") == .critical)
+        #expect(SynologyHealth.parse("normal") == .normal)
+        // Still true after adding those two — the substring trap that started
+        // all this.
+        #expect(SynologyHealth.parse("abnormal") == .warning)
+    }
+
+    /// A Mac's volumes have no health opinion at all, and must not be made to
+    /// look like they do.
+    @Test
+    func aVolumeFromAMachineWithNoOpinionReportsNoHealth() {
+        let volume = StorageVolume(
+            id: "/",
+            name: "Macintosh HD",
+            mountPath: "/",
+            availableBytes: 100,
+            totalBytes: 200
+        )
+        #expect(volume.health == nil)
     }
 
     /// `display_name` is null and `desc` is empty on a real unit, so the name
@@ -257,14 +294,14 @@ struct SynologyDSMTests {
 
     @Test
     func driveHealthReadsDSMsSeveralSpellingsOfTheSameCondition() {
-        #expect(DriveHealth.parse("normal") == .normal)
-        #expect(DriveHealth.parse("Good") == .normal)
-        #expect(DriveHealth.parse("warning") == .warning)
-        #expect(DriveHealth.parse("abnormal") == .warning)
-        #expect(DriveHealth.parse("critical") == .critical)
-        #expect(DriveHealth.parse("crashed") == .critical)
-        #expect(DriveHealth.parse("") == .unknown)
-        #expect(DriveHealth.parse(nil) == .unknown)
+        #expect(SynologyHealth.parse("normal") == .normal)
+        #expect(SynologyHealth.parse("Good") == .normal)
+        #expect(SynologyHealth.parse("warning") == .warning)
+        #expect(SynologyHealth.parse("abnormal") == .warning)
+        #expect(SynologyHealth.parse("critical") == .critical)
+        #expect(SynologyHealth.parse("crashed") == .critical)
+        #expect(SynologyHealth.parse("") == .unknown)
+        #expect(SynologyHealth.parse(nil) == .unknown)
     }
 
     /// A drive DSM has taken offline matters even when its SMART data still

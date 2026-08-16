@@ -49,7 +49,7 @@ nonisolated enum MetricKind: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-extension DriveHealth {
+extension SynologyHealth {
     /// A healthy drive reads as an ordinary disk row. Only trouble takes on a
     /// colour, so a glance at the pane finds the bad drive rather than a wall of
     /// green.

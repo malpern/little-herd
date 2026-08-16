@@ -249,7 +249,7 @@ struct MachineStatusLabel: View {
                 // only Disk: the machine is reachable and its volumes may look
                 // fine while the hardware underneath is failing.
                 .overlay(alignment: .topTrailing) {
-                    if let health = worstDriveHealth {
+                    if let health = worstStorageHealth {
                         Image(systemName: health.symbolName)
                             .font(.system(size: avatarSize * 0.34))
                             .foregroundStyle(.white, health.tint)
@@ -283,12 +283,13 @@ struct MachineStatusLabel: View {
         }
     }
 
-    /// Only trouble earns a badge. A healthy or unreported drive shows nothing,
-    /// so the badge means something when it does appear.
-    private var worstDriveHealth: DriveHealth? {
-        let worst = machine.drives
-            .map(\.health)
-            .max { $0.severity < $1.severity }
+    /// Only trouble earns a badge. Healthy or unreported storage shows nothing,
+    /// so the badge means something when it does appear. Volumes count as well
+    /// as drives: a pool can be degraded while every drive still reads normal.
+    private var worstStorageHealth: SynologyHealth? {
+        let reported = machine.drives.map(\.health)
+            + machine.storageVolumes.compactMap(\.health)
+        let worst = reported.max { $0.severity < $1.severity }
         guard let worst, worst == .warning || worst == .critical else {
             return nil
         }

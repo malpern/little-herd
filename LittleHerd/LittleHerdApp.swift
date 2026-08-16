@@ -38,14 +38,19 @@ struct LittleHerdApp: App {
         )
         // Remember the certificate a NAS presented the first time it answered,
         // so a later change to it is refused rather than trusted.
-        model.onCertificateDiscovered = { [machineStore] machineID, fingerprint in
+        model.onCertificateDiscovered = { [machineStore, weak model] machineID, fingerprint in
             guard var configuration = machineStore.machines.first(where: {
                 $0.id == machineID
-            }) else {
+            }), configuration.dsmCertificateFingerprint == nil else {
                 return
             }
             configuration.dsmCertificateFingerprint = fingerprint
             machineStore.update(configuration)
+            // Rebuild so the pin takes effect now rather than on next launch.
+            // Without this, the session that first sees a certificate keeps
+            // running with nothing to check against — which is exactly the
+            // session an impersonating server would want.
+            model?.applyConfigurations(machineStore.machines)
         }
         _model = State(initialValue: model)
     }

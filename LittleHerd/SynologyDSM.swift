@@ -237,7 +237,7 @@ nonisolated struct DSMUtilizationPayload: Decodable, Sendable {
 
 // MARK: - Drive health
 
-nonisolated enum DriveHealth: String, Equatable, Sendable {
+nonisolated enum SynologyHealth: String, Equatable, Sendable {
     case normal
     case warning
     case critical
@@ -277,14 +277,18 @@ nonisolated enum DriveHealth: String, Equatable, Sendable {
     /// enumerating every observed spelling.
     /// Order matters: "abnormal" contains "normal", so a healthy match tested
     /// first would read a degrading drive as fine. Damage always wins.
-    static func parse(_ raw: String?) -> DriveHealth {
+    ///
+    /// "attention" and "danger" are the words DSM uses for volumes and pools —
+    /// a real unit reported a volume as "attention" while every drive string
+    /// said "normal", and without these it fell through to `.unknown`.
+    static func parse(_ raw: String?) -> SynologyHealth {
         guard let raw = raw?.lowercased(), !raw.isEmpty else { return .unknown }
         if raw.contains("critical") || raw.contains("fail")
-            || raw.contains("crashed") {
+            || raw.contains("crashed") || raw.contains("danger") {
             return .critical
         }
         if raw.contains("warning") || raw.contains("abnormal")
-            || raw.contains("degrade") {
+            || raw.contains("degrade") || raw.contains("attention") {
             return .warning
         }
         if raw.contains("normal") || raw.contains("good") || raw == "ok" {
@@ -298,7 +302,7 @@ nonisolated struct SynologyDrive: Equatable, Sendable, Identifiable {
     let id: String
     let name: String
     let model: String
-    let health: DriveHealth
+    let health: SynologyHealth
     /// Uncorrectable sectors DSM has counted. Non-zero is the most concrete
     /// evidence a drive is going, and worth showing outright.
     let uncorrectableSectors: Int
@@ -309,7 +313,7 @@ nonisolated struct SynologyDrive: Equatable, Sendable, Identifiable {
         id: String,
         name: String,
         model: String,
-        health: DriveHealth,
+        health: SynologyHealth,
         uncorrectableSectors: Int = 0,
         temperatureCelsius: Double?
     ) {
@@ -349,7 +353,14 @@ nonisolated enum SynologyDSMParser {
                 mountPath: volume.volPath ?? id,
                 availableBytes: min(available, total),
                 totalBytes: total,
-                volumeCount: 1
+                volumeCount: 1,
+                // Worst of the two, for the same reason drives take the worst of
+                // theirs: a degraded pool shows up here even when no single
+                // drive has been condemned.
+                health: worse(
+                    SynologyHealth.parse(volume.status),
+                    SynologyHealth.parse(volume.summaryStatus)
+                )
             )
         }
     }
@@ -385,7 +396,7 @@ nonisolated enum SynologyDSMParser {
                 disk.summaryStatusKey,
                 disk.smartStatus,
                 disk.status,
-            ].map(DriveHealth.parse).reduce(DriveHealth.unknown, worse)
+            ].map(SynologyHealth.parse).reduce(SynologyHealth.unknown, worse)
 
             // Uncorrectable sectors are damage regardless of what the status
             // strings claim.
@@ -406,7 +417,7 @@ nonisolated enum SynologyDSMParser {
         }
     }
 
-    static func worse(_ lhs: DriveHealth, _ rhs: DriveHealth) -> DriveHealth {
+    static func worse(_ lhs: SynologyHealth, _ rhs: SynologyHealth) -> SynologyHealth {
         lhs.severity >= rhs.severity ? lhs : rhs
     }
 

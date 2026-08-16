@@ -799,8 +799,10 @@ private struct MachineStoragePane: View {
         ) {
             ForEach(volumes) { volume in
                 MetricDetailRow(
-                    symbolName: "internaldrive",
-                    tint: MetricKind.disk.color,
+                    // A volume the machine considers degraded says so here, so
+                    // the row is not merely a capacity bar on failing hardware.
+                    symbolName: volume.health.map(\.symbolName) ?? "internaldrive",
+                    tint: volume.health.map(\.tint) ?? MetricKind.disk.color,
                     title: Text(volume.name),
                     subtitle: Text(capacityDescription(for: volume)),
                     value: Text(
@@ -894,6 +896,11 @@ private struct MachineStoragePane: View {
     private func capacityDescription(for volume: StorageVolume) -> LocalizedStringResource {
         let free = Int64(volume.availableBytes).formatted(.byteCount(style: .file))
         let total = Int64(volume.totalBytes).formatted(.byteCount(style: .file))
+        // Condition leads when there is one: a degraded volume matters more than
+        // how much room is left on it.
+        if let health = volume.health, health == .warning || health == .critical {
+            return "\(health.label) · \(free) free of \(total)"
+        }
         guard volume.volumeCount > 1 else {
             return "\(free) free of \(total)"
         }

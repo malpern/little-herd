@@ -213,7 +213,7 @@ struct SynologyWiringTests {
                 ]
             )
         )
-        #expect(MachineAlert.active(for: machine).contains(.driveFailing))
+        #expect(MachineAlert.active(for: machine).contains(.storageUnhealthy))
     }
 
     /// Plenty of drives report no SMART status at all. Treating silence as
@@ -243,7 +243,7 @@ struct SynologyWiringTests {
                 ]
             )
         )
-        #expect(!MachineAlert.active(for: machine).contains(.driveFailing))
+        #expect(!MachineAlert.active(for: machine).contains(.storageUnhealthy))
     }
 
     @Test
@@ -278,11 +278,11 @@ struct SynologyWiringTests {
         }
         center.evaluate(machine, isEnabled: true)
 
-        let drive = delivered.first { $0.0.contains("drive in trouble") }
-        let body = try? #require(drive?.1)
+        let alert = delivered.first { $0.0.contains("storage needs attention") }
+        let body = try? #require(alert?.1)
         // The critical drive, not merely the first hurt one.
         #expect(body?.contains("Drive 2") == true)
-        #expect(body?.contains("critical") == true)
+        #expect(body?.contains("failing") == true)
         #expect(body?.contains("2 drives affected") == true)
     }
 
@@ -292,22 +292,22 @@ struct SynologyWiringTests {
     /// drive is never sorted below a healthy one.
     @Test
     func healthSeverityRanksDamageAboveSilence() {
-        #expect(DriveHealth.critical.severity > DriveHealth.warning.severity)
-        #expect(DriveHealth.warning.severity > DriveHealth.normal.severity)
+        #expect(SynologyHealth.critical.severity > SynologyHealth.warning.severity)
+        #expect(SynologyHealth.warning.severity > SynologyHealth.normal.severity)
         // Unknown is the absence of news, not bad news: it must sort below
         // healthy, or a NAS reporting nothing would look worse than one
         // reporting fine.
-        #expect(DriveHealth.normal.severity > DriveHealth.unknown.severity)
+        #expect(SynologyHealth.normal.severity > SynologyHealth.unknown.severity)
     }
 
     @Test
     func everyHealthHasItsOwnLabelAndSymbol() {
-        let healths: [DriveHealth] = [.normal, .warning, .critical, .unknown]
+        let healths: [SynologyHealth] = [.normal, .warning, .critical, .unknown]
         let labels = Set(healths.map(\.label))
         let symbols = Set(healths.map(\.symbolName))
         #expect(labels.count == 4)
         #expect(symbols.count == 4)
-        #expect(DriveHealth.critical.label == "Failing")
+        #expect(SynologyHealth.critical.label == "Failing")
     }
 
     /// The worst drive determines what the parser reports for a disk whose SMART
@@ -318,6 +318,82 @@ struct SynologyWiringTests {
         #expect(SynologyDSMParser.worse(.critical, .normal) == .critical)
         #expect(SynologyDSMParser.worse(.unknown, .normal) == .normal)
         #expect(SynologyDSMParser.worse(.warning, .critical) == .critical)
+    }
+
+    /// A pool can be degraded while every drive still reads normal. Alerting
+    /// only on drives would stay silent through exactly that.
+    @Test
+    func aDegradedVolumeAlertsEvenWhenEveryDriveLooksFine() {
+        let machine = MachineMonitorModel(configuration: dsmConfiguration())
+        machine.apply(
+            SystemSnapshot(
+                timestamp: .now,
+                readings: [.disk: MetricReading(value: 40)],
+                storageVolumes: [
+                    StorageVolume(
+                        id: "dsm:volume_1",
+                        name: "Volume 1",
+                        mountPath: "/volume1",
+                        availableBytes: 3_000,
+                        totalBytes: 9_000,
+                        health: .warning
+                    )
+                ],
+                drives: [
+                    SynologyDrive(
+                        id: "sda",
+                        name: "Drive 1",
+                        model: "WD30EFRX",
+                        health: .normal,
+                        temperatureCelsius: 33
+                    )
+                ]
+            )
+        )
+        #expect(MachineAlert.active(for: machine).contains(.storageUnhealthy))
+
+        var delivered: [(String, String)] = []
+        let center = MachineAlertCenter { title, body in
+            delivered.append((title, body))
+        }
+        center.evaluate(machine, isEnabled: true)
+
+        // With no drive condemned, the message has to name the volume rather
+        // than going out empty.
+        let alert = delivered.first { $0.0.contains("storage needs attention") }
+        #expect(alert?.1.contains("Volume 1") == true)
+    }
+
+    /// A healthy NAS must stay quiet, or the alert means nothing.
+    @Test
+    func aHealthyNASRaisesNothing() {
+        let machine = MachineMonitorModel(configuration: dsmConfiguration())
+        machine.apply(
+            SystemSnapshot(
+                timestamp: .now,
+                readings: [.disk: MetricReading(value: 40)],
+                storageVolumes: [
+                    StorageVolume(
+                        id: "dsm:volume_1",
+                        name: "Volume 1",
+                        mountPath: "/volume1",
+                        availableBytes: 5_000,
+                        totalBytes: 9_000,
+                        health: .normal
+                    )
+                ],
+                drives: [
+                    SynologyDrive(
+                        id: "sda",
+                        name: "Drive 1",
+                        model: "WD30EFRX",
+                        health: .normal,
+                        temperatureCelsius: 33
+                    )
+                ]
+            )
+        )
+        #expect(MachineAlert.active(for: machine).isEmpty)
     }
 
     /// A machine that has gone offline reports last-known numbers, so a drive

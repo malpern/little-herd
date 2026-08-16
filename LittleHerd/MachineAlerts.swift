@@ -12,17 +12,17 @@ nonisolated enum MachineAlert: String, CaseIterable, Sendable {
     case diskFull
     case memoryCritical
     case unreachable
-    /// A drive reporting SMART trouble. The one condition here that is about
-    /// hardware rather than load: a full disk is recoverable, a dying drive
-    /// takes the data with it.
-    case driveFailing
+    /// A drive or volume the machine itself considers damaged. The one condition
+    /// here that is about hardware rather than load: a full disk is recoverable,
+    /// a dying drive takes the data with it.
+    case storageUnhealthy
 
     func title(machine: String) -> String {
         switch self {
         case .diskFull: "\(machine) is almost out of space"
         case .memoryCritical: "\(machine) is under memory pressure"
         case .unreachable: "\(machine) stopped responding"
-        case .driveFailing: "\(machine) has a drive in trouble"
+        case .storageUnhealthy: "\(machine) storage needs attention"
         }
     }
 
@@ -31,7 +31,7 @@ nonisolated enum MachineAlert: String, CaseIterable, Sendable {
         case .diskFull: "\(machine) has space again"
         case .memoryCritical: "\(machine) memory recovered"
         case .unreachable: "\(machine) is back"
-        case .driveFailing: "\(machine) drives report healthy again"
+        case .storageUnhealthy: "\(machine) storage reports healthy again"
         }
     }
 
@@ -59,10 +59,14 @@ nonisolated enum MachineAlert: String, CaseIterable, Sendable {
         }
         // `.unknown` is not trouble — plenty of drives report no SMART status at
         // all, and treating silence as failure is how a monitor gets muted.
-        if machine.drives.contains(where: {
-            $0.health == .warning || $0.health == .critical
-        }) {
-            alerts.insert(.driveFailing)
+        // Volumes count as well as drives: a pool can be degraded while every
+        // individual drive still reads normal.
+        let damaged: (SynologyHealth?) -> Bool = {
+            $0 == .warning || $0 == .critical
+        }
+        if machine.drives.contains(where: { damaged($0.health) })
+            || machine.storageVolumes.contains(where: { damaged($0.health) }) {
+            alerts.insert(.storageUnhealthy)
         }
         return alerts
     }
@@ -133,20 +137,31 @@ final class MachineAlertCenter {
         case .unreachable:
             guard let reason = machine.unavailability else { return "" }
             return String(localized: reason.detail(host: machine.hostname))
-        case .driveFailing:
+        case .storageUnhealthy:
             // Names the drive, because the next step is opening the bay and
             // pulling the right one.
             let hurt = machine.drives.filter {
                 $0.health == .warning || $0.health == .critical
             }
-            guard let worst = hurt.first(where: { $0.health == .critical })
-                ?? hurt.first
-            else {
+            if let worst = hurt.first(where: { $0.health == .critical })
+                ?? hurt.first {
+                let others = hurt.count > 1
+                    ? " (\(hurt.count) drives affected)"
+                    : ""
+                let model = worst.model.isEmpty ? "" : " \(worst.model)"
+                let sectors = worst.uncorrectableSectors > 0
+                    ? ", \(worst.uncorrectableSectors) bad sectors"
+                    : ""
+                return "\(worst.name)\(model) reports \(worst.health.label.lowercased())\(sectors)\(others)."
+            }
+            // No individual drive is condemned, so the trouble is at the volume
+            // or pool level — say that rather than saying nothing.
+            guard let volume = machine.storageVolumes.first(where: {
+                $0.health == .warning || $0.health == .critical
+            }) else {
                 return ""
             }
-            let others = hurt.count > 1 ? " (\(hurt.count) drives affected)" : ""
-            let model = worst.model.isEmpty ? "" : " \(worst.model)"
-            return "\(worst.name)\(model) reports \(worst.health.rawValue)\(others)."
+            return "\(volume.name) reports \(volume.health?.label.lowercased() ?? "trouble")."
         }
     }
 
