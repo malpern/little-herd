@@ -122,22 +122,69 @@ final class MachineConfigurationStore {
     @ObservationIgnored
     private let defaults: UserDefaults
 
+    /// Saved entries this build could not decode — a machine written by a newer
+    /// version, most likely. Carried through untouched so that running an older
+    /// build, or one that predates a connection kind, does not quietly discard
+    /// machines it happens not to understand.
+    @ObservationIgnored
+    private var unreadableEntries: [Any] = []
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        if let data = defaults.data(
+
+        guard let data = defaults.data(
             forKey: LittleHerdPreferences.machineConfigurationsKey
-        ),
-            let decoded = try? JSONDecoder().decode(
-                [MachineConfiguration].self,
-                from: data
-            ),
-            !decoded.isEmpty
-        {
-            machines = decoded
-        } else {
+        ) else {
+            // Genuinely nothing saved: a first launch, so seed the local Mac.
             machines = [.local()]
             persist()
+            return
         }
+
+        let (decoded, unreadable) = Self.decode(data)
+        unreadableEntries = unreadable
+        // The app still has to run, so fall back to the local Mac — but do not
+        // write that over what is already there. Saved machines are the one
+        // thing the user cannot get back by pointing Little Herd at the network
+        // again: a machine reached over a VPN advertises no Bonjour service, so
+        // nothing will ever rediscover it. A read that failed is not a reason to
+        // destroy the thing that failed to read.
+        machines = decoded.isEmpty ? [.local()] : decoded
+    }
+
+    /// Decodes machine by machine rather than all at once.
+    ///
+    /// A `Codable` array fails entirely when a single element throws, so one
+    /// entry written by a newer build would otherwise cost the user every
+    /// machine they have configured.
+    private static func decode(
+        _ data: Data
+    ) -> (machines: [MachineConfiguration], unreadable: [Any]) {
+        guard let elements = (try? JSONSerialization.jsonObject(with: data))
+            as? [Any]
+        else {
+            return ([], [])
+        }
+
+        let decoder = JSONDecoder()
+        var machines: [MachineConfiguration] = []
+        var unreadable: [Any] = []
+
+        for element in elements {
+            guard let elementData = try? JSONSerialization.data(
+                withJSONObject: element
+            ),
+                let machine = try? decoder.decode(
+                    MachineConfiguration.self,
+                    from: elementData
+                )
+            else {
+                unreadable.append(element)
+                continue
+            }
+            machines.append(machine)
+        }
+        return (machines, unreadable)
     }
 
     func add(_ additions: [MachineConfiguration]) {
@@ -213,11 +260,27 @@ final class MachineConfigurationStore {
     }
 
     private func persist() {
-        guard let data = try? JSONEncoder().encode(machines) else { return }
-        defaults.set(
-            data,
-            forKey: LittleHerdPreferences.machineConfigurationsKey
-        )
+        guard let encoded = try? JSONEncoder().encode(machines) else { return }
+
+        // Anything this build could not read goes back exactly as it came, so a
+        // newer version still finds its machines after an older one has written
+        // here.
+        guard !unreadableEntries.isEmpty else {
+            defaults.set(
+                encoded,
+                forKey: LittleHerdPreferences.machineConfigurationsKey
+            )
+            return
+        }
+
+        guard var elements = (try? JSONSerialization.jsonObject(with: encoded))
+            as? [Any] else { return }
+        elements.append(contentsOf: unreadableEntries)
+        guard let data = try? JSONSerialization.data(withJSONObject: elements)
+        else {
+            return
+        }
+        defaults.set(data, forKey: LittleHerdPreferences.machineConfigurationsKey)
     }
 
     private static func normalizedHostname(_ hostname: String) -> String {

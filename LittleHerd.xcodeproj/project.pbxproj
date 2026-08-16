@@ -12,6 +12,7 @@
 		0173CB23C12E9DDBD3B79AE2 /* KeychainSecret.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6513E7513A64EC239339381A /* KeychainSecret.swift */; };
 		037A941C63BC9F9892A2E070 /* MachineAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F455A7153E6520E2477FF1A /* MachineAlerts.swift */; };
 		094E80A6E07234899B305A38 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D833CE2704E28207ED01D856 /* DashboardView.swift */; };
+		0B46A10585034F62414676B1 /* ConfigurationDurabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CBDB146412416AE14C5CEB4 /* ConfigurationDurabilityTests.swift */; };
 		0F4B67C29C60BD0E6BEF80D9 /* SecretCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9964820C13B89705570C2A79 /* SecretCacheTests.swift */; };
 		121132FFDEBBDF2D52E1A1C9 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C7D8104BAD8E6CE6707EBDD7 /* Sparkle */; };
 		182FDB3CF702DD3D6820FBA3 /* TaskTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5C36AC033CCD76A2AA262A9 /* TaskTransferView.swift */; };
@@ -79,6 +80,7 @@
 		387B8471B05B8FEFC2973329 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkVolumeOnboardingView.swift; sourceTree = "<group>"; };
 		3C57E556B607FDBFC533B251 /* SynologyTrustTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyTrustTests.swift; sourceTree = "<group>"; };
+		3CBDB146412416AE14C5CEB4 /* ConfigurationDurabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationDurabilityTests.swift; sourceTree = "<group>"; };
 		4164BB6C590812113B80A9E9 /* SoftwareUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftwareUpdater.swift; sourceTree = "<group>"; };
 		4669068113CB4027D57F9535 /* MetricModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricModel.swift; sourceTree = "<group>"; };
 		48E107D7CC3B01B621E4483E /* RemoteUnavailability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteUnavailability.swift; sourceTree = "<group>"; };
@@ -209,6 +211,7 @@
 			isa = PBXGroup;
 			children = (
 				694A0E6E34E815E5A5218AA0 /* AgentProbeShellTests.swift */,
+				3CBDB146412416AE14C5CEB4 /* ConfigurationDurabilityTests.swift */,
 				BE23C778660407B336F50BA0 /* MetricsSamplerTests.swift */,
 				F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */,
 				9964820C13B89705570C2A79 /* SecretCacheTests.swift */,
@@ -372,6 +375,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2CFA6E28CE4D7F2470879499 /* AgentProbeShellTests.swift in Sources */,
+				0B46A10585034F62414676B1 /* ConfigurationDurabilityTests.swift in Sources */,
 				88873018BA18973DB4643815 /* MetricsSamplerTests.swift in Sources */,
 				8935F6CCBD6DFA02BEC41FA3 /* RemoteUnavailabilityTests.swift in Sources */,
 				0F4B67C29C60BD0E6BEF80D9 /* SecretCacheTests.swift in Sources */,
