@@ -245,6 +245,31 @@ actor RemoteMetricsSampler {
         self.identityFile = identityFile
     }
 
+    /// The cadence every machine is meant to report on.
+    static let samplingInterval = Duration.seconds(10)
+
+    /// How long the first sample watches for, so a machine paints a figure
+    /// shortly after launch rather than ten seconds later.
+    private static let openingCPUWindow = Duration.seconds(1)
+
+    private var hasSampled = false
+
+    /// A remote Mac has no CPU counter a shell can read — `kern.cp_time` is
+    /// FreeBSD, and both `top -l 1` and `iostat -c 1` report since-boot averages
+    /// far too coarse to difference. Its utilisation therefore comes from
+    /// `iostat` watching for a fixed window, which is a measurement rather than
+    /// a difference, and only covers the time it is actually running.
+    ///
+    /// So the window is the whole interval. Watching for ten seconds out of
+    /// every ten makes a remote Mac's figure mean what every other machine's
+    /// already means — a continuous ten-second average — instead of one second
+    /// glimpsed in every eleven, which quietly missed anything bursty and made
+    /// the overview compare machines that had been measured differently.
+    private var cpuWindow: Duration {
+        hasSampled ? Self.samplingInterval : Self.openingCPUWindow
+    }
+
+
     func sample() async throws -> SystemSnapshot {
         let now = clock.now
         let shouldRefreshAgentTasks: Bool
@@ -256,7 +281,7 @@ actor RemoteMetricsSampler {
         }
 
         let metricsCommand = platform == .macOS
-            ? Self.macOSCommand
+            ? Self.macOSCommand(cpuWindowSeconds: Int(cpuWindow.components.seconds))
             : Self.linuxCommand
         let command = shouldRefreshAgentTasks
             ? metricsCommand + "\n" + AgentTaskProbe.shellCommand
@@ -266,6 +291,10 @@ actor RemoteMetricsSampler {
             command: command,
             identityFile: identityFile
         )
+        // Only once one has succeeded: a machine that cannot be reached keeps the
+        // short opening window, so the first figure it manages to report still
+        // arrives promptly rather than a full interval later.
+        hasSampled = true
         let raw = RemoteOutputParser.parse(output)
         let timestamp = Date()
 
@@ -399,9 +428,19 @@ actor RemoteMetricsSampler {
         return min(max(used / total * 100, 0), 100)
     }
 
-    static let macOSCommand = #"""
+    /// - Parameter cpuWindowSeconds: how long `iostat` watches before reporting.
+    ///   This is the whole of the sampling interval in steady state, so the
+    ///   figure covers the time between samples rather than a slice of it.
+    static func macOSCommand(cpuWindowSeconds: Int) -> String {
+        macOSCommandTemplate.replacingOccurrences(
+            of: "@CPU_WINDOW@",
+            with: String(max(cpuWindowSeconds, 1))
+        )
+    }
+
+    private static let macOSCommandTemplate = #"""
     export LC_ALL=C
-    cpu=$(/usr/sbin/iostat -c 2 -w 1 | /usr/bin/awk 'NR>2 {idle=$(NF-3)} END {printf "%.2f", 100-idle}')
+    cpu=$(/usr/sbin/iostat -c 2 -w @CPU_WINDOW@ | /usr/bin/awk 'NR>2 {idle=$(NF-3)} END {printf "%.2f", 100-idle}')
     total=$(/usr/sbin/sysctl -n hw.memsize)
     pressure=$(/usr/sbin/sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null)
     page=$(/usr/bin/pagesize)

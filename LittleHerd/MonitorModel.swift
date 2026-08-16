@@ -465,9 +465,11 @@ final class MonitorModel {
         with sampler: RemoteMetricsSampler
     ) -> Task<Void, Never> {
         Task { [machine, sampler] in
+            let clock = ContinuousClock()
             var isStarting = true
 
             while !Task.isCancelled {
+                let startedAt = clock.now
                 do {
                     let snapshot = try await sampler.sample()
                     machine.apply(snapshot)
@@ -477,12 +479,27 @@ final class MonitorModel {
                 }
                 alerts.evaluate(machine, isEnabled: alertsEnabled)
 
+                // Wait out whatever is left of the interval rather than a fixed
+                // amount on top of it, because how long a sample takes now
+                // depends on the machine. A remote Mac has no CPU counter a
+                // shell can read, so it measures by watching for the whole
+                // interval and has already spent it by the time it answers;
+                // Linux differences two counter readings and returns at once.
+                // Pacing on elapsed time serves both, and a machine that has
+                // stopped answering waits out the remainder instead of being
+                // retried as fast as it can fail.
+                //
+                // Linux CPU and all remote network rates need two readings, so
+                // the first interval is short and those rows fill in quickly.
+                let target = isStarting
+                    ? .seconds(1)
+                    : RemoteMetricsSampler.samplingInterval
+                isStarting = false
+
+                let remaining = target - startedAt.duration(to: clock.now)
+                guard remaining > .zero else { continue }
                 do {
-                    // Linux CPU and all remote network rates need two counter
-                    // readings. Take one extra startup sample so those rows fill
-                    // in quickly, then settle into the low-overhead cadence.
-                    try await Task.sleep(for: .seconds(isStarting ? 1 : 10))
-                    isStarting = false
+                    try await Task.sleep(for: remaining)
                 } catch {
                     return
                 }

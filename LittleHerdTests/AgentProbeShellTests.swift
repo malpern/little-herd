@@ -116,7 +116,12 @@ struct AgentProbeShellTests {
         let output = try #require(
             await LocalProcessRunner.run(
                 executablePath: "/bin/zsh",
-                arguments: ["-c", RemoteMetricsSampler.macOSCommand]
+                arguments: [
+                    "-c",
+                    // One second, so the shell check does not sit through a
+                    // full sampling interval.
+                    RemoteMetricsSampler.macOSCommand(cpuWindowSeconds: 1),
+                ]
             )
         )
         let values = RemoteOutputParser.parse(output)
