@@ -5,6 +5,10 @@ nonisolated enum MachineConnection: String, Codable, Equatable, Sendable {
     case local
     case ssh
     case smb
+    /// A Synology measured through DSM's Web API. Unlike `smb`, this does not
+    /// depend on the Finder having a share mounted, and it can report drive
+    /// health as well as capacity.
+    case dsm
 }
 
 nonisolated enum MachinePlatform: String, Codable, Equatable, Sendable {
@@ -35,9 +39,34 @@ nonisolated struct MachineConfiguration: Codable, Equatable, Identifiable,
     var identityFile: String?
     var serverNames: [String]
     var supportsGPU: Bool
+    /// DSM account name. The password lives in the keychain, never here — this
+    /// struct is written to `~/Library/Preferences` in the clear.
+    var dsmUsername: String?
+    var dsmPort: Int?
+    /// SHA-256 of the public key in the certificate DSM presented the first time
+    /// Little Herd connected, recorded only when the system does not already
+    /// trust that certificate. See `SynologyTrustEvaluator`.
+    var dsmCertificateFingerprint: String?
 
     var isStorage: Bool {
-        connection == .smb || platform == .storage
+        connection == .smb || connection == .dsm || platform == .storage
+    }
+
+    /// Whether this machine can report more than capacity. DSM answers with CPU
+    /// and memory too, so a NAS reached that way is no longer disk-only.
+    var reportsFullMetrics: Bool {
+        connection != .smb
+    }
+
+    var dsmEndpoint: SynologyDSMEndpoint? {
+        guard connection == .dsm, let dsmUsername, !dsmUsername.isEmpty else {
+            return nil
+        }
+        return SynologyDSMEndpoint(
+            host: hostname,
+            port: dsmPort ?? SynologyDSM.defaultPort,
+            username: dsmUsername
+        )
     }
 
     var remotePlatform: RemotePlatform? {
@@ -143,6 +172,18 @@ final class MachineConfigurationStore {
     func remove(_ machineID: MachineID) {
         guard canRemove(machineID) else { return }
         replace(with: machines.filter { $0.id != machineID })
+    }
+
+    /// Replaces one machine in place, leaving the rest of the herd untouched.
+    func update(_ configuration: MachineConfiguration) {
+        guard let index = machines.firstIndex(where: {
+            $0.id == configuration.id
+        }), machines[index] != configuration else {
+            return
+        }
+        var updated = machines
+        updated[index] = configuration
+        replace(with: updated)
     }
 
     func replace(with configurations: [MachineConfiguration]) {

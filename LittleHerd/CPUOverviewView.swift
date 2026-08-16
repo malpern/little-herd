@@ -245,6 +245,28 @@ struct MachineStatusLabel: View {
         VStack(spacing: 1) {
             MachineAvatarView(avatar: machine.avatar, size: avatarSize)
                 .matchedAvatar(namespace, machine: machine.machine)
+                // A drive in trouble is worth seeing under every metric, not
+                // only Disk: the machine is reachable and its volumes may look
+                // fine while the hardware underneath is failing.
+                .overlay(alignment: .topTrailing) {
+                    if let health = worstDriveHealth {
+                        Image(systemName: health.symbolName)
+                            .font(.system(size: avatarSize * 0.34))
+                            .foregroundStyle(.white, health.tint)
+                            .background(
+                                Circle()
+                                    .fill(.background)
+                                    .frame(
+                                        width: avatarSize * 0.34,
+                                        height: avatarSize * 0.34
+                                    )
+                            )
+                            .offset(x: avatarSize * 0.08, y: -avatarSize * 0.04)
+                            .accessibilityLabel(
+                                Text("\(machine.name): drive \(health.label)")
+                            )
+                    }
+                }
 
             HStack(spacing: 4) {
                 Circle()
@@ -259,6 +281,18 @@ struct MachineStatusLabel: View {
                     .minimumScaleFactor(0.65)
             }
         }
+    }
+
+    /// Only trouble earns a badge. A healthy or unreported drive shows nothing,
+    /// so the badge means something when it does appear.
+    private var worstDriveHealth: DriveHealth? {
+        let worst = machine.drives
+            .map(\.health)
+            .max { $0.severity < $1.severity }
+        guard let worst, worst == .warning || worst == .critical else {
+            return nil
+        }
+        return worst
     }
 
     private var statusColor: Color {

@@ -27,17 +27,27 @@ struct LittleHerdApp: App {
             "LITTLE_HERD_SHOW_NETWORK_ONBOARDING"
         ] == "1"
         _machineStore = State(initialValue: machineStore)
-        _model = State(
-            initialValue: MonitorModel(
-                configurations: machineStore.machines,
-                networkStorageMonitoringEnabled:
-                    !isForcingNetworkOnboarding
-                    && UserDefaults.standard.bool(
-                        forKey: LittleHerdPreferences
-                            .networkVolumeAccessOnboardingCompletedKey
-                    )
-            )
+        let model = MonitorModel(
+            configurations: machineStore.machines,
+            networkStorageMonitoringEnabled:
+                !isForcingNetworkOnboarding
+                && UserDefaults.standard.bool(
+                    forKey: LittleHerdPreferences
+                        .networkVolumeAccessOnboardingCompletedKey
+                )
         )
+        // Remember the certificate a NAS presented the first time it answered,
+        // so a later change to it is refused rather than trusted.
+        model.onCertificateDiscovered = { [machineStore] machineID, fingerprint in
+            guard var configuration = machineStore.machines.first(where: {
+                $0.id == machineID
+            }) else {
+                return
+            }
+            configuration.dsmCertificateFingerprint = fingerprint
+            machineStore.update(configuration)
+        }
+        _model = State(initialValue: model)
     }
 
     var body: some Scene {
@@ -446,6 +456,7 @@ private struct LittleHerdSettingsView: View {
     private var menuBarEnabled = false
     @AppStorage(LittleHerdPreferences.alertsEnabledKey)
     private var alertsEnabled = false
+    @State private var configuringNAS: MachineConfiguration?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -502,7 +513,8 @@ private struct LittleHerdSettingsView: View {
                     SettingsMachineRow(
                         machine: machine,
                         canRemove: machineStore.canRemove(machine.id),
-                        onRemove: { remove(machine.id) }
+                        onRemove: { remove(machine.id) },
+                        onConnect: { configuringNAS = machine }
                     )
 
                     if machine.id != machineStore.machines.last?.id {
@@ -516,6 +528,12 @@ private struct LittleHerdSettingsView: View {
         }
         .padding(24)
         .frame(width: 420)
+        .sheet(item: $configuringNAS) { machine in
+            SynologyCredentialsView(machine: machine) { updated in
+                machineStore.update(updated)
+                onConfigurationsChanged(machineStore.machines)
+            }
+        }
     }
 
     private func remove(_ machineID: MachineID) {
@@ -528,6 +546,7 @@ private struct SettingsMachineRow: View {
     let machine: MachineConfiguration
     let canRemove: Bool
     let onRemove: () -> Void
+    let onConnect: () -> Void
 
     var body: some View {
         HStack(spacing: 9) {
@@ -549,6 +568,22 @@ private struct SettingsMachineRow: View {
             }
 
             Spacer(minLength: 8)
+
+            // Only a NAS has anything to sign in to. Storage machines start out
+            // reading a mounted share; connecting to DSM is what gets them drive
+            // health and measurements that do not depend on the Finder.
+            if machine.isStorage {
+                Button(machine.connection == .dsm ? "Connected" : "Connect…") {
+                    onConnect()
+                }
+                .buttonStyle(.link)
+                .font(.caption)
+                .help(
+                    machine.connection == .dsm
+                        ? "Signed in to DSM as \(machine.dsmUsername ?? "?"). Click to change."
+                        : "Sign in to DSM to read capacity and drive health without a mounted share"
+                )
+            }
 
             if canRemove {
                 Button(action: onRemove) {

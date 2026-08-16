@@ -837,11 +837,53 @@ private struct MachineStoragePane: View {
                     }
                 }
             }
+
+            // Physical drives, below the volumes they add up to. Only a NAS
+            // reports these; a Mac can say a volume is full but not that the
+            // hardware under it is dying.
+            if !drives.isEmpty {
+                ForEach(drives) { drive in
+                    MetricDetailRow(
+                        symbolName: drive.health.symbolName,
+                        tint: drive.health.tint,
+                        title: Text(drive.name),
+                        subtitle: Text(driveDescription(for: drive)),
+                        value: drive.health == .normal
+                            ? nil
+                            : Text(drive.health.label)
+                    )
+                }
+            }
         }
     }
 
     private var volumes: [StorageVolume] {
         machine.state == .live || machine.isStorage ? machine.storageVolumes : []
+    }
+
+    private var drives: [SynologyDrive] {
+        guard machine.state == .live || machine.isStorage else { return [] }
+        // Worst first: a failing drive should never be below the healthy ones.
+        return machine.drives.sorted { $0.health.severity > $1.health.severity }
+    }
+
+    /// Model and temperature, because the drive that needs replacing has to be
+    /// identifiable at the front of the unit.
+    private func driveDescription(for drive: SynologyDrive) -> String {
+        var parts: [String] = []
+        if !drive.model.isEmpty { parts.append(drive.model) }
+        if let temperature = drive.temperatureCelsius {
+            parts.append("\(Int(temperature))°C")
+        }
+        // The most concrete evidence a drive is going, and the number that
+        // justifies replacing it. Leads the subtitle when there is one.
+        if drive.uncorrectableSectors > 0 {
+            parts.insert(
+                "\(drive.uncorrectableSectors) bad sectors",
+                at: 0
+            )
+        }
+        return parts.isEmpty ? "No details reported" : parts.joined(separator: " · ")
     }
 
     private var fullest: Double? { volumes.map(\.usedPercent).max() }

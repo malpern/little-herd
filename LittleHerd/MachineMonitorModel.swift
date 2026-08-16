@@ -22,6 +22,10 @@ final class MachineMonitorModel: Identifiable {
     private(set) var activities: [MachineActivity] = []
     private(set) var agentSessions: [AgentSession] = []
     private(set) var storageVolumes: [StorageVolume] = []
+    /// Physical drives, for machines that can report them. A NAS is the only one
+    /// that does, and a failing drive there is the most consequential thing
+    /// Little Herd can notice.
+    private(set) var drives: [SynologyDrive] = []
     private(set) var memoryPressure: MemoryPressureLevel?
     private(set) var memoryConsumers: [MemoryConsumer] = []
     /// Why the machine is unreachable, when it is. Kept beside `state` so the
@@ -64,6 +68,7 @@ final class MachineMonitorModel: Identifiable {
         activities = snapshot.activities
         agentSessions = snapshot.agentSessions
         storageVolumes = snapshot.storageVolumes
+        drives = snapshot.drives
         memoryPressure = snapshot.memoryPressure
         memoryConsumers = memoryGrowthDetector.annotate(
             consumers: snapshot.memoryConsumers,

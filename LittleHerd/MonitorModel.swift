@@ -32,6 +32,14 @@ final class MonitorModel {
         let sampler: SMBStorageSampler
     }
 
+    /// Kept apart from `StorageMonitor` because DSM is ordinary HTTPS: it needs
+    /// none of the macOS network-volume permission the SMB path is gated behind,
+    /// so it runs with the remote machines instead.
+    private struct DSMMonitor {
+        let machine: MachineMonitorModel
+        let sampler: SynologyMetricsSampler
+    }
+
     @ObservationIgnored
     private var localMonitors: [LocalMonitor] = []
 
@@ -40,6 +48,9 @@ final class MonitorModel {
 
     @ObservationIgnored
     private var storageMonitors: [StorageMonitor] = []
+
+    @ObservationIgnored
+    private var dsmMonitors: [DSMMonitor] = []
 
     @ObservationIgnored
     private var monitoringTasks: [Task<Void, Never>] = []
@@ -59,6 +70,14 @@ final class MonitorModel {
     private var alertsEnabled: Bool {
         UserDefaults.standard.bool(forKey: LittleHerdPreferences.alertsEnabledKey)
     }
+
+    /// Called the first time a NAS's TLS certificate is seen, so the owner of
+    /// the configuration store can record it for pinning.
+    @ObservationIgnored
+    var onCertificateDiscovered: ((MachineID, String) -> Void)?
+
+    @ObservationIgnored
+    private var configurations: [MachineConfiguration] = []
 
     init(
         configurations: [MachineConfiguration] = [.local()],
@@ -172,14 +191,19 @@ final class MonitorModel {
     }
 
     private func rebuildMonitors(from configurations: [MachineConfiguration]) {
+        self.configurations = configurations
         let models = configurations.map(MachineMonitorModel.init)
+        // A machine is kept out of the CPU, memory, and AI overviews only when
+        // capacity is genuinely all it can report. A NAS reached through DSM
+        // reports load and memory too, so it belongs with the rest of the herd.
         machines = zip(configurations, models).compactMap { configuration, model in
-            configuration.isStorage ? nil : model
+            configuration.reportsFullMetrics ? model : nil
         }
         diskMachines = models
         localMonitors = []
         remoteMonitors = []
         storageMonitors = []
+        dsmMonitors = []
 
         for (configuration, model) in zip(configurations, models) {
             switch configuration.connection {
@@ -212,8 +236,58 @@ final class MonitorModel {
                         sampler: SMBStorageSampler(serverNames: names)
                     )
                 )
+            case .dsm:
+                guard let endpoint = configuration.dsmEndpoint else {
+                    model.markOffline(
+                        .other("No DSM account set for this NAS yet.")
+                    )
+                    continue
+                }
+                let keychainAccount = KeychainSecret.account(for: endpoint)
+                let machineID = configuration.id
+                dsmMonitors.append(
+                    DSMMonitor(
+                        machine: model,
+                        sampler: SynologyMetricsSampler(
+                            endpoint: endpoint,
+                            pinnedCertificate:
+                                configuration.dsmCertificateFingerprint,
+                            // Falls back to whatever the Finder has mounted, so
+                            // a NAS keeps reporting capacity while DSM access is
+                            // being sorted out.
+                            fallbackServerNames: configuration.serverNames,
+                            passwordProvider: {
+                                KeychainSecret.read(account: keychainAccount)
+                            },
+                            onCertificateObserved: { [weak self] fingerprint in
+                                Task { @MainActor in
+                                    self?.recordCertificate(
+                                        fingerprint,
+                                        for: machineID
+                                    )
+                                }
+                            }
+                        )
+                    )
+                )
             }
         }
+    }
+
+    /// Records the certificate seen on a first successful connection, so every
+    /// later one can be checked against it. Only ever fires when nothing is
+    /// recorded yet — a change to an existing pin is refused in the trust
+    /// evaluator, never quietly accepted here.
+    private func recordCertificate(
+        _ fingerprint: String,
+        for machineID: MachineID
+    ) {
+        guard configurations.first(where: { $0.id == machineID })?
+            .dsmCertificateFingerprint == nil
+        else {
+            return
+        }
+        onCertificateDiscovered?(machineID, fingerprint)
     }
 
     private func start() {
@@ -233,6 +307,8 @@ final class MonitorModel {
             monitorLocalMachine($0.machine, with: $0.sampler)
         } + remoteMonitors.map {
             monitorRemoteMachine($0.machine, with: $0.sampler)
+        } + dsmMonitors.map {
+            monitorDSMMachine($0.machine, with: $0.sampler)
         }
         startNetworkStorageMonitoringIfNeeded()
         aiUsageLimits.start()
@@ -327,6 +403,36 @@ final class MonitorModel {
         }
     }
 
+    /// Unlike the SMB loop, this evaluates alerts: a NAS filling up or losing a
+    /// drive is exactly the kind of thing worth interrupting someone for, and it
+    /// was the one machine that could never raise one.
+    private func monitorDSMMachine(
+        _ machine: MachineMonitorModel,
+        with sampler: SynologyMetricsSampler
+    ) -> Task<Void, Never> {
+        Task { [machine, sampler] in
+            while !Task.isCancelled {
+                do {
+                    machine.apply(try await sampler.sample())
+                } catch let error as SynologyDSMError {
+                    machine.markOffline(.classify(dsm: error))
+                } catch {
+                    machine.markOffline()
+                }
+                // Evaluated whether or not alerts are enabled: the center tracks
+                // transitions, so skipping the call while muted would make the
+                // next unmuted sample look like a fresh alert.
+                alerts.evaluate(machine, isEnabled: alertsEnabled)
+
+                do {
+                    try await Task.sleep(for: .seconds(10))
+                } catch {
+                    return
+                }
+            }
+        }
+    }
+
     private func monitorSMBStorage(
         _ machine: MachineMonitorModel,
         with sampler: SMBStorageSampler
@@ -335,6 +441,15 @@ final class MonitorModel {
             while !Task.isCancelled {
                 do {
                     machine.apply(try await sampler.sample())
+                } catch SMBStorageMonitorError.noMountedShares {
+                    // "Unavailable" on its own reads as a broken NAS. Nothing
+                    // being mounted is a different situation with a different
+                    // fix, and the machine may be perfectly healthy.
+                    machine.markOffline(
+                        .other(
+                            "No shared folder from this server is mounted. Open it in the Finder, or connect to DSM to read it without a mount."
+                        )
+                    )
                 } catch {
                     machine.markOffline()
                 }

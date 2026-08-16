@@ -215,6 +215,10 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
     let storageVolumes: [StorageVolume]
     let memoryPressure: MemoryPressureLevel?
     let memoryConsumers: [MemoryConsumer]
+    /// Physical drives, when the machine can report them. Only a NAS reached
+    /// through DSM does today; a Mac reports volumes but not the health of the
+    /// hardware underneath them.
+    let drives: [SynologyDrive]
 
     init(
         timestamp: Date,
@@ -223,7 +227,8 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
         agentSessions: [AgentSession] = [],
         storageVolumes: [StorageVolume] = [],
         memoryPressure: MemoryPressureLevel? = nil,
-        memoryConsumers: [MemoryConsumer] = []
+        memoryConsumers: [MemoryConsumer] = [],
+        drives: [SynologyDrive] = []
     ) {
         self.timestamp = timestamp
         self.readings = readings
@@ -232,6 +237,7 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
         self.storageVolumes = storageVolumes
         self.memoryPressure = memoryPressure
         self.memoryConsumers = memoryConsumers
+        self.drives = drives
     }
 }
 

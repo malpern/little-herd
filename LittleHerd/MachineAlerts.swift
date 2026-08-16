@@ -12,12 +12,17 @@ nonisolated enum MachineAlert: String, CaseIterable, Sendable {
     case diskFull
     case memoryCritical
     case unreachable
+    /// A drive reporting SMART trouble. The one condition here that is about
+    /// hardware rather than load: a full disk is recoverable, a dying drive
+    /// takes the data with it.
+    case driveFailing
 
     func title(machine: String) -> String {
         switch self {
         case .diskFull: "\(machine) is almost out of space"
         case .memoryCritical: "\(machine) is under memory pressure"
         case .unreachable: "\(machine) stopped responding"
+        case .driveFailing: "\(machine) has a drive in trouble"
         }
     }
 
@@ -26,6 +31,7 @@ nonisolated enum MachineAlert: String, CaseIterable, Sendable {
         case .diskFull: "\(machine) has space again"
         case .memoryCritical: "\(machine) memory recovered"
         case .unreachable: "\(machine) is back"
+        case .driveFailing: "\(machine) drives report healthy again"
         }
     }
 
@@ -50,6 +56,13 @@ nonisolated enum MachineAlert: String, CaseIterable, Sendable {
         }
         if machine.memoryPressure == .critical {
             alerts.insert(.memoryCritical)
+        }
+        // `.unknown` is not trouble — plenty of drives report no SMART status at
+        // all, and treating silence as failure is how a monitor gets muted.
+        if machine.drives.contains(where: {
+            $0.health == .warning || $0.health == .critical
+        }) {
+            alerts.insert(.driveFailing)
         }
         return alerts
     }
@@ -120,6 +133,20 @@ final class MachineAlertCenter {
         case .unreachable:
             guard let reason = machine.unavailability else { return "" }
             return String(localized: reason.detail(host: machine.hostname))
+        case .driveFailing:
+            // Names the drive, because the next step is opening the bay and
+            // pulling the right one.
+            let hurt = machine.drives.filter {
+                $0.health == .warning || $0.health == .critical
+            }
+            guard let worst = hurt.first(where: { $0.health == .critical })
+                ?? hurt.first
+            else {
+                return ""
+            }
+            let others = hurt.count > 1 ? " (\(hurt.count) drives affected)" : ""
+            let model = worst.model.isEmpty ? "" : " \(worst.model)"
+            return "\(worst.name)\(model) reports \(worst.health.rawValue)\(others)."
         }
     }
 

@@ -35,14 +35,23 @@ this one configuration store; there is no second hard-coded machine list.
 
 - The current Mac is sampled with native macOS APIs.
 - Remote Macs and Linux computers are sampled over SSH every ten seconds.
-- Network storage appears only in Disk and reads capacity from mounted SMB
-  shares. Finder and Keychain continue to own the SMB login.
+- A Synology signed in to DSM is sampled over DSM's Web API every ten seconds,
+  and reports capacity, CPU, memory, and the health of each physical drive.
+- Network storage that is not signed in appears only in Disk and reads capacity
+  from mounted SMB shares. Finder and Keychain continue to own the SMB login.
 
 Remote machines need only their built-in system tools and SSH access; no
 companion agent, daemon, password, or elevated privilege is required.
 Little Herd stores only the configured SSH host and optional identity-file
-path; private keys remain in the user's SSH configuration. It uses SSH
-connection sharing so it does not repeatedly perform a full handshake.
+path; private keys remain in the user's SSH configuration.
+
+A Synology is the one machine that needs an account: DSM's storage APIs require
+a member of the administrators group, and the password is kept in the login
+keychain rather than in preferences. Because most Synology units still serve the
+factory TLS certificate — which every unit shares, so system validation rejects
+it — Little Herd pins whichever certificate it saw first and refuses a later
+change. A certificate the system already trusts is validated normally and may
+rotate freely.
 
 The **CPU** overview shrinks to a compact window and shows the three computers
 together as vertical, segmented thermometers. Green, yellow, orange, and red
@@ -154,9 +163,12 @@ The current Mac shows CPU, GPU, memory, network, and disk usage using native
 macOS system APIs. Remote Macs, Linux, and Synology show CPU, memory, network,
 and disk usage; their GPU row intentionally says **Local only**.
 
-Remote collection runs one short, read-only SSH command per machine per sample.
-If a machine is asleep or unreachable, its last values remain visible and the
-header changes to **Unavailable**. Monitoring reconnects automatically.
+Remote collection runs one short, read-only SSH command per machine per sample;
+a Synology signed in to DSM is read over HTTPS instead. If a machine is asleep or
+unreachable, its last values remain visible and the header changes to
+**Unavailable**, with a tooltip saying why — including the case where a NAS is
+healthy but simply has no shared folder mounted. Monitoring reconnects
+automatically.
 Activity collection uses process names, CPU percentages, direct parent/child
 process relationships, and—for active build tools only—the process working
 folder. It does not inspect command arguments, prompts, responses, environment
