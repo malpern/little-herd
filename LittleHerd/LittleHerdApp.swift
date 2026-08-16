@@ -156,7 +156,11 @@ private extension MachineMonitorModel {
             cpuPercent: cpu.value,
             memoryPressure: memoryPressure,
             diskUsedPercent: storageVolumes.map(\.usedPercent).max() ?? diskMetric,
-            storageHealth: storageConcern?.health
+            storageHealth: storageConcern?.health,
+            sustainedCPUPercent: SustainedLoad.average(
+                of: cpu.history,
+                endingAt: lastUpdated ?? .now
+            )
         )
     }
 }

@@ -162,8 +162,49 @@ nonisolated struct MenuBarMachineSnapshot: Equatable, Identifiable, Sendable {
     /// The worst condition any of this machine's drives or volumes reports,
     /// when it reports one at all.
     var storageHealth: SynologyHealth?
+    /// What the CPU has averaged recently, when there is enough history to say.
+    /// `cpuPercent` is the current reading and is what the menu bar shows while
+    /// nothing is wrong; this is what decides whether something is.
+    var sustainedCPUPercent: Double?
 
     var id: MachineID { machine }
+}
+
+/// Whether a machine is busy, as opposed to momentarily peaking.
+///
+/// A single reading is a poor basis for interrupting someone. Every machine
+/// here touches 95% several times an hour — opening an app does it — and a menu
+/// bar that flips into an alarm and back out again on a ten-second sample is
+/// noise wearing the costume of information.
+///
+/// So the question asked is not "is it busy now" but "has it been busy", which
+/// needs the readings to cover a window before it can be answered at all. That
+/// means nothing is flagged for the first few minutes after launch. The menu
+/// bar still shows the busiest machine and its current figure throughout; what
+/// it withholds is the claim that something is wrong, which genuinely cannot be
+/// made yet.
+nonisolated enum SustainedLoad {
+    /// Long enough that a build starting, an app launching, or a page rendering
+    /// has passed; short enough to still be news.
+    static let window: TimeInterval = 300
+
+    /// The mean reading across the window, or nothing if the readings do not
+    /// reach back far enough to cover it.
+    static func average(
+        of points: [HistoryPoint],
+        endingAt now: Date,
+        window: TimeInterval = window
+    ) -> Double? {
+        let start = now.addingTimeInterval(-window)
+        // The oldest reading has to predate the window, otherwise the average
+        // describes a shorter stretch than it claims to.
+        guard let oldest = points.first?.timestamp, oldest <= start else {
+            return nil
+        }
+        let inWindow = points.filter { $0.timestamp >= start }
+        guard !inWindow.isEmpty else { return nil }
+        return inWindow.reduce(0) { $0 + $1.value } / Double(inWindow.count)
+    }
 }
 
 nonisolated enum MenuBarHeadline: Equatable, Sendable {
@@ -200,13 +241,18 @@ nonisolated enum MenuBarStatusSelector {
             return .memoryPressure(machine: criticalMemory.machine, critical: true)
         }
 
+        // Sustained, not instantaneous: see `SustainedLoad`. The figure reported
+        // is the same one the threshold was applied to, so the headline and the
+        // reason it appeared cannot disagree.
         if let criticalCPU = liveSnapshots
-            .filter({ ($0.cpuPercent ?? 0) >= 95 })
-            .max(by: { ($0.cpuPercent ?? 0) < ($1.cpuPercent ?? 0) })
+            .filter({ ($0.sustainedCPUPercent ?? 0) >= 95 })
+            .max(by: {
+                ($0.sustainedCPUPercent ?? 0) < ($1.sustainedCPUPercent ?? 0)
+            })
         {
             return .highCPU(
                 machine: criticalCPU.machine,
-                percent: roundedPercent(criticalCPU.cpuPercent) ?? 0,
+                percent: roundedPercent(criticalCPU.sustainedCPUPercent) ?? 0,
                 critical: true
             )
         }
@@ -229,12 +275,14 @@ nonisolated enum MenuBarStatusSelector {
         }
 
         if let highCPU = liveSnapshots
-            .filter({ ($0.cpuPercent ?? 0) >= 80 })
-            .max(by: { ($0.cpuPercent ?? 0) < ($1.cpuPercent ?? 0) })
+            .filter({ ($0.sustainedCPUPercent ?? 0) >= 80 })
+            .max(by: {
+                ($0.sustainedCPUPercent ?? 0) < ($1.sustainedCPUPercent ?? 0)
+            })
         {
             return .highCPU(
                 machine: highCPU.machine,
-                percent: roundedPercent(highCPU.cpuPercent) ?? 0,
+                percent: roundedPercent(highCPU.sustainedCPUPercent) ?? 0,
                 critical: false
             )
         }

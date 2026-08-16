@@ -1303,6 +1303,7 @@ struct MetricsSamplerTests {
         machine: MachineID,
         state: MonitorConnectionState = .live,
         cpuPercent: Double? = nil,
+        sustainedCPUPercent: Double? = nil,
         memoryPressure: MemoryPressureLevel? = .normal,
         diskUsedPercent: Double? = 50,
         storageHealth: SynologyHealth? = nil
@@ -1313,7 +1314,11 @@ struct MetricsSamplerTests {
             cpuPercent: cpuPercent,
             memoryPressure: memoryPressure,
             diskUsedPercent: diskUsedPercent,
-            storageHealth: storageHealth
+            storageHealth: storageHealth,
+            // These cases are about which condition outranks which, not about
+            // how long one has lasted, so a machine that is busy has simply
+            // been busy. The cases that separate the two say so explicitly.
+            sustainedCPUPercent: sustainedCPUPercent ?? cpuPercent
         )
     }
 }

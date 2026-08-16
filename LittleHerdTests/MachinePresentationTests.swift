@@ -563,6 +563,110 @@ struct MetricSeriesTests {
     }
 }
 
+/// When a busy machine is worth saying something about.
+///
+/// The thresholds used to read the latest sample, so a ten-second spike — which
+/// every machine here produces several times an hour, opening an app does it —
+/// flipped the menu bar into an alarm and back out again. A monitor that cries
+/// wolf gets muted, and a muted monitor is worse than none.
+struct SustainedLoadTests {
+    private func readings(
+        _ values: [Double],
+        every interval: TimeInterval = 10,
+        endingAt end: Date
+    ) -> [HistoryPoint] {
+        values.enumerated().map { index, value in
+            HistoryPoint(
+                timestamp: end.addingTimeInterval(
+                    -Double(values.count - 1 - index) * interval
+                ),
+                value: value
+            )
+        }
+    }
+
+    /// Nothing can be claimed about a stretch of time the readings do not cover.
+    @Test
+    func aMachineJustStartedSaysNothingYet() {
+        let now = Date()
+        let justLaunched = readings([99, 99, 99], endingAt: now)
+
+        #expect(SustainedLoad.average(of: justLaunched, endingAt: now) == nil)
+    }
+
+    @Test
+    func aWindowfulOfReadingsAverages() {
+        let now = Date()
+        // Six minutes of readings, so the five-minute window is covered.
+        let pegged = readings(Array(repeating: 96, count: 37), endingAt: now)
+
+        #expect(SustainedLoad.average(of: pegged, endingAt: now) == 96)
+    }
+
+    /// The point of the window: a burst inside an otherwise quiet stretch does
+    /// not average out to trouble.
+    @Test
+    func aBurstDoesNotAverageToTrouble() throws {
+        let now = Date()
+        var values = Array(repeating: 4.0, count: 31)
+        // The last minute pegged — a build starting, or an app launching.
+        for index in 25 ..< 31 { values[index] = 100 }
+
+        let average = try #require(
+            SustainedLoad.average(of: readings(values, endingAt: now), endingAt: now)
+        )
+        #expect(average < 80)
+    }
+
+    /// Readings from before the window are history, not evidence about now.
+    @Test
+    func readingsOlderThanTheWindowAreNotCounted() throws {
+        let now = Date()
+        // Twenty minutes: the first half pegged, the recent half idle.
+        var values = Array(repeating: 100.0, count: 121)
+        for index in 61 ..< 121 { values[index] = 2 }
+
+        let average = try #require(
+            SustainedLoad.average(of: readings(values, endingAt: now), endingAt: now)
+        )
+        #expect(average < 10)
+    }
+
+    /// The whole point, stated end to end: a spike is not a headline, and a
+    /// machine that has genuinely been pegged is.
+    @Test
+    func aSpikeIsNotAHeadlineButSustainedLoadIs() {
+        let spiking = MenuBarMachineSnapshot(
+            machine: MachineID("air"),
+            state: .live,
+            cpuPercent: 99,
+            memoryPressure: .normal,
+            diskUsedPercent: 40,
+            sustainedCPUPercent: 12
+        )
+        guard case .normal = MenuBarStatusSelector.headline(for: [spiking]) else {
+            Issue.record("a momentary spike should not raise an alarm")
+            return
+        }
+
+        let pegged = MenuBarMachineSnapshot(
+            machine: MachineID("mini"),
+            state: .live,
+            cpuPercent: 40,
+            memoryPressure: .normal,
+            diskUsedPercent: 40,
+            sustainedCPUPercent: 96
+        )
+        // Reported as what it was judged on. A headline saying 40% because the
+        // machine happened to dip at the moment it was drawn would leave no way
+        // to tell why it appeared.
+        #expect(
+            MenuBarStatusSelector.headline(for: [pegged])
+                == .highCPU(machine: MachineID("mini"), percent: 96, critical: true)
+        )
+    }
+}
+
 // MARK: - Machines to look at
 
 @MainActor
