@@ -763,6 +763,9 @@ private struct AddMachinesFooter: View {
     }
 
     private var buttonTitle: String {
+        // "Add 0 Ready Machines" reads like a bug. With nothing selected the
+        // button is disabled anyway, so it just names what it would do.
+        if selectedCount == 0 { return "Add Machines" }
         if selectedCount == 1 { return "Add Ready Machine" }
         return "Add \(selectedCount) Ready Machines"
     }

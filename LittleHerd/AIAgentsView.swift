@@ -326,17 +326,30 @@ private struct AgentProviderIcon: View {
 
 @MainActor
 private enum AgentProviderIcons {
-    static let chatGPT = appIcon(
-        bundleIdentifiers: ["com.openai.chat", "com.openai.codex"],
-        fallbackSymbolName: "sparkles"
-    )
-    static let claudeCode = appIcon(
-        bundleIdentifiers: [
-            "com.anthropic.claude-code",
-            "com.anthropic.claudefordesktop",
-        ],
-        fallbackSymbolName: "brain.head.profile"
-    )
+    // Looked up on each use rather than cached in a `static let`.
+    //
+    // A stored static is computed once, on first access. That happened during
+    // early launch, before NSWorkspace could answer properly, and the generic
+    // placeholder it returned was then kept for the life of the process — which
+    // is why these rows have been blank squares. Asking again is cheap;
+    // NSWorkspace keeps its own cache.
+    static var chatGPT: NSImage {
+        appIcon(
+            bundleIdentifiers: ["com.openai.chat", "com.openai.codex"],
+            fallbackSymbolName: "sparkles"
+        )
+    }
+
+    static var claudeCode: NSImage {
+        appIcon(
+            bundleIdentifiers: [
+                "com.anthropic.claude-code",
+                "com.anthropic.claudefordesktop",
+                "com.anthropic.claude",
+            ],
+            fallbackSymbolName: "brain.head.profile"
+        )
+    }
 
     static func icon(for provider: AgentTaskProvider) -> NSImage {
         switch provider {
@@ -345,21 +358,64 @@ private enum AgentProviderIcons {
         }
     }
 
+    /// Reads the icon out of the application bundle rather than asking
+    /// NSWorkspace for it.
+    ///
+    /// `NSWorkspace.icon(forFile:)` resolves these apps correctly from a
+    /// standalone process — verified, 32 representations each — and appears to
+    /// return a generic placeholder from inside this one, so this reads the
+    /// `.icns` the bundle already contains instead.
+    ///
+    /// NOTE: this did not restore the agent-row icons, so the real cause is
+    /// still open.
     private static func appIcon(
         bundleIdentifiers: [String],
         fallbackSymbolName: String
     ) -> NSImage {
         for bundleIdentifier in bundleIdentifiers {
-            if let applicationURL = NSWorkspace.shared.urlForApplication(
+            guard let applicationURL = NSWorkspace.shared.urlForApplication(
                 withBundleIdentifier: bundleIdentifier
-            ) {
-                return NSWorkspace.shared.icon(forFile: applicationURL.path)
+            ) else {
+                continue
             }
+            if let icon = iconFromBundle(at: applicationURL) { return icon }
+
+            // Worth trying anyway: on a machine where it does work, this is the
+            // icon the user actually sees in the Dock.
+            let workspaceIcon = NSWorkspace.shared.icon(forFile: applicationURL.path)
+            if !workspaceIcon.representations.isEmpty { return workspaceIcon }
         }
 
         return NSImage(
             systemSymbolName: fallbackSymbolName,
             accessibilityDescription: nil
         ) ?? NSImage()
+    }
+
+    private static func iconFromBundle(at applicationURL: URL) -> NSImage? {
+        let resources = applicationURL.appendingPathComponent("Contents/Resources")
+
+        // `CFBundleIconFile` may or may not carry the extension, and apps that
+        // ship their icon in an asset catalog name it something else entirely —
+        // so fall back to whatever .icns the bundle has.
+        var candidates: [String] = []
+        if let declared = Bundle(url: applicationURL)?
+            .object(forInfoDictionaryKey: "CFBundleIconFile") as? String {
+            candidates.append(
+                declared.hasSuffix(".icns") ? declared : declared + ".icns"
+            )
+        }
+        candidates += (try? FileManager.default.contentsOfDirectory(
+            atPath: resources.path
+        ))?.filter { $0.hasSuffix(".icns") } ?? []
+
+        for name in candidates {
+            let url = resources.appendingPathComponent(name)
+            if let image = NSImage(contentsOf: url),
+               !image.representations.isEmpty {
+                return image
+            }
+        }
+        return nil
     }
 }

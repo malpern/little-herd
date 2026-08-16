@@ -168,13 +168,58 @@ enum ApplicationIconCache {
     }
 
     static func icon(atBundlePath path: String) -> NSImage? {
-        if let cached = icons[path] { return cached }
+        if let cached = icons[path], cached != nil { return cached }
+        guard FileManager.default.fileExists(atPath: path) else {
+            icons[path] = NSImage?.none
+            return nil
+        }
 
-        let icon: NSImage? = FileManager.default.fileExists(atPath: path)
-            ? NSWorkspace.shared.icon(forFile: path)
-            : nil
+        // The bundle's own .icns first. `NSWorkspace.icon(forFile:)` resolves
+        // these apps correctly from a standalone process — verified, 32
+        // representations each — and appears to hand back a generic placeholder
+        // inside this one.
+        //
+        // NOTE: agent rows still render as empty squares with this in place, so
+        // the cause is not yet understood and this is not the fix. Reading the
+        // bundle is still the better first attempt, and the workspace call
+        // remains as a fallback.
+        let icon = iconFromBundle(atPath: path)
+            ?? nonEmptyWorkspaceIcon(atPath: path)
         icons[path] = icon
         return icon
+    }
+
+    private static func nonEmptyWorkspaceIcon(atPath path: String) -> NSImage? {
+        let icon = NSWorkspace.shared.icon(forFile: path)
+        return icon.representations.isEmpty ? nil : icon
+    }
+
+    private static func iconFromBundle(atPath path: String) -> NSImage? {
+        let resources = URL(fileURLWithPath: path)
+            .appendingPathComponent("Contents/Resources")
+
+        // `CFBundleIconFile` may omit the extension, and apps shipping their
+        // icon in an asset catalog name it something else entirely — so fall
+        // back to whatever .icns the bundle actually contains.
+        var candidates: [String] = []
+        if let declared = Bundle(path: path)?
+            .object(forInfoDictionaryKey: "CFBundleIconFile") as? String {
+            candidates.append(
+                declared.hasSuffix(".icns") ? declared : declared + ".icns"
+            )
+        }
+        candidates += (try? FileManager.default.contentsOfDirectory(
+            atPath: resources.path
+        ))?.filter { $0.hasSuffix(".icns") } ?? []
+
+        for name in candidates {
+            let url = resources.appendingPathComponent(name)
+            if let image = NSImage(contentsOf: url),
+               !image.representations.isEmpty {
+                return image
+            }
+        }
+        return nil
     }
 }
 

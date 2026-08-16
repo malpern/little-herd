@@ -145,7 +145,10 @@ private struct CPUThermometerColumn: View {
         case .cpu:
             liveMetricValue
         case .memory:
-            liveMemoryPressure?.visualizationPercent
+            // Pressure where the machine reports it; plain usage where it does
+            // not. A NAS was drawing an empty bar beside a memory figure it had
+            // in hand.
+            liveMemoryPressure?.visualizationPercent ?? liveMetricValue
         case .disk:
             fullestVolume?.usedPercent
         case .ai:

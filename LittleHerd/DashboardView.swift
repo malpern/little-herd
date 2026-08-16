@@ -1540,6 +1540,13 @@ private struct MachineConnectionLabel: View {
     var unavailability: RemoteUnavailability?
     var hostname: String = ""
 
+    /// A machine that has never answered has not been set up yet. The pane
+    /// beside this label already said so; this said "Unavailable", so the same
+    /// machine described itself two ways at once.
+    private var hasNeverConnected: Bool {
+        state == .offline && lastUpdated == nil
+    }
+
     var body: some View {
         HStack(spacing: 4) {
             Circle()
@@ -1555,7 +1562,7 @@ private struct MachineConnectionLabel: View {
                 case .live:
                     Text("Live")
                 case .offline:
-                    Text("Unavailable")
+                    Text(hasNeverConnected ? "Not connected" : "Unavailable")
                 case .stopped:
                     Text("Paused")
                 }

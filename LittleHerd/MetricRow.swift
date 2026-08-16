@@ -65,7 +65,12 @@ private struct MetricValue: View {
 
     var body: some View {
         VStack(alignment: .trailing) {
-            if kind == .memory {
+            // Memory prefers the operating system's own pressure verdict, since
+            // cache the system is deliberately holding is not a problem. A
+            // machine that reports no pressure — a NAS, which has no such
+            // notion — still has a usage figure, and showing a dash next to
+            // "1.5 GB of 1.94 GB" was simply wrong.
+            if kind == .memory, let memoryPressure {
                 MemoryPressureSymbol(level: memoryPressure)
             } else if let value {
                 switch kind {
