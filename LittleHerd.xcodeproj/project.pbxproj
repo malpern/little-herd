@@ -12,6 +12,7 @@
 		0173CB23C12E9DDBD3B79AE2 /* KeychainSecret.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6513E7513A64EC239339381A /* KeychainSecret.swift */; };
 		037A941C63BC9F9892A2E070 /* MachineAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F455A7153E6520E2477FF1A /* MachineAlerts.swift */; };
 		094E80A6E07234899B305A38 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D833CE2704E28207ED01D856 /* DashboardView.swift */; };
+		0F4B67C29C60BD0E6BEF80D9 /* SecretCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9964820C13B89705570C2A79 /* SecretCacheTests.swift */; };
 		121132FFDEBBDF2D52E1A1C9 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C7D8104BAD8E6CE6707EBDD7 /* Sparkle */; };
 		182FDB3CF702DD3D6820FBA3 /* TaskTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5C36AC033CCD76A2AA262A9 /* TaskTransferView.swift */; };
 		231FCA9BBB2F8387C363203F /* CPUOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 133A808E3BA4EEA2AF234D6E /* CPUOverviewView.swift */; };
@@ -25,6 +26,7 @@
 		4DECA6731350AC1B325E372D /* MetricsSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8E7D7B96F3C77459C1DD141 /* MetricsSampler.swift */; };
 		510ED568359C558B6A05BCFE /* MachineActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE7C98CC9A2691BAFB89BCC /* MachineActivity.swift */; };
 		58521A8BB8088855A0F9DA8D /* BonjourMachineDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC14D9861665A4B5069FBEF7 /* BonjourMachineDiscovery.swift */; };
+		588C0175F4217FCFB8023E19 /* SecretCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD5EAFC1911B210500E6BD9 /* SecretCache.swift */; };
 		58F616158D246EB318C6BE2B /* AIUsageLimits.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD201A3C46AB062F71E564EF /* AIUsageLimits.swift */; };
 		5E3CE5327A2EA4F166BDD893 /* MachineConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD2A66D13D5D677C68BF37D /* MachineConfiguration.swift */; };
 		6178FDFB871ECC5115BC4EA7 /* LocalProcessRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B675E6E28982CA80D968D2E /* LocalProcessRunner.swift */; };
@@ -97,6 +99,7 @@
 		8F455A7153E6520E2477FF1A /* MachineAlerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineAlerts.swift; sourceTree = "<group>"; };
 		90FE8216081F585ED580AE1C /* Machine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Machine.swift; sourceTree = "<group>"; };
 		95D3E317CB51DFD9180687CF /* SynologyDSM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyDSM.swift; sourceTree = "<group>"; };
+		9964820C13B89705570C2A79 /* SecretCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretCacheTests.swift; sourceTree = "<group>"; };
 		9B1E4988B07342992D546101 /* SynologyDSMClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyDSMClient.swift; sourceTree = "<group>"; };
 		A17B5AEB7ADED71EAF3397A2 /* AgentSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSession.swift; sourceTree = "<group>"; };
 		A5BBA732DB8512138D7F61E0 /* RemoteMetricsSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteMetricsSampler.swift; sourceTree = "<group>"; };
@@ -114,6 +117,7 @@
 		E3A27FA19E2D234113937C21 /* SynologyWiringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyWiringTests.swift; sourceTree = "<group>"; };
 		E4F112CE5D8A49060A44E52A /* SSHHostName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHHostName.swift; sourceTree = "<group>"; };
 		E5C36AC033CCD76A2AA262A9 /* TaskTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskTransferView.swift; sourceTree = "<group>"; };
+		EBD5EAFC1911B210500E6BD9 /* SecretCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretCache.swift; sourceTree = "<group>"; };
 		F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteUnavailabilityTests.swift; sourceTree = "<group>"; };
 		FBD2A66D13D5D677C68BF37D /* MachineConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineConfiguration.swift; sourceTree = "<group>"; };
 		FD201A3C46AB062F71E564EF /* AIUsageLimits.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIUsageLimits.swift; sourceTree = "<group>"; };
@@ -168,6 +172,7 @@
 				3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */,
 				A5BBA732DB8512138D7F61E0 /* RemoteMetricsSampler.swift */,
 				48E107D7CC3B01B621E4483E /* RemoteUnavailability.swift */,
+				EBD5EAFC1911B210500E6BD9 /* SecretCache.swift */,
 				4164BB6C590812113B80A9E9 /* SoftwareUpdater.swift */,
 				E4F112CE5D8A49060A44E52A /* SSHHostName.swift */,
 				74631ABBC0DF62E9034B91B7 /* StorageVolume.swift */,
@@ -206,6 +211,7 @@
 				694A0E6E34E815E5A5218AA0 /* AgentProbeShellTests.swift */,
 				BE23C778660407B336F50BA0 /* MetricsSamplerTests.swift */,
 				F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */,
+				9964820C13B89705570C2A79 /* SecretCacheTests.swift */,
 				FF6E8B58BFECC711998639C6 /* SynologyDSMTests.swift */,
 				3C57E556B607FDBFC533B251 /* SynologyTrustTests.swift */,
 				E3A27FA19E2D234113937C21 /* SynologyWiringTests.swift */,
@@ -349,6 +355,7 @@
 				F0C018891D4F81D70E48139C /* RemoteMetricsSampler.swift in Sources */,
 				E659D1A1902120A9C526DA65 /* RemoteUnavailability.swift in Sources */,
 				82A07AE2F03229E9AD644A1F /* SSHHostName.swift in Sources */,
+				588C0175F4217FCFB8023E19 /* SecretCache.swift in Sources */,
 				CBADC8EDC9632AE4731B8C4C /* SoftwareUpdater.swift in Sources */,
 				CF632AA195C36FA80B20AB9F /* StorageVolume.swift in Sources */,
 				C3EC710A9D4AC5B469D730AE /* SynologyCredentialsView.swift in Sources */,
@@ -367,6 +374,7 @@
 				2CFA6E28CE4D7F2470879499 /* AgentProbeShellTests.swift in Sources */,
 				88873018BA18973DB4643815 /* MetricsSamplerTests.swift in Sources */,
 				8935F6CCBD6DFA02BEC41FA3 /* RemoteUnavailabilityTests.swift in Sources */,
+				0F4B67C29C60BD0E6BEF80D9 /* SecretCacheTests.swift in Sources */,
 				D8DFEA05123844483DAF9171 /* SynologyDSMTests.swift in Sources */,
 				9EBFA43128EEF75AFFDC4C3F /* SynologyTrustTests.swift in Sources */,
 				DED22012974A8B709BB6B12D /* SynologyWiringTests.swift in Sources */,

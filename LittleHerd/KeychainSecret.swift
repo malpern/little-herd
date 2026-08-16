@@ -14,6 +14,15 @@ nonisolated enum KeychainSecret {
         "\(endpoint.username)@\(endpoint.host):\(endpoint.port)"
     }
 
+    /// Read secrets are kept in memory for the life of the process.
+    ///
+    /// macOS asks the user to authorise each keychain read that is not already
+    /// covered by the item's access list, and a monitor that signs in again
+    /// whenever its session lapses would ask repeatedly. Reading once per launch
+    /// is enough: the value cannot change underneath us without going through
+    /// `store` or `delete`, which both update this.
+    static let cache = SecretCache()
+
     @discardableResult
     static func store(_ secret: String, account: String) -> Bool {
         let query: [String: Any] = [
@@ -31,7 +40,10 @@ nonisolated enum KeychainSecret {
             query as CFDictionary,
             update as CFDictionary
         )
-        if updateStatus == errSecSuccess { return true }
+        if updateStatus == errSecSuccess {
+            cache.set(secret, for: account)
+            return true
+        }
 
         guard updateStatus == errSecItemNotFound else { return false }
 
@@ -39,10 +51,22 @@ nonisolated enum KeychainSecret {
         insert[kSecValueData as String] = Data(secret.utf8)
         insert[kSecAttrAccessible as String] =
             kSecAttrAccessibleAfterFirstUnlock
-        return SecItemAdd(insert as CFDictionary, nil) == errSecSuccess
+        guard SecItemAdd(insert as CFDictionary, nil) == errSecSuccess else {
+            return false
+        }
+        cache.set(secret, for: account)
+        return true
     }
 
+    /// The password for a NAS, read from the keychain at most once per launch.
     static func read(account: String) -> String? {
+        if let cached = cache.value(for: account) { return cached }
+        let secret = readFromKeychain(account: account)
+        cache.set(secret, for: account)
+        return secret
+    }
+
+    private static func readFromKeychain(account: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -63,6 +87,7 @@ nonisolated enum KeychainSecret {
 
     @discardableResult
     static func delete(account: String) -> Bool {
+        cache.set(nil, for: account)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
