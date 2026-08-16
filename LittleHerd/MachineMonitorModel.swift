@@ -79,6 +79,16 @@ final class MachineMonitorModel: Identifiable {
         unavailability = nil
     }
 
+    /// Offline covers two situations that deserve different treatment. A
+    /// machine that answered and then stopped is a problem worth a red dot. One
+    /// that has never answered at all has not been set up yet — colouring that
+    /// red says the hardware is broken when nothing is wrong with it.
+    ///
+    /// The alert center already draws this line; the interface should too.
+    var hasNeverConnected: Bool {
+        state == .offline && lastUpdated == nil
+    }
+
     func markOffline(_ reason: RemoteUnavailability? = nil) {
         state = .offline
         unavailability = reason

@@ -505,3 +505,57 @@ struct SynologyMenuBarTests {
         }
     }
 }
+
+/// Offline means two different things, and the interface has to tell them
+/// apart: a NAS that has never been set up is not a NAS that has failed.
+@MainActor
+struct NeverConnectedTests {
+    private func storageMachine() -> MachineMonitorModel {
+        MachineMonitorModel(
+            configuration: MachineConfiguration(
+                id: MachineID("synology"),
+                name: "Synology",
+                shortName: "Synology",
+                hostname: "AlpernServer.local",
+                hardwareSummary: "Network storage",
+                platform: .storage,
+                connection: .smb,
+                avatar: .pigletNAS,
+                identityFile: nil,
+                serverNames: ["AlpernServer.local"],
+                supportsGPU: false
+            )
+        )
+    }
+
+    @Test
+    func aMachineThatHasNeverAnsweredIsNotReportedAsFailed() {
+        let machine = storageMachine()
+        machine.markOffline(.other("No shared folder is mounted."))
+        #expect(machine.hasNeverConnected)
+    }
+
+    /// Once it has worked, going offline is a real fault again.
+    @Test
+    func aMachineThatWorkedAndStoppedIsAFault() {
+        let machine = storageMachine()
+        machine.apply(
+            SystemSnapshot(
+                timestamp: .now,
+                readings: [.disk: MetricReading(value: 40)]
+            )
+        )
+        machine.markOffline(.noAnswer)
+        #expect(!machine.hasNeverConnected)
+        #expect(machine.state == .offline)
+    }
+
+    /// The same rule the alert center already applies — a machine that never
+    /// connected is configuration, not news.
+    @Test
+    func aMachineThatNeverConnectedRaisesNoUnreachableAlert() {
+        let machine = storageMachine()
+        machine.markOffline(.other("No shared folder is mounted."))
+        #expect(!MachineAlert.active(for: machine).contains(.unreachable))
+    }
+}

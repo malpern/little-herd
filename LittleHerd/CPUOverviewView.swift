@@ -297,20 +297,24 @@ struct MachineStatusLabel: View {
     }
 
     private var statusColor: Color {
+        // A machine that has never connected is waiting to be set up, not
+        // broken. Red is for something that was working and stopped.
+        if machine.hasNeverConnected { return .secondary }
         switch machine.state {
-        case .connecting: .orange
-        case .live: .green
-        case .offline: .red
-        case .stopped: .secondary
+        case .connecting: return .orange
+        case .live: return .green
+        case .offline: return .red
+        case .stopped: return .secondary
         }
     }
 
     private var statusDescription: LocalizedStringResource {
+        if machine.hasNeverConnected { return "Not set up yet" }
         switch machine.state {
-        case .connecting: "Connecting"
-        case .live: "Live"
-        case .offline: "Unreachable"
-        case .stopped: "Paused"
+        case .connecting: return "Connecting"
+        case .live: return "Live"
+        case .offline: return "Unreachable"
+        case .stopped: return "Paused"
         }
     }
 }

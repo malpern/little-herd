@@ -960,11 +960,18 @@ private struct MachineAgentPane: View {
 private func unavailableMessage(
     for machine: MachineMonitorModel
 ) -> LocalizedStringResource {
+    // Never having connected is a setup step, not a fault, and a NAS can say
+    // exactly which step.
+    if machine.hasNeverConnected {
+        return machine.isStorage
+            ? "Not connected \u{2014} sign in to DSM in Settings"
+            : "Not connected yet"
+    }
     switch machine.state {
-    case .connecting: "Checking\u{2026}"
-    case .live: "Nothing to report"
-    case .offline: "Unavailable"
-    case .stopped: "Monitoring paused"
+    case .connecting: return "Checking\u{2026}"
+    case .live: return "Nothing to report"
+    case .offline: return "Unavailable"
+    case .stopped: return "Monitoring paused"
     }
 }
 
