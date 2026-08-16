@@ -41,6 +41,9 @@ final class MonitorModel {
     private struct DSMMonitor {
         let machine: MachineMonitorModel
         let sampler: SynologyMetricsSampler
+        /// Consulted only when signing in fails, to tell "no password saved"
+        /// apart from "saved and unreadable" — the same error, opposite causes.
+        let credentials: @Sendable () -> KeychainAvailability
     }
 
     @ObservationIgnored
@@ -273,7 +276,10 @@ final class MonitorModel {
                                     )
                                 }
                             }
-                        )
+                        ),
+                        credentials: {
+                            KeychainSecret.availability(account: keychainAccount)
+                        }
                     )
                 )
             }
@@ -372,7 +378,11 @@ final class MonitorModel {
         } + remoteMonitors.map {
             monitorRemoteMachine($0.machine, with: $0.sampler)
         } + dsmMonitors.map {
-            monitorDSMMachine($0.machine, with: $0.sampler)
+            monitorDSMMachine(
+                $0.machine,
+                with: $0.sampler,
+                credentials: $0.credentials
+            )
         }
         startNetworkStorageMonitoringIfNeeded()
         aiUsageLimits.start()
@@ -512,7 +522,8 @@ final class MonitorModel {
     /// was the one machine that could never raise one.
     private func monitorDSMMachine(
         _ machine: MachineMonitorModel,
-        with sampler: SynologyMetricsSampler
+        with sampler: SynologyMetricsSampler,
+        credentials: @escaping @Sendable () -> KeychainAvailability
     ) -> Task<Void, Never> {
         Task { [machine, sampler] in
             while !Task.isCancelled {
@@ -521,7 +532,11 @@ final class MonitorModel {
                     machine.apply(snapshot)
                     recordHistory(for: machine, from: snapshot)
                 } catch let error as SynologyDSMError {
-                    machine.markOffline(.classify(dsm: error))
+                    // Asked only on the way to reporting a failure, so the
+                    // keychain is not touched while everything is working.
+                    machine.markOffline(
+                        .classify(dsm: error, credentials: credentials())
+                    )
                 } catch {
                     machine.markOffline()
                 }

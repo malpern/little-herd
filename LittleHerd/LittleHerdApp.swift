@@ -761,7 +761,10 @@ private struct SettingsMachineRow: View {
             case .signedIn(let account):
                 "Signed in to DSM as \(account). Click to change."
             case .passwordMissing(let account):
-                "No saved password for \(account) — Little Herd cannot sign in until you enter it again."
+                // Not "no saved password": the commoner cause is a password
+                // that is saved and unreadable by this build, and telling
+                // someone it is missing sends them looking for the wrong thing.
+                "Little Herd can’t read a saved password for \(account) — enter it again to resume monitoring."
             }
         }
     }

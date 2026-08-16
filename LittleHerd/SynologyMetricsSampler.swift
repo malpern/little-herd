@@ -105,12 +105,22 @@ extension RemoteUnavailability {
     /// NAS gets a real explanation in the tooltip instead of a bare
     /// "Unavailable" — the gap that made the Synology read as broken when it was
     /// only unmounted.
-    static func classify(dsm error: SynologyDSMError) -> RemoteUnavailability {
+    /// - Parameter credentials: what the keychain says, when the caller knows.
+    ///   Sign-in failing because nothing was ever saved and sign-in failing
+    ///   because a saved password can no longer be read look identical from the
+    ///   error alone, and are opposite situations: one is a NAS waiting to be
+    ///   set up, the other is one that was being watched and stopped.
+    static func classify(
+        dsm error: SynologyDSMError,
+        credentials: KeychainAvailability? = nil
+    ) -> RemoteUnavailability {
         switch error {
         case .invalidHost:
             .unusableHostName
         case .notAuthenticated:
-            .other("No DSM password saved for this NAS yet.")
+            credentials == .unreadable
+                ? .signInLost
+                : .other("No DSM password saved for this NAS yet.")
         case .certificateChanged:
             .other(error.detail)
         case .malformedResponse:

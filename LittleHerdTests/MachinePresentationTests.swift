@@ -760,6 +760,101 @@ struct ImageVolumeExclusionTests {
     }
 }
 
+/// Losing the password has to make a sound.
+///
+/// The keychain read is declined rather than answered, so when a saved password
+/// stops being readable nothing is raised: DSM sign-in fails, the NAS drops to
+/// offline, and monitoring stops — including drive health, on the one machine
+/// whose drive is actually failing. It was reported as "stopped responding",
+/// which blames a machine that is answering perfectly well and sends you to
+/// check a network that is fine.
+@MainActor
+struct SignInLostTests {
+    private func nasThatWasWorking() -> MachineMonitorModel {
+        let machine = nas()
+        machine.apply(
+            SystemSnapshot(timestamp: .now, readings: [.disk: MetricReading(value: 67)])
+        )
+        return machine
+    }
+
+    @Test
+    func anUnreadablePasswordIsToldApartFromNoPasswordAtAll() {
+        #expect(
+            RemoteUnavailability.classify(
+                dsm: .notAuthenticated, credentials: .unreadable
+            ) == .signInLost
+        )
+        #expect(
+            RemoteUnavailability.classify(
+                dsm: .notAuthenticated, credentials: .absent
+            ) != .signInLost
+        )
+    }
+
+    /// The keychain says which by refusing rather than by coming up empty.
+    @Test
+    func theKeychainDistinguishesRefusedFromEmpty() {
+        #expect(KeychainAvailability(status: errSecSuccess) == .available)
+        #expect(KeychainAvailability(status: errSecItemNotFound) == .absent)
+        #expect(KeychainAvailability(status: errSecAuthFailed) == .unreadable)
+        #expect(
+            KeychainAvailability(status: errSecInteractionNotAllowed) == .unreadable
+        )
+    }
+
+    /// The alert, which is the whole point: it now happens, and says the right
+    /// thing about the right culprit.
+    @Test
+    func aLostSignInRaisesItsOwnAlertRatherThanBlamingTheMachine() {
+        let machine = nasThatWasWorking()
+        machine.markOffline(.signInLost)
+
+        let alerts = MachineAlert.active(for: machine)
+
+        #expect(alerts.contains(.signInLost))
+        #expect(!alerts.contains(.unreachable))
+        #expect(
+            MachineAlert.signInLost.title(machine: "Synology")
+                == "Little Herd can’t sign in to Synology"
+        )
+    }
+
+    /// A NAS that genuinely stopped answering still reads as unreachable, so
+    /// the new condition has not swallowed the old one.
+    @Test
+    func aMachineThatReallyStoppedAnsweringIsStillUnreachable() {
+        let machine = nasThatWasWorking()
+        machine.markOffline(.noAnswer)
+
+        let alerts = MachineAlert.active(for: machine)
+
+        #expect(alerts.contains(.unreachable))
+        #expect(!alerts.contains(.signInLost))
+    }
+
+    /// A NAS that has never been signed in to is not a fault. The same rule the
+    /// rest of the alerts already follow: nothing to recover from.
+    @Test
+    func aNASThatWasNeverSignedInRaisesNothing() {
+        let machine = nas()
+        machine.markOffline(.signInLost)
+
+        #expect(MachineAlert.active(for: machine).isEmpty)
+    }
+
+    /// Every condition needs its own words in both directions, or a recovery
+    /// notification describes the wrong thing.
+    @Test
+    func theNewConditionHasItsOwnWording() {
+        let titles = MachineAlert.allCases.map { $0.title(machine: "X") }
+        let recoveries = MachineAlert.allCases.map { $0.recoveryTitle(machine: "X") }
+
+        #expect(Set(titles).count == MachineAlert.allCases.count)
+        #expect(Set(recoveries).count == MachineAlert.allCases.count)
+    }
+}
+
 // MARK: - Machines to look at
 
 @MainActor

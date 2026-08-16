@@ -16,6 +16,16 @@ nonisolated enum MachineAlert: String, CaseIterable, Sendable {
     /// here that is about hardware rather than load: a full disk is recoverable,
     /// a dying drive takes the data with it.
     case storageUnhealthy
+    /// A machine that was being watched can no longer be signed in to, because
+    /// its saved password has become unreadable.
+    ///
+    /// Worth its own condition rather than being folded into `unreachable`,
+    /// which would blame a machine that is answering perfectly well. The reason
+    /// it is raised at all: the keychain read is declined rather than answered,
+    /// so this failure makes no sound of its own — monitoring simply stops, and
+    /// with it whatever the machine was being watched for. On a NAS that is
+    /// drive health.
+    case signInLost
 
     func title(machine: String) -> String {
         switch self {
@@ -23,6 +33,7 @@ nonisolated enum MachineAlert: String, CaseIterable, Sendable {
         case .memoryCritical: "\(machine) is under memory pressure"
         case .unreachable: "\(machine) stopped responding"
         case .storageUnhealthy: "\(machine) storage needs attention"
+        case .signInLost: "Little Herd can’t sign in to \(machine)"
         }
     }
 
@@ -32,6 +43,7 @@ nonisolated enum MachineAlert: String, CaseIterable, Sendable {
         case .memoryCritical: "\(machine) memory recovered"
         case .unreachable: "\(machine) is back"
         case .storageUnhealthy: "\(machine) storage reports healthy again"
+        case .signInLost: "\(machine) is signed in again"
         }
     }
 
@@ -43,7 +55,13 @@ nonisolated enum MachineAlert: String, CaseIterable, Sendable {
         // Only a machine that was reachable and stopped counts. A machine that
         // has never connected, or one you paused, is not news.
         if machine.state == .offline, machine.lastUpdated != nil {
-            alerts.insert(.unreachable)
+            // Said as what it is. A NAS answering normally, whose password we
+            // can no longer read, has not "stopped responding" — and sending
+            // someone to check the network for a problem the keychain caused
+            // wastes the one thing an alert is meant to buy.
+            alerts.insert(
+                machine.unavailability == .signInLost ? .signInLost : .unreachable
+            )
             // Everything else is last-known data, so do not raise alarms about
             // numbers that have stopped updating.
             return alerts
@@ -134,7 +152,7 @@ final class MachineAlertCenter {
             return machine.memoryConsumers.first.map {
                 "Largest: \($0.name), \(Int64($0.residentBytes).formatted(.byteCount(style: .memory)))."
             } ?? ""
-        case .unreachable:
+        case .unreachable, .signInLost:
             guard let reason = machine.unavailability else { return "" }
             return String(localized: reason.detail(host: machine.hostname))
         case .storageUnhealthy:

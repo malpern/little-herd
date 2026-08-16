@@ -23,6 +23,11 @@ nonisolated enum RemoteUnavailability: Equatable, Sendable {
     case incompleteOutput
     /// The configured host name is not usable as an SSH destination.
     case unusableHostName
+    /// A password is saved but this build cannot read it, so the machine that
+    /// was being watched has quietly stopped being watched. Distinct from
+    /// having no password yet: nothing is wrong with the machine, and retyping
+    /// the password is what fixes it.
+    case signInLost
     /// Anything else; carries ssh's own first line so nothing is swallowed.
     case other(String)
 
@@ -45,6 +50,8 @@ nonisolated enum RemoteUnavailability: Equatable, Sendable {
             "“\(host)” returned incomplete metrics."
         case .unusableHostName:
             "“\(host)” isn’t a usable SSH host name."
+        case .signInLost:
+            "Little Herd can’t read its saved password for “\(host)”. Sign in again to resume monitoring."
         case let .other(message):
             "“\(host)”: \(message)"
         }

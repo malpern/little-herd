@@ -124,14 +124,53 @@ nonisolated enum KeychainSecret {
     }
 
     static func exists(account: String) -> Bool {
+        availability(account: account) == .available
+    }
+
+    /// Whether there is a password, and whether this build can read it.
+    ///
+    /// The two failures look identical from `exists` alone and are not the same
+    /// situation. Nothing saved is a NAS waiting to be set up. Something saved
+    /// that cannot be read is a machine that *was* being watched and silently
+    /// stopped — and since the keychain read is declined rather than answered,
+    /// it stops without anything being said. That is how drive health could go
+    /// dark on the one machine whose drive is actually failing.
+    static func availability(account: String) -> KeychainAvailability {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecMatchLimit as String: kSecMatchLimitOne,
         ]
-        return withoutDialogs {
-            SecItemCopyMatching(query as CFDictionary, nil) == errSecSuccess
+        let status = withoutDialogs {
+            SecItemCopyMatching(query as CFDictionary, nil)
+        }
+        return KeychainAvailability(status: status)
+    }
+}
+
+nonisolated enum KeychainAvailability: Equatable, Sendable {
+    /// Saved, and readable by this build.
+    case available
+    /// Nothing saved for this account.
+    case absent
+    /// Saved, but this build is not on the item's access list. Declining the
+    /// dialog turns that into `errSecAuthFailed`, which is what distinguishes it
+    /// from having no password at all.
+    case unreadable
+
+    init(status: OSStatus) {
+        switch status {
+        case errSecSuccess:
+            self = .available
+        case errSecItemNotFound:
+            self = .absent
+        default:
+            // errSecAuthFailed and errSecInteractionNotAllowed both mean the
+            // item is there and we were refused. Anything else unexplained is
+            // treated the same way: saying a password is missing when it is not
+            // sends someone to retype one that was never the problem.
+            self = .unreadable
         }
     }
 }
