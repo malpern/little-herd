@@ -439,3 +439,69 @@ struct SynologyWiringTests {
         #expect(active == [.unreachable])
     }
 }
+
+/// What the menu bar says when a drive is going.
+@MainActor
+struct SynologyMenuBarTests {
+    private func snapshot(
+        _ name: String,
+        cpu: Double? = nil,
+        memory: MemoryPressureLevel? = .normal,
+        disk: Double? = 50,
+        health: SynologyHealth? = nil
+    ) -> MenuBarMachineSnapshot {
+        MenuBarMachineSnapshot(
+            machine: MachineID(name),
+            state: .live,
+            cpuPercent: cpu,
+            memoryPressure: memory,
+            diskUsedPercent: disk,
+            storageHealth: health
+        )
+    }
+
+    /// A failing drive outranks everything else on screen. A pegged CPU and a
+    /// full disk are both recoverable; the drive is not, and the menu bar is
+    /// the only surface visible when the dashboard is closed.
+    @Test
+    func aFailingDriveOutranksAPeggedCPUAndAFullDisk() {
+        let headline = MenuBarStatusSelector.headline(for: [
+            snapshot("mini", cpu: 99, disk: 99),
+            snapshot("synology", health: .critical),
+        ])
+        guard case .storageUnhealthy(let machine, let critical) = headline else {
+            Issue.record("expected storageUnhealthy, got \(headline)")
+            return
+        }
+        #expect(machine == MachineID("synology"))
+        #expect(critical)
+    }
+
+    @Test
+    func aDegradedDriveOutranksMemoryPressureButReadsAsLessSevere() {
+        let headline = MenuBarStatusSelector.headline(for: [
+            snapshot("mini", memory: .critical),
+            snapshot("synology", health: .warning),
+        ])
+        guard case .storageUnhealthy(_, let critical) = headline else {
+            Issue.record("expected storageUnhealthy, got \(headline)")
+            return
+        }
+        #expect(!critical)
+    }
+
+    /// Healthy and unreported storage must not displace the ordinary headline,
+    /// or the menu bar would permanently cry wolf.
+    @Test
+    func healthyOrSilentStorageChangesNothing() {
+        for health: SynologyHealth? in [nil, .normal, .unknown] {
+            let headline = MenuBarStatusSelector.headline(for: [
+                snapshot("mini", cpu: 10, health: health)
+            ])
+            guard case .normal = headline else {
+                Issue.record("\(String(describing: health)) should not raise a headline, got \(headline)")
+                return
+            }
+        }
+    }
+}

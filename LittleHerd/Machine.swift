@@ -159,6 +159,9 @@ nonisolated struct MenuBarMachineSnapshot: Equatable, Identifiable, Sendable {
     let cpuPercent: Double?
     let memoryPressure: MemoryPressureLevel?
     let diskUsedPercent: Double?
+    /// The worst condition any of this machine's drives or volumes reports,
+    /// when it reports one at all.
+    var storageHealth: SynologyHealth?
 
     var id: MachineID { machine }
 }
@@ -170,12 +173,26 @@ nonisolated enum MenuBarHeadline: Equatable, Sendable {
     case highCPU(machine: MachineID, percent: Int, critical: Bool)
     case memoryPressure(machine: MachineID, critical: Bool)
     case lowDisk(machine: MachineID, usedPercent: Int, critical: Bool)
+    case storageUnhealthy(machine: MachineID, critical: Bool)
 }
 
 nonisolated enum MenuBarStatusSelector {
     static func headline(for snapshots: [MenuBarMachineSnapshot]) -> MenuBarHeadline {
         let liveSnapshots = snapshots.filter { $0.state == .live }
         let liveCount = liveSnapshots.count
+
+        // Above everything else: a full disk or a busy CPU is recoverable, and
+        // a drive that is going takes the data with it.
+        if let failing = liveSnapshots.first(where: {
+            $0.storageHealth == .critical
+        }) {
+            return .storageUnhealthy(machine: failing.machine, critical: true)
+        }
+        if let degrading = liveSnapshots.first(where: {
+            $0.storageHealth == .warning
+        }) {
+            return .storageUnhealthy(machine: degrading.machine, critical: false)
+        }
 
         if let criticalMemory = liveSnapshots.first(where: {
             $0.memoryPressure == .critical

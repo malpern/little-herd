@@ -152,7 +152,10 @@ private extension MachineMonitorModel {
             state: state,
             cpuPercent: cpu.value,
             memoryPressure: memoryPressure,
-            diskUsedPercent: storageVolumes.map(\.usedPercent).max() ?? diskMetric
+            diskUsedPercent: storageVolumes.map(\.usedPercent).max() ?? diskMetric,
+            storageHealth: (drives.map(\.health)
+                + storageVolumes.compactMap(\.health))
+                .max { $0.severity < $1.severity }
         )
     }
 }
@@ -199,6 +202,13 @@ private struct MenuBarStatusLabel: View {
                     Image(systemName: critical ? "exclamationmark.triangle.fill" : "internaldrive.fill")
                     Text(model.shortName(for: machine))
                     Text("Disk")
+                }
+
+            case let .storageUnhealthy(machine, critical):
+                HStack(spacing: 3) {
+                    Image(systemName: critical ? "xmark.octagon.fill" : "exclamationmark.triangle.fill")
+                    Text(model.shortName(for: machine))
+                    Text("Drive")
                 }
             }
         }
@@ -306,6 +316,8 @@ private struct MenuBarHeadlineView: View {
              let .memoryPressure(_, critical),
              let .lowDisk(_, _, critical):
             critical ? "exclamationmark.triangle.fill" : "exclamationmark.circle.fill"
+        case let .storageUnhealthy(_, critical):
+            critical ? "xmark.octagon.fill" : "exclamationmark.triangle.fill"
         }
     }
 
@@ -317,6 +329,8 @@ private struct MenuBarHeadlineView: View {
         case let .highCPU(_, _, critical),
              let .memoryPressure(_, critical),
              let .lowDisk(_, _, critical):
+            critical ? .red : .orange
+        case let .storageUnhealthy(_, critical):
             critical ? .red : .orange
         }
     }
@@ -340,6 +354,12 @@ private struct MenuBarHeadlineView: View {
             Text("Memory pressure on \(model.name(for: machine))")
         case let .lowDisk(machine, _, _):
             Text("Storage low on \(model.name(for: machine))")
+        case let .storageUnhealthy(machine, critical):
+            if critical {
+                Text("Drive failing on \(model.name(for: machine))")
+            } else {
+                Text("Drive needs attention on \(model.name(for: machine))")
+            }
         }
     }
 
@@ -362,6 +382,12 @@ private struct MenuBarHeadlineView: View {
             Text(critical ? "Memory pressure is critical" : "Memory pressure is elevated")
         case let .lowDisk(_, usedPercent, _):
             Text("Disk is \(usedPercent)% full")
+        case let .storageUnhealthy(_, critical):
+            Text(
+                critical
+                    ? "A drive reports critical health"
+                    : "A drive reports degraded health"
+            )
         }
     }
 }

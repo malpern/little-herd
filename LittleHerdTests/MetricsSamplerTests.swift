@@ -1301,14 +1301,16 @@ struct MetricsSamplerTests {
         state: MonitorConnectionState = .live,
         cpuPercent: Double? = nil,
         memoryPressure: MemoryPressureLevel? = .normal,
-        diskUsedPercent: Double? = 50
+        diskUsedPercent: Double? = 50,
+        storageHealth: SynologyHealth? = nil
     ) -> MenuBarMachineSnapshot {
         MenuBarMachineSnapshot(
             machine: machine,
             state: state,
             cpuPercent: cpuPercent,
             memoryPressure: memoryPressure,
-            diskUsedPercent: diskUsedPercent
+            diskUsedPercent: diskUsedPercent,
+            storageHealth: storageHealth
         )
     }
 }
