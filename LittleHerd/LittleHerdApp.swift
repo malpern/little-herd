@@ -84,7 +84,6 @@ struct LittleHerdApp: App {
                 store: machineStore,
                 onConfigurationsChanged: model.applyConfigurations
             )
-                .preferredColorScheme(.light)
         }
         .defaultSize(width: 728, height: 503)
         .windowResizability(.contentSize)

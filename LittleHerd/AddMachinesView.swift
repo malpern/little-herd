@@ -336,7 +336,6 @@ struct AddMachinesView: View {
         }
         .frame(width: 728, height: 503)
         .background(LittleHerdTheme.background)
-        .environment(\.colorScheme, .light)
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .manual:
@@ -716,7 +715,6 @@ private struct MachineSettingsReviewView: View {
         .padding(24)
         .frame(width: 560, height: 350)
         .background(LittleHerdTheme.background)
-        .environment(\.colorScheme, .light)
     }
 }
 
@@ -816,6 +814,5 @@ private struct ManualMachineEntryView: View {
         .padding(24)
         .frame(width: 430, height: 310)
         .background(LittleHerdTheme.background)
-        .environment(\.colorScheme, .light)
     }
 }

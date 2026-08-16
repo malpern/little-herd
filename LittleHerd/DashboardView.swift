@@ -134,7 +134,6 @@ struct DashboardView: View {
             .frame(width: 0, height: 0)
             .accessibilityHidden(true)
         }
-        .environment(\.colorScheme, .light)
         .animation(.easeInOut(duration: 0.22), value: model.overviewMetric)
         .animation(
             DashboardTransition.animation(reduceMotion: reduceMotion),
@@ -544,6 +543,15 @@ private struct MachineMetricsView: View {
     let machine: MachineMonitorModel
 
     var body: some View {
+        // Five rows plus dividers overflow the window on shorter machines, and
+        // the last one was being cut in half by the window edge.
+        ScrollView {
+            metricRows
+        }
+        .scrollBounceBehavior(.basedOnSize)
+    }
+
+    private var metricRows: some View {
         VStack(spacing: 0) {
             ForEach(machine.metrics) { metric in
                 MetricRow(
@@ -1270,10 +1278,12 @@ private struct AIUsageStatusLED: View {
     var body: some View {
         statusShape
             .frame(width: 9, height: 9)
-            .background(Color.white.opacity(0.96), in: Circle())
+            // Follows the window, not a fixed white: this dot sits on the
+            // avatar and has to separate from whatever is behind it.
+            .background(LittleHerdTheme.background.opacity(0.96), in: Circle())
             .overlay {
                 Circle()
-                    .stroke(Color.white, lineWidth: 1.25)
+                    .stroke(LittleHerdTheme.background, lineWidth: 1.25)
             }
             .scaleEffect(isBlinking && isDimmed ? 0.86 : 1)
             .opacity(isBlinking && isDimmed ? 0.35 : 1)

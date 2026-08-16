@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 nonisolated enum HerdwareAvatar: String, CaseIterable, Codable, Identifiable,
@@ -32,33 +33,32 @@ extension MachineID {
     }
 }
 
+/// The palette, defined once for both appearances.
+///
+/// These were literals, which meant the app kept its cream background in Dark
+/// Mode while the semantic text colours inverted around it — near-white type on
+/// near-white paper. A monitor that sits on screen all day is exactly the sort
+/// of app people run in a dark room, so it has to follow the system.
+///
+/// Asset colours rather than a dynamic `NSColor`: SwiftUI resolves a colour set
+/// against the view's own appearance, where a dynamic NSColor bridged through
+/// `Color(nsColor:)` kept resolving light no matter what the system was set to.
 enum LittleHerdTheme {
-    static let background = Color(
-        red: 0.984,
-        green: 0.973,
-        blue: 0.946
-    )
-    static let forest = Color(
-        red: 0.075,
-        green: 0.31,
-        blue: 0.235
-    )
-    static let loadGreen = Color(
-        red: 0.12,
-        green: 0.62,
-        blue: 0.32
-    )
-    static let loadTeal = Color(
-        red: 0.10,
-        green: 0.61,
-        blue: 0.54
-    )
-    static let emptyBlock = Color(
-        red: 0.33,
-        green: 0.31,
-        blue: 0.27,
-        opacity: 0.09
-    )
+    /// Warm paper in light, a warm near-black in dark — not pure black, which
+    /// would leave the avatars looking like stickers floating in a void.
+    static let background = Color("HerdBackground", bundle: .main)
+
+    /// The brand green, lifted in dark so it clears the background instead of
+    /// sinking into it.
+    static let forest = Color("HerdForest", bundle: .main)
+
+    static let loadGreen = Color("HerdLoadGreen", bundle: .main)
+    static let loadTeal = Color("HerdLoadTeal", bundle: .main)
+
+    /// The unlit segments of a thermometer. Dark needs a lighter, more opaque
+    /// value: a dark wash on a dark ground is invisible, and the empty blocks
+    /// are what give the bar its shape.
+    static let emptyBlock = Color("HerdEmptyBlock", bundle: .main)
 }
 
 struct MachineAvatarView: View {

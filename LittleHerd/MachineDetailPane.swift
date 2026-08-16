@@ -37,13 +37,21 @@ struct MetricDetailPane<Rows: View>: View {
                 Text(emptyMessage)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
             } else {
-                VStack(alignment: .leading, spacing: 6) {
-                    rows()
+                // Scrolls, because the window is sized to its content and
+                // cannot grow past it: a machine with more volumes, drives, or
+                // agent sessions than fit was simply losing the ones at the
+                // bottom, with nothing on screen to say so.
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) {
+                        rows()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .scrollBounceBehavior(.basedOnSize)
+                .scrollIndicators(.automatic)
             }
-
-            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
