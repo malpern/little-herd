@@ -22,6 +22,16 @@ final class MachineMonitorModel: Identifiable {
     private(set) var activities: [MachineActivity] = []
     private(set) var agentSessions: [AgentSession] = []
     private(set) var storageVolumes: [StorageVolume] = []
+    /// How the failing drive's sector count has moved, when there is enough
+    /// history to say. The number that turns "229 bad sectors" into a decision:
+    /// 229 accumulated over years is a different situation from 229 since
+    /// Tuesday, and the count alone cannot tell them apart.
+    private(set) var driveSectorTrend: HistoryTrend?
+
+    func applyDriveSectorTrend(_ trend: HistoryTrend?) {
+        driveSectorTrend = trend
+    }
+
     /// Physical drives, for machines that can report them. A NAS is the only one
     /// that does, and a failing drive there is the most consequential thing
     /// Little Herd can notice.
@@ -152,6 +162,17 @@ nonisolated struct StorageConcern: Equatable, Sendable {
         let condition = health == .critical ? "failing" : "needs attention"
         guard let detail else { return "\(subject) \(condition)" }
         return "\(subject) \(condition) — \(detail)"
+    }
+
+    /// The same sentence with what the count has done recently, when history
+    /// has enough to say so.
+    func summary(trend: HistoryTrend?) -> String {
+        guard let trend, trend.isMeaningful, trend.change > 0 else {
+            return summary
+        }
+        let days = max(Int((trend.duration / 86_400).rounded()), 1)
+        let window = days == 1 ? "today" : "in \(days) days"
+        return "\(summary), up \(Int(trend.change)) \(window)"
     }
 }
 

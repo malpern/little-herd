@@ -1049,7 +1049,7 @@ private struct MachineIdentityRail: View {
                 // A mark that only signals "something is wrong" makes you hunt
                 // for the something.
                 if let concern = machine.storageConcern {
-                    Text(concern.summary)
+                    Text(concern.summary(trend: machine.driveSectorTrend))
                         .font(.caption2)
                         .foregroundStyle(concern.health.tint)
                         .multilineTextAlignment(.center)

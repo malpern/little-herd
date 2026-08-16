@@ -14,6 +14,9 @@ final class MonitorModel {
     let aiUsageLimits = AIUsageLimitsModel()
     let taskTransfers = TaskTransferMonitorModel()
     let alerts = MachineAlertCenter()
+    /// What the herd has been doing, so the interface can say whether something
+    /// is getting worse rather than only what it is now.
+    let history = MetricHistoryStore.makeDefault()
     var selection: DashboardSelection = .overview
     var overviewMetric: OverviewMetric = .cpu
 
@@ -54,6 +57,9 @@ final class MonitorModel {
 
     @ObservationIgnored
     private var monitoringTasks: [Task<Void, Never>] = []
+
+    @ObservationIgnored
+    private var historyFlushTask: Task<Void, Never>?
 
     @ObservationIgnored
     private var networkStorageMonitoringTasks: [Task<Void, Never>] = []
@@ -278,6 +284,64 @@ final class MonitorModel {
     /// later one can be checked against it. Only ever fires when nothing is
     /// recorded yet — a change to an existing pin is refused in the trust
     /// evaluator, never quietly accepted here.
+    /// Records the readings worth remembering. Called wherever a snapshot is
+    /// applied, so every machine gets history regardless of how it is sampled.
+    private func recordHistory(
+        for machine: MachineMonitorModel,
+        from snapshot: SystemSnapshot
+    ) {
+        let machineID = machine.machine
+        let history = history
+        let machine = machine
+        let readings = snapshot.readings
+        let drives = snapshot.drives
+        let volumes = snapshot.storageVolumes
+        let timestamp = snapshot.timestamp
+
+        Task {
+            for (kind, reading) in readings {
+                guard let value = reading.value else { continue }
+                await history.record(
+                    machine: machineID,
+                    series: .metric(kind),
+                    value: value,
+                    at: timestamp
+                )
+            }
+            // The number that says whether a failing drive is failing faster.
+            var worstTrend: HistoryTrend?
+            for drive in drives where drive.uncorrectableSectors > 0 {
+                await history.record(
+                    machine: machineID,
+                    series: .driveSectors(driveID: drive.id),
+                    value: Double(drive.uncorrectableSectors),
+                    at: timestamp
+                )
+                // A fortnight: long enough to see a slow bleed, short enough
+                // that a drive which settled months ago stops being news.
+                let trend = await history.trend(
+                    machine: machineID,
+                    series: .driveSectors(driveID: drive.id),
+                    over: 14 * 24 * 60 * 60,
+                    now: timestamp
+                )
+                if let trend, trend.change > (worstTrend?.change ?? 0) {
+                    worstTrend = trend
+                }
+            }
+            let resolved = worstTrend
+            await MainActor.run { machine.applyDriveSectorTrend(resolved) }
+            for volume in volumes {
+                await history.record(
+                    machine: machineID,
+                    series: .volumeUsedPercent(volumeID: volume.id),
+                    value: volume.usedPercent,
+                    at: timestamp
+                )
+            }
+        }
+    }
+
     private func recordCertificate(
         _ fingerprint: String,
         for machineID: MachineID
@@ -313,9 +377,30 @@ final class MonitorModel {
         startNetworkStorageMonitoringIfNeeded()
         aiUsageLimits.start()
         taskTransfers.start()
+        startHistoryFlushing()
+    }
+
+    /// Writes history to disk once a minute rather than on every sample.
+    ///
+    /// The file is rewritten whole, so this should not run six times a minute —
+    /// but it cannot be left to shutdown either: quitting does not reliably
+    /// reach this object, and a fire-and-forget write loses the race with
+    /// process exit. A minute bounds what a crash or a force-quit can cost.
+    private func startHistoryFlushing() {
+        guard historyFlushTask == nil else { return }
+        historyFlushTask = Task { [history] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                if Task.isCancelled { return }
+                await history.flush()
+            }
+        }
     }
 
     private func stop() {
+        historyFlushTask?.cancel()
+        historyFlushTask = nil
+        Task { [history] in await history.flush() }
         for task in monitoringTasks {
             task.cancel()
         }
@@ -363,6 +448,7 @@ final class MonitorModel {
             while !Task.isCancelled {
                 let snapshot = await sampler.sample()
                 machine.apply(snapshot)
+                recordHistory(for: machine, from: snapshot)
                 alerts.evaluate(machine, isEnabled: alertsEnabled)
 
                 do {
@@ -385,6 +471,7 @@ final class MonitorModel {
                 do {
                     let snapshot = try await sampler.sample()
                     machine.apply(snapshot)
+                    recordHistory(for: machine, from: snapshot)
                 } catch {
                     machine.markOffline(RemoteUnavailability.classify(error))
                 }
@@ -413,7 +500,9 @@ final class MonitorModel {
         Task { [machine, sampler] in
             while !Task.isCancelled {
                 do {
-                    machine.apply(try await sampler.sample())
+                    let snapshot = try await sampler.sample()
+                    machine.apply(snapshot)
+                    recordHistory(for: machine, from: snapshot)
                 } catch let error as SynologyDSMError {
                     machine.markOffline(.classify(dsm: error))
                 } catch {
@@ -440,7 +529,9 @@ final class MonitorModel {
         Task { [machine, sampler] in
             while !Task.isCancelled {
                 do {
-                    machine.apply(try await sampler.sample())
+                    let snapshot = try await sampler.sample()
+                    machine.apply(snapshot)
+                    recordHistory(for: machine, from: snapshot)
                 } catch SMBStorageMonitorError.noMountedShares {
                     // "Unavailable" on its own reads as a broken NAS. Nothing
                     // being mounted is a different situation with a different
