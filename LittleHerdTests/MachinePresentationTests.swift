@@ -667,6 +667,99 @@ struct SustainedLoadTests {
     }
 }
 
+/// Which mounted things count as a machine's storage.
+///
+/// A Time Machine sparsebundle kept on the NAS mounts on the Mac that backs up
+/// to it, and was listed as that Mac's storage: 16 TB, 95% full. Both figures
+/// were wrong. The 16 TB is the image's ceiling rather than storage that
+/// exists — 2.3 TB was written with 817 GB free — and the bytes are the NAS's,
+/// counted a second time on a machine that merely has them mounted.
+struct ImageVolumeExclusionTests {
+    private func storageLine(
+        name: String,
+        mount: String,
+        total: Double,
+        available: Double,
+        group: String
+    ) -> String {
+        let encode = { (value: String) in Data(value.utf8).base64EncodedString() }
+        return [
+            "storage=\(encode(name))",
+            encode(mount),
+            String(format: "%.0f", total),
+            String(format: "%.0f", available),
+            encode(group),
+        ].joined(separator: "\t")
+    }
+
+    private func imageLine(_ mount: String) -> String {
+        "imagevolume=\(Data(mount.utf8).base64EncodedString())"
+    }
+
+    @Test
+    func aBackupImageMountedFromTheNASIsNotThisMachinesStorage() {
+        let output = [
+            storageLine(
+                name: "Macintosh HD", mount: "/",
+                total: 994_662_584_320, available: 49_653_043_200, group: "disk3"
+            ),
+            storageLine(
+                name: "Backups of Micah's M1",
+                mount: "/Volumes/Backups of Micah's M1",
+                total: 16_000_000_000_000, available: 817_189_216_256, group: "disk7"
+            ),
+            imageLine("/Volumes/Backups of Micah's M1"),
+        ].joined(separator: "\n")
+
+        let volumes = RemoteOutputParser.parseStorageVolumes(output)
+
+        #expect(volumes.map(\.name) == ["Macintosh HD"])
+    }
+
+    /// Hardware stays. The exclusion is about images, not about anything that
+    /// happens to be mounted under /Volumes.
+    @Test
+    func realVolumesAreUntouched() {
+        let output = [
+            storageLine(
+                name: "Foot Locker", mount: "/Volumes/Foot Locker",
+                total: 4_000_577_273_856, available: 1_225_835_945_984, group: "disk5"
+            ),
+            imageLine("/Volumes/Cursor Installer"),
+        ].joined(separator: "\n")
+
+        #expect(RemoteOutputParser.parseStorageVolumes(output).count == 1)
+    }
+
+    @Test
+    func aMachineReportingNoImagesLosesNothing() {
+        let output = storageLine(
+            name: "Macintosh HD", mount: "/",
+            total: 994_662_584_320, available: 49_653_043_200, group: "disk3"
+        )
+
+        #expect(RemoteOutputParser.parseImageVolumeMounts(output).isEmpty)
+        #expect(RemoteOutputParser.parseStorageVolumes(output).count == 1)
+    }
+
+    /// The startup row is one volume of a container whose siblings are not
+    /// listed, so what it reports using describes the sealed system alone. The
+    /// total less what is free counts the siblings too, and is what makes a
+    /// mini with 46 GB left read as nearly full rather than a quarter used.
+    @Test
+    func aContainersUsageCountsSiblingsThatAreNotListed() {
+        let startup = StorageVolume(
+            id: "disk3",
+            name: "Macintosh HD",
+            mountPath: "/",
+            availableBytes: 49_653_043_200,
+            totalBytes: 994_662_584_320
+        )
+
+        #expect(Int(startup.usedPercent.rounded()) == 95)
+    }
+}
+
 // MARK: - Machines to look at
 
 @MainActor

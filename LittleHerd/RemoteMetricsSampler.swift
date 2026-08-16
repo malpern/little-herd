@@ -114,7 +114,31 @@ nonisolated enum RemoteOutputParser {
         )
     }
 
+    /// Mount points the machine says are disk images rather than hardware.
+    ///
+    /// A disk image's bytes already live inside a file on some other volume, so
+    /// listing it as storage in its own right counts them twice. When the image
+    /// sits on a network share — a Time Machine sparsebundle kept on a NAS —
+    /// they are not this machine's bytes at all, and the NAS is the thing to
+    /// ask. Its apparent size is a ceiling too: one such backup reported 16 TB
+    /// against 2.3 TB written, which read as a machine 95% full when it had
+    /// 817 GB free.
+    ///
+    /// The shell reports which mounts these are; what to do about them is
+    /// decided here, where it can be tested.
+    static func parseImageVolumeMounts(_ output: String) -> Set<String> {
+        Set(
+            output
+                .split(whereSeparator: \.isNewline)
+                .filter { $0.hasPrefix("imagevolume=") }
+                .compactMap {
+                    decodeBase64($0.dropFirst("imagevolume=".count))
+                }
+        )
+    }
+
     static func parseStorageVolumes(_ output: String) -> [StorageVolume] {
+        let imageMounts = parseImageVolumeMounts(output)
         let parsed: [ParsedStorageVolume] = output
             .split(whereSeparator: \.isNewline)
             .compactMap { line in
@@ -128,7 +152,8 @@ nonisolated enum RemoteOutputParser {
                       let mountPath = decodeBase64(fields[1]),
                       let totalBytes = Double(fields[2]),
                       let availableBytes = Double(fields[3]),
-                      totalBytes > 0
+                      totalBytes > 0,
+                      !imageMounts.contains(mountPath)
                 else {
                     return nil
                 }
@@ -459,6 +484,13 @@ actor RemoteMetricsSampler {
     # The startup volume is itself read-only on a sealed system, so "/" is
     # always kept regardless.
     readonly_volumes=$(/sbin/mount | /usr/bin/awk '/read-only/ {position=index($0, " on "); rest=substr($0, position + 4); paren=index(rest, " ("); if (paren > 1) print substr(rest, 1, paren - 1)}' | /usr/bin/grep '^/Volumes/' | /usr/bin/tr '\n' '|')
+    # A disk image's bytes already live inside a file on some other volume, so
+    # counting it again as storage of its own double-counts them. When the image
+    # sits on a network share — a Time Machine sparsebundle on a NAS — they are
+    # not this machine's bytes at all, and the NAS is the thing to ask.
+    /usr/bin/hdiutil info 2>/dev/null | /usr/bin/awk -F'\t' '/^\/dev\/disk/ && $3 != "" {print $3}' | while read -r image_mount; do
+      printf "imagevolume=%s\n" "$(printf "%s" "$image_mount" | /usr/bin/base64 | /usr/bin/tr -d '\n')"
+    done
     /bin/df -Pk -l | /usr/bin/awk -v readonly="$readonly_volumes" 'NR > 1 {mount=$6; for (i=7; i<=NF; i++) mount=mount " " $i; if ($1 ~ "^/dev/" && (mount == "/" || mount ~ "^/Volumes/") && mount != "/Volumes/Recovery" && index(readonly, mount "|") == 0) {group=$1; sub(/^\/dev\//,"",group); sub(/s[0-9]+.*$/,"",group); printf "%s\t%.0f\t%.0f\t%s\n", group, $2*1024, $4*1024, mount}}' | while IFS="$(printf '\t')" read -r storage_group storage_total storage_available storage_mount; do
       storage_name=${storage_mount##*/}
       if [ "$storage_mount" = "/" ]; then storage_name="Macintosh HD"; fi
