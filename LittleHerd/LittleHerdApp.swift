@@ -153,9 +153,7 @@ private extension MachineMonitorModel {
             cpuPercent: cpu.value,
             memoryPressure: memoryPressure,
             diskUsedPercent: storageVolumes.map(\.usedPercent).max() ?? diskMetric,
-            storageHealth: (drives.map(\.health)
-                + storageVolumes.compactMap(\.health))
-                .max { $0.severity < $1.severity }
+            storageHealth: storageConcern?.health
         )
     }
 }

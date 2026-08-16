@@ -996,6 +996,18 @@ private struct MachineIdentityRail: View {
                     .matchedAvatar(namespace, machine: machine.machine)
                     .scaleEffect(isHoveringIcon ? 0.96 : 1)
                     .animation(.smooth(duration: 0.16), value: isHoveringIcon)
+                    // The same badge as the overview, so the mark that brought
+                    // you here is still on the machine when you arrive.
+                    .overlay(alignment: .topTrailing) {
+                        if let concern = machine.storageConcern {
+                            Image(systemName: concern.health.symbolName)
+                                .font(.system(size: 22))
+                                .foregroundStyle(.white, concern.health.tint)
+                                .background(Circle().fill(.background).frame(width: 20, height: 20))
+                                .offset(x: 2, y: 2)
+                                .accessibilityHidden(true)
+                        }
+                    }
             }
             .buttonStyle(.plain)
             .onHover { isHoveringIcon = $0 }
@@ -1014,6 +1026,18 @@ private struct MachineIdentityRail: View {
                     hostname: machine.hostname
                 )
                 .lineLimit(1)
+
+                // Says what the badge means, where you land after clicking it.
+                // A mark that only signals "something is wrong" makes you hunt
+                // for the something.
+                if let concern = machine.storageConcern {
+                    Text(concern.summary)
+                        .font(.caption2)
+                        .foregroundStyle(concern.health.tint)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .help("Reported by the machine itself. See Disk for every drive.")
+                }
             }
         }
         .frame(width: 112)

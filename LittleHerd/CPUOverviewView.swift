@@ -283,17 +283,10 @@ struct MachineStatusLabel: View {
         }
     }
 
-    /// Only trouble earns a badge. Healthy or unreported storage shows nothing,
-    /// so the badge means something when it does appear. Volumes count as well
-    /// as drives: a pool can be degraded while every drive still reads normal.
+    /// One definition of "storage is in trouble", shared with the machine's
+    /// own page and the menu bar.
     private var worstStorageHealth: SynologyHealth? {
-        let reported = machine.drives.map(\.health)
-            + machine.storageVolumes.compactMap(\.health)
-        let worst = reported.max { $0.severity < $1.severity }
-        guard let worst, worst == .warning || worst == .critical else {
-            return nil
-        }
-        return worst
+        machine.storageConcern?.health
     }
 
     private var statusColor: Color {

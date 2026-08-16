@@ -79,6 +79,42 @@ final class MachineMonitorModel: Identifiable {
         unavailability = nil
     }
 
+    /// The worst thing this machine's storage reports, when it is worth saying
+    /// out loud. One definition, so the overview badge, the machine's own page,
+    /// and the menu bar cannot disagree about whether a drive is in trouble.
+    ///
+    /// Healthy and unreported storage produce nothing: a badge that is always
+    /// lit says nothing at all.
+    var storageConcern: StorageConcern? {
+        let worstDrive = drives.max { $0.health.severity < $1.health.severity }
+        let worstVolume = storageVolumes
+            .compactMap { volume -> (SynologyHealth, String)? in
+                volume.health.map { ($0, volume.name) }
+            }
+            .max { $0.0.severity < $1.0.severity }
+
+        // A named drive beats a volume: it is the thing you would physically
+        // replace, and the volume is usually just reporting the same fault.
+        if let worstDrive, worstDrive.health == .warning
+            || worstDrive.health == .critical {
+            return StorageConcern(
+                health: worstDrive.health,
+                subject: worstDrive.name,
+                detail: worstDrive.uncorrectableSectors > 0
+                    ? "\(worstDrive.uncorrectableSectors) bad sectors"
+                    : nil
+            )
+        }
+        if let worstVolume, worstVolume.0 == .warning || worstVolume.0 == .critical {
+            return StorageConcern(
+                health: worstVolume.0,
+                subject: worstVolume.1,
+                detail: nil
+            )
+        }
+        return nil
+    }
+
     /// Offline covers two situations that deserve different treatment. A
     /// machine that answered and then stopped is a problem worth a red dot. One
     /// that has never answered at all has not been set up yet — colouring that
@@ -101,6 +137,21 @@ final class MachineMonitorModel: Identifiable {
 
     func markStopped() {
         state = .stopped
+    }
+}
+
+/// What is wrong with a machine's storage, said in the fewest words that still
+/// identify the part to replace.
+nonisolated struct StorageConcern: Equatable, Sendable {
+    let health: SynologyHealth
+    /// The drive or volume at fault, by the name the machine calls it.
+    let subject: String
+    let detail: String?
+
+    var summary: String {
+        let condition = health == .critical ? "failing" : "needs attention"
+        guard let detail else { return "\(subject) \(condition)" }
+        return "\(subject) \(condition) — \(detail)"
     }
 }
 

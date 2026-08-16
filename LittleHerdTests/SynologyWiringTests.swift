@@ -559,3 +559,119 @@ struct NeverConnectedTests {
         #expect(!MachineAlert.active(for: machine).contains(.unreachable))
     }
 }
+
+/// The badge says something is wrong; this is what says what.
+@MainActor
+struct StorageConcernTests {
+    private func nas(
+        drives: [SynologyDrive] = [],
+        volumes: [StorageVolume] = []
+    ) -> MachineMonitorModel {
+        let machine = MachineMonitorModel(
+            configuration: MachineConfiguration(
+                id: MachineID("synology"),
+                name: "Synology",
+                shortName: "Synology",
+                hostname: "AlpernServer.local",
+                hardwareSummary: "Network storage",
+                platform: .storage,
+                connection: .dsm,
+                avatar: .pigletNAS,
+                identityFile: nil,
+                serverNames: [],
+                supportsGPU: false,
+                dsmUsername: "malpern"
+            )
+        )
+        machine.apply(
+            SystemSnapshot(
+                timestamp: .now,
+                readings: [.disk: MetricReading(value: 67)],
+                storageVolumes: volumes,
+                drives: drives
+            )
+        )
+        return machine
+    }
+
+    private func drive(
+        _ name: String,
+        _ health: SynologyHealth,
+        sectors: Int = 0
+    ) -> SynologyDrive {
+        SynologyDrive(
+            id: name,
+            name: name,
+            model: "WD30EFRX",
+            health: health,
+            uncorrectableSectors: sectors,
+            temperatureCelsius: 33
+        )
+    }
+
+    /// Named, so the sentence identifies the part to pull out of the bay.
+    @Test
+    func theConcernNamesTheDriveAndTheEvidence() throws {
+        let machine = nas(drives: [
+            drive("Drive 1", .normal),
+            drive("Drive 2", .critical, sectors: 229),
+        ])
+        let concern = try #require(machine.storageConcern)
+
+        #expect(concern.health == .critical)
+        #expect(concern.subject == "Drive 2")
+        #expect(concern.summary.contains("Drive 2"))
+        #expect(concern.summary.contains("failing"))
+        #expect(concern.summary.contains("229 bad sectors"))
+    }
+
+    /// A drive beats a volume: it is the thing you would physically replace,
+    /// and the volume is usually reporting the same fault second-hand.
+    @Test
+    func aNamedDriveIsPreferredOverTheVolumeReportingTheSameFault() throws {
+        let machine = nas(
+            drives: [drive("Drive 2", .critical, sectors: 229)],
+            volumes: [
+                StorageVolume(
+                    id: "dsm:volume_1",
+                    name: "Volume 1",
+                    mountPath: "/volume1",
+                    availableBytes: 1,
+                    totalBytes: 3,
+                    health: .warning
+                )
+            ]
+        )
+        #expect(try #require(machine.storageConcern).subject == "Drive 2")
+    }
+
+    /// With no drive condemned, the volume still has to be named — otherwise
+    /// the badge appears with nothing behind it.
+    @Test
+    func aVolumeIsNamedWhenNoDriveIsAtFault() throws {
+        let machine = nas(
+            drives: [drive("Drive 1", .normal)],
+            volumes: [
+                StorageVolume(
+                    id: "dsm:volume_1",
+                    name: "Volume 1",
+                    mountPath: "/volume1",
+                    availableBytes: 1,
+                    totalBytes: 3,
+                    health: .warning
+                )
+            ]
+        )
+        let concern = try #require(machine.storageConcern)
+        #expect(concern.subject == "Volume 1")
+        #expect(concern.summary.contains("needs attention"))
+    }
+
+    /// A badge that is always lit says nothing at all.
+    @Test
+    func healthyStorageProducesNoConcern() {
+        #expect(nas(drives: [drive("Drive 1", .normal)]).storageConcern == nil)
+        #expect(nas(drives: [drive("Drive 1", .unknown)]).storageConcern == nil)
+        #expect(nas().storageConcern == nil)
+    }
+}
