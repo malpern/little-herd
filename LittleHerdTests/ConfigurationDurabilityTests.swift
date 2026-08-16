@@ -8,21 +8,15 @@ import Testing
 /// losing it.
 @MainActor
 struct ConfigurationDurabilityTests {
-    private func store(seededWith json: String) -> (MachineConfigurationStore, UserDefaults, String) {
-        let suiteName = "LittleHerdTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.set(
-            Data(json.utf8),
-            forKey: LittleHerdPreferences.machineConfigurationsKey
-        )
-        return (MachineConfigurationStore(defaults: defaults), defaults, suiteName)
+    private func store(
+        seededWith json: String
+    ) -> (MachineConfigurationStore, InMemoryConfigurationStorage) {
+        let storage = InMemoryConfigurationStorage(seededWith: json)
+        return (MachineConfigurationStore(storage: storage), storage)
     }
 
-    private func storedJSON(_ defaults: UserDefaults) -> String {
-        let data = defaults.data(
-            forKey: LittleHerdPreferences.machineConfigurationsKey
-        ) ?? Data()
-        return String(decoding: data, as: UTF8.self)
+    private func storedJSON(_ storage: InMemoryConfigurationStorage) -> String {
+        storage.savedJSON
     }
 
     /// A machine written by a NEWER build — here a connection kind this build
@@ -31,7 +25,7 @@ struct ConfigurationDurabilityTests {
     /// between losing one machine and losing all of them.
     @Test
     func oneUnreadableMachineDoesNotDestroyTheOthers() {
-        let (store, defaults, suite) = store(seededWith: """
+        let (store, storage) = store(seededWith: """
         [{"platform":"macOS","hostname":"localhost","avatar":"chick-laptop",
           "serverNames":[],"id":"macBookAir","shortName":"Air",
           "hardwareSummary":"MacBook Air","connection":"local",
@@ -45,7 +39,6 @@ struct ConfigurationDurabilityTests {
           "hardwareSummary":"Network storage","connection":"teleporter",
           "supportsGPU":false,"name":"NAS"}]
         """)
-        defer { defaults.removePersistentDomain(forName: suite) }
 
         let names = store.machines.map(\.shortName)
         #expect(names.contains("Air"))
@@ -57,16 +50,15 @@ struct ConfigurationDurabilityTests {
     /// turns a temporary read problem into permanent loss.
     @Test
     func unreadableDataIsNotOverwrittenWithADefault() {
-        let (store, defaults, suite) = store(seededWith: """
+        let (store, storage) = store(seededWith: """
         [{"this":"is not a machine configuration at all"}]
         """)
-        defer { defaults.removePersistentDomain(forName: suite) }
 
         // The app still has to run, so it falls back to the local Mac.
         #expect(!store.machines.isEmpty)
         // But what was on disk must still be there.
         #expect(
-            storedJSON(defaults).contains("not a machine configuration"),
+            storedJSON(storage).contains("not a machine configuration"),
             "the original data was overwritten and is gone"
         )
     }
@@ -75,7 +67,7 @@ struct ConfigurationDurabilityTests {
     /// a machine it could not read must still be there afterwards.
     @Test
     func aMachineThisBuildCannotReadSurvivesAnEdit() {
-        let (store, defaults, suite) = store(seededWith: """
+        let (store, storage) = store(seededWith: """
         [{"platform":"macOS","hostname":"localhost","avatar":"chick-laptop",
           "serverNames":[],"id":"macBookAir","shortName":"Air",
           "hardwareSummary":"MacBook Air","connection":"local",
@@ -85,7 +77,6 @@ struct ConfigurationDurabilityTests {
           "hardwareSummary":"Network storage","connection":"teleporter",
           "supportsGPU":false,"name":"NAS"}]
         """)
-        defer { defaults.removePersistentDomain(forName: suite) }
 
         store.add([
             MachineConfiguration(
@@ -105,7 +96,7 @@ struct ConfigurationDurabilityTests {
 
         #expect(store.machines.contains { $0.shortName == "Linux" })
         #expect(
-            storedJSON(defaults).contains("teleporter"),
+            storedJSON(storage).contains("teleporter"),
             "the machine this build could not read was dropped on the next write"
         )
     }
@@ -113,11 +104,9 @@ struct ConfigurationDurabilityTests {
     /// With genuinely nothing saved, seeding the local Mac is right.
     @Test
     func afirstLaunchStillSeedsTheLocalMac() {
-        let suiteName = "LittleHerdTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        let store = MachineConfigurationStore(defaults: defaults)
+        let store = MachineConfigurationStore(
+            storage: InMemoryConfigurationStorage()
+        )
         #expect(store.machines.count == 1)
         #expect(store.machines[0].connection == .local)
     }
@@ -143,18 +132,16 @@ struct MachineOrderTests {
         )
     }
 
-    private func store() -> (MachineConfigurationStore, UserDefaults, String) {
-        let suite = "LittleHerdTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        let store = MachineConfigurationStore(defaults: defaults)
+    private func store() -> (MachineConfigurationStore, InMemoryConfigurationStorage) {
+        let storage = InMemoryConfigurationStorage()
+        let store = MachineConfigurationStore(storage: storage)
         store.add([machine("alpha"), machine("beta"), machine("gamma")])
-        return (store, defaults, suite)
+        return (store, storage)
     }
 
     @Test
     func movingAMachineChangesTheSavedOrder() {
-        let (store, defaults, suite) = store()
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let (store, storage) = store()
 
         let before = store.machines.map(\.id.rawValue)
         #expect(before == ["local", "alpha", "beta", "gamma"])
@@ -167,11 +154,10 @@ struct MachineOrderTests {
     /// An order that does not survive a relaunch is not an order.
     @Test
     func theOrderIsPersisted() {
-        let (store, defaults, suite) = store()
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let (store, storage) = store()
 
         store.move(fromOffsets: IndexSet(integer: 3), toOffset: 0)
-        let reloaded = MachineConfigurationStore(defaults: defaults)
+        let reloaded = MachineConfigurationStore(storage: storage)
         #expect(reloaded.machines.map(\.id.rawValue) == ["gamma", "local", "alpha", "beta"])
     }
 
@@ -179,8 +165,7 @@ struct MachineOrderTests {
     /// shows first.
     @Test
     func theOverviewFollowsTheSavedOrder() {
-        let (store, defaults, suite) = store()
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let (store, storage) = store()
 
         store.move(fromOffsets: IndexSet(integer: 3), toOffset: 0)
         let model = MonitorModel(configurations: store.machines)
@@ -191,8 +176,7 @@ struct MachineOrderTests {
     /// A move that changes nothing must not churn the saved data.
     @Test
     func movingAMachineOntoItselfChangesNothing() {
-        let (store, defaults, suite) = store()
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let (store, storage) = store()
 
         let before = store.machines
         store.move(fromOffsets: IndexSet(integer: 1), toOffset: 1)

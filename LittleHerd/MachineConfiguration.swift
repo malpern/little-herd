@@ -114,13 +114,35 @@ nonisolated struct MachineConfiguration: Codable, Equatable, Identifiable,
     }
 }
 
+/// Where the saved herd lives.
+///
+/// `UserDefaults` in the app. Tests substitute memory, so a test run leaves
+/// nothing behind in the user's real preferences — several hundred stray
+/// suites had accumulated there before this existed, and no amount of care in
+/// the cleanup could beat cfprefsd writing the domain back out at process exit.
+@MainActor
+protocol MachineConfigurationStorage: AnyObject {
+    func loadConfigurationData() -> Data?
+    func saveConfigurationData(_ data: Data)
+}
+
+extension UserDefaults: MachineConfigurationStorage {
+    public func loadConfigurationData() -> Data? {
+        data(forKey: LittleHerdPreferences.machineConfigurationsKey)
+    }
+
+    public func saveConfigurationData(_ data: Data) {
+        set(data, forKey: LittleHerdPreferences.machineConfigurationsKey)
+    }
+}
+
 @MainActor
 @Observable
 final class MachineConfigurationStore {
     private(set) var machines: [MachineConfiguration]
 
     @ObservationIgnored
-    private let defaults: UserDefaults
+    private let storage: MachineConfigurationStorage
 
     /// Saved entries this build could not decode — a machine written by a newer
     /// version, most likely. Carried through untouched so that running an older
@@ -129,12 +151,14 @@ final class MachineConfigurationStore {
     @ObservationIgnored
     private var unreadableEntries: [Any] = []
 
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
+    convenience init(defaults: UserDefaults = .standard) {
+        self.init(storage: defaults)
+    }
 
-        guard let data = defaults.data(
-            forKey: LittleHerdPreferences.machineConfigurationsKey
-        ) else {
+    init(storage: MachineConfigurationStorage) {
+        self.storage = storage
+
+        guard let data = storage.loadConfigurationData() else {
             // Genuinely nothing saved: a first launch, so seed the local Mac.
             machines = [.local()]
             persist()
@@ -277,10 +301,7 @@ final class MachineConfigurationStore {
         // newer version still finds its machines after an older one has written
         // here.
         guard !unreadableEntries.isEmpty else {
-            defaults.set(
-                encoded,
-                forKey: LittleHerdPreferences.machineConfigurationsKey
-            )
+            storage.saveConfigurationData(encoded)
             return
         }
 
@@ -291,7 +312,7 @@ final class MachineConfigurationStore {
         else {
             return
         }
-        defaults.set(data, forKey: LittleHerdPreferences.machineConfigurationsKey)
+        storage.saveConfigurationData(data)
     }
 
     private static func normalizedHostname(_ hostname: String) -> String {

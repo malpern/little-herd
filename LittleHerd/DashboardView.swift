@@ -854,6 +854,10 @@ private struct MachineStoragePane: View {
                             ? nil
                             : Text(drive.health.label)
                     )
+                    // Indented, because a drive belongs to the volume above it
+                    // rather than sitting beside it. Without this the list reads
+                    // as one flat run of unrelated things.
+                    .padding(.leading, 14)
                 }
             }
         }
@@ -863,10 +867,16 @@ private struct MachineStoragePane: View {
         machine.state == .live || machine.isStorage ? machine.storageVolumes : []
     }
 
+    /// In the order the machine reports them, which is bay order.
+    ///
+    /// Sorting by severity was worse: it puts the drives in an order that
+    /// changes as hardware ages, and the number in "Drive 2" refers to a
+    /// physical slot — a list where Drive 2 sits above Drive 1 reads as wrong
+    /// before it reads as urgent. Health is already carried by the icon and the
+    /// colour, which is what the eye finds first anyway.
     private var drives: [SynologyDrive] {
         guard machine.state == .live || machine.isStorage else { return [] }
-        // Worst first: a failing drive should never be below the healthy ones.
-        return machine.drives.sorted { $0.health.severity > $1.health.severity }
+        return machine.drives
     }
 
     /// Model and temperature, because the drive that needs replacing has to be

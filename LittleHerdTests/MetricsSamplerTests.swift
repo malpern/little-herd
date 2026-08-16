@@ -192,10 +192,8 @@ struct MetricsSamplerTests {
 
     @Test
     func machineCanBeRemovedFromTheHerd() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "LittleHerdTests.\(UUID().uuidString)")
-        )
-        let store = MachineConfigurationStore(defaults: defaults)
+        let storage = InMemoryConfigurationStorage()
+        let store = MachineConfigurationStore(storage: storage)
         let remote = testMachineConfigurations[1]
         store.add([remote])
         #expect(store.machines.contains(remote))
@@ -203,15 +201,13 @@ struct MetricsSamplerTests {
         store.remove(remote.id)
 
         #expect(!store.machines.contains(remote))
-        #expect(!MachineConfigurationStore(defaults: defaults).machines.contains(remote))
+        #expect(!MachineConfigurationStore(storage: storage).machines.contains(remote))
     }
 
     @Test
     func theLocalMacIsNeverRemoved() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "LittleHerdTests.\(UUID().uuidString)")
-        )
-        let store = MachineConfigurationStore(defaults: defaults)
+        let storage = InMemoryConfigurationStorage()
+        let store = MachineConfigurationStore(storage: storage)
         let local = try #require(store.machines.first { $0.connection == .local })
 
         #expect(!store.canRemove(local.id))
@@ -818,14 +814,12 @@ struct MetricsSamplerTests {
     @Test
     @MainActor
     func machineConfigurationStorePersistsDynamicMachines() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "LittleHerdTests.\(UUID().uuidString)")
-        )
-        let store = MachineConfigurationStore(defaults: defaults)
+        let storage = InMemoryConfigurationStorage()
+        let store = MachineConfigurationStore(storage: storage)
         let remote = testMachineConfigurations[1]
         store.add([remote])
 
-        let reloaded = MachineConfigurationStore(defaults: defaults)
+        let reloaded = MachineConfigurationStore(storage: storage)
         #expect(reloaded.machines.contains(remote))
         #expect(reloaded.machines.first?.connection == .local)
     }
@@ -833,9 +827,10 @@ struct MetricsSamplerTests {
     @Test
     @MainActor
     func legacyPreferencesMigrateWithoutOverwritingNewValues() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "LittleHerdTests.\(UUID().uuidString)")
-        )
+        // This one genuinely exercises UserDefaults: legacy migration reads and
+        // writes preference domains directly.
+        let temporary = TemporaryDefaults()
+        let defaults = temporary.defaults
         defaults.set(true, forKey: LittleHerdPreferences.menuBarEnabledKey)
         let legacyMachines = try JSONEncoder().encode(
             [MachineConfiguration.local(computerName: "Legacy Mac")]
@@ -1062,8 +1057,9 @@ struct MetricsSamplerTests {
     @Test
     @MainActor
     func addMachinesSelectsEveryReadyMachineByDefault() {
+        let storage = InMemoryConfigurationStorage()
         let model = AddMachinesModel(
-            store: testMachineStore(),
+            store: testMachineStore(storage),
             machines: discoveredMachineSamples
         )
 
@@ -1075,8 +1071,9 @@ struct MetricsSamplerTests {
     @Test
     @MainActor
     func addMachinesDoesNotSelectPermissionBlockedStorage() {
+        let storage = InMemoryConfigurationStorage()
         let model = AddMachinesModel(
-            store: testMachineStore(),
+            store: testMachineStore(storage),
             machines: discoveredMachineSamples
         )
 
@@ -1089,7 +1086,8 @@ struct MetricsSamplerTests {
     @Test
     @MainActor
     func manuallyAddedMachineUsesAnInferredNameAndIsSelected() {
-        let model = AddMachinesModel(store: testMachineStore(), machines: [])
+        let storage = InMemoryConfigurationStorage()
+        let model = AddMachinesModel(store: testMachineStore(storage), machines: [])
 
         model.addManualMachine(
             name: "",
@@ -1104,7 +1102,8 @@ struct MetricsSamplerTests {
     @Test
     @MainActor
     func addMachinesPersistsIntoTheSharedConfigurationStore() throws {
-        let store = testMachineStore()
+        let storage = InMemoryConfigurationStorage()
+        let store = testMachineStore(storage)
         var appliedConfigurations: [MachineConfiguration] = []
         let candidate = try #require(discoveredMachineSamples.first)
         let model = AddMachinesModel(
@@ -1122,7 +1121,8 @@ struct MetricsSamplerTests {
     @Test
     @MainActor
     func addMachinesPersistsStorageThatCanFinishLater() {
-        let store = testMachineStore()
+        let storage = InMemoryConfigurationStorage()
+        let store = testMachineStore(storage)
         let model = AddMachinesModel(
             store: store,
             machines: discoveredMachineSamples
@@ -1164,7 +1164,8 @@ struct MetricsSamplerTests {
     @Test
     @MainActor
     func configurationStoreRejectsASecondRecordForTheSameMachineName() {
-        let store = testMachineStore()
+        let storage = InMemoryConfigurationStorage()
+        let store = testMachineStore(storage)
         let existing = store.machines[0]
         let duplicate = MachineConfiguration(
             id: MachineID("duplicate.local"),
@@ -1185,13 +1186,15 @@ struct MetricsSamplerTests {
         #expect(store.machines == [existing])
     }
 
+    /// The caller holds the `TemporaryDefaults`, so the suite is removed when
+    /// that test finishes rather than whenever the test struct happens to be
+    /// deallocated — the store writes on the way out, and a removal that races
+    /// that write leaves the file behind.
     @MainActor
-    private func testMachineStore() -> MachineConfigurationStore {
-        MachineConfigurationStore(
-            defaults: UserDefaults(
-                suiteName: "LittleHerdTests.\(UUID().uuidString)"
-            )!
-        )
+    private func testMachineStore(
+        _ storage: InMemoryConfigurationStorage
+    ) -> MachineConfigurationStore {
+        MachineConfigurationStore(storage: storage)
     }
 
     private var discoveredMachineSamples: [DiscoveredMachine] {

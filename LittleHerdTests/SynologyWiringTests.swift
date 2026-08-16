@@ -100,12 +100,9 @@ struct SynologyWiringTests {
 
     @Test
     func updatingOneMachineLeavesTheRestAlone() {
-        // Named so it can be removed again: these suites otherwise accumulate in
-        // the user's preferences, one per test run.
-        let suiteName = "LittleHerdTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-        let store = MachineConfigurationStore(defaults: defaults)
+        let store = MachineConfigurationStore(
+            storage: InMemoryConfigurationStorage()
+        )
         store.add([dsmConfiguration()])
 
         var updated = dsmConfiguration(fingerprint: "recorded")
@@ -673,5 +670,53 @@ struct StorageConcernTests {
         #expect(nas(drives: [drive("Drive 1", .normal)]).storageConcern == nil)
         #expect(nas(drives: [drive("Drive 1", .unknown)]).storageConcern == nil)
         #expect(nas().storageConcern == nil)
+    }
+}
+
+
+/// Drives are listed in bay order, not by how sick they are.
+@MainActor
+struct DriveOrderTests {
+    @Test
+    func drivesKeepTheOrderTheMachineReportsThem() {
+        let machine = MachineMonitorModel(
+            configuration: MachineConfiguration(
+                id: MachineID("synology"),
+                name: "Synology",
+                shortName: "Synology",
+                hostname: "nas.local",
+                hardwareSummary: "Network storage",
+                platform: .storage,
+                connection: .dsm,
+                avatar: .pigletNAS,
+                identityFile: nil,
+                serverNames: [],
+                supportsGPU: false,
+                dsmUsername: "herd"
+            )
+        )
+        let reported = ["Drive 1", "Drive 2", "Drive 3", "Drive 4"]
+        machine.apply(
+            SystemSnapshot(
+                timestamp: .now,
+                readings: [.disk: MetricReading(value: 67)],
+                drives: reported.enumerated().map { index, name in
+                    SynologyDrive(
+                        id: "sd\(index)",
+                        name: name,
+                        model: "WD30EFRX",
+                        // The second bay is the sick one; it must not be
+                        // promoted to the top of the list because of it.
+                        health: index == 1 ? .critical : .normal,
+                        uncorrectableSectors: index == 1 ? 229 : 0,
+                        temperatureCelsius: 33
+                    )
+                }
+            )
+        )
+
+        #expect(machine.drives.map(\.name) == reported)
+        // The concern still finds the bad one wherever it sits.
+        #expect(machine.storageConcern?.subject == "Drive 2")
     }
 }

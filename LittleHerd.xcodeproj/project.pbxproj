@@ -33,6 +33,7 @@
 		6178FDFB871ECC5115BC4EA7 /* LocalProcessRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B675E6E28982CA80D968D2E /* LocalProcessRunner.swift */; };
 		6B236EB580089736F35DAC08 /* MetricModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4669068113CB4027D57F9535 /* MetricModel.swift */; };
 		6D0AF35A5767BC690DEB78FC /* MetricRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F29F16289B54BBD5DC8DE5A /* MetricRow.swift */; };
+		7AAAA02496228EAADA51973E /* TemporaryDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = 324EEBC4BC470AA0BD558877 /* TemporaryDefaults.swift */; };
 		81EA61F13900B92BB091C44D /* AddMachinesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 542ADA4729226F9EBB0D48D6 /* AddMachinesView.swift */; };
 		82A07AE2F03229E9AD644A1F /* SSHHostName.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F112CE5D8A49060A44E52A /* SSHHostName.swift */; };
 		88873018BA18973DB4643815 /* MetricsSamplerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE23C778660407B336F50BA0 /* MetricsSamplerTests.swift */; };
@@ -45,6 +46,7 @@
 		AE7E668C1245F5127C1E588D /* NetworkVolumeOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */; };
 		B3560BD65BAB29961DD5DB6C /* HoveredMachineMetricHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 672A36609CA039974CDF72E7 /* HoveredMachineMetricHeader.swift */; };
 		B8613453826F6A56D32919D6 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A2C8E4C049BD68DD7C9764E /* IOKit.framework */; };
+		BF0A72836087C3E499B9E54D /* InMemoryConfigurationStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28A334FD1C930D9B96C4E2F1 /* InMemoryConfigurationStorage.swift */; };
 		C3EC710A9D4AC5B469D730AE /* SynologyCredentialsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33E5557F8559949577B4F98F /* SynologyCredentialsView.swift */; };
 		C75E46029BE72838F29E96DE /* MachineMonitorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6125192CA7CFE81311C048BC /* MachineMonitorModel.swift */; };
 		CBADC8EDC9632AE4731B8C4C /* SoftwareUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4164BB6C590812113B80A9E9 /* SoftwareUpdater.swift */; };
@@ -74,7 +76,9 @@
 		0268A4FEC4C1CE1B192EB31C /* MachineDetailPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineDetailPane.swift; sourceTree = "<group>"; };
 		133A808E3BA4EEA2AF234D6E /* CPUOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUOverviewView.swift; sourceTree = "<group>"; };
 		199544A93AE05F23B93D38E4 /* DashboardTransition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardTransition.swift; sourceTree = "<group>"; };
+		28A334FD1C930D9B96C4E2F1 /* InMemoryConfigurationStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InMemoryConfigurationStorage.swift; sourceTree = "<group>"; };
 		2A2C8E4C049BD68DD7C9764E /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		324EEBC4BC470AA0BD558877 /* TemporaryDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemporaryDefaults.swift; sourceTree = "<group>"; };
 		33E5557F8559949577B4F98F /* SynologyCredentialsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyCredentialsView.swift; sourceTree = "<group>"; };
 		34DDECFA904FEB7B9E48B369 /* AIAgentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAgentsView.swift; sourceTree = "<group>"; };
 		387B8471B05B8FEFC2973329 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -212,12 +216,14 @@
 			children = (
 				694A0E6E34E815E5A5218AA0 /* AgentProbeShellTests.swift */,
 				3CBDB146412416AE14C5CEB4 /* ConfigurationDurabilityTests.swift */,
+				28A334FD1C930D9B96C4E2F1 /* InMemoryConfigurationStorage.swift */,
 				BE23C778660407B336F50BA0 /* MetricsSamplerTests.swift */,
 				F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */,
 				9964820C13B89705570C2A79 /* SecretCacheTests.swift */,
 				FF6E8B58BFECC711998639C6 /* SynologyDSMTests.swift */,
 				3C57E556B607FDBFC533B251 /* SynologyTrustTests.swift */,
 				E3A27FA19E2D234113937C21 /* SynologyWiringTests.swift */,
+				324EEBC4BC470AA0BD558877 /* TemporaryDefaults.swift */,
 			);
 			path = LittleHerdTests;
 			sourceTree = "<group>";
@@ -376,12 +382,14 @@
 			files = (
 				2CFA6E28CE4D7F2470879499 /* AgentProbeShellTests.swift in Sources */,
 				0B46A10585034F62414676B1 /* ConfigurationDurabilityTests.swift in Sources */,
+				BF0A72836087C3E499B9E54D /* InMemoryConfigurationStorage.swift in Sources */,
 				88873018BA18973DB4643815 /* MetricsSamplerTests.swift in Sources */,
 				8935F6CCBD6DFA02BEC41FA3 /* RemoteUnavailabilityTests.swift in Sources */,
 				0F4B67C29C60BD0E6BEF80D9 /* SecretCacheTests.swift in Sources */,
 				D8DFEA05123844483DAF9171 /* SynologyDSMTests.swift in Sources */,
 				9EBFA43128EEF75AFFDC4C3F /* SynologyTrustTests.swift in Sources */,
 				DED22012974A8B709BB6B12D /* SynologyWiringTests.swift in Sources */,
+				7AAAA02496228EAADA51973E /* TemporaryDefaults.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
