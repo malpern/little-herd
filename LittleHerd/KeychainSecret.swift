@@ -124,6 +124,10 @@ nonisolated enum KeychainSecret {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecMatchLimit as String: kSecMatchLimitOne,
+            // Same rule as the read: never raise a dialog. This answers a
+            // yes/no question for the interface, which is not worth
+            // interrupting anyone over.
+            kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
         ]
         return SecItemCopyMatching(query as CFDictionary, nil) == errSecSuccess
     }
