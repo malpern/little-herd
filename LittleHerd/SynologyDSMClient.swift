@@ -153,34 +153,37 @@ actor SynologyDSMClient {
         method: String,
         parameters: [String: String] = [:]
     ) async throws -> Data {
-        var query = [
-            URLQueryItem(name: "api", value: api),
-            URLQueryItem(name: "version", value: String(version)),
-            URLQueryItem(name: "method", value: method),
-        ]
-        if let sessionID {
-            query.append(URLQueryItem(name: "_sid", value: sessionID))
-        }
-
-        guard let url = endpoint.url(query: query) else {
+        guard let url = endpoint.url(query: []) else {
             throw SynologyDSMError.invalidHost(endpoint.host)
         }
 
-        // Credentials go in the body, never the query string: DSM writes request
-        // URLs to its own logs.
+        // Everything goes in the body, including api/version/method. DSM's
+        // entry.cgi reads a POST from its body alone: with these in the query
+        // string it answers 101 "invalid parameter" to every call that has no
+        // other parameters to send. Login happened to work, because it carries
+        // credentials — so this failed only after signing in.
+        //
+        // It is also where credentials belong, since DSM writes request URLs to
+        // its own logs, and that now covers the session id too.
+        var fields = [
+            "api": api,
+            "version": String(version),
+            "method": method,
+        ]
+        if let sessionID { fields["_sid"] = sessionID }
+        fields.merge(parameters) { _, new in new }
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue(
             "application/x-www-form-urlencoded",
             forHTTPHeaderField: "Content-Type"
         )
-        if !parameters.isEmpty {
-            var body = URLComponents()
-            body.queryItems = parameters.map {
-                URLQueryItem(name: $0.key, value: $0.value)
-            }
-            request.httpBody = body.percentEncodedQuery.map { Data($0.utf8) }
+        var body = URLComponents()
+        body.queryItems = fields.map {
+            URLQueryItem(name: $0.key, value: $0.value)
         }
+        request.httpBody = body.percentEncodedQuery.map { Data($0.utf8) }
 
         do {
             let (data, response) = try await session.data(for: request)

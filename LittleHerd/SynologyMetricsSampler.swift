@@ -128,6 +128,15 @@ extension RemoteUnavailability {
         _ message: String
     ) -> RemoteUnavailability {
         let lowered = message.lowercased()
+        // macOS reports a blocked local network as "The Internet connection
+        // appears to be offline", which is actively misleading about a NAS on
+        // the same desk — and points at the wrong fix. Observed with the real
+        // unit reachable and answering.
+        if lowered.contains("internet connection appears to be offline") {
+            return .other(
+                "macOS is blocking Little Herd from reaching your local network. Allow it under System Settings → Privacy & Security → Local Network."
+            )
+        }
         if lowered.contains("hostname could not be found")
             || lowered.contains("could not be found")
             || lowered.contains("nodename") {

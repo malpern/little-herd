@@ -200,3 +200,22 @@ becomes available under the MIT license.
 
 Bundled third-party code and its terms are listed in
 [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
+
+### Verifying a Synology against the real thing
+
+The unit tests cover DSM parsing against captured responses, which cannot catch
+transport faults — DSM answers `101` to every read if `api`/`method` are sent in
+the query string rather than the POST body, and no fixture would ever show it.
+`scripts/synology-live-check` compiles the shipping client and runs it against a
+real NAS: TLS challenge, sign-in, both reads, sign-out, and the
+refuse-a-changed-certificate path.
+
+```
+scripts/synology-live-check [host] [account]
+```
+
+It reads the password by running `sops`, so nothing sensitive reaches an
+argument list or the screen. Run it from a terminal rather than as a test: macOS
+gates local-network access behind Local Network privacy, and a headless test
+runner never gets that prompt, so every LAN request fails as "The Internet
+connection appears to be offline".

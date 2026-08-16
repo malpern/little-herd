@@ -22,29 +22,6 @@ nonisolated enum RemoteMonitorError: LocalizedError, Sendable {
     }
 }
 
-/// Host names reach Little Herd from Bonjour advertisements and from free-text
-/// fields, so they are untrusted input. `ssh` parses any argument beginning
-/// with `-` as an option, which would turn a host name such as
-/// `-oProxyCommand=…` into arbitrary command execution.
-nonisolated enum SSHHostName {
-    private static let allowedPunctuation: Set<Character> = [
-        ".", "-", "_", "@", "%", ":",
-    ]
-
-    static func isValid(_ host: String) -> Bool {
-        guard !host.isEmpty, host.count <= 253, !host.hasPrefix("-") else {
-            return false
-        }
-
-        return host.allSatisfy { character in
-            guard character.isASCII else { return false }
-            return character.isLetter
-                || character.isNumber
-                || allowedPunctuation.contains(character)
-        }
-    }
-}
-
 nonisolated enum RemoteOutputParser {
     private struct ParsedStorageVolume {
         let name: String

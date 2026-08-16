@@ -35,6 +35,13 @@ nonisolated enum SynologyDSMError: Error, Equatable, Sendable {
 
     static func detailForAPICode(_ code: Int) -> String {
         switch code {
+        // The 100-block is Little Herd asking wrongly, not the user doing
+        // anything wrong. Worth naming so it is never mistaken for a
+        // credential problem.
+        case 101: "DSM rejected the request parameters."
+        case 102: "This NAS does not offer the API Little Herd asked for."
+        case 103: "This NAS does not offer the method Little Herd asked for."
+        case 104: "This NAS runs a DSM version Little Herd cannot use here."
         case 400: "Wrong account or password."
         case 401: "That DSM account is disabled."
         case 402: "That account lacks permission. Storage details need an account in DSM's administrators group."

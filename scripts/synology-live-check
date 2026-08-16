@@ -1,0 +1,45 @@
+#!/bin/bash
+#
+# Runs the real SynologyDSMClient against a live NAS.
+#
+# The unit tests cover the parsers against captured JSON, which cannot catch the
+# failures that matter most here — and did not: DSM answers 101 to every read if
+# api/method are sent in the query string rather than the POST body, which no
+# fixture would ever reveal. This exercises the actual transport: TLS challenge,
+# sign-in, both reads, sign-out, plus the refuse-a-changed-certificate path.
+#
+# It is a script rather than a test because the test host cannot reach the local
+# network: macOS gates that behind Local Network privacy, and a headless test
+# runner never gets the prompt, so every LAN request fails as "The Internet
+# connection appears to be offline". Run from a terminal, which has the grant.
+#
+# The password is read by running sops inside the harness, so it never appears
+# in an argument list, an environment variable, or on screen.
+#
+# Usage:  scripts/synology-live-check [host] [account]
+#
+set -euo pipefail
+
+HOST="${1:-AlpernServer.local}"
+ACCOUNT="${2:-malpern}"
+
+cd "$(dirname "$0")/.."
+BUILD=$(mktemp -d)
+trap 'rm -rf "$BUILD"' EXIT
+
+# Compiled from the app's own sources, so this cannot drift from what ships.
+# MetricReading is the one exception: it lives in MetricsSampler.swift beside
+# IOKit and Mach code that will not build outside the app target, so the shim
+# stands in for it.
+cp LittleHerd/SynologyDSM.swift \
+   LittleHerd/SynologyDSMClient.swift \
+   LittleHerd/StorageVolume.swift \
+   LittleHerd/SSHHostName.swift \
+   "$BUILD/"
+cp scripts/synology-live-shim.swift "$BUILD/Shim.swift"
+sed -e "s/__HOST__/$HOST/" -e "s/__ACCOUNT__/$ACCOUNT/" \
+    scripts/synology-live-check.swift > "$BUILD/main.swift"
+
+echo "Building against $HOST as $ACCOUNT…"
+swiftc -swift-version 6 -O -o "$BUILD/harness" "$BUILD"/*.swift
+"$BUILD/harness"

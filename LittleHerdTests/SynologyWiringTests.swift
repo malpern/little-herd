@@ -181,6 +181,23 @@ struct SynologyWiringTests {
         )
     }
 
+    /// macOS words a blocked local network as an offline internet connection,
+    /// which sends the user to the wrong fix entirely — the NAS is on the same
+    /// desk and answering. Seen for real against a reachable unit.
+    @Test
+    func aBlockedLocalNetworkNamesTheActualPermission() {
+        let blocked = RemoteUnavailability.classify(
+            dsm: .transport("The Internet connection appears to be offline.")
+        )
+        guard case .other(let message) = blocked else {
+            Issue.record("expected a spelled-out reason, got \(blocked)")
+            return
+        }
+        #expect(message.contains("Local Network"))
+        // It must not read as the NAS being down, which is the wrong diagnosis.
+        #expect(blocked != .noAnswer)
+    }
+
     @Test
     func aChangedCertificateSaysWhatHappenedRatherThanJustFailing() {
         let error = SynologyDSMError.certificateChanged(
