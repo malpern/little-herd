@@ -196,17 +196,20 @@ struct OverviewMetricValue: View {
     let memoryPressure: MemoryPressureLevel?
 
     var body: some View {
-        switch metric {
-        case .cpu:
-            CPUPercentage(value: value)
-                .font(.title3.weight(.semibold).monospacedDigit())
-        case .memory:
-            MemoryPressureSymbol(level: memoryPressure)
+        switch MetricValueDisplay.resolve(
+            metric: metric,
+            value: value,
+            memoryPressure: memoryPressure
+        ) {
+        case .pressure(let level):
+            MemoryPressureSymbol(level: level)
                 .font(.title3.weight(.semibold))
-        case .disk:
-            CPUPercentage(value: value)
+        case .percent(let percent):
+            CPUPercentage(value: percent)
                 .font(.title3.weight(.semibold).monospacedDigit())
-        case .ai:
+        // Neither reaches the overview: it has no network column, and a metric
+        // with nothing behind it falls through to the same dash.
+        case .bytesPerSecond, .unavailable:
             Text("—")
                 .foregroundStyle(.tertiary)
         }

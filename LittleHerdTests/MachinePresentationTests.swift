@@ -81,25 +81,48 @@ struct MachineStatusPresentationTests {
 
 @MainActor
 struct MetricValueDisplayTests {
-    /// Where the operating system has a verdict, that is the honest answer:
-    /// cache it is deliberately holding is not a problem, so a percentage would
-    /// read as trouble that is not there.
+    /// A tick on every healthy Mac is a badge that is always lit, and one of
+    /// those says nothing at all. A machine that is fine reads like every other
+    /// row: a number.
     @Test
-    func memoryPrefersTheSystemsOwnVerdict() {
+    func aHealthyMachineShowsItsFigureRatherThanATick() {
         #expect(
             MetricValueDisplay.resolve(kind: .memory, value: 82, memoryPressure: .normal)
-                == .pressure(.normal)
+                == .percent(82)
         )
     }
 
-    /// A NAS has no notion of pressure but does know what it is using, and the
-    /// row already spells that out underneath. A dash beside "1.5 GB of 1.94 GB"
-    /// was simply wrong.
+    /// Trouble takes the column back. This is the one moment memory is worth
+    /// interrupting for, and a shape carries further than a colour.
+    @Test
+    func troubleTakesTheColumn() {
+        #expect(
+            MetricValueDisplay.resolve(kind: .memory, value: 91, memoryPressure: .warning)
+                == .pressure(.warning)
+        )
+        #expect(
+            MetricValueDisplay.resolve(kind: .memory, value: 97, memoryPressure: .critical)
+                == .pressure(.critical)
+        )
+    }
+
+    /// A NAS has no notion of pressure but does know what it is using. It used
+    /// to draw a dash beside a figure it had in hand.
     @Test
     func aMachineWithNoPressureSignalDoesNotGetADash() {
         #expect(
             MetricValueDisplay.resolve(kind: .memory, value: 77, memoryPressure: nil)
-                == .spelledOutBelow
+                == .percent(77)
+        )
+    }
+
+    /// The tick survives in the one case it still earns: a verdict arrived and
+    /// no figure did.
+    @Test
+    func averdictWithNoFigureIsStillBetterThanADash() {
+        #expect(
+            MetricValueDisplay.resolve(kind: .memory, value: nil, memoryPressure: .normal)
+                == .pressure(.normal)
         )
     }
 
@@ -144,6 +167,44 @@ struct MetricValueDisplayTests {
         )
     }
 
+    /// The overview's RAM column showed the pressure symbol and nothing else, so
+    /// the Synology — which has no pressure to report — sat under a dash beside
+    /// a filled bar. It was the one machine missing from its own overview.
+    @Test
+    func theOverviewsRAMColumnShowsANASItsFigure() {
+        #expect(
+            MetricValueDisplay.resolve(metric: .memory, value: 77, memoryPressure: nil)
+                == .percent(77)
+        )
+    }
+
+    /// The overview and the metric rows are the same question asked twice, so
+    /// they must not answer differently.
+    @Test
+    func theOverviewAgreesWithTheRows() {
+        let cases: [(Double?, MemoryPressureLevel?)] = [
+            (82, .normal), (91, .warning), (97, .critical),
+            (77, nil), (nil, .normal), (nil, nil),
+        ]
+        for (value, pressure) in cases {
+            #expect(
+                MetricValueDisplay.resolve(
+                    metric: .memory, value: value, memoryPressure: pressure
+                ) == MetricValueDisplay.resolve(
+                    kind: .memory, value: value, memoryPressure: pressure
+                )
+            )
+        }
+    }
+
+    /// The agent column counts sessions rather than reading a gauge.
+    @Test
+    func theAgentColumnHasNoReading() {
+        #expect(
+            MetricValueDisplay.resolve(metric: .ai, value: 5, memoryPressure: nil)
+                == .unavailable
+        )
+    }
 }
 
 @MainActor

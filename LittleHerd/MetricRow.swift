@@ -80,8 +80,6 @@ private struct MetricValue: View {
                 )
                 Text("\(formatted)/s")
                     .help("Combined upload and download per second")
-            case .spelledOutBelow:
-                EmptyView()
             case .unavailable:
                 Text("—")
                     .foregroundStyle(.tertiary)

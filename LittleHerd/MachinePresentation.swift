@@ -58,19 +58,19 @@ nonisolated enum MachineStatus: Equatable, CaseIterable, Sendable {
     }
 }
 
-/// What belongs in a metric row's value column.
+/// What belongs in a metric value column.
 ///
-/// Memory is the awkward one. Where the operating system offers a pressure
-/// verdict that is the honest answer, since cache it is deliberately holding is
-/// not a problem. A NAS has no such notion, but it does know how much it is
-/// using — and the row already spells that out underneath, so the column stays
-/// empty rather than printing a dash beside "1.5 GB of 1.94 GB".
+/// Memory is the awkward one. The operating system's pressure verdict is a
+/// better answer than a percentage — cache it is deliberately holding is not a
+/// problem — but a green tick on every healthy Mac is a badge that is always
+/// lit, and one of those says nothing at all. So the verdict appears when it is
+/// news, and the plain figure the rest of the rows show appears the rest of the
+/// time. A NAS has no notion of pressure at all and now reads like anything
+/// else, instead of the dash it used to draw beside a figure it had in hand.
 nonisolated enum MetricValueDisplay: Equatable, Sendable {
     case pressure(MemoryPressureLevel)
     case percent(Double)
     case bytesPerSecond(Double)
-    /// Nothing here: the figure is already written out below the row.
-    case spelledOutBelow
     /// A dash. There is no reading at all.
     case unavailable
 
@@ -79,14 +79,41 @@ nonisolated enum MetricValueDisplay: Equatable, Sendable {
         value: Double?,
         memoryPressure: MemoryPressureLevel?
     ) -> MetricValueDisplay {
-        if kind == .memory, let memoryPressure {
-            return .pressure(memoryPressure)
+        if kind == .memory {
+            // Trouble takes the column: a shape carries further than a colour,
+            // and this is the one moment memory is worth interrupting for.
+            if let memoryPressure, memoryPressure != .normal {
+                return .pressure(memoryPressure)
+            }
+            if let value { return .percent(value) }
+            // A verdict with no figure behind it is still better than a dash.
+            if let memoryPressure { return .pressure(memoryPressure) }
+            return .unavailable
         }
         guard let value else { return .unavailable }
         switch kind {
         case .cpu, .gpu, .disk: return .percent(value)
         case .network: return .bytesPerSecond(value)
-        case .memory: return .spelledOutBelow
+        case .memory: return .unavailable
+        }
+    }
+
+    /// The overview's columns ask the same question in its own vocabulary.
+    static func resolve(
+        metric: OverviewMetric,
+        value: Double?,
+        memoryPressure: MemoryPressureLevel?
+    ) -> MetricValueDisplay {
+        switch metric {
+        case .cpu:
+            resolve(kind: .cpu, value: value, memoryPressure: nil)
+        case .memory:
+            resolve(kind: .memory, value: value, memoryPressure: memoryPressure)
+        case .disk:
+            resolve(kind: .disk, value: value, memoryPressure: nil)
+        // The agent column counts sessions, which is not a reading.
+        case .ai:
+            .unavailable
         }
     }
 }
