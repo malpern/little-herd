@@ -81,8 +81,6 @@ struct DashboardView: View {
                         HStack(spacing: 0) {
                             MachineIdentityRail(
                                 machine: selectedMachine,
-                                lastUpdated: selectedMachine.lastUpdated,
-                                state: selectedMachine.state,
                                 namespace: machineTransition,
                                 onBack: { model.selection = .overview },
                                 onSignIn: signInAction(for: selectedMachine)
@@ -1010,8 +1008,6 @@ private func unavailableMessage(
 /// machine you clicked feel like the machine you are now looking at.
 private struct MachineIdentityRail: View {
     let machine: MachineMonitorModel
-    let lastUpdated: Date?
-    let state: MonitorConnectionState
     var namespace: Namespace.ID?
     let onBack: () -> Void
     /// Present when this machine can be signed in to. The status line is the
@@ -1055,26 +1051,16 @@ private struct MachineIdentityRail: View {
 
                 if let onSignIn {
                     Button(action: onSignIn) {
-                        MachineConnectionLabel(
-                            lastUpdated: nil,
-                            state: state,
-                            unavailability: machine.unavailability,
-                            hostname: machine.hostname
-                        )
-                        .lineLimit(1)
-                        .contentShape(Rectangle())
+                        MachineConnectionLabel(machine: machine)
+                            .lineLimit(1)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .help("Sign in to DSM")
                     .accessibilityHint(Text("Sign in to DSM"))
                 } else {
-                    MachineConnectionLabel(
-                        lastUpdated: nil,
-                        state: state,
-                        unavailability: machine.unavailability,
-                        hostname: machine.hostname
-                    )
-                    .lineLimit(1)
+                    MachineConnectionLabel(machine: machine)
+                        .lineLimit(1)
                 }
 
                 // Says what the badge means, where you land after clicking it.
@@ -1549,39 +1535,25 @@ private struct ActivitySourceIcon: View {
     }
 }
 
+/// The one place a machine's status is written out in words rather than spoken.
+///
+/// The dots elsewhere carry `MachineStatus.label` as an accessibility label, so
+/// until now the words on screen here were the only ones nothing else agreed
+/// with: this said "Not connected" and "Unavailable" where every other surface
+/// said "Not set up yet" and "Unreachable", and it drew a machine that had
+/// dropped out in the same grey as one that was never set up. It reads the
+/// shared vocabulary now, red fault dot included — a machine that stopped
+/// answering says so on its own page as loudly as it does in the overview.
 private struct MachineConnectionLabel: View {
-    let lastUpdated: Date?
-    let state: MonitorConnectionState
-    var unavailability: RemoteUnavailability?
-    var hostname: String = ""
-
-    /// A machine that has never answered has not been set up yet. The pane
-    /// beside this label already said so; this said "Unavailable", so the same
-    /// machine described itself two ways at once.
-    private var hasNeverConnected: Bool {
-        state == .offline && lastUpdated == nil
-    }
+    let machine: MachineMonitorModel
 
     var body: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(statusColor)
+                .fill(machine.status.tint)
                 .frame(width: 5, height: 5)
 
-            if let lastUpdated, state == .live {
-                Text("Updated \(lastUpdated, format: .dateTime.hour().minute().second())")
-            } else {
-                switch state {
-                case .connecting:
-                    Text("Connecting…")
-                case .live:
-                    Text("Live")
-                case .offline:
-                    Text(hasNeverConnected ? "Not connected" : "Unavailable")
-                case .stopped:
-                    Text("Paused")
-                }
-            }
+            Text(machine.status.label)
         }
         .font(.caption2)
         .foregroundStyle(.secondary)
@@ -1591,15 +1563,9 @@ private struct MachineConnectionLabel: View {
     /// The status line has room for two words; the reason someone can act on
     /// goes here, where it costs nothing until they look for it.
     private var helpText: Text {
-        guard state == .offline, let unavailability else { return Text("") }
-        return Text(unavailability.detail(host: hostname))
-    }
-
-    private var statusColor: Color {
-        switch state {
-        case .connecting: .orange
-        case .live: .green
-        case .offline, .stopped: .secondary
+        guard machine.state == .offline, let unavailability = machine.unavailability else {
+            return Text("")
         }
+        return Text(unavailability.detail(host: machine.hostname))
     }
 }

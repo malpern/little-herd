@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 @testable import LittleHerd
 
@@ -57,6 +58,42 @@ struct MachineStatusPresentationTests {
             MachineStatus.resolve(state: .offline, hasNeverConnected: true)
                 != MachineStatus.resolve(state: .offline, hasNeverConnected: false)
         )
+    }
+
+    /// The surfaces that write the status out in words, rather than only
+    /// speaking it to VoiceOver, were the last two holding their own vocabulary:
+    /// the sidebar on a machine's own page said "Not connected" and
+    /// "Unavailable" in grey, and the menu bar row said "Unavailable" in red
+    /// whether or not the machine had ever answered. Both read `label` and
+    /// `tint` now, so the words on screen are the words being spoken, and a
+    /// machine that has never been set up is never coloured as a fault.
+    @Test
+    func theWrittenStatusesReadLikeTheSpokenOnes() {
+        let neverConnected = nas()
+        neverConnected.markOffline(.other("No shared folder is mounted."))
+
+        #expect(neverConnected.status.label == "Not set up yet")
+        #expect(neverConnected.status.tint != MachineStatus.unreachable.tint)
+
+        let droppedOut = nas()
+        droppedOut.apply(
+            SystemSnapshot(timestamp: .now, readings: [.disk: MetricReading(value: 40)])
+        )
+        droppedOut.markOffline(.noAnswer)
+
+        #expect(droppedOut.status.label == "Unreachable")
+        // A machine that worked and stopped is a fault, and now says so
+        // wherever it appears rather than only in the overview.
+        #expect(droppedOut.status.tint == Color.red)
+    }
+
+    /// Two statuses sharing a sentence would put the drift back by another
+    /// route: a surface could pick either word and still look consistent.
+    @Test
+    func noTwoStatusesShareASentence() {
+        let labels = MachineStatus.allCases.map { String(localized: $0.label) }
+
+        #expect(Set(labels).count == MachineStatus.allCases.count)
     }
 
     @Test

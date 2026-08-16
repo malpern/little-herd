@@ -399,8 +399,9 @@ private struct MenuBarMachineRow: View {
     var body: some View {
         HStack(spacing: 9) {
             Circle()
-                .fill(connectionColor)
+                .fill(machine.status.tint)
                 .frame(width: 6, height: 6)
+                .accessibilityLabel(machine.status.label)
 
             MachineAvatarView(machine: machine.machine, size: 24)
                 .frame(width: 24)
@@ -428,7 +429,7 @@ private struct MenuBarMachineRow: View {
                     .foregroundStyle(cpuColor)
                     .frame(width: 38, alignment: .trailing)
             } else {
-                Text(stateText)
+                Text(machine.status.label)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .help(unavailabilityHelp)
@@ -454,24 +455,6 @@ private struct MenuBarMachineRow: View {
         if value >= 95 { return .red }
         if value >= 80 { return .orange }
         return .primary
-    }
-
-    private var connectionColor: Color {
-        switch machine.state {
-        case .connecting: .orange
-        case .live: .green
-        case .offline: .red
-        case .stopped: .secondary
-        }
-    }
-
-    private var stateText: LocalizedStringResource {
-        switch machine.state {
-        case .connecting: "Connecting"
-        case .live: "Live"
-        case .offline: "Unavailable"
-        case .stopped: "Paused"
-        }
     }
 
     private var unavailabilityHelp: Text {
