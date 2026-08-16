@@ -485,6 +485,14 @@ private struct LittleHerdSettingsView: View {
     @AppStorage(LittleHerdPreferences.alertsEnabledKey)
     private var alertsEnabled = false
     @State private var configuringNAS: MachineConfiguration?
+    /// Bumped when a password is saved.
+    ///
+    /// The row reads the keychain while drawing, and the keychain is not
+    /// something SwiftUI observes. Saving a password for a machine that is
+    /// already configured changes no stored value, so nothing invalidated the
+    /// view and the row went on showing "Sign in again" after a sign-in that
+    /// had in fact succeeded.
+    @State private var credentialsRevision = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -545,7 +553,8 @@ private struct LittleHerdSettingsView: View {
                         machine: machine,
                         canRemove: machineStore.canRemove(machine.id),
                         onRemove: { remove(machine.id) },
-                        onConnect: { configuringNAS = machine }
+                        onConnect: { configuringNAS = machine },
+                        credentialsRevision: credentialsRevision
                     )
                     .listRowInsets(
                         EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10)
@@ -570,6 +579,7 @@ private struct LittleHerdSettingsView: View {
             SynologyCredentialsView(machine: machine) { updated in
                 machineStore.update(updated)
                 onConfigurationsChanged(machineStore.machines)
+                credentialsRevision += 1
             }
         }
     }
@@ -585,6 +595,9 @@ private struct SettingsMachineRow: View {
     let canRemove: Bool
     let onRemove: () -> Void
     let onConnect: () -> Void
+    /// Read so that saving a password redraws this row. The keychain is not
+    /// observable, so without it the label can outlive the thing it describes.
+    let credentialsRevision: Int
 
     /// What the row can honestly claim.
     ///
