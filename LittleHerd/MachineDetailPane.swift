@@ -11,6 +11,13 @@ import SwiftUI
 /// change.
 struct MetricDetailPane<Rows: View>: View {
     let title: LocalizedStringResource
+    /// Recent history for this pane's metric, drawn under the header.
+    ///
+    /// The list answers what is using the resource right now; the graph answers
+    /// whether that is new. A process holding two cores means one thing on a
+    /// flat line and another on a climbing one, and the list alone cannot tell
+    /// them apart.
+    var series: MetricSeries?
     var summary: Text?
     var emptyMessage: LocalizedStringResource?
     @ViewBuilder var rows: () -> Rows
@@ -32,6 +39,16 @@ struct MetricDetailPane<Rows: View>: View {
                 }
             }
             .padding(.bottom, 8)
+
+            if let series, series.isWorthDrawing {
+                MetricSparkline(
+                    points: series.points,
+                    color: series.kind.color,
+                    fixedScale: series.kind.fixedScale
+                )
+                .frame(height: 40)
+                .padding(.bottom, 10)
+            }
 
             if let emptyMessage {
                 Text(emptyMessage)

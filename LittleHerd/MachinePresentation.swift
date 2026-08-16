@@ -190,6 +190,52 @@ extension MachineMonitorModel {
     }
 }
 
+/// One metric's recent history, ready to draw.
+///
+/// The kind travels with the points because it is what says how to draw them —
+/// the colour the rest of the app already uses for this metric, and whether the
+/// scale is pinned to 0–100 or follows the data.
+nonisolated struct MetricSeries: Equatable, Sendable {
+    let kind: MetricKind
+    let points: [HistoryPoint]
+
+    /// A single reading is a dot, not a shape, and a flat line drawn from one
+    /// point invites a conclusion the data cannot support.
+    var isWorthDrawing: Bool { points.count > 1 }
+}
+
+extension OverviewMetric {
+    /// The measured quantity behind this column, when there is one. The agent
+    /// column counts sessions rather than measuring anything, so it has none.
+    ///
+    /// Deliberately a mapping rather than a second `series(for:)` overload.
+    /// Both enums have a `.cpu`, so `series(for: .cpu)` inside such an overload
+    /// resolves to the overload itself — infinite recursion that compiles
+    /// cleanly and crashes on the first detail pane opened.
+    var metricKind: MetricKind? {
+        switch self {
+        case .cpu: .cpu
+        case .memory: .memory
+        case .disk: .disk
+        case .ai: nil
+        }
+    }
+}
+
+extension MachineMonitorModel {
+    func series(for kind: MetricKind) -> MetricSeries {
+        MetricSeries(
+            kind: kind,
+            points: metrics.first { $0.kind == kind }?.history ?? []
+        )
+    }
+
+    /// The series a given overview column should draw, if any.
+    func series(showing metric: OverviewMetric) -> MetricSeries? {
+        metric.metricKind.map { series(for: $0) }
+    }
+}
+
 /// Where a row sits in a reorderable list, so it knows which way it can go.
 nonisolated struct ListPosition: Equatable, Sendable {
     let index: Int

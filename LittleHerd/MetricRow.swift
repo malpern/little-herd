@@ -171,7 +171,13 @@ private struct MetricDetail: View {
     }
 }
 
-private struct MetricSparkline: View {
+/// The shape a metric has been making lately.
+///
+/// Shared rather than private: the metric rows draw it small beside each row,
+/// and a focused machine's pane draws the same series larger above its list, so
+/// that "what is it doing" and "what has it been doing" are answered by one
+/// picture rather than two that could disagree.
+struct MetricSparkline: View {
     let points: [HistoryPoint]
     let color: Color
     let fixedScale: ClosedRange<Double>?

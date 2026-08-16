@@ -722,6 +722,7 @@ private struct MachineProcessPane: View {
     var body: some View {
         MetricDetailPane(
             title: "WHAT\u{2019}S RUNNING",
+            series: machine.series(for: .cpu),
             summary: machine.state == .live
                 ? machine.cpu.value.map {
                     Text($0 / 100, format: .percent.precision(.fractionLength(0)))
@@ -761,6 +762,7 @@ private struct MachineMemoryPane: View {
     var body: some View {
         MetricDetailPane(
             title: "WHAT\u{2019}S USING MEMORY",
+            series: machine.series(for: .memory),
             summary: machine.state == .live
                 ? machine.memoryPressure.map { Text($0.title) }
                 : nil,
@@ -810,6 +812,7 @@ private struct MachineStoragePane: View {
     var body: some View {
         MetricDetailPane(
             title: "VOLUMES",
+            series: machine.series(for: .disk),
             summary: fullest.map {
                 Text($0 / 100, format: .percent.precision(.fractionLength(0)))
             },

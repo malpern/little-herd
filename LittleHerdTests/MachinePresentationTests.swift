@@ -507,6 +507,62 @@ private func herdMember(_ id: String) -> MachineConfiguration {
     )
 }
 
+/// The graph above each pane's list.
+///
+/// A list says what is using the machine right now; the graph says whether that
+/// is new. Two cores held means one thing on a flat line and another on a
+/// climbing one, and the list alone cannot tell them apart.
+@MainActor
+struct MetricSeriesTests {
+    @Test
+    func aSeriesCarriesTheMetricItDraws() {
+        let machine = mac()
+        machine.apply(
+            SystemSnapshot(timestamp: .now, readings: [.cpu: MetricReading(value: 40)])
+        )
+
+        #expect(machine.series(for: .cpu).kind == .cpu)
+        #expect(machine.series(for: .memory).kind == .memory)
+    }
+
+    /// The agent column counts sessions rather than measuring a quantity, so
+    /// there is no series to draw above it.
+    @Test
+    func theAgentPaneHasNoGraph() {
+        #expect(mac().series(showing: .ai) == nil)
+    }
+
+    @Test
+    func theOverviewMetricsMapToTheirOwnSeries() {
+        let machine = mac()
+
+        #expect(machine.series(showing: .cpu)?.kind == .cpu)
+        #expect(machine.series(showing: .memory)?.kind == .memory)
+        #expect(machine.series(showing: .disk)?.kind == .disk)
+    }
+
+    /// One reading is a dot, not a shape. A line drawn through it invites a
+    /// conclusion about a trend that a single sample cannot support.
+    @Test
+    func asingleReadingIsNotYetAGraph() {
+        let machine = mac()
+        #expect(!machine.series(for: .cpu).isWorthDrawing)
+
+        machine.apply(
+            SystemSnapshot(timestamp: .now, readings: [.cpu: MetricReading(value: 40)])
+        )
+        #expect(!machine.series(for: .cpu).isWorthDrawing)
+
+        machine.apply(
+            SystemSnapshot(
+                timestamp: Date().addingTimeInterval(10),
+                readings: [.cpu: MetricReading(value: 55)]
+            )
+        )
+        #expect(machine.series(for: .cpu).isWorthDrawing)
+    }
+}
+
 // MARK: - Machines to look at
 
 @MainActor
