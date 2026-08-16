@@ -221,6 +221,17 @@ final class MachineConfigurationStore {
         replace(with: machines.filter { $0.id != machineID })
     }
 
+    /// Reorders the herd.
+    ///
+    /// The saved order is the order everywhere: the overview, the machine
+    /// pages, and the menu bar all read this list in sequence, so arranging
+    /// machines in Settings arranges them everywhere they appear.
+    func move(fromOffsets source: IndexSet, toOffset destination: Int) {
+        var updated = machines
+        updated.move(fromOffsets: source, toOffset: destination)
+        replace(with: updated)
+    }
+
     /// Replaces one machine in place, leaving the rest of the herd untouched.
     func update(_ configuration: MachineConfiguration) {
         guard let index = machines.firstIndex(where: {

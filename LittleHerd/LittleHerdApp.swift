@@ -523,7 +523,7 @@ private struct LittleHerdSettingsView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Machines")
                         .font(.body.weight(.medium))
-                    Text("\(machineStore.machines.count) saved. Discover nearby computers and add several at once.")
+                    Text("\(machineStore.machines.count) saved. Drag to reorder; this is the order they appear in everywhere.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -537,7 +537,10 @@ private struct LittleHerdSettingsView: View {
                 }
             }
 
-            VStack(spacing: 0) {
+            // A List rather than a VStack, because it is what gives rows drag
+            // reordering for free. Styled back down to the plain grouped look
+            // the rest of this window uses.
+            List {
                 ForEach(machineStore.machines) { machine in
                     SettingsMachineRow(
                         machine: machine,
@@ -545,14 +548,21 @@ private struct LittleHerdSettingsView: View {
                         onRemove: { remove(machine.id) },
                         onConnect: { configuringNAS = machine }
                     )
-
-                    if machine.id != machineStore.machines.last?.id {
-                        Divider()
-                    }
+                    .listRowInsets(
+                        EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10)
+                    )
+                    .listRowSeparator(.visible)
+                    .listRowBackground(Color.clear)
+                }
+                .onMove { source, destination in
+                    machineStore.move(fromOffsets: source, toOffset: destination)
+                    onConfigurationsChanged(machineStore.machines)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 2)
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .scrollDisabled(true)
+            .frame(height: CGFloat(machineStore.machines.count) * 38 + 4)
             .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 8))
         }
         .padding(24)

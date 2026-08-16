@@ -42,13 +42,39 @@ struct SecretCacheTests {
         #expect(cache.value(for: "nas") == "new")
     }
 
-    /// A deleted secret must not still be answered from memory.
+    /// A deleted secret must not still be answered from memory, and the next
+    /// read should ask again rather than assume it is still gone.
     @Test
     func forgettingAnAccountLeavesNothingBehind() {
         let cache = SecretCache()
         cache.set("hunter2", for: "nas")
-        cache.set(nil, for: "nas")
+        cache.forget("nas")
         #expect(cache.value(for: "nas") == nil)
+        #expect(cache.entry(for: "nas") == nil)
+    }
+
+    /// The half that was missing: a prompt the user dismisses leaves the read
+    /// unsuccessful, and without remembering that, a monitor sampling every ten
+    /// seconds asks again forever with no way to stop it.
+    @Test
+    func aFailedReadIsRememberedSoItIsNotAskedAgain() {
+        let cache = SecretCache()
+        cache.setMissing(for: "nas")
+
+        #expect(cache.value(for: "nas") == nil)
+        // Distinguishable from "never asked", which is what makes the caller
+        // skip the keychain rather than retry it.
+        #expect(cache.entry(for: "nas") == .missing)
+    }
+
+    /// Answering the prompt has to take effect at once, not next launch.
+    @Test
+    func aSecretArrivingLaterReplacesTheFailure() {
+        let cache = SecretCache()
+        cache.setMissing(for: "nas")
+        cache.set("hunter2", for: "nas")
+        #expect(cache.value(for: "nas") == "hunter2")
+        #expect(cache.entry(for: "nas") == .value("hunter2"))
     }
 
     /// Two NASes, or two accounts on one NAS, must not read each other's
@@ -62,7 +88,7 @@ struct SecretCacheTests {
         #expect(cache.value(for: "one@nas:5001") == "first")
         #expect(cache.value(for: "two@nas:5001") == "second")
 
-        cache.set(nil, for: "one@nas:5001")
+        cache.forget("one@nas:5001")
         #expect(cache.value(for: "two@nas:5001") == "second")
     }
 

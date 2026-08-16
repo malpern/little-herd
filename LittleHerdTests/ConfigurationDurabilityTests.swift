@@ -122,3 +122,80 @@ struct ConfigurationDurabilityTests {
         #expect(store.machines[0].connection == .local)
     }
 }
+
+/// The saved order is the order everywhere, so rearranging in Settings has to
+/// survive a relaunch and reach the overview.
+@MainActor
+struct MachineOrderTests {
+    private func machine(_ id: String, _ connection: MachineConnection = .ssh) -> MachineConfiguration {
+        MachineConfiguration(
+            id: MachineID(id),
+            name: id.capitalized,
+            shortName: id.capitalized,
+            hostname: id,
+            hardwareSummary: "Test",
+            platform: connection == .local ? .macOS : .linux,
+            connection: connection,
+            avatar: .oxGPU,
+            identityFile: nil,
+            serverNames: [],
+            supportsGPU: false
+        )
+    }
+
+    private func store() -> (MachineConfigurationStore, UserDefaults, String) {
+        let suite = "LittleHerdTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let store = MachineConfigurationStore(defaults: defaults)
+        store.add([machine("alpha"), machine("beta"), machine("gamma")])
+        return (store, defaults, suite)
+    }
+
+    @Test
+    func movingAMachineChangesTheSavedOrder() {
+        let (store, defaults, suite) = store()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let before = store.machines.map(\.id.rawValue)
+        #expect(before == ["local", "alpha", "beta", "gamma"])
+
+        // Drag "gamma" to the top.
+        store.move(fromOffsets: IndexSet(integer: 3), toOffset: 0)
+        #expect(store.machines.map(\.id.rawValue) == ["gamma", "local", "alpha", "beta"])
+    }
+
+    /// An order that does not survive a relaunch is not an order.
+    @Test
+    func theOrderIsPersisted() {
+        let (store, defaults, suite) = store()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        store.move(fromOffsets: IndexSet(integer: 3), toOffset: 0)
+        let reloaded = MachineConfigurationStore(defaults: defaults)
+        #expect(reloaded.machines.map(\.id.rawValue) == ["gamma", "local", "alpha", "beta"])
+    }
+
+    /// The point of the feature: what Settings shows first is what the overview
+    /// shows first.
+    @Test
+    func theOverviewFollowsTheSavedOrder() {
+        let (store, defaults, suite) = store()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        store.move(fromOffsets: IndexSet(integer: 3), toOffset: 0)
+        let model = MonitorModel(configurations: store.machines)
+        #expect(model.machines.map(\.machine.rawValue) == ["gamma", "local", "alpha", "beta"])
+        #expect(model.diskMachines.map(\.machine.rawValue) == ["gamma", "local", "alpha", "beta"])
+    }
+
+    /// A move that changes nothing must not churn the saved data.
+    @Test
+    func movingAMachineOntoItselfChangesNothing() {
+        let (store, defaults, suite) = store()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let before = store.machines
+        store.move(fromOffsets: IndexSet(integer: 1), toOffset: 1)
+        #expect(store.machines == before)
+    }
+}

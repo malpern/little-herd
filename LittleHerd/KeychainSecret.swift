@@ -58,12 +58,23 @@ nonisolated enum KeychainSecret {
         return true
     }
 
-    /// The password for a NAS, read from the keychain at most once per launch.
+    /// The password for a NAS. The keychain is consulted at most once per
+    /// launch per account, whether or not it answers — a prompt the user
+    /// dismisses must not come back ten seconds later.
     static func read(account: String) -> String? {
-        if let cached = cache.value(for: account) { return cached }
-        let secret = readFromKeychain(account: account)
-        cache.set(secret, for: account)
-        return secret
+        switch cache.entry(for: account) {
+        case .value(let secret):
+            return secret
+        case .missing:
+            return nil
+        case nil:
+            guard let secret = readFromKeychain(account: account) else {
+                cache.setMissing(for: account)
+                return nil
+            }
+            cache.set(secret, for: account)
+            return secret
+        }
     }
 
     private static func readFromKeychain(account: String) -> String? {
@@ -87,7 +98,7 @@ nonisolated enum KeychainSecret {
 
     @discardableResult
     static func delete(account: String) -> Bool {
-        cache.set(nil, for: account)
+        cache.forget(account)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
