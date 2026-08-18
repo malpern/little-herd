@@ -21,6 +21,7 @@
 		27726ED927D36757C9A9BF67 /* MonitorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4ED33139998C97ECB4C77A /* MonitorModel.swift */; };
 		2CFA6E28CE4D7F2470879499 /* AgentProbeShellTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694A0E6E34E815E5A5218AA0 /* AgentProbeShellTests.swift */; };
 		2ED305BEE5B202DD76C12D58 /* LittleHerdBranding.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37B21B22B4948B6336D6258 /* LittleHerdBranding.swift */; };
+		33091EB8213B524F89466F29 /* FolderSizeScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2605FCF3C1DE6064204751BF /* FolderSizeScanner.swift */; };
 		3A45C65052806FE4A571A349 /* HerdwareAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D56F2E897732951FB02B9B7F /* HerdwareAvatar.swift */; };
 		40B66FBE223EF28FE3FB6877 /* SynologyDSMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1E4988B07342992D546101 /* SynologyDSMClient.swift */; };
 		4425832D76E61C50D9AE5F2F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 387B8471B05B8FEFC2973329 /* Assets.xcassets */; };
@@ -28,6 +29,7 @@
 		45C4B87B06C248B32DE821B4 /* AgentSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17B5AEB7ADED71EAF3397A2 /* AgentSession.swift */; };
 		4DECA6731350AC1B325E372D /* MetricsSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8E7D7B96F3C77459C1DD141 /* MetricsSampler.swift */; };
 		510ED568359C558B6A05BCFE /* MachineActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE7C98CC9A2691BAFB89BCC /* MachineActivity.swift */; };
+		5716E746539B82A0D580CDB7 /* FolderSizeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52D5157BE29095D9CF3FED86 /* FolderSizeTests.swift */; };
 		58521A8BB8088855A0F9DA8D /* BonjourMachineDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC14D9861665A4B5069FBEF7 /* BonjourMachineDiscovery.swift */; };
 		588C0175F4217FCFB8023E19 /* SecretCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD5EAFC1911B210500E6BD9 /* SecretCache.swift */; };
 		58F616158D246EB318C6BE2B /* AIUsageLimits.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD201A3C46AB062F71E564EF /* AIUsageLimits.swift */; };
@@ -42,6 +44,7 @@
 		88873018BA18973DB4643815 /* MetricsSamplerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE23C778660407B336F50BA0 /* MetricsSamplerTests.swift */; };
 		8935F6CCBD6DFA02BEC41FA3 /* RemoteUnavailabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */; };
 		93C91DDDFDDCDFA4E993CC6B /* SynologyDSM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95D3E317CB51DFD9180687CF /* SynologyDSM.swift */; };
+		9C4DC60AB6AFC3F1EEC79B02 /* FolderSizes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EDDF10F2439122730B9A0F7 /* FolderSizes.swift */; };
 		9E4826EE9CDB2CC88329E54B /* MachineDetailPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0268A4FEC4C1CE1B192EB31C /* MachineDetailPane.swift */; };
 		9EBFA43128EEF75AFFDC4C3F /* SynologyTrustTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C57E556B607FDBFC533B251 /* SynologyTrustTests.swift */; };
 		A23B343EAFCC59009DBBB951 /* DashboardWindowBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F86234553E6FA795BAE88C /* DashboardWindowBridge.swift */; };
@@ -82,6 +85,7 @@
 		133A808E3BA4EEA2AF234D6E /* CPUOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUOverviewView.swift; sourceTree = "<group>"; };
 		199544A93AE05F23B93D38E4 /* DashboardTransition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardTransition.swift; sourceTree = "<group>"; };
 		2364561D7CD692AC3FC1471A /* MachinePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachinePresentation.swift; sourceTree = "<group>"; };
+		2605FCF3C1DE6064204751BF /* FolderSizeScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSizeScanner.swift; sourceTree = "<group>"; };
 		28A334FD1C930D9B96C4E2F1 /* InMemoryConfigurationStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InMemoryConfigurationStorage.swift; sourceTree = "<group>"; };
 		2A2C8E4C049BD68DD7C9764E /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		324EEBC4BC470AA0BD558877 /* TemporaryDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemporaryDefaults.swift; sourceTree = "<group>"; };
@@ -96,6 +100,7 @@
 		48E107D7CC3B01B621E4483E /* RemoteUnavailability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteUnavailability.swift; sourceTree = "<group>"; };
 		4B675E6E28982CA80D968D2E /* LocalProcessRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalProcessRunner.swift; sourceTree = "<group>"; };
 		4F29F16289B54BBD5DC8DE5A /* MetricRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricRow.swift; sourceTree = "<group>"; };
+		52D5157BE29095D9CF3FED86 /* FolderSizeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSizeTests.swift; sourceTree = "<group>"; };
 		542ADA4729226F9EBB0D48D6 /* AddMachinesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMachinesView.swift; sourceTree = "<group>"; };
 		6125192CA7CFE81311C048BC /* MachineMonitorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineMonitorModel.swift; sourceTree = "<group>"; };
 		6513E7513A64EC239339381A /* KeychainSecret.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSecret.swift; sourceTree = "<group>"; };
@@ -114,6 +119,7 @@
 		95D3E317CB51DFD9180687CF /* SynologyDSM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyDSM.swift; sourceTree = "<group>"; };
 		9964820C13B89705570C2A79 /* SecretCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretCacheTests.swift; sourceTree = "<group>"; };
 		9B1E4988B07342992D546101 /* SynologyDSMClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyDSMClient.swift; sourceTree = "<group>"; };
+		9EDDF10F2439122730B9A0F7 /* FolderSizes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSizes.swift; sourceTree = "<group>"; };
 		A17B5AEB7ADED71EAF3397A2 /* AgentSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSession.swift; sourceTree = "<group>"; };
 		A5BBA732DB8512138D7F61E0 /* RemoteMetricsSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteMetricsSampler.swift; sourceTree = "<group>"; };
 		A8E7D7B96F3C77459C1DD141 /* MetricsSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricsSampler.swift; sourceTree = "<group>"; };
@@ -165,6 +171,8 @@
 				199544A93AE05F23B93D38E4 /* DashboardTransition.swift */,
 				D833CE2704E28207ED01D856 /* DashboardView.swift */,
 				76F86234553E6FA795BAE88C /* DashboardWindowBridge.swift */,
+				9EDDF10F2439122730B9A0F7 /* FolderSizes.swift */,
+				2605FCF3C1DE6064204751BF /* FolderSizeScanner.swift */,
 				D56F2E897732951FB02B9B7F /* HerdwareAvatar.swift */,
 				672A36609CA039974CDF72E7 /* HoveredMachineMetricHeader.swift */,
 				CE6423E97058743B9C08DD97 /* Info.plist */,
@@ -226,6 +234,7 @@
 			children = (
 				694A0E6E34E815E5A5218AA0 /* AgentProbeShellTests.swift */,
 				3CBDB146412416AE14C5CEB4 /* ConfigurationDurabilityTests.swift */,
+				52D5157BE29095D9CF3FED86 /* FolderSizeTests.swift */,
 				28A334FD1C930D9B96C4E2F1 /* InMemoryConfigurationStorage.swift */,
 				B15AD1FE8E57EC1A9E3162EE /* MachinePresentationTests.swift */,
 				0030CD269D45A066A95941B9 /* MetricHistoryTests.swift */,
@@ -355,6 +364,8 @@
 				F45BA889DF0A918F2B8A1CE7 /* DashboardTransition.swift in Sources */,
 				094E80A6E07234899B305A38 /* DashboardView.swift in Sources */,
 				A23B343EAFCC59009DBBB951 /* DashboardWindowBridge.swift in Sources */,
+				33091EB8213B524F89466F29 /* FolderSizeScanner.swift in Sources */,
+				9C4DC60AB6AFC3F1EEC79B02 /* FolderSizes.swift in Sources */,
 				3A45C65052806FE4A571A349 /* HerdwareAvatar.swift in Sources */,
 				B3560BD65BAB29961DD5DB6C /* HoveredMachineMetricHeader.swift in Sources */,
 				0173CB23C12E9DDBD3B79AE2 /* KeychainSecret.swift in Sources */,
@@ -396,6 +407,7 @@
 			files = (
 				2CFA6E28CE4D7F2470879499 /* AgentProbeShellTests.swift in Sources */,
 				0B46A10585034F62414676B1 /* ConfigurationDurabilityTests.swift in Sources */,
+				5716E746539B82A0D580CDB7 /* FolderSizeTests.swift in Sources */,
 				BF0A72836087C3E499B9E54D /* InMemoryConfigurationStorage.swift in Sources */,
 				1CC37DE83816DEFA72E09098 /* MachinePresentationTests.swift in Sources */,
 				CDF0CF3F19E6741099BA1BCB /* MetricHistoryTests.swift in Sources */,
