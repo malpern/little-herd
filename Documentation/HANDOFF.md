@@ -280,3 +280,19 @@ it; the files survived only because the directory had not been reaped yet.
 It is the roadmap; there is no other tracker. Update it at the end of a session
 rather than writing a fresh one by hand, and delete items that are done — a
 handoff nobody trusts is worse than none.
+
+**`CLAUDE.md` at the repo root is what makes this file get read.** Until 18
+August 2026 nothing loaded it: an agent found this file only when a human
+remembered to say "read the handoff first" in the opening message, which meant
+every fact below was one forgotten sentence away from being rediscovered. The
+root `CLAUDE.md` is loaded automatically into every session, and `AGENTS.md` is
+a symlink to it so Codex reads the same text. Keep it short and keep it a
+pointer — it costs context in every session, and a copy of this file there
+would rot the moment the two disagree.
+
+**The facts section is the decision log, and it is permanent.** `Next` gets
+pruned as work lands; facts do not. That split is why this project needs no
+separate ADRs — a second tracker is the thing this file exists to avoid. Where a
+decision is about one function, the reason belongs in a comment above it, as it
+does for `MetricsSampler.storageVolumes()`; you trip over it there at the moment
+you are tempted, which no document achieves.
