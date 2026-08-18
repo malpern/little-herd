@@ -135,7 +135,23 @@ it; the files survived only because the directory had not been reaped yet.
    `top` nor `iostat` exposes per-core lines. It would work on this Mac and no
    other, which in an app about a herd is an inconsistency rather than a
    feature. Reopen only if a way to get it without root appears.
-2. **Nothing else.** The list is short on purpose; see below.
+2. **Say once, at herd level, that names are not resolving — but not yet.**
+   When a machine is unreachable the summary line says only `3 of 4 live`:
+   `MenuBarStatusSelector.headline` returns `.unavailable(live:total:)`, and
+   `MenuBarMachineSnapshot` carries no reason, so the rollup cannot tell "the
+   box is down" from "this Mac cannot resolve anything". The per-machine
+   tooltip already gets this right via `RemoteUnavailability.nameNotFound`.
+   The change would be to thread the reason into the snapshot and, when *every*
+   unavailable machine is `.nameNotFound`, say so once — because that is one
+   local cause, not several machine outages.
+
+   **Do not build it yet.** It only earns its keep over a set larger than one,
+   and that set is one: when `*.ts.net` resolution died here on 18 August, only
+   Linux went dark, because the mini and the Synology resolve on the LAN. The
+   rule would collapse to "Linux failed to resolve", which is what the tooltip
+   already says. Build it when a second machine becomes reachable only over the
+   tailnet, and not before.
+3. **Nothing else.** The list is short on purpose; see below.
 
 ## Keeping this file honest
 
