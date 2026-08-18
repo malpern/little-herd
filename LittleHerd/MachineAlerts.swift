@@ -47,6 +47,11 @@ nonisolated enum MachineAlert: String, CaseIterable, Sendable {
         }
     }
 
+    /// How many samples in a row must fail before a machine counts as down.
+    /// At the ten-second cadence this is about half a minute — long enough to
+    /// outlast a wake-up, short enough that a real outage is still prompt.
+    static let failuresBeforeUnreachable = 3
+
     /// Conditions currently true for a machine.
     @MainActor
     static func active(for machine: MachineMonitorModel) -> Set<MachineAlert> {
@@ -54,7 +59,16 @@ nonisolated enum MachineAlert: String, CaseIterable, Sendable {
 
         // Only a machine that was reachable and stopped counts. A machine that
         // has never connected, or one you paused, is not news.
-        if machine.state == .offline, machine.lastUpdated != nil {
+        //
+        // Nor is a single failed sample. The same reasoning as the CPU
+        // thresholds: this Mac sleeps and changes networks, so the first
+        // sample after waking can fail before the network is up, and
+        // announcing that a machine died — then that it recovered — is noise
+        // the monitor generated about itself. A real outage costs half a
+        // minute of delay to say so, which is nothing.
+        if machine.state == .offline,
+           machine.lastUpdated != nil,
+           machine.consecutiveFailures >= failuresBeforeUnreachable {
             // Said as what it is. A NAS answering normally, whose password we
             // can no longer read, has not "stopped responding" — and sending
             // someone to check the network for a problem the keychain caused

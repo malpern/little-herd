@@ -44,6 +44,14 @@ final class MachineMonitorModel: Identifiable {
     /// Why the machine is unreachable, when it is. Kept beside `state` so the
     /// interface can say more than "Unavailable".
     private(set) var unavailability: RemoteUnavailability?
+    /// Consecutive samples that have failed.
+    ///
+    /// One failure is not an outage. This Mac is a laptop: it sleeps, wakes,
+    /// and changes networks, and the first sample after waking can easily fail
+    /// before the network is up. Reporting that as a machine going down —
+    /// with a notification, and another when it "came back" a few seconds
+    /// later — is the monitor crying wolf about its own laptop.
+    private(set) var consecutiveFailures = 0
 
     @ObservationIgnored
     private var memoryGrowthDetector = MemoryGrowthDetector()
@@ -93,6 +101,9 @@ final class MachineMonitorModel: Identifiable {
         lastUpdated = snapshot.timestamp
         state = .live
         unavailability = nil
+        // One good answer settles it. Coming back needs no confirming: the
+        // machine is demonstrably there.
+        consecutiveFailures = 0
     }
 
     /// The worst thing this machine's storage reports, when it is worth saying
@@ -142,6 +153,7 @@ final class MachineMonitorModel: Identifiable {
     }
 
     func markOffline(_ reason: RemoteUnavailability? = nil) {
+        consecutiveFailures += 1
         state = .offline
         unavailability = reason
         agentSessions = agentSessions.map { $0.waitingIfActive() }

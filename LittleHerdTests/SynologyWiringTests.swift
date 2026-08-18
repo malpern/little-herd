@@ -430,7 +430,9 @@ struct SynologyWiringTests {
                 ]
             )
         )
-        machine.markOffline(.noAnswer)
+        for _ in 0 ..< MachineAlert.failuresBeforeUnreachable {
+            machine.markOffline(.noAnswer)
+        }
 
         let active = MachineAlert.active(for: machine)
         #expect(active == [.unreachable])

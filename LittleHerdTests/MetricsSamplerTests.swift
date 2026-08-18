@@ -150,11 +150,15 @@ struct MetricsSamplerTests {
         center.evaluate(machine, isEnabled: true)
         #expect(posted.isEmpty)
 
-        machine.markOffline(.noAnswer)
-        center.evaluate(machine, isEnabled: true)
+        // Down means down for a few samples running, not one dropped answer.
+        for _ in 0 ..< MachineAlert.failuresBeforeUnreachable {
+            machine.markOffline(.noAnswer)
+            center.evaluate(machine, isEnabled: true)
+        }
         #expect(posted.count == 1)
 
         // Still gone on the next sample: a monitor that repeats itself gets muted.
+        machine.markOffline(.noAnswer)
         center.evaluate(machine, isEnabled: true)
         #expect(posted.count == 1)
 

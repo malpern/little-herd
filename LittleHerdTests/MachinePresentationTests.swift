@@ -808,7 +808,9 @@ struct SignInLostTests {
     @Test
     func aLostSignInRaisesItsOwnAlertRatherThanBlamingTheMachine() {
         let machine = nasThatWasWorking()
-        machine.markOffline(.signInLost)
+        for _ in 0 ..< MachineAlert.failuresBeforeUnreachable {
+            machine.markOffline(.signInLost)
+        }
 
         let alerts = MachineAlert.active(for: machine)
 
@@ -825,7 +827,9 @@ struct SignInLostTests {
     @Test
     func aMachineThatReallyStoppedAnsweringIsStillUnreachable() {
         let machine = nasThatWasWorking()
-        machine.markOffline(.noAnswer)
+        for _ in 0 ..< MachineAlert.failuresBeforeUnreachable {
+            machine.markOffline(.noAnswer)
+        }
 
         let alerts = MachineAlert.active(for: machine)
 
@@ -919,6 +923,87 @@ struct ProcessShareTests {
             SystemSnapshot(timestamp: .now, readings: [.cpu: MetricReading(value: 25)])
         )
         #expect(machine.coreCount == 10)
+    }
+}
+
+/// A machine has to be down for more than an instant.
+///
+/// This Mac is the one doing the watching, and it sleeps, wakes and changes
+/// networks. The first sample after waking can fail before the network is up —
+/// which used to announce that a machine had stopped responding, and then that
+/// it had come back, seconds apart. Two notifications, nothing happened, and
+/// the monitor was reporting on its own laptop.
+@MainActor
+struct ConsecutiveFailureTests {
+    private func nasThatWasWorking() -> MachineMonitorModel {
+        let machine = nas()
+        machine.apply(
+            SystemSnapshot(timestamp: .now, readings: [.disk: MetricReading(value: 67)])
+        )
+        return machine
+    }
+
+    @Test
+    func oneFailedSampleIsNotAnOutage() {
+        let machine = nasThatWasWorking()
+        machine.markOffline(.noAnswer)
+
+        #expect(machine.consecutiveFailures == 1)
+        #expect(MachineAlert.active(for: machine).isEmpty)
+    }
+
+    @Test
+    func afailureThatKeepsFailingIs() {
+        let machine = nasThatWasWorking()
+        for _ in 0 ..< MachineAlert.failuresBeforeUnreachable {
+            machine.markOffline(.noAnswer)
+        }
+
+        #expect(MachineAlert.active(for: machine).contains(.unreachable))
+    }
+
+    /// One good answer settles it — coming back needs no confirming.
+    @Test
+    func asingleSuccessClearsTheCount() {
+        let machine = nasThatWasWorking()
+        machine.markOffline(.noAnswer)
+        machine.markOffline(.noAnswer)
+        #expect(machine.consecutiveFailures == 2)
+
+        machine.apply(
+            SystemSnapshot(timestamp: .now, readings: [.disk: MetricReading(value: 67)])
+        )
+
+        #expect(machine.consecutiveFailures == 0)
+        #expect(MachineAlert.active(for: machine).isEmpty)
+    }
+
+    /// The wake-up case, end to end: fail once, recover, and nothing is said.
+    @Test
+    func awakeUpBlipSaysNothing() {
+        let machine = nasThatWasWorking()
+
+        machine.markOffline(.noAnswer)
+        #expect(MachineAlert.active(for: machine).isEmpty)
+
+        machine.apply(
+            SystemSnapshot(timestamp: .now, readings: [.disk: MetricReading(value: 67)])
+        )
+        #expect(MachineAlert.active(for: machine).isEmpty)
+    }
+
+    /// The gate applies to a lost sign-in too: that condition shares the same
+    /// branch, and a keychain read failing once is no more an emergency than a
+    /// network hiccup.
+    @Test
+    func thegateCoversALostSignInAsWell() {
+        let machine = nasThatWasWorking()
+        machine.markOffline(.signInLost)
+        #expect(MachineAlert.active(for: machine).isEmpty)
+
+        machine.markOffline(.signInLost)
+        machine.markOffline(.signInLost)
+        #expect(MachineAlert.active(for: machine).contains(.signInLost))
     }
 }
 
