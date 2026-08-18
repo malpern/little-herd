@@ -1,6 +1,7 @@
 # Little Herd — handoff
 
-**State:** `main` @ `08db41d`, clean, pushed, tagged `v0.1.21`. 263 tests.
+**State:** `main` @ `d995182`, clean, pushed. Latest release `v0.1.21`;
+the cancellation fix since then is unreleased. 264 tests.
 Installed and running: 0.1.21. Nothing unreleased.
 
 **The Synology is fixed.** Drive 2 was replaced on 17 August 2026 — a WD40EFZZ
@@ -35,6 +36,12 @@ mistakes dressed as facts, and both changed the advice completely.
 difference. A remote Mac's CPU therefore comes from `iostat` watching for the
 whole sampling interval, which paces the loop — verified live at 1.09 s and
 10.08 s.
+
+**`AsyncStream.onTermination` fires on task cancellation, not on `break`.** An
+earlier version hung process termination on it and assumed a consumer leaving a
+`for await` was enough. It is not, so nothing was terminated and a `du` walked
+/System after the app quit. Cancellation now comes from
+`withTaskCancellationHandler` as well.
 
 **`du` full-buffers its output to a pipe.** Measured: `du -sk /bin /sbin /usr`
 delivered all three lines in the same millisecond; separate invocations
@@ -74,19 +81,16 @@ it; the files survived only because the directory had not been reaped yet.
 
 ## Next
 
-1. **Stop doesn't fully stop.** A running `du` outlives cancellation — observed
-   still walking `/System` after the app quit. `StreamingProcessRunner` has a
-   shell trap that works when TERM is sent by hand, but something in the stream
-   teardown is not delivering one. Marked KNOWN GAP in the file. Two attempts to
-   write a test for it failed.
-2. **The remote-CPU change has never been watched over a long run.** History is
-   bucketed into five-minute averages, which erases the property worth testing,
-   so the honest check is a deliberate duty cycle on the mini — three seconds
-   busy in twenty, for twenty minutes — compared against what Little Herd reports.
-3. **Ideas raised and not acted on:** P-core/E-core awareness (blocked —
-   per-core utilisation needs root, so it would work on this Mac and no other),
-   and this Mac reporting only its startup volume while remote Macs enumerate
-   everything.
+1. **P-core/E-core awareness is blocked, not pending.** Per-core utilisation
+   needs root on a remote Mac — `powermetrics` refuses without it, and neither
+   `top` nor `iostat` exposes per-core lines. It would work on this Mac and no
+   other, which in an app about a herd is an inconsistency rather than a
+   feature. Reopen only if a way to get it without root appears.
+2. **This Mac reports only its startup volume** while remote Macs enumerate
+   everything under `/Volumes`. `MetricsSampler.storageVolumes()` returns one
+   entry; the remote script lists all of them and filters read-only and
+   image-backed mounts. Worth making consistent, in the direction of the remote
+   behaviour.
 
 ## Keeping this file honest
 
