@@ -76,6 +76,36 @@ unaffected because their commands run under `sshd`, which already has Full Disk
 Access — which is also why tunnelling to localhost is not the answer: it obtains
 the same access through a wider door and leaves the door open.
 
+**Sparkle's last mile works, and it has now been watched rather than assumed.**
+The installed 0.1.21 was taken to 0.1.22 through **Check for Updates…** on
+18 August 2026: the alert rendered its release notes correctly, the download
+ran, `Autoupdate` replaced the bundle, and the app relaunched. Verified after
+the fact rather than on the strength of the dialog closing — version and build
+`0.1.22`/`23`, a *new inode* for the bundle (55445740 → 55613997, so it was
+replaced and not patched), the running process started from `/Applications`
+seconds later, `codesign --verify --deep --strict` clean, `spctl` reporting
+`Notarized Developer ID`, and a stapled ticket that validates.
+
+**`log stream` is how you find out what the app really did.** The update was
+driven by clicking the menu item through the accessibility API, because a
+menu-bar app's menu is not visible to a filtered screenshot. The click tool then
+reported that the click had been *blocked* — and the app updated anyway. AppKit's
+own log settled it: `trackMouse send action on mouseUp` at 06:24:13.903, the
+download 65 ms later, `Autoupdate` at 06:24:14.8. The click had landed and the
+tool misreported it, most likely re-checking the frontmost app after the dialog
+closed and the app began relaunching. Do not trust that error against an app
+that is quitting; read the log.
+
+**A warning for "Tailscale is not running" would be worse than nothing.** Linux
+showed a dash and "3 of 4 live" for about five minutes on 18 August. The box was
+fine — the mini pinged it 2/2 at 9.6 ms and the watchdog held `linux.fails: 0` —
+while this Mac could not resolve `*.ts.net` at all (`scutil --dns` carried no
+resolver for it). Throughout, the Tailscale `IPNExtension` process *was running*,
+so a process-presence check would have reported everything healthy during the one
+event it exists to catch. What ssh already prints is the honest signal, and
+`RemoteUnavailability.nameNotFound` already turns it into "Check whether Tailscale
+is connected." It resolved itself with no intervention.
+
 ## Method notes
 
 **Look at it.** Four times in one session something obviously correct on paper
