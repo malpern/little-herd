@@ -83,7 +83,7 @@ nonisolated enum ContainerAttributionProbe {
             }
 
             guard leaf.count >= shortIDLength,
-                  leaf.allSatisfy(\.isHexDigitLowercase)
+                  leaf.allSatisfy(hexDigits.contains)
             else { continue }
 
             return String(leaf.prefix(shortIDLength))
@@ -95,6 +95,10 @@ nonisolated enum ContainerAttributionProbe {
     /// What `docker ps` shows, and therefore what a person can paste back into
     /// it when the friendly name is unavailable.
     static let shortIDLength = 12
+
+    /// Lower case only: a cgroup ID is always lower case, and a systemd unit
+    /// that happened to be named in upper-case hex is not a container.
+    private static let hexDigits = Set("0123456789abcdef")
 
     /// `awk` here avoids interval expressions (`{12,}`): the `awk` macOS ships
     /// is BWK's, not GNU's, and this same text is exercised by the tests there.
@@ -146,12 +150,4 @@ nonisolated enum ContainerAttributionProbe {
       done
     }
     """#
-}
-
-private extension Character {
-    /// `isHexDigit` accepts `A`–`F`, and a cgroup ID is always lower case; a
-    /// systemd unit named in upper-case hex should not be mistaken for one.
-    var isHexDigitLowercase: Bool {
-        isNumber || ("a" ... "f").contains(self)
-    }
 }
