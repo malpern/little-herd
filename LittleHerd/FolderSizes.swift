@@ -164,12 +164,22 @@ nonisolated struct FolderSort: Equatable, Sendable {
 nonisolated enum FolderDateFormatter {
     static func string(for date: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
         let time = date.formatted(date: .omitted, time: .shortened)
-        if calendar.isDate(date, inSameDayAs: now) { return "Today at \(time)" }
+        if calendar.isDate(date, inSameDayAs: now) { return "Today \(time)" }
         if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
            calendar.isDate(date, inSameDayAs: yesterday) {
-            return "Yesterday at \(time)"
+            return "Yesterday \(time)"
         }
-        return date.formatted(date: .abbreviated, time: .shortened)
+        // The Finder writes "Aug 14, 2026 at 6:50 PM" because it has a window
+        // wide enough to spend on it. This pane is a few hundred points across,
+        // and a date column that leaves a folder called Library rendered as "L"
+        // has its priorities backwards. The year appears only when it is not
+        // this one, which is when it carries information.
+        let sameYear = calendar.component(.year, from: date)
+            == calendar.component(.year, from: now)
+        return date.formatted(
+            .dateTime.month(.abbreviated).day()
+                .year(sameYear ? .omitted : .defaultDigits)
+        )
     }
 }
 

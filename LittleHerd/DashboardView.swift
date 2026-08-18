@@ -864,12 +864,24 @@ private struct MachineStoragePane: View {
         ) {
             ForEach(volumes) { volume in
                 let browser = browser(for: volume)
+                let scanPath = scanPath(for: volume)
                 MetricDetailRow(
                     // A volume the machine considers degraded says so here, so
                     // the row is not merely a capacity bar on failing hardware.
                     symbolName: volume.health.map(\.symbolName) ?? "internaldrive",
                     tint: volume.health.map(\.tint) ?? MetricKind.disk.color,
-                    title: Text(volume.name),
+                    // A triangle, so the row looks like something that opens.
+                    // Without one there is nothing to say the list is there.
+                    title: Text(
+                        Image(
+                            systemName: browser.isExpanded(scanPath)
+                                ? "chevron.down"
+                                : "chevron.right"
+                        )
+                    )
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        + Text("  ") + Text(volume.name),
                     subtitle: Text(capacityDescription(for: volume)),
                     value: Text(
                         volume.usedPercent / 100,
@@ -906,11 +918,11 @@ private struct MachineStoragePane: View {
                 }
                 .onTapGesture {
                     guard browser.canMeasure else { return }
-                    browser.toggle(scanPath(for: volume), isRoot: true)
+                    browser.toggle(scanPath, isRoot: true)
                 }
 
-                if browser.isExpanded(scanPath(for: volume)) {
-                    FolderBrowserView(model: browser, path: scanPath(for: volume))
+                if browser.isExpanded(scanPath) {
+                    FolderBrowserView(model: browser, path: scanPath)
                         .padding(.leading, 10)
                 }
             }

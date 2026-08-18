@@ -30,6 +30,7 @@
 		45BC186C83BEC7696C68B73B /* MachinePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2364561D7CD692AC3FC1471A /* MachinePresentation.swift */; };
 		45C4B87B06C248B32DE821B4 /* AgentSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17B5AEB7ADED71EAF3397A2 /* AgentSession.swift */; };
 		4DECA6731350AC1B325E372D /* MetricsSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8E7D7B96F3C77459C1DD141 /* MetricsSampler.swift */; };
+		4F24CDD27DEBD6E140685C00 /* StreamingProcessRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75816BB07A0EFE6F81C52052 /* StreamingProcessRunner.swift */; };
 		510ED568359C558B6A05BCFE /* MachineActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE7C98CC9A2691BAFB89BCC /* MachineActivity.swift */; };
 		5716E746539B82A0D580CDB7 /* FolderSizeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52D5157BE29095D9CF3FED86 /* FolderSizeTests.swift */; };
 		58521A8BB8088855A0F9DA8D /* BonjourMachineDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC14D9861665A4B5069FBEF7 /* BonjourMachineDiscovery.swift */; };
@@ -116,6 +117,7 @@
 		6E03AE4CBF5FB2BD804CB5B3 /* FolderBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderBrowserView.swift; sourceTree = "<group>"; };
 		74631ABBC0DF62E9034B91B7 /* StorageVolume.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageVolume.swift; sourceTree = "<group>"; };
 		758130364CC3DF20E47E3A56 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
+		75816BB07A0EFE6F81C52052 /* StreamingProcessRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingProcessRunner.swift; sourceTree = "<group>"; };
 		76F86234553E6FA795BAE88C /* DashboardWindowBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardWindowBridge.swift; sourceTree = "<group>"; };
 		7A22449665459CDACD6F0410 /* LittleHerdTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LittleHerdTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		81C6082944C3057004428EA4 /* MetricHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricHistory.swift; sourceTree = "<group>"; };
@@ -209,6 +211,7 @@
 				4164BB6C590812113B80A9E9 /* SoftwareUpdater.swift */,
 				E4F112CE5D8A49060A44E52A /* SSHHostName.swift */,
 				74631ABBC0DF62E9034B91B7 /* StorageVolume.swift */,
+				75816BB07A0EFE6F81C52052 /* StreamingProcessRunner.swift */,
 				33E5557F8559949577B4F98F /* SynologyCredentialsView.swift */,
 				95D3E317CB51DFD9180687CF /* SynologyDSM.swift */,
 				9B1E4988B07342992D546101 /* SynologyDSMClient.swift */,
@@ -404,6 +407,7 @@
 				588C0175F4217FCFB8023E19 /* SecretCache.swift in Sources */,
 				CBADC8EDC9632AE4731B8C4C /* SoftwareUpdater.swift in Sources */,
 				CF632AA195C36FA80B20AB9F /* StorageVolume.swift in Sources */,
+				4F24CDD27DEBD6E140685C00 /* StreamingProcessRunner.swift in Sources */,
 				C3EC710A9D4AC5B469D730AE /* SynologyCredentialsView.swift in Sources */,
 				93C91DDDFDDCDFA4E993CC6B /* SynologyDSM.swift in Sources */,
 				40B66FBE223EF28FE3FB6877 /* SynologyDSMClient.swift in Sources */,

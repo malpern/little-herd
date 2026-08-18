@@ -48,6 +48,11 @@ nonisolated struct FolderSizeScanner: Sendable {
             return []
         }
 
+        // Say how many there are the moment they are known. Otherwise the
+        // first batch — which can contain /System — leaves a spinner on screen
+        // for minutes with nothing to say how long it might last.
+        onProgress([], FolderScanProgress(measured: 0, total: children.count, elapsed: 0))
+
         let dates = await modificationDates(for: children.map(\.path))
         var measured: [FolderEntry] = []
 
@@ -57,34 +62,45 @@ nonisolated struct FolderSizeScanner: Sendable {
         // them — the shape of `node_modules`, and exactly where someone would
         // drill in. Batching flattens that without giving up streaming: the
         // list still fills as it goes, just a handful of rows at a time.
+        var byPath: [String: (isDirectory: Bool, name: String)] = [:]
+        for child in children {
+            byPath[child.path] = (
+                child.isDirectory,
+                (child.path as NSString).lastPathComponent
+            )
+        }
+
         for start in stride(from: 0, to: children.count, by: Self.batchSize) {
             try Task.checkCancellation()
-
             let batch = Array(children[start ..< min(start + Self.batchSize, children.count)])
-            let sizes = await measure(paths: batch.map(\.path))
-            for child in batch {
-                guard let bytes = sizes[child.path] else { continue }
+
+            for try await (path, bytes) in measuredLines(paths: batch.map(\.path)) {
+                try Task.checkCancellation()
+                guard let known = byPath[path] else { continue }
                 measured.append(
                     FolderEntry(
-                        name: (child.path as NSString).lastPathComponent,
-                        path: child.path,
+                        name: known.name,
+                        path: path,
                         sizeBytes: bytes,
-                        isDirectory: child.isDirectory,
-                        modifiedAt: dates[child.path]
+                        isDirectory: known.isDirectory,
+                        modifiedAt: dates[path]
+                    )
+                )
+
+                // Per child now, not per batch. The whole point: a folder that
+                // finishes quickly appears immediately, even while a sibling
+                // walks /System.
+                let elapsed = started.duration(to: ContinuousClock().now)
+                onProgress(
+                    measured.sorted { $0.sizeBytes > $1.sizeBytes },
+                    FolderScanProgress(
+                        measured: measured.count,
+                        total: children.count,
+                        elapsed: TimeInterval(elapsed.components.seconds)
+                            + Double(elapsed.components.attoseconds) / 1e18
                     )
                 )
             }
-
-            let elapsed = started.duration(to: ContinuousClock().now)
-            onProgress(
-                measured.sorted { $0.sizeBytes > $1.sizeBytes },
-                FolderScanProgress(
-                    measured: min(start + batch.count, children.count),
-                    total: children.count,
-                    elapsed: TimeInterval(elapsed.components.seconds)
-                        + Double(elapsed.components.attoseconds) / 1e18
-                )
-            )
         }
         return measured.sorted { $0.sizeBytes > $1.sizeBytes }
     }
@@ -141,28 +157,72 @@ nonisolated struct FolderSizeScanner: Sendable {
         return dates
     }
 
-    /// Small enough that the list still visibly fills, large enough that the
-    /// round trips stop dominating.
+    /// Large enough that round trips stop dominating, small enough that a slow
+    /// member cannot hold too many others behind it. With streaming, a batch no
+    /// longer gates its own results — each path reports as it finishes — so this
+    /// is now only about how many round trips are paid.
     private static let batchSize = 8
 
-    /// `du -sk` answers for a file as readily as a directory and takes as many
-    /// paths as you give it, printing one line each — so one command serves the
-    /// whole batch and there is no second code path to keep in step.
-    private func measure(paths: [String]) async -> [String: Double] {
-        guard !paths.isEmpty else { return [:] }
-        let arguments = paths.map(quoted).joined(separator: " ")
-        guard let output = try? await run("du -sk -x \(arguments)") ?? nil else {
-            return [:]
+    /// `du -sk` takes as many paths as you give it and prints each line the
+    /// moment that path is done, so one command yields a stream of answers
+    /// rather than a single verdict at the end.
+    private func measuredLines(paths: [String]) -> AsyncThrowingStream<(String, Double), Error> {
+        // One `du` per path, inside one shell command.
+        //
+        // A single `du` over many paths would be fewer processes, but it
+        // full-buffers its output when writing to a pipe and so prints nothing
+        // until it exits — measured: batched, /bin /sbin /usr all arrived in
+        // the same millisecond; invoked separately, /usr came 160ms after the
+        // others. Streaming the pipe cannot help if the writer never writes.
+        //
+        // A `du` that exits flushes, so each path reports as it finishes, and
+        // wrapping the loop in one command keeps this to a single SSH round
+        // trip — which is what the batching was for in the first place.
+        // The loop runs each `du` in the background and waits on it, so a TERM
+        // to the shell can pass the signal on. Terminating the shell alone
+        // leaves the `du` orphaned and still walking /System — measured, after
+        // quitting the app entirely.
+        let command = "trap 'test -n \"$child\" && kill \"$child\" 2>/dev/null; exit 143' TERM INT; "
+            + "child=''; for p in " + paths.map(quoted).joined(separator: " ")
+            + "; do du -sk -x \"$p\" & child=$!; wait \"$child\"; done"
+        let raw: AsyncThrowingStream<String, Error>
+        switch location {
+        case .local:
+            raw = StreamingProcessRunner.lines(
+                executablePath: "/bin/sh",
+                arguments: ["-c", command],
+                environment: ["LC_ALL": "C"]
+            )
+        case let .ssh(host, identityFile, _):
+            raw = StreamingProcessRunner.lines(
+                executablePath: "/usr/bin/ssh",
+                arguments: SSHCommandRunner.arguments(
+                    host: host,
+                    command: "export LC_ALL=C\n" + command,
+                    identityFile: identityFile
+                )
+            )
         }
-        var sizes: [String: Double] = [:]
-        for line in output.split(whereSeparator: \.isNewline) {
-            let parts = line.split(separator: "\t", maxSplits: 1)
-            guard parts.count == 2,
-                  let kilobytes = Double(parts[0].trimmingCharacters(in: .whitespaces))
-            else { continue }
-            sizes[String(parts[1])] = kilobytes * 1_024
+
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    for try await line in raw {
+                        let parts = line.split(separator: "\t", maxSplits: 1)
+                        guard parts.count == 2,
+                              let kilobytes = Double(
+                                  parts[0].trimmingCharacters(in: .whitespaces)
+                              )
+                        else { continue }
+                        continuation.yield((String(parts[1]), kilobytes * 1_024))
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
         }
-        return sizes
     }
 
     private func run(_ script: String) async throws -> String? {

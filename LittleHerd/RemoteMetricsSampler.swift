@@ -594,6 +594,31 @@ nonisolated private final class CollectedOutput: @unchecked Sendable {
 }
 
 nonisolated enum SSHCommandRunner {
+    /// One definition of how this app talks to a machine over SSH, shared by
+    /// the runner that waits for a whole answer and the one that streams it.
+    /// Two copies of these flags would be two things to keep in step.
+    static func arguments(
+        host: String,
+        command: String,
+        identityFile: String?
+    ) -> [String] {
+        var arguments = [
+            "-T",
+            "-o", "BatchMode=yes",
+            "-o", "ConnectTimeout=4",
+            "-o", "ConnectionAttempts=1",
+            "-o", "ServerAliveInterval=5",
+            "-o", "ServerAliveCountMax=1",
+            "-o", "ForwardAgent=no",
+            "-o", "ClearAllForwardings=yes",
+        ]
+        if let identityFile {
+            arguments += ["-o", "IdentitiesOnly=yes", "-i", identityFile]
+        }
+        // "--" ends option parsing so the host can never be read as a flag.
+        return arguments + ["--", host, command]
+    }
+
     static func run(
         host: String,
         command: String,
@@ -608,25 +633,11 @@ nonisolated enum SSHCommandRunner {
             let standardOutput = Pipe()
             let standardError = Pipe()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-            var arguments = [
-                "-T",
-                "-o", "BatchMode=yes",
-                "-o", "ConnectTimeout=4",
-                "-o", "ConnectionAttempts=1",
-                "-o", "ServerAliveInterval=5",
-                "-o", "ServerAliveCountMax=1",
-                "-o", "ForwardAgent=no",
-                "-o", "ClearAllForwardings=yes",
-            ]
-            if let identityFile {
-                arguments += [
-                    "-o", "IdentitiesOnly=yes",
-                    "-i", identityFile,
-                ]
-            }
-            // "--" ends option parsing so the host can never be read as a flag.
-            arguments += ["--", host, command]
-            process.arguments = arguments
+            process.arguments = Self.arguments(
+                host: host,
+                command: command,
+                identityFile: identityFile
+            )
             process.standardOutput = standardOutput
             process.standardError = standardError
 

@@ -95,9 +95,9 @@ private struct FolderColumnHeader: View {
             heading(.name)
                 .frame(maxWidth: .infinity, alignment: .leading)
             heading(.dateModified)
-                .frame(width: 132, alignment: .trailing)
+                .frame(width: 68, alignment: .trailing)
             heading(.size)
-                .frame(width: 62, alignment: .trailing)
+                .frame(width: 58, alignment: .trailing)
         }
         .font(.caption2.weight(.semibold))
         .foregroundStyle(.secondary)
@@ -150,12 +150,19 @@ private struct FolderRowView: View {
 
             Text(row.entry.modifiedAt.map { FolderDateFormatter.string(for: $0) } ?? "—")
                 .foregroundStyle(.secondary)
-                .frame(width: 132, alignment: .trailing)
+                .frame(width: 68, alignment: .trailing)
                 .lineLimit(1)
 
-            Text(Int64(row.entry.sizeBytes), format: .byteCount(style: .file))
+            // .byteCount renders nothing as "Zero kB", which reads as a fault
+            // rather than an empty folder.
+            Text(
+                row.entry.sizeBytes < 1
+                    ? "—"
+                    : Int64(row.entry.sizeBytes)
+                        .formatted(.byteCount(style: .file))
+            )
                 .monospacedDigit()
-                .frame(width: 62, alignment: .trailing)
+                .frame(width: 58, alignment: .trailing)
         }
         .font(.caption)
         .padding(.vertical, 2)

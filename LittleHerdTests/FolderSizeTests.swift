@@ -245,12 +245,12 @@ struct FolderDateFormatterTests {
         let calendar = Calendar.current
 
         let today = FolderDateFormatter.string(for: now, now: now, calendar: calendar)
-        #expect(today.hasPrefix("Today at "))
+        #expect(today.hasPrefix("Today "))
 
         let yesterday = calendar.date(byAdding: .day, value: -1, to: now)!
         #expect(
             FolderDateFormatter.string(for: yesterday, now: now, calendar: calendar)
-                .hasPrefix("Yesterday at ")
+                .hasPrefix("Yesterday ")
         )
     }
 
@@ -393,4 +393,49 @@ struct FolderBrowserModelTests {
         #expect(browser.sort.field == .name)
         #expect(browser.sort.ascending)
     }
+}
+
+/// Output arriving a line at a time, which is what makes a slow scan readable.
+struct StreamingProcessRunnerTests {
+    @Test
+    func linesArriveSeparatelyRatherThanAllAtOnce() async throws {
+        var received: [String] = []
+        for try await line in StreamingProcessRunner.lines(
+            executablePath: "/bin/sh",
+            arguments: ["-c", "printf 'one\\ntwo\\nthree\\n'"]
+        ) {
+            received.append(line)
+        }
+
+        #expect(received == ["one", "two", "three"])
+    }
+
+    /// A line split across two reads must not be reported as a truncated path.
+    @Test
+    func apartialLineWaitsForTheRestOfItself() async throws {
+        var received: [String] = []
+        for try await line in StreamingProcessRunner.lines(
+            executablePath: "/bin/sh",
+            arguments: ["-c", "printf 'begin'; sleep 0.2; printf 'ning\\nsecond\\n'"]
+        ) {
+            received.append(line)
+        }
+
+        #expect(received == ["beginning", "second"])
+    }
+
+    /// Output with no trailing newline is still reported rather than dropped.
+    @Test
+    func alastLineWithoutANewlineIsNotLost() async throws {
+        var received: [String] = []
+        for try await line in StreamingProcessRunner.lines(
+            executablePath: "/bin/sh",
+            arguments: ["-c", "printf 'no trailing newline'"]
+        ) {
+            received.append(line)
+        }
+
+        #expect(received == ["no trailing newline"])
+    }
+
 }
