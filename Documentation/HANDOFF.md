@@ -112,6 +112,41 @@ event it exists to catch. What ssh already prints is the honest signal, and
 `RemoteUnavailability.nameNotFound` already turns it into "Check whether Tailscale
 is connected." It resolved itself with no intervention.
 
+**Neither agent can move a session between machines, and the vendors say so.**
+Researched 18 August 2026 against the live CLIs and the docs. Remote Control
+connects a phone or browser to a session that **keeps running on its own
+machine** — it moves the interface, not the work. Cross-session messaging is
+explicitly "a piece of text one Claude writes to another, never conversation
+history or files", and the documentation's own instruction is that to move a
+conversation you resume it instead. Transcript files are not the answer either:
+the entry format is documented as internal and liable to change on any release,
+and a hand-copied duplicate makes resume report not-found by design. So a
+handoff has to be assembled from supported interfaces — `claude -p --resume <id>
+--output-format json`, `codex exec resume <id> --output-last-message` (with
+`--output-schema` to force the fields a summary would otherwise skip),
+`--session-id` to name the successor before it exists, and `-w/--worktree` to
+place it. Note that Little Herd's own agent probe parses those unstable `.jsonl`
+files today; that is a known risk, not an oversight.
+
+**An agent cannot authenticate over non-interactive ssh on a Mac.** Measured,
+not assumed: `claude -p` on the mini answers `Not logged in · Please run /login`,
+there is no `~/.claude/.credentials.json`, and the Keychain is unreadable from
+that shell. The linux box has the same credentials in a file at mode 600 and
+runs headless fine. Codex is file-backed too (`~/.codex/auth.json`), which is
+why `emailtriage` can run unattended. This is the gws Keychain saga a third
+time, and it has a hard consequence: **a transfer to a Mac cannot be a bare ssh
+command.** It needs something resident in the user's GUI login session — a
+launchd agent, or a tmux server already running there — which is also what a
+durable successor session needs anyway, since `-p` exits when it finishes.
+
+**What blocks a Mac from hosting a session is PATH, not version skew.** The Air
+runs Claude Code 2.1.229 and resolves neither `claude` nor `codex` from a
+non-login shell, because both sit behind mise shims or an app bundle. Meanwhile
+three machines run three different versions — 2.1.126, 2.1.229, 2.1.234 — so
+skew is the standing condition rather than a cleanup. Both point the same way:
+resolve an absolute agent path per machine and probe for the flag you need
+(`claude --help | grep -q -- --session-id`), never pin a version.
+
 ## Method notes
 
 **Look at it.** Four times in one session something obviously correct on paper
@@ -151,7 +186,94 @@ it; the files survived only because the directory had not been reaped yet.
    rule would collapse to "Linux failed to resolve", which is what the tooltip
    already says. Build it when a second machine becomes reachable only over the
    tailnet, and not before.
-3. **Nothing else.** The list is short on purpose; see below.
+3. **The AI panel is the next thing to build.** It is the weakest surface in the
+   app. Looked at on 18 August with seven sessions in it: every row carries the
+   same orange glyph, so the loudest element says nothing; the primary label is
+   the project name, which repeated "Clawd" three times and "Little Herd" twice
+   and cannot identify a session; only one row showed what it was *doing* while
+   the rest fell back to "Mini · 43m ago"; and the list is sorted by recency, so
+   six finished sessions carry the same weight as the one that is live. State —
+   the most useful thing the app knows — is a ten-pixel glyph in the right
+   gutter where waiting and finished look alike. Two defects are visible in the
+   same screenshot: a "Choose metric" tooltip stuck over the header, and the
+   last row clipped with no scroll affordance.
+
+   Sort by what needs you rather than by when it happened: waiting first, then
+   active, then a collapsed count of what finished. `waiting` is the single most
+   actionable fact in the model and is currently indistinguishable from done.
+
+4. **Probe destination eligibility, and let the user express intent separately.**
+   Capability is measured — an agent binary resolvable over a non-interactive
+   ssh shell, git, a checkout of the repo, and remaining budget. Intent is a
+   per-machine setting: some machines can host a session and still should not.
+   Eligibility is both, and neither substitutes for the other. Default a new
+   machine to off and let the probe make the offer.
+
+   Say *which* reason a machine is not a destination, the way
+   `RemoteUnavailability` already does for reachability — "excluded here", "no
+   agent on the PATH ssh sees", "no checkout of that repo", and "out of budget"
+   are four different answers and only the first is a preference. **The NAS is
+   never a destination for this herd** — DSM restricts shell access to
+   administrators, the login shell is `/bin/sh`, and there is no package
+   manager, so it fails the probe on every count. The setting exists so someone
+   with a capable NAS can opt in, not as a safety control here; what stops an
+   agent running on the Synology is that there is nothing there to run.
+
+   This rung is useful on its own and everything below depends on it.
+
+5. **Join activity to metrics — the highest-leverage thing not yet built.** The
+   app samples both and correlates neither, so "the Air is at 90% sustained" and
+   "three Claude sessions are on the Air" sit on two screens as unrelated facts.
+   Saying it once — you are saturating the Air, the mini is idle — is what turns
+   a monitor into something that answers "what should I do?", and it is the
+   input any placement decision needs. It needs no new architecture.
+
+6. **Transfer a session between machines, at the session level.** Not process
+   migration, which is not possible and not wanted: stop the session, have it
+   write full context, start a successor on the target that has the repo. It is
+   the same thing this file does by hand between sessions, which is the reason
+   to trust the shape. Decisions already made: the artifact and any uncommitted
+   work travel together on a **transfer branch**, so the target checks out one
+   ref and has both, atomically and auditably. The machines share one account,
+   so a move rebalances **silicon, not tokens** — say so in the interface rather
+   than letting a move be made for a reason it cannot deliver. It is
+   machine-to-machine only; the phone starts and watches a transfer but is never
+   a destination, because Remote Control already covers steering a session from
+   a phone and there is no reason to rebuild it.
+
+   The order matters and is a safety property: quiesce, summarise, verify the
+   artifact, start the successor, verify it behaviourally, and **only then**
+   retire the source. A half-finished transfer must leave you where you started.
+   Only a quiescent session can move safely, which is to say a `waiting` one —
+   the same state item 3 is about surfacing.
+
+   Expect the summary to omit what matters least to a model and most to you:
+   uncommitted work, background processes (documented as *not* restored on
+   resume), and which capabilities the session was leaning on — and capability
+   genuinely differs per machine here, as ACCESS.md records for `gws` and
+   `emailtriage`. Require those fields rather than hoping for them. Reuse the
+   existing `transfer.json` contract and its handoff animation, which are built
+   and deliberately carry no prompts, transcripts, or credentials. The mover
+   stays outside the app: the README's promise that Little Herd "does not
+   dispatch or move tasks itself" is worth keeping.
+
+   The same machinery gives **park** and **fork** nearly free, which is a sign
+   the factoring is right.
+
+7. **iOS, scoped to the herd rather than to sessions.** Do not rebuild session
+   steering; Remote Control and the Claude app already do it, with the local
+   filesystem and MCP servers attached. What has no answer today is the herd:
+   which machine is hot, what is waiting on you, what the budget looks like,
+   and starting a transfer. Do not sample from the phone either — iOS will not
+   ssh-poll in the background. It wants a resident collector on the mini, which
+   is the same helper item 6 needs for the Keychain problem and the same one a
+   durable successor session needs. Build it once. The model layer is already
+   portable — 29 of 48 source files import neither SwiftUI nor AppKit, and
+   `MachinePresentation` exists precisely because display decisions were pulled
+   out of the view bodies.
+
+8. **Show each machine's agent versions.** Cheap, and skew is invisible today
+   while being the standing condition; see the facts above.
 
 ## Keeping this file honest
 
