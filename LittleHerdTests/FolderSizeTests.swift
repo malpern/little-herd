@@ -149,3 +149,122 @@ struct FolderScanTests {
         #expect(!scan([], state: .listing).isStale(now: now))
     }
 }
+
+/// Finder's columns, and Finder's habits about them.
+struct FolderSortTests {
+    private func entry(_ name: String, size: Double, daysAgo: Double) -> FolderEntry {
+        FolderEntry(
+            name: name, path: "/V/\(name)", sizeBytes: size, isDirectory: true,
+            modifiedAt: Date().addingTimeInterval(-daysAgo * 86_400)
+        )
+    }
+
+    private var sample: [FolderEntry] {
+        [
+            entry("beta", size: 900, daysAgo: 30),
+            entry("Alpha", size: 10, daysAgo: 1),
+            entry("gamma", size: 100, daysAgo: 90),
+        ]
+    }
+
+    /// Each column has an order that is obviously the useful one: biggest and
+    /// newest first, but names A to Z.
+    @Test
+    func eachColumnStartsTheWayYouWouldWantIt() {
+        #expect(!FolderSortField.size.defaultAscending)
+        #expect(!FolderSortField.dateModified.defaultAscending)
+        #expect(FolderSortField.name.defaultAscending)
+    }
+
+    @Test
+    func sizeSortsLargestFirst() {
+        let sorted = FolderSort(field: .size, ascending: false).sorted(sample)
+        #expect(sorted.map(\.name) == ["beta", "gamma", "Alpha"])
+    }
+
+    @Test
+    func dateSortsNewestFirst() {
+        let sorted = FolderSort(field: .dateModified, ascending: false).sorted(sample)
+        #expect(sorted.map(\.name) == ["Alpha", "beta", "gamma"])
+    }
+
+    /// Names compare the way a person reads them — case-insensitively, and with
+    /// numbers in numeric order — which is what localizedStandardCompare is for.
+    @Test
+    func namesSortLikeTheFinderSortsThem() {
+        let sorted = FolderSort(field: .name, ascending: true).sorted(sample)
+        #expect(sorted.map(\.name) == ["Alpha", "beta", "gamma"])
+
+        let numbered = [
+            FolderEntry(name: "item10", path: "/V/item10", sizeBytes: 1, isDirectory: true, modifiedAt: nil),
+            FolderEntry(name: "item2", path: "/V/item2", sizeBytes: 1, isDirectory: true, modifiedAt: nil),
+        ]
+        #expect(
+            FolderSort(field: .name, ascending: true).sorted(numbered).map(\.name)
+                == ["item2", "item10"]
+        )
+    }
+
+    /// A folder the machine could not stat sinks rather than jumping to the top
+    /// of a date sort, where it would look like the most recent thing.
+    @Test
+    func anUndatedFolderSortsAsOldest() {
+        let undated = FolderEntry(
+            name: "mystery", path: "/V/mystery", sizeBytes: 50,
+            isDirectory: true, modifiedAt: nil
+        )
+        let sorted = FolderSort(field: .dateModified, ascending: false)
+            .sorted(sample + [undated])
+
+        #expect(sorted.last?.name == "mystery")
+    }
+
+    /// Clicking the same column reverses it; clicking a different one starts
+    /// from that column's own sensible direction rather than inheriting.
+    @Test
+    func clickingAColumnBehavesLikeAColumnHeading() {
+        var sort = FolderSort(field: .size, ascending: false)
+
+        sort.toggle(.size)
+        #expect(sort == FolderSort(field: .size, ascending: true))
+
+        sort.toggle(.dateModified)
+        #expect(sort == FolderSort(field: .dateModified, ascending: false))
+
+        sort.toggle(.name)
+        #expect(sort == FolderSort(field: .name, ascending: true))
+    }
+}
+
+struct FolderDateFormatterTests {
+    /// "Today at 2:30 PM" reads at a glance; a timestamp has to be decoded, and
+    /// decoded against today's date to mean anything at all.
+    @Test
+    func recentDaysAreNamedRatherThanNumbered() {
+        let now = Date()
+        let calendar = Calendar.current
+
+        let today = FolderDateFormatter.string(for: now, now: now, calendar: calendar)
+        #expect(today.hasPrefix("Today at "))
+
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: now)!
+        #expect(
+            FolderDateFormatter.string(for: yesterday, now: now, calendar: calendar)
+                .hasPrefix("Yesterday at ")
+        )
+    }
+
+    /// Anything older gets a date, because "17 days ago" is not something
+    /// anyone can act on.
+    @Test
+    func olderThingsGetADate() {
+        let now = Date()
+        let old = Calendar.current.date(byAdding: .day, value: -17, to: now)!
+        let text = FolderDateFormatter.string(for: old, now: now)
+
+        #expect(!text.hasPrefix("Today"))
+        #expect(!text.hasPrefix("Yesterday"))
+        #expect(!text.isEmpty)
+    }
+}
+

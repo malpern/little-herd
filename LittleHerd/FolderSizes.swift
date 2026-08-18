@@ -12,12 +12,16 @@ import Foundation
 /// make a slow job bearable: rows appear as they are counted, and progress is a
 /// real fraction rather than a spinner that says nothing.
 
-nonisolated struct FolderEntry: Identifiable, Equatable, Sendable {
+nonisolated struct FolderEntry: Identifiable, Equatable, Codable, Sendable {
     let name: String
     let path: String
     let sizeBytes: Double
     /// Only a directory can be opened further; a large file is a leaf.
     let isDirectory: Bool
+    /// When it last changed, where the machine could say. Finder's second
+    /// column, and the one that answers "what have I been filling this with
+    /// lately" rather than "what is biggest".
+    var modifiedAt: Date?
 
     var id: String { path }
 }
@@ -90,6 +94,82 @@ nonisolated struct FolderScan: Equatable, Sendable {
     func isStale(now: Date, after age: TimeInterval = 3_600) -> Bool {
         guard case .done(let measuredAt) = state else { return false }
         return now.timeIntervalSince(measuredAt) > age
+    }
+}
+
+/// How the list is ordered, and which way.
+///
+/// Finder's columns, because this is Finder's job: what is biggest, what
+/// changed recently, and what it is called. Each field has an order that is
+/// obviously the useful one — largest first, newest first, but names A to Z —
+/// so clicking a column heading for the first time does the expected thing
+/// rather than the alphabetically consistent one.
+nonisolated enum FolderSortField: String, CaseIterable, Sendable {
+    case name
+    case size
+    case dateModified
+
+    var defaultAscending: Bool {
+        switch self {
+        case .name: true
+        case .size, .dateModified: false
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .name: "Name"
+        case .size: "Size"
+        case .dateModified: "Date Modified"
+        }
+    }
+}
+
+nonisolated struct FolderSort: Equatable, Sendable {
+    var field: FolderSortField = .size
+    var ascending: Bool = false
+
+    /// Clicking the column you are already sorted by reverses it; clicking a
+    /// different one starts from that column's own sensible direction.
+    mutating func toggle(_ field: FolderSortField) {
+        if self.field == field {
+            ascending.toggle()
+        } else {
+            self.field = field
+            ascending = field.defaultAscending
+        }
+    }
+
+    func sorted(_ entries: [FolderEntry]) -> [FolderEntry] {
+        let ordered = entries.sorted { first, second in
+            switch field {
+            case .name:
+                first.name.localizedStandardCompare(second.name) == .orderedAscending
+            case .size:
+                first.sizeBytes < second.sizeBytes
+            case .dateModified:
+                // Anything undated sorts as oldest, so a folder the machine
+                // could not stat sinks rather than jumping to the top.
+                (first.modifiedAt ?? .distantPast) < (second.modifiedAt ?? .distantPast)
+            }
+        }
+        return ascending ? ordered : ordered.reversed()
+    }
+}
+
+/// Dates the way Finder writes them.
+///
+/// "Today at 2:30 PM" reads at a glance; "2026-08-17 14:30:00" has to be
+/// decoded, and decoded against today's date to mean anything.
+nonisolated enum FolderDateFormatter {
+    static func string(for date: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
+        let time = date.formatted(date: .omitted, time: .shortened)
+        if calendar.isDate(date, inSameDayAs: now) { return "Today at \(time)" }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
+           calendar.isDate(date, inSameDayAs: yesterday) {
+            return "Yesterday at \(time)"
+        }
+        return date.formatted(date: .abbreviated, time: .shortened)
     }
 }
 
