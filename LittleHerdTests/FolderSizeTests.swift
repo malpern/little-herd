@@ -336,3 +336,61 @@ struct FolderSizeStoreTests {
         try? FileManager.default.removeItem(at: url)
     }
 }
+
+/// What the folder view is showing, without drawing it.
+@MainActor
+struct FolderBrowserModelTests {
+    private func model(scanner: FolderSizeScanner? = nil) -> FolderBrowserModel {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("browser-\(UUID().uuidString).json")
+        return FolderBrowserModel(
+            machine: MachineID("mini"),
+            scanner: scanner,
+            store: FolderSizeStore(fileURL: url)
+        )
+    }
+
+    /// A machine that cannot answer says so rather than offering a control that
+    /// does nothing — the NAS, whose DirSize API denies its own tasks exist.
+    @Test
+    func amachineThatCannotMeasureSaysSo() {
+        let browser = model(scanner: nil)
+
+        #expect(!browser.canMeasure)
+        browser.toggle("/Volumes/V", isRoot: true)
+
+        guard case .failed = browser.scan(for: "/Volumes/V")?.state else {
+            Issue.record("expected a stated failure, got \(String(describing: browser.scan(for: "/Volumes/V")?.state))")
+            return
+        }
+    }
+
+    /// Closing a folder closes what was open inside it, so reopening does not
+    /// reveal a tree someone left three levels deep an hour ago.
+    @Test
+    func closingAFolderClosesWhatWasInsideIt() {
+        let browser = model(scanner: FolderSizeScanner(location: .local))
+        browser.toggle("/Volumes/V", isRoot: true)
+        browser.toggle("/Volumes/V/inner")
+        browser.toggle("/Volumes/V/inner/deeper")
+
+        #expect(browser.isExpanded("/Volumes/V/inner/deeper"))
+
+        browser.toggle("/Volumes/V")
+
+        #expect(!browser.isExpanded("/Volumes/V"))
+        #expect(!browser.isExpanded("/Volumes/V/inner"))
+        #expect(!browser.isExpanded("/Volumes/V/inner/deeper"))
+    }
+
+    /// Sorting is a property of the list, not of one folder: changing it
+    /// reorders every level that is open.
+    @Test
+    func changingTheSortRebuildsTheWholeList() {
+        let browser = model(scanner: FolderSizeScanner(location: .local))
+        browser.sort.toggle(.name)
+
+        #expect(browser.sort.field == .name)
+        #expect(browser.sort.ascending)
+    }
+}

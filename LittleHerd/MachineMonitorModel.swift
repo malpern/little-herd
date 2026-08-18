@@ -14,6 +14,10 @@ final class MachineMonitorModel: Identifiable {
     let isStorage: Bool
     /// This Mac. Actions that touch the filesystem only apply here.
     let isLocal: Bool
+    /// Enough to reach this machine the same way its metrics are reached, so a
+    /// folder scan cannot drift from how the machine is otherwise contacted.
+    let identityFile: String?
+    let remotePlatform: RemotePlatform?
     let cpu: MetricModel
     let memory: MetricModel
     let metrics: [MetricModel]
@@ -70,6 +74,8 @@ final class MachineMonitorModel: Identifiable {
         supportsGPU = configuration.supportsGPU
         isStorage = configuration.isStorage
         isLocal = configuration.connection == .local
+        identityFile = configuration.identityFile
+        remotePlatform = configuration.remotePlatform
         self.cpu = cpu
         self.memory = memory
         metrics = [
@@ -104,6 +110,21 @@ final class MachineMonitorModel: Identifiable {
         // One good answer settles it. Coming back needs no confirming: the
         // machine is demonstrably there.
         consecutiveFailures = 0
+    }
+
+    /// How to measure folder sizes here, or nothing where they cannot be
+    /// measured — a NAS reached through DSM, whose DirSize API starts a task
+    /// and then denies it exists.
+    var folderScanner: FolderSizeScanner? {
+        if isLocal { return FolderSizeScanner(location: .local) }
+        guard let remotePlatform, !isStorage else { return nil }
+        return FolderSizeScanner(
+            location: .ssh(
+                host: hostname,
+                identityFile: identityFile,
+                platform: remotePlatform
+            )
+        )
     }
 
     /// The worst thing this machine's storage reports, when it is worth saying

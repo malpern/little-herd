@@ -844,6 +844,11 @@ private struct MachineMemoryPane: View {
 
 private struct MachineStoragePane: View {
     let machine: MachineMonitorModel
+    /// One browser per volume, made when a volume is first opened. Kept here
+    /// rather than in the machine model because it is view state: what someone
+    /// has open, not anything about the machine.
+    @State private var browsers: [String: FolderBrowserModel] = [:]
+    @State private var store = FolderSizeStore()
 
     var body: some View {
         MetricDetailPane(
@@ -858,6 +863,7 @@ private struct MachineStoragePane: View {
             emptyMessage: volumes.isEmpty ? unavailableMessage(for: machine) : nil
         ) {
             ForEach(volumes) { volume in
+                let browser = browser(for: volume)
                 MetricDetailRow(
                     // A volume the machine considers degraded says so here, so
                     // the row is not merely a capacity bar on failing hardware.
@@ -897,6 +903,15 @@ private struct MachineStoragePane: View {
                             )
                         }
                     }
+                }
+                .onTapGesture {
+                    guard browser.canMeasure else { return }
+                    browser.toggle(scanPath(for: volume), isRoot: true)
+                }
+
+                if browser.isExpanded(scanPath(for: volume)) {
+                    FolderBrowserView(model: browser, path: scanPath(for: volume))
+                        .padding(.leading, 10)
                 }
             }
 
@@ -956,6 +971,27 @@ private struct MachineStoragePane: View {
             )
         }
         return parts.isEmpty ? "No details reported" : parts.joined(separator: " · ")
+    }
+
+    /// APFS volumes sharing a container are reported as one row whose mount
+    /// path lists all of them, so the scan takes the first — the row's own
+    /// volume, and the one its name refers to.
+    private func scanPath(for volume: StorageVolume) -> String {
+        volume.mountPath.components(separatedBy: ", ").first ?? volume.mountPath
+    }
+
+    private func browser(for volume: StorageVolume) -> FolderBrowserModel {
+        let path = scanPath(for: volume)
+        if let existing = browsers[path] { return existing }
+        let created = FolderBrowserModel(
+            machine: machine.machine,
+            scanner: machine.folderScanner,
+            store: store
+        )
+        // Assigning during a body pass would be a mutation mid-render, so the
+        // dictionary is filled on the next turn of the loop.
+        Task { @MainActor in browsers[path] = created }
+        return created
     }
 
     private var fullest: Double? { volumes.map(\.usedPercent).max() }
