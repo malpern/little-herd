@@ -268,3 +268,71 @@ struct FolderDateFormatterTests {
     }
 }
 
+
+/// A scan costs tens of seconds, so it is paid for once.
+@MainActor
+struct FolderSizeStoreTests {
+    private func store() -> (FolderSizeStore, URL) {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("folder-sizes-\(UUID().uuidString).json")
+        return (FolderSizeStore(fileURL: url), url)
+    }
+
+    private func entries() -> [FolderEntry] {
+        [FolderEntry(
+            name: "CrabBox", path: "/Volumes/V/CrabBox",
+            sizeBytes: 213_233_680 * 1_024, isDirectory: true, modifiedAt: Date()
+        )]
+    }
+
+    @Test
+    func areadingSurvivesARestart() throws {
+        let (first, url) = store()
+        first.record(entries(), machine: MachineID("mini"), path: "/Volumes/V")
+
+        let reopened = FolderSizeStore(fileURL: url)
+        let restored = try #require(reopened.scan(machine: MachineID("mini"), path: "/Volumes/V"))
+
+        #expect(restored.entries.map(\.name) == ["CrabBox"])
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    /// "/" means something different on every machine, so one machine's answer
+    /// must never be shown as another's.
+    @Test
+    func machinesDoNotShareAnswers() {
+        let (store, url) = store()
+        store.record(entries(), machine: MachineID("mini"), path: "/")
+
+        #expect(store.scan(machine: MachineID("mini"), path: "/") != nil)
+        #expect(store.scan(machine: MachineID("linux"), path: "/") == nil)
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    /// Past the retention window it describes what *was* on the disk, and
+    /// re-measuring is the better answer than restoring it.
+    @Test
+    func astaleReadingIsNotRestored() {
+        let (store, url) = store()
+        store.record(
+            entries(), machine: MachineID("mini"), path: "/old",
+            measuredAt: Date().addingTimeInterval(-FolderSizeStore.retention - 60)
+        )
+
+        #expect(store.scan(machine: MachineID("mini"), path: "/old") == nil)
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    @Test
+    func amachineLeavingTheHerdTakesItsReadingsWithIt() {
+        let (store, url) = store()
+        store.record(entries(), machine: MachineID("mini"), path: "/a")
+        store.record(entries(), machine: MachineID("linux"), path: "/a")
+
+        store.forget(machine: MachineID("mini"))
+
+        #expect(store.scan(machine: MachineID("mini"), path: "/a") == nil)
+        #expect(store.scan(machine: MachineID("linux"), path: "/a") != nil)
+        try? FileManager.default.removeItem(at: url)
+    }
+}

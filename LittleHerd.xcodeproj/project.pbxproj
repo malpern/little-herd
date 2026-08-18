@@ -23,6 +23,7 @@
 		2ED305BEE5B202DD76C12D58 /* LittleHerdBranding.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37B21B22B4948B6336D6258 /* LittleHerdBranding.swift */; };
 		33091EB8213B524F89466F29 /* FolderSizeScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2605FCF3C1DE6064204751BF /* FolderSizeScanner.swift */; };
 		3A45C65052806FE4A571A349 /* HerdwareAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D56F2E897732951FB02B9B7F /* HerdwareAvatar.swift */; };
+		40506444A83FF76553A19A24 /* FolderSizeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60B1C3B57A90EE8805729A1B /* FolderSizeStore.swift */; };
 		40B66FBE223EF28FE3FB6877 /* SynologyDSMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1E4988B07342992D546101 /* SynologyDSMClient.swift */; };
 		4425832D76E61C50D9AE5F2F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 387B8471B05B8FEFC2973329 /* Assets.xcassets */; };
 		45BC186C83BEC7696C68B73B /* MachinePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2364561D7CD692AC3FC1471A /* MachinePresentation.swift */; };
@@ -102,6 +103,7 @@
 		4F29F16289B54BBD5DC8DE5A /* MetricRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricRow.swift; sourceTree = "<group>"; };
 		52D5157BE29095D9CF3FED86 /* FolderSizeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSizeTests.swift; sourceTree = "<group>"; };
 		542ADA4729226F9EBB0D48D6 /* AddMachinesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMachinesView.swift; sourceTree = "<group>"; };
+		60B1C3B57A90EE8805729A1B /* FolderSizeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSizeStore.swift; sourceTree = "<group>"; };
 		6125192CA7CFE81311C048BC /* MachineMonitorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineMonitorModel.swift; sourceTree = "<group>"; };
 		6513E7513A64EC239339381A /* KeychainSecret.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSecret.swift; sourceTree = "<group>"; };
 		66BA172D3CC6CD4B8AEBC144 /* LittleHerdApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LittleHerdApp.swift; sourceTree = "<group>"; };
@@ -173,6 +175,7 @@
 				76F86234553E6FA795BAE88C /* DashboardWindowBridge.swift */,
 				9EDDF10F2439122730B9A0F7 /* FolderSizes.swift */,
 				2605FCF3C1DE6064204751BF /* FolderSizeScanner.swift */,
+				60B1C3B57A90EE8805729A1B /* FolderSizeStore.swift */,
 				D56F2E897732951FB02B9B7F /* HerdwareAvatar.swift */,
 				672A36609CA039974CDF72E7 /* HoveredMachineMetricHeader.swift */,
 				CE6423E97058743B9C08DD97 /* Info.plist */,
@@ -365,6 +368,7 @@
 				094E80A6E07234899B305A38 /* DashboardView.swift in Sources */,
 				A23B343EAFCC59009DBBB951 /* DashboardWindowBridge.swift in Sources */,
 				33091EB8213B524F89466F29 /* FolderSizeScanner.swift in Sources */,
+				40506444A83FF76553A19A24 /* FolderSizeStore.swift in Sources */,
 				9C4DC60AB6AFC3F1EEC79B02 /* FolderSizes.swift in Sources */,
 				3A45C65052806FE4A571A349 /* HerdwareAvatar.swift in Sources */,
 				B3560BD65BAB29961DD5DB6C /* HoveredMachineMetricHeader.swift in Sources */,

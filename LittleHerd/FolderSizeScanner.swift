@@ -18,7 +18,17 @@ nonisolated struct FolderSizeScanner: Sendable {
     /// metrics are; there is no second transport to keep in step.
     enum Location: Sendable, Equatable {
         case local
-        case ssh(host: String, identityFile: String?)
+        case ssh(host: String, identityFile: String?, platform: RemotePlatform)
+
+        /// BSD and GNU `stat` disagree on everything except what they can tell
+        /// you. Verified against both machines rather than assumed.
+        var statArguments: String {
+            switch self {
+            case .local: "-f '%m%t%N'"
+            case .ssh(_, _, .macOS): "-f '%m%t%N'"
+            case .ssh(_, _, .linux): "-c '%Y\t%n'"
+            }
+        }
     }
 
     let location: Location
@@ -38,22 +48,38 @@ nonisolated struct FolderSizeScanner: Sendable {
             return []
         }
 
+        let dates = await modificationDates(for: children.map(\.path))
         var measured: [FolderEntry] = []
-        for child in children {
-            // Cancelling has to be felt between children rather than only at
-            // the end: the whole point of measuring one at a time is that the
-            // work can be abandoned partway without waiting minutes for a
-            // single command to give up.
+
+        // Measured in small groups rather than one at a time. A round trip to
+        // the mini costs about 90ms, which is nothing against a folder's dozen
+        // children and eighty seconds of pure waiting against eight hundred of
+        // them — the shape of `node_modules`, and exactly where someone would
+        // drill in. Batching flattens that without giving up streaming: the
+        // list still fills as it goes, just a handful of rows at a time.
+        for start in stride(from: 0, to: children.count, by: Self.batchSize) {
             try Task.checkCancellation()
 
-            if let entry = try? await measure(path: child.path, isDirectory: child.isDirectory) {
-                measured.append(entry)
+            let batch = Array(children[start ..< min(start + Self.batchSize, children.count)])
+            let sizes = await measure(paths: batch.map(\.path))
+            for child in batch {
+                guard let bytes = sizes[child.path] else { continue }
+                measured.append(
+                    FolderEntry(
+                        name: (child.path as NSString).lastPathComponent,
+                        path: child.path,
+                        sizeBytes: bytes,
+                        isDirectory: child.isDirectory,
+                        modifiedAt: dates[child.path]
+                    )
+                )
             }
+
             let elapsed = started.duration(to: ContinuousClock().now)
             onProgress(
                 measured.sorted { $0.sizeBytes > $1.sizeBytes },
                 FolderScanProgress(
-                    measured: measured.count,
+                    measured: min(start + batch.count, children.count),
                     total: children.count,
                     elapsed: TimeInterval(elapsed.components.seconds)
                         + Double(elapsed.components.attoseconds) / 1e18
@@ -94,23 +120,49 @@ nonisolated struct FolderSizeScanner: Sendable {
             + paths(fileOutput).map { ($0, false) }
     }
 
-    /// `du -sk` answers for a file as readily as a directory, so one command
-    /// serves both and there is no second code path to keep in step.
-    private func measure(path: String, isDirectory: Bool) async throws -> FolderEntry {
-        guard let output = try await run("du -sk -x \(quoted(path))"),
-              let kilobytes = output
-                  .split(whereSeparator: \.isNewline).first?
-                  .split(separator: "\t").first
-                  .flatMap({ Double($0.trimmingCharacters(in: .whitespaces)) })
+    /// One `stat` for the whole listing rather than one per child: a folder
+    /// with a hundred entries would otherwise pay a hundred round trips over
+    /// SSH to learn something the filesystem hands over in a single call.
+    private func modificationDates(for paths: [String]) async -> [String: Date] {
+        guard !paths.isEmpty else { return [:] }
+        let arguments = paths.map(quoted).joined(separator: " ")
+        guard let output = try? await run("stat \(location.statArguments) \(arguments)") ?? nil
         else {
-            throw FolderScanError.unreadable(path)
+            // Dates are an enrichment, not the point. A machine that cannot
+            // stat still gets its sizes.
+            return [:]
         }
-        return FolderEntry(
-            name: (path as NSString).lastPathComponent,
-            path: path,
-            sizeBytes: kilobytes * 1_024,
-            isDirectory: isDirectory
-        )
+        var dates: [String: Date] = [:]
+        for line in output.split(whereSeparator: \.isNewline) {
+            let parts = line.split(separator: "\t", maxSplits: 1)
+            guard parts.count == 2, let seconds = Double(parts[0]) else { continue }
+            dates[String(parts[1])] = Date(timeIntervalSince1970: seconds)
+        }
+        return dates
+    }
+
+    /// Small enough that the list still visibly fills, large enough that the
+    /// round trips stop dominating.
+    private static let batchSize = 8
+
+    /// `du -sk` answers for a file as readily as a directory and takes as many
+    /// paths as you give it, printing one line each — so one command serves the
+    /// whole batch and there is no second code path to keep in step.
+    private func measure(paths: [String]) async -> [String: Double] {
+        guard !paths.isEmpty else { return [:] }
+        let arguments = paths.map(quoted).joined(separator: " ")
+        guard let output = try? await run("du -sk -x \(arguments)") ?? nil else {
+            return [:]
+        }
+        var sizes: [String: Double] = [:]
+        for line in output.split(whereSeparator: \.isNewline) {
+            let parts = line.split(separator: "\t", maxSplits: 1)
+            guard parts.count == 2,
+                  let kilobytes = Double(parts[0].trimmingCharacters(in: .whitespaces))
+            else { continue }
+            sizes[String(parts[1])] = kilobytes * 1_024
+        }
+        return sizes
     }
 
     private func run(_ script: String) async throws -> String? {
@@ -121,7 +173,7 @@ nonisolated struct FolderSizeScanner: Sendable {
                 arguments: ["-c", script],
                 environment: ["LC_ALL": "C"]
             )
-        case let .ssh(host, identityFile):
+        case let .ssh(host, identityFile, _):
             return try await SSHCommandRunner.run(
                 host: host,
                 command: "export LC_ALL=C\n" + script,
