@@ -128,20 +128,38 @@ handoff has to be assembled from supported interfaces — `claude -p --resume <i
 place it. Note that Little Herd's own agent probe parses those unstable `.jsonl`
 files today; that is a known risk, not an oversight.
 
-**An agent cannot authenticate over non-interactive ssh on a Mac.** Measured,
-not assumed: `claude -p` on the mini answers `Not logged in · Please run /login`,
-there is no `~/.claude/.credentials.json`, and the Keychain is unreadable from
-that shell. The linux box has the same credentials in a file at mode 600 and
-runs headless fine. Codex is file-backed too (`~/.codex/auth.json`), which is
-why `emailtriage` can run unattended. This is the gws Keychain saga a third
-time, and it has a hard consequence: **a transfer to a Mac cannot be a bare ssh
-command.** It needs something resident in the user's GUI login session — a
-launchd agent, or a tmux server already running there — which is also what a
-durable successor session needs anyway, since `-p` exits when it finishes.
+**A Mac agent's credentials decrypt only inside the GUI login session, and the
+test that proves it is `security -w`.** Established 18 August 2026 across both
+Macs. The `Claude Code-credentials` Keychain item *exists* on the Air and on
+mini/clawd, and its **attributes read fine over non-interactive ssh** — so a
+`security find-generic-password` without `-w` succeeds there and says nothing
+useful. Ask for the secret with `-w` and it is **readable from the GUI session
+and blocked over ssh, on both machines**. Checking the wrong one of those two
+during this session produced a confident conclusion in each direction before the
+distinction turned up; if you test this again, test the secret.
 
-**What blocks a Mac from hosting a session is PATH, not version skew.** The Air
-runs Claude Code 2.1.229 and resolves neither `claude` nor `codex` from a
-non-login shell, because both sit behind mise shims or an app bundle. Meanwhile
+The consequence is a clean split by provider rather than by machine. **Codex is
+file-backed** (`~/.codex/auth.json`, mode 600) and was run under `env -i` — no
+PATH, no environment at all — reaching the API and failing only on a usage
+limit. That is why `emailtriage` runs unattended, and it means Codex transfers
+over ssh work today. **Claude Code on macOS is Keychain-backed**, so ssh alone
+can never authenticate it there: a transfer to a Mac needs something resident in
+the user's GUI login session — a launchd agent, or a tmux server started there —
+which is also what a durable successor session needs, since `-p` exits when it
+finishes. The linux box is unaffected: its credentials are a file at mode 600
+and it runs headless.
+
+**What blocks a Mac from hosting a session is PATH, not version skew — and on
+the Air there is no CLI to find at all.** Its Claude Code runs *inside*
+`/Applications/Claude.app`; there is no binary, no mise shim, and nothing
+bundled, so the Air needs the CLI installed before it can host a Claude session.
+Codex is the opposite and already usable: the binary ships inside
+`/Applications/ChatGPT.app/Contents/Resources/codex`, which is exactly why the
+design resolves an absolute path per machine rather than probing `PATH` — no
+amount of PATH repair finds a binary inside an app bundle. The mini→Air ssh link
+was also missing its key entirely (`id_ed25519_air` did not exist on clawd,
+despite ACCESS.md describing it); it was created and authorised on 18 August and
+the link now works. Meanwhile
 three machines run three different versions — 2.1.126, 2.1.229, 2.1.234 — so
 skew is the standing condition rather than a cleanup. Both point the same way:
 resolve an absolute agent path per machine and probe for the flag you need
@@ -247,8 +265,22 @@ it; the files survived only because the directory had not been reaped yet.
 
 4. **Probe destination eligibility, and let the user express intent separately.**
    Capability is measured — an agent binary resolvable over a non-interactive
-   ssh shell, git, a checkout of the repo, and remaining budget. Intent is a
-   per-machine setting: some machines can host a session and still should not.
+   ssh shell, git, and a checkout of the repo. Intent is a setting: some
+   machines can host a session and still should not.
+
+   **A destination is an account, not a machine.** The mini has both `clawd` and
+   `malpern`, and everything deciding whether a session can land is per-user:
+   the home directory and so which repos exist, the agent install, the
+   credentials, and the GUI login session that the Keychain fact above turns on.
+   That last point may invert the obvious choice — `malpern` is the account
+   logged in graphically, so it, not the automation account, is where a Claude
+   session can authenticate. Model it as one machine with several accounts, not
+   as several machines: `MachineConfiguration` already refuses a second entry
+   with the same hostname, and defeating that would double-count the mini in a
+   herd view whose job is counting machines. `MachineID` wraps a `String`, so an
+   account-qualified id costs the published `transfer.json` contract nothing.
+   Note that moving between accounts on one box changes capability and not
+   capacity — say so, or it reads as a rebalance that does nothing.
    Eligibility is both, and neither substitutes for the other. Default a new
    machine to off and let the probe make the offer.
 
