@@ -13,11 +13,48 @@ struct FolderBrowserView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let scan = model.scan(for: path) {
-                status(for: scan)
+            switch model.scanAvailability {
+            case .needsFullDiskAccess:
+                permissionRequest
+            case .unsupported:
+                Text("This machine can\u{2019}t report folder sizes.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 4)
+            case .available:
+                if let scan = model.scan(for: path) {
+                    status(for: scan)
+                }
+                rows
             }
-            rows
         }
+    }
+
+    /// Asked once, in one place, with the remedy attached.
+    ///
+    /// The alternative is what this replaced: walking the disk and letting
+    /// macOS raise a dialog for Photos, then iCloud Drive, then Documents,
+    /// then Downloads — a permission interview conducted one folder at a time,
+    /// in the middle of answering a different question.
+    private var permissionRequest: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("Little Herd needs Full Disk Access to measure this Mac.")
+                .font(.caption)
+            Text("Reading what fills a disk means reading all of it, including Photos, iCloud Drive and Documents. Other machines are measured over SSH and need nothing.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 10) {
+                Button("Open Settings\u{2026}") { FullDiskAccess.openSettings() }
+                    .buttonStyle(.link)
+                Text("then reopen this volume")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            .font(.caption2)
+        }
+        .padding(.vertical, 6)
+        .padding(.trailing, 8)
     }
 
     // MARK: - Progress, which this list owes the reader

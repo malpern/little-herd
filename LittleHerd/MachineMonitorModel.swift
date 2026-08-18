@@ -112,17 +112,24 @@ final class MachineMonitorModel: Identifiable {
         consecutiveFailures = 0
     }
 
-    /// How to measure folder sizes here, or nothing where they cannot be
-    /// measured — a NAS reached through DSM, whose DirSize API starts a task
-    /// and then denies it exists.
-    var folderScanner: FolderSizeScanner? {
-        if isLocal { return FolderSizeScanner(location: .local) }
-        guard let remotePlatform, !isStorage else { return nil }
-        return FolderSizeScanner(
-            location: .ssh(
-                host: hostname,
-                identityFile: identityFile,
-                platform: remotePlatform
+    /// How to measure folder sizes here, and why it cannot be done when it
+    /// cannot. A remote machine's commands run under sshd, which already has
+    /// the access; this Mac has to be granted it, and a NAS cannot answer at
+    /// all.
+    var folderScanning: FolderScanAvailability {
+        if isLocal {
+            return FullDiskAccess.isGranted
+                ? .available(FolderSizeScanner(location: .local))
+                : .needsFullDiskAccess
+        }
+        guard let remotePlatform, !isStorage else { return .unsupported }
+        return .available(
+            FolderSizeScanner(
+                location: .ssh(
+                    host: hostname,
+                    identityFile: identityFile,
+                    platform: remotePlatform
+                )
             )
         )
     }

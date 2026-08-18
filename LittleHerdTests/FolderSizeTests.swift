@@ -340,12 +340,12 @@ struct FolderSizeStoreTests {
 /// What the folder view is showing, without drawing it.
 @MainActor
 struct FolderBrowserModelTests {
-    private func model(scanner: FolderSizeScanner? = nil) -> FolderBrowserModel {
+    private func model(_ availability: FolderScanAvailability = .unsupported) -> FolderBrowserModel {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("browser-\(UUID().uuidString).json")
         return FolderBrowserModel(
             machine: MachineID("mini"),
-            scanner: scanner,
+            availability: availability,
             store: FolderSizeStore(fileURL: url)
         )
     }
@@ -354,13 +354,24 @@ struct FolderBrowserModelTests {
     /// does nothing — the NAS, whose DirSize API denies its own tasks exist.
     @Test
     func amachineThatCannotMeasureSaysSo() {
-        let browser = model(scanner: nil)
+        let browser = model(.unsupported)
 
         #expect(!browser.canMeasure)
-        browser.toggle("/Volumes/V", isRoot: true)
+        guard case .unsupported = browser.scanAvailability else {
+            Issue.record("expected unsupported")
+            return
+        }
+    }
 
-        guard case .failed = browser.scan(for: "/Volumes/V")?.state else {
-            Issue.record("expected a stated failure, got \(String(describing: browser.scan(for: "/Volumes/V")?.state))")
+    /// This Mac without permission is a different answer from a NAS that can
+    /// never answer, and the interface has a different thing to say about each.
+    @Test
+    func amacWithoutPermissionIsItsOwnAnswer() {
+        let browser = model(.needsFullDiskAccess)
+
+        #expect(!browser.canMeasure)
+        guard case .needsFullDiskAccess = browser.scanAvailability else {
+            Issue.record("expected needsFullDiskAccess")
             return
         }
     }
@@ -369,7 +380,7 @@ struct FolderBrowserModelTests {
     /// reveal a tree someone left three levels deep an hour ago.
     @Test
     func closingAFolderClosesWhatWasInsideIt() {
-        let browser = model(scanner: FolderSizeScanner(location: .local))
+        let browser = model(.available(FolderSizeScanner(location: .local)))
         browser.toggle("/Volumes/V", isRoot: true)
         browser.toggle("/Volumes/V/inner")
         browser.toggle("/Volumes/V/inner/deeper")
@@ -387,7 +398,7 @@ struct FolderBrowserModelTests {
     /// reorders every level that is open.
     @Test
     func changingTheSortRebuildsTheWholeList() {
-        let browser = model(scanner: FolderSizeScanner(location: .local))
+        let browser = model(.available(FolderSizeScanner(location: .local)))
         browser.sort.toggle(.name)
 
         #expect(browser.sort.field == .name)

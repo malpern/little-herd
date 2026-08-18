@@ -916,10 +916,10 @@ private struct MachineStoragePane: View {
                         }
                     }
                 }
-                .onTapGesture {
-                    guard browser.canMeasure else { return }
-                    browser.toggle(scanPath, isRoot: true)
-                }
+                // Opens whatever the machine can offer: a list, or the reason
+                // there is none. A row that does nothing when tapped teaches
+                // people not to tap it.
+                .onTapGesture { browser.toggle(scanPath, isRoot: true) }
 
                 if browser.isExpanded(scanPath) {
                     FolderBrowserView(model: browser, path: scanPath)
@@ -997,7 +997,7 @@ private struct MachineStoragePane: View {
         if let existing = browsers[path] { return existing }
         let created = FolderBrowserModel(
             machine: machine.machine,
-            scanner: machine.folderScanner,
+            availability: machine.folderScanning,
             store: store
         )
         // Assigning during a body pass would be a mutation mid-render, so the

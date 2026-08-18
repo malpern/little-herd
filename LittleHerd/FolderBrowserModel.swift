@@ -32,20 +32,28 @@ final class FolderBrowserModel {
     @ObservationIgnored
     private let machine: MachineID
     @ObservationIgnored
-    private let scanner: FolderSizeScanner?
+    private let availability: FolderScanAvailability
     @ObservationIgnored
     private var root: String?
 
-    init(machine: MachineID, scanner: FolderSizeScanner?, store: FolderSizeStore) {
+    init(
+        machine: MachineID,
+        availability: FolderScanAvailability,
+        store: FolderSizeStore
+    ) {
         self.machine = machine
-        self.scanner = scanner
+        self.availability = availability
         self.store = store
     }
 
     /// Whether this machine can answer at all. A NAS reached through DSM
     /// cannot — see `FolderSizeScanner` — and saying so plainly beats offering
     /// a control that does nothing.
-    var canMeasure: Bool { scanner != nil }
+    var canMeasure: Bool { availability.scanner != nil }
+
+    /// Why a machine cannot be measured, when it cannot — so the interface can
+    /// offer the remedy rather than a control that does nothing.
+    var scanAvailability: FolderScanAvailability { availability }
 
     func isExpanded(_ path: String) -> Bool { expanded.contains(path) }
 
@@ -106,10 +114,9 @@ final class FolderBrowserModel {
     // MARK: - Measuring
 
     private func measure(_ path: String) {
-        guard let scanner else {
-            scans[path] = FolderScan(path: path, state: .failed(
-                FolderScanError.unsupported.localizedDescription
-            ))
+        guard let scanner = availability.scanner else {
+            // Nothing is written into the scan: the view shows the reason and
+            // its remedy, which is more use than an error string in a list.
             return
         }
 
