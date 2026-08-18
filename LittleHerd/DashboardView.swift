@@ -1244,18 +1244,18 @@ private struct AIUsageLimitsSummary: View {
 }
 
 private struct AIUsageLimitRows: View {
-    let codex: AIUsageLimit?
-    let claude: AIUsageLimit?
+    let codex: AIUsageAvailability
+    let claude: AIUsageAvailability
 
     var body: some View {
         VStack(spacing: 0) {
             AIUsageLimitRow(
                 provider: .codex,
-                limit: codex
+                availability: codex
             )
             AIUsageLimitRow(
                 provider: .claude,
-                limit: claude
+                availability: claude
             )
         }
     }
@@ -1263,16 +1263,26 @@ private struct AIUsageLimitRows: View {
 
 private struct AIUsageLimitRow: View {
     let provider: AIUsageProvider
-    let limit: AIUsageLimit?
+    let availability: AIUsageAvailability
 
     var body: some View {
         AIUsageProviderControl(
             provider: provider,
             limit: limit,
-            isUrgent: isUrgent,
+            // A reading nobody can see is as useless as no reading, so every
+            // state that cannot show a number offers the provider's own usage
+            // page instead. Previously only the urgent state was clickable,
+            // which left the one case with nothing to show also with nothing
+            // to do. The link goes to the provider rather than to CodexBar:
+            // Little Herd reads that app but does not recommend it.
+            isActionable: isUrgent || limit == nil,
             accessibilityValue: accessibilityValue,
             helpText: helpText
         )
+    }
+
+    private var limit: AIUsageLimit? {
+        availability.limit
     }
 
     private var isUrgent: Bool {
@@ -1311,7 +1321,22 @@ private struct AIUsageLimitRow: View {
                 )
             }
         } else {
-            Text("\(provider.displayName) usage unavailable from CodexBar")
+            switch availability {
+            case .available:
+                Text("\(provider.displayName) usage unavailable")
+            case .sourceMissing:
+                Text(
+                    "\(provider.displayName) usage needs CodexBar, which isn’t installed on this Mac. Click to open usage and billing."
+                )
+            case let .stale(since):
+                Text(
+                    "\(provider.displayName) usage last updated \(since, format: .relative(presentation: .named)); CodexBar may not be running. Click to open usage and billing."
+                )
+            case .noReading:
+                Text(
+                    "CodexBar has no \(provider.displayName) reading yet. Click to open usage and billing."
+                )
+            }
         }
     }
 }
@@ -1319,12 +1344,12 @@ private struct AIUsageLimitRow: View {
 private struct AIUsageProviderControl: View {
     let provider: AIUsageProvider
     let limit: AIUsageLimit?
-    let isUrgent: Bool
+    let isActionable: Bool
     let accessibilityValue: Text
     let helpText: Text
 
     var body: some View {
-        if isUrgent {
+        if isActionable {
             Link(destination: provider.usageAndBillingURL) {
                 AIUsageProviderStatusMark(provider: provider, limit: limit)
             }

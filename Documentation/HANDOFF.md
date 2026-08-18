@@ -159,11 +159,36 @@ empty usage display means either "no limit" or "CodexBar is not running", and
 the interface does not distinguish them.
 
 Because the herd shares one account the local reading *is* the herd's budget, so
-this is a smaller gap than it looks — but it is unconnected to anything. On
-18 August the mini's Codex hit its limit until the following evening with three
-`emailtriage` slots due, and the app that had the number said nothing. That is
-the case for item 3, and the reason item 6 checks budget once rather than per
+this is a smaller gap than it looks. On 18 August the mini's Codex hit its limit
+until the following evening with three `emailtriage` slots due — and the app was
+not silent, which is the more useful finding: it had been showing an urgent red
+LED on the Codex mark the whole time. A six-pixel unlabelled dot in the corner of
+a header is the same as silence to the person it is for. That is the case for
+item 3 in one image, and the reason item 6 checks budget once rather than per
 machine.
+
+**CodexBar is read, not bundled and not recommended, and that is deliberate.**
+Two decisions taken 18 August 2026 so they are not re-litigated. **Do not bundle
+it:** it is `com.steipete.codexbar`, another developer's signed application, so
+shipping it needs their permission whichever technical route is taken — nesting
+keeps their signature and complicates notarisation, re-signing breaks it and
+puts their build out under this name. Bundling would also not fix the fragility,
+only transfer ownership of it, since the Claude figure is scraped from
+`NSURLCache` internals that Apple does not document; and it would pin a pre-1.0
+app that is still moving, giving anyone who already runs it two copies competing
+for the same caches. **Do not push it in onboarding either:** usage is
+enrichment rather than function, asking for a second menu-bar app before the
+first has shown value is where people leave, and putting it in the flow would
+make Little Herd the thing that vouched for an app it does not control. The
+precedent to follow is the one already here — Full Disk Access is asked for at
+the point it is needed, not up front.
+
+What that leaves is `AIUsageAvailability`, which says which of four things is
+true instead of returning `nil` for all of them, and makes every state that
+cannot show a number offer the **provider's own** usage page. Not CodexBar's:
+reading an app is not the same as recommending it. Note also that reading
+another app's container is impossible under App Sandbox, so this design settles
+the Mac App Store question — it is a Developer ID app, on purpose.
 
 ## Method notes
 

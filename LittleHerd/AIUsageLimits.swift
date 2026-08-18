@@ -63,11 +63,59 @@ nonisolated struct AIUsageLimit: Equatable, Sendable {
     }
 }
 
+/// Why a provider's usage figure is missing, in terms a person can act on.
+///
+/// A missing limit is true but useless. Usage that was never available because
+/// the app supplying it is not installed, usage that stopped updating because
+/// that app is no longer running, and a provider that reports nothing all look
+/// identical as `nil` — and the first is what every new installation sees,
+/// where naming a tool the user has never heard of as having *failed* is the
+/// wrong sentence entirely.
+///
+/// Little Herd does not read usage from the providers: neither CLI exposes a
+/// limit and neither writes one to disk, so the figures come from CodexBar's
+/// files. That is a scrape of another app rather than an interface, so being
+/// unable to read it is an ordinary state rather than an error.
+nonisolated enum AIUsageAvailability: Equatable, Sendable {
+    /// A reading recent enough to show.
+    case available(AIUsageLimit)
+    /// Nothing supplies usage on this Mac; CodexBar is not installed.
+    case sourceMissing
+    /// The reading exists but has stopped being updated — CodexBar is installed
+    /// and not running, or is signed out. Carries when it was last current, so
+    /// the interface can say how long ago rather than merely "old".
+    case stale(since: Date)
+    /// The source is present and current but says nothing about this provider.
+    case noReading
+
+    /// The reading when there is one, for the places that only need the number.
+    var limit: AIUsageLimit? {
+        guard case let .available(limit) = self else { return nil }
+        return limit
+    }
+
+    /// Decides which of the four a reading is, kept separate from the file
+    /// system so it can be tested without one.
+    static func resolve(
+        limit: AIUsageLimit?,
+        sourceInstalled: Bool,
+        now: Date,
+        freshnessInterval: TimeInterval
+    ) -> AIUsageAvailability {
+        guard sourceInstalled else { return .sourceMissing }
+        guard let limit else { return .noReading }
+        guard now.timeIntervalSince(limit.updatedAt) <= freshnessInterval else {
+            return .stale(since: limit.updatedAt)
+        }
+        return .available(limit)
+    }
+}
+
 @MainActor
 @Observable
 final class AIUsageLimitsModel {
-    private(set) var codex: AIUsageLimit?
-    private(set) var claude: AIUsageLimit?
+    private(set) var codex: AIUsageAvailability = .noReading
+    private(set) var claude: AIUsageAvailability = .noReading
 
     @ObservationIgnored
     private let sampler = AIUsageLimitsSampler()
@@ -100,30 +148,51 @@ final class AIUsageLimitsModel {
 }
 
 nonisolated struct AIUsageLimitsSnapshot: Equatable, Sendable {
-    let codex: AIUsageLimit?
-    let claude: AIUsageLimit?
+    let codex: AIUsageAvailability
+    let claude: AIUsageAvailability
 }
 
 actor AIUsageLimitsSampler {
     private let freshnessInterval: TimeInterval = 15 * 60
 
     func sample(now: Date = .now) -> AIUsageLimitsSnapshot {
-        let codex = readCodexLimit()
-        let claude = readClaudeLimit()
+        let installed = isSourceInstalled
 
         return AIUsageLimitsSnapshot(
-            codex: freshLimit(codex, now: now),
-            claude: freshLimit(claude, now: now)
+            codex: availability(readCodexLimit(), installed: installed, now: now),
+            claude: availability(readClaudeLimit(), installed: installed, now: now)
         )
     }
 
-    private func freshLimit(_ limit: AIUsageLimit?, now: Date) -> AIUsageLimit? {
-        guard let limit,
-              now.timeIntervalSince(limit.updatedAt) <= freshnessInterval
-        else {
-            return nil
+    private func availability(
+        _ limit: AIUsageLimit?,
+        installed: Bool,
+        now: Date
+    ) -> AIUsageAvailability {
+        AIUsageAvailability.resolve(
+            limit: limit,
+            sourceInstalled: installed,
+            now: now,
+            freshnessInterval: freshnessInterval
+        )
+    }
+
+    /// Whether anything on this Mac supplies usage at all.
+    ///
+    /// Detected from CodexBar's own directories rather than by looking up the
+    /// application, which keeps this file free of AppKit and does not care
+    /// where the app was installed. Either directory is enough: the two
+    /// providers are read from different ones.
+    private var isSourceInstalled: Bool {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        return [
+            "Library/Application Support/CodexBar",
+            "Library/Caches/CodexBar",
+        ].contains { relative in
+            FileManager.default.fileExists(
+                atPath: home.appending(path: relative).path
+            )
         }
-        return limit
     }
 
     private func readCodexLimit() -> AIUsageLimit? {

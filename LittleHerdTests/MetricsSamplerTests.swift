@@ -727,6 +727,99 @@ struct MetricsSamplerTests {
     }
 
     @Test
+    func usageIsSourceMissingWhenNothingSuppliesItEvenWithAReadingOnDisk() {
+        let stale = AIUsageLimit(
+            provider: .codex,
+            remainingPercent: 40,
+            windowMinutes: 300,
+            resetsAt: nil,
+            updatedAt: Date(timeIntervalSince1970: 1000)
+        )
+
+        // A leftover reading from an uninstalled source is still no source.
+        #expect(
+            AIUsageAvailability.resolve(
+                limit: stale,
+                sourceInstalled: false,
+                now: Date(timeIntervalSince1970: 1000),
+                freshnessInterval: 900
+            ) == .sourceMissing
+        )
+    }
+
+    @Test
+    func usageIsNoReadingWhenTheSourceIsInstalledButSaysNothing() {
+        #expect(
+            AIUsageAvailability.resolve(
+                limit: nil,
+                sourceInstalled: true,
+                now: Date(timeIntervalSince1970: 1000),
+                freshnessInterval: 900
+            ) == .noReading
+        )
+    }
+
+    @Test
+    func usageGoesStaleRatherThanMissingAndKeepsWhenItWasLastCurrent() {
+        let lastCurrent = Date(timeIntervalSince1970: 1000)
+        let limit = AIUsageLimit(
+            provider: .claude,
+            remainingPercent: 40,
+            windowMinutes: 300,
+            resetsAt: nil,
+            updatedAt: lastCurrent
+        )
+
+        #expect(
+            AIUsageAvailability.resolve(
+                limit: limit,
+                sourceInstalled: true,
+                now: lastCurrent.addingTimeInterval(901),
+                freshnessInterval: 900
+            ) == .stale(since: lastCurrent)
+        )
+    }
+
+    @Test
+    func usageIsAvailableUpToAndIncludingTheFreshnessBoundary() {
+        let updatedAt = Date(timeIntervalSince1970: 1000)
+        let limit = AIUsageLimit(
+            provider: .codex,
+            remainingPercent: 40,
+            windowMinutes: 300,
+            resetsAt: nil,
+            updatedAt: updatedAt
+        )
+
+        #expect(
+            AIUsageAvailability.resolve(
+                limit: limit,
+                sourceInstalled: true,
+                now: updatedAt.addingTimeInterval(900),
+                freshnessInterval: 900
+            ) == .available(limit)
+        )
+        #expect(
+            AIUsageAvailability.resolve(
+                limit: limit,
+                sourceInstalled: true,
+                now: updatedAt,
+                freshnessInterval: 900
+            ).limit == limit
+        )
+    }
+
+    @Test
+    func onlyAnAvailableReadingCarriesALimit() {
+        #expect(AIUsageAvailability.sourceMissing.limit == nil)
+        #expect(AIUsageAvailability.noReading.limit == nil)
+        #expect(
+            AIUsageAvailability.stale(since: Date(timeIntervalSince1970: 1000))
+                .limit == nil
+        )
+    }
+
+    @Test
     func transferEventParserReadsMetadataOnlyHandoff() throws {
         let data = try #require(
             """
