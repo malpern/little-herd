@@ -57,6 +57,16 @@ holds 945 GB. Believing it reads a nearly full disk as a quarter full.
 returns an id, then answers 599 — "no such task" — to every status call, on
 both API versions, for two shares. Measured against the live NAS.
 
+**This Mac reporting only its startup volume is deliberate, not drift.** It was
+listed as an inconsistency to fix and should not have been: enumerating mounted
+volumes can raise macOS's network-volume privacy prompt even when network
+entries are filtered afterwards, which is why routine sampling stays scoped to
+`/` and broader discovery sits behind `NetworkVolumeOnboardingView`. The reason
+is in a comment above `MetricsSampler.storageVolumes()`. A remote Mac's `df`
+runs under sshd, which already holds those permissions; this Mac's does not.
+Practically nothing is hidden — this Mac has one volume plus Recovery, which
+both paths exclude.
+
 **TCC attributes a spawned command to the app that spawned it.** A disk scanner
 therefore trips a permission dialog per protected folder. Remote machines are
 unaffected because their commands run under `sshd`, which already has Full Disk
@@ -86,11 +96,7 @@ it; the files survived only because the directory had not been reaped yet.
    `top` nor `iostat` exposes per-core lines. It would work on this Mac and no
    other, which in an app about a herd is an inconsistency rather than a
    feature. Reopen only if a way to get it without root appears.
-2. **This Mac reports only its startup volume** while remote Macs enumerate
-   everything under `/Volumes`. `MetricsSampler.storageVolumes()` returns one
-   entry; the remote script lists all of them and filters read-only and
-   image-backed mounts. Worth making consistent, in the direction of the remote
-   behaviour.
+2. **Nothing else.** The list is short on purpose; see below.
 
 ## Keeping this file honest
 
