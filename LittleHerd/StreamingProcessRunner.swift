@@ -7,22 +7,38 @@ import Foundation
 /// scan bearable. Reading the pipe as it fills turns one command into a stream
 /// of answers: the round trips stay low, and the list still fills row by row.
 ///
-/// Cancelling terminates the launched process. KNOWN GAP: that is not yet
-/// enough. The command is a shell, and terminating it can leave the `du` it
-/// started still walking /System — observed surviving the app quitting
-/// altogether. The shell now traps TERM and passes it to its child, which works
-/// when a signal is delivered by hand, but something in this teardown path is
-/// not delivering one; a test written to prove otherwise failed, twice, in two
-/// different ways. Until that is understood, Stop stops the listening and the
-/// next batch, not necessarily the measurement already in flight.
+/// Stopping kills the process, and this is where an earlier version was wrong.
+/// It hung termination on `AsyncStream`'s `onTermination`, assuming that
+/// breaking out of a `for await` tears the stream down. Measured: it does not
+/// fire at all, so nothing was ever terminated and a `du` walked /System long
+/// after the app had quit.
+///
+/// Cancellation is therefore taken from the task as well as the stream. The
+/// caller wraps its consumption in `withTaskCancellationHandler` and calls
+/// `terminate`, which is a fact about the process rather than a guess about a
+/// sequence's lifecycle.
+///
+/// Both paths are kept, and the distinction is worth stating precisely because
+/// it was measured rather than reasoned about: `onTermination` *does* fire when
+/// the consuming task is cancelled, and does *not* fire when a consumer merely
+/// breaks out of the loop. The app cancels, so either would serve today; the
+/// explicit terminate is what stops a future caller who breaks from silently
+/// leaking a `du` across the disk.
 nonisolated enum StreamingProcessRunner {
+    /// The output, and a way to stop producing it. The caller must arrange for
+    /// `terminate` to be reached on cancellation; nothing here can do it alone.
+    struct Run: Sendable {
+        let lines: AsyncThrowingStream<String, Error>
+        let terminate: @Sendable () -> Void
+    }
+
     static func lines(
         executablePath: String,
         arguments: [String],
         environment: [String: String]? = nil
-    ) -> AsyncThrowingStream<String, Error> {
-        AsyncThrowingStream { continuation in
-            let process = Process()
+    ) -> Run {
+        let process = Process()
+        let stream = AsyncThrowingStream<String, Error> { continuation in
             let output = Pipe()
             process.executableURL = URL(fileURLWithPath: executablePath)
             process.arguments = arguments
@@ -30,6 +46,8 @@ nonisolated enum StreamingProcessRunner {
             process.standardOutput = output
             process.standardError = FileHandle.nullDevice
 
+            // Kept as a courtesy for the paths where it does fire; the
+            // caller's cancellation handler is what this actually relies on.
             continuation.onTermination = { _ in
                 if process.isRunning { process.terminate() }
             }
@@ -66,6 +84,10 @@ nonisolated enum StreamingProcessRunner {
                 process.waitUntilExit()
                 continuation.finish()
             }
+        }
+
+        return Run(lines: stream) {
+            if process.isRunning { process.terminate() }
         }
     }
 }

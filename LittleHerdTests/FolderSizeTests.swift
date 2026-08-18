@@ -408,13 +408,61 @@ struct FolderBrowserModelTests {
 
 /// Output arriving a line at a time, which is what makes a slow scan readable.
 struct StreamingProcessRunnerTests {
+    /// Stopping has to end the work, not merely stop listening to it.
+    ///
+    /// Three earlier attempts at this test were wrong. One watched for a side
+    /// effect a killed shell would not perform, which passes whether or not the
+    /// child is still walking the disk. One counted processes with a command
+    /// containing the pattern it grepped for. The third assumed breaking out of
+    /// a `for await` tears the stream down — it does not, which is why nothing
+    /// was being terminated at all. This one takes a census and cancels the
+    /// task, which is where cancellation actually comes from.
+    @Test
+    func cancellingTheTaskKillsTheProcess() async throws {
+        func sleepers() async -> Int {
+            let output = await LocalProcessRunner.run(
+                executablePath: "/usr/bin/pgrep",
+                arguments: ["-x", "sleep"]
+            )
+            return (output ?? "").split(whereSeparator: \.isNewline)
+                .filter { !$0.isEmpty }.count
+        }
+
+        let before = await sleepers()
+        let run = StreamingProcessRunner.lines(
+            executablePath: "/bin/sh",
+            arguments: ["-c", "printf 'first\\n'; sleep 27"]
+        )
+        let task = Task {
+            await withTaskCancellationHandler {
+                do {
+                    // Consumed to the end rather than broken out of: leaving
+                    // early finishes the task, and a finished task cannot be
+                    // cancelled — which is what made an earlier version of this
+                    // test pass nothing at all.
+                    for try await _ in run.lines {}
+                } catch {
+                    // The process being killed is the expected ending here.
+                }
+            } onCancel: {
+                run.terminate()
+            }
+        }
+        try? await Task.sleep(for: .milliseconds(700))
+        task.cancel()
+        try? await Task.sleep(for: .seconds(2))
+
+        #expect(await sleepers() <= before)
+    }
+
+
     @Test
     func linesArriveSeparatelyRatherThanAllAtOnce() async throws {
         var received: [String] = []
         for try await line in StreamingProcessRunner.lines(
             executablePath: "/bin/sh",
             arguments: ["-c", "printf 'one\\ntwo\\nthree\\n'"]
-        ) {
+        ).lines {
             received.append(line)
         }
 
@@ -428,7 +476,7 @@ struct StreamingProcessRunnerTests {
         for try await line in StreamingProcessRunner.lines(
             executablePath: "/bin/sh",
             arguments: ["-c", "printf 'begin'; sleep 0.2; printf 'ning\\nsecond\\n'"]
-        ) {
+        ).lines {
             received.append(line)
         }
 
@@ -442,7 +490,7 @@ struct StreamingProcessRunnerTests {
         for try await line in StreamingProcessRunner.lines(
             executablePath: "/bin/sh",
             arguments: ["-c", "printf 'no trailing newline'"]
-        ) {
+        ).lines {
             received.append(line)
         }
 

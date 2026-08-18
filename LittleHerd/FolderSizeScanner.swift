@@ -185,16 +185,16 @@ nonisolated struct FolderSizeScanner: Sendable {
         let command = "trap 'test -n \"$child\" && kill \"$child\" 2>/dev/null; exit 143' TERM INT; "
             + "child=''; for p in " + paths.map(quoted).joined(separator: " ")
             + "; do du -sk -x \"$p\" & child=$!; wait \"$child\"; done"
-        let raw: AsyncThrowingStream<String, Error>
+        let run: StreamingProcessRunner.Run
         switch location {
         case .local:
-            raw = StreamingProcessRunner.lines(
+            run = StreamingProcessRunner.lines(
                 executablePath: "/bin/sh",
                 arguments: ["-c", command],
                 environment: ["LC_ALL": "C"]
             )
         case let .ssh(host, identityFile, _):
-            raw = StreamingProcessRunner.lines(
+            run = StreamingProcessRunner.lines(
                 executablePath: "/usr/bin/ssh",
                 arguments: SSHCommandRunner.arguments(
                     host: host,
@@ -206,19 +206,26 @@ nonisolated struct FolderSizeScanner: Sendable {
 
         return AsyncThrowingStream { continuation in
             let task = Task {
-                do {
-                    for try await line in raw {
-                        let parts = line.split(separator: "\t", maxSplits: 1)
-                        guard parts.count == 2,
-                              let kilobytes = Double(
-                                  parts[0].trimmingCharacters(in: .whitespaces)
-                              )
-                        else { continue }
-                        continuation.yield((String(parts[1]), kilobytes * 1_024))
+                // Cancellation reaches the process from here, because the
+                // stream's own teardown does not: measured, `onTermination`
+                // never fires when a consumer stops reading.
+                await withTaskCancellationHandler {
+                    do {
+                        for try await line in run.lines {
+                            let parts = line.split(separator: "\t", maxSplits: 1)
+                            guard parts.count == 2,
+                                  let kilobytes = Double(
+                                      parts[0].trimmingCharacters(in: .whitespaces)
+                                  )
+                            else { continue }
+                            continuation.yield((String(parts[1]), kilobytes * 1_024))
+                        }
+                        continuation.finish()
+                    } catch {
+                        continuation.finish(throwing: error)
                     }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
+                } onCancel: {
+                    run.terminate()
                 }
             }
             continuation.onTermination = { _ in task.cancel() }
