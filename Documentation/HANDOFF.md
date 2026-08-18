@@ -1,11 +1,17 @@
 # Little Herd — handoff
 
-**State:** `main` @ `612cd95`, clean, pushed. Latest release `v0.1.22`, which
-carried one code change — the scan-cancellation fix — and the rest of this
-file. 264 tests, all passing. Nothing unreleased. The feed is live and was
-checked rather than assumed: the appcast at the `releases/latest` URL names
-`LittleHerd-0.1.22.zip`, carries a signature, and the asset returns 200.
-Installed and running here is still 0.1.21, so Sparkle has an update pending.
+**State:** `main` is clean and pushed, and carries the `v0.1.22` release plus
+edits to this file — no unreleased code, so the last code commit is the tag.
+264 tests, all passing. The feed is live and was checked rather than assumed:
+the appcast at the `releases/latest` URL names `LittleHerd-0.1.22.zip`, carries
+a signature, and the asset returns 200. Installed and running here is 0.1.22,
+taken there through Sparkle from 0.1.21 and verified — see below.
+
+Deliberately no commit hash in this paragraph. The previous two sessions each
+left one that was stale within the hour, including the one written to correct
+its predecessor: a line naming a commit is out of date the moment anything is
+committed, this file included. `git log` answers that question and cannot be
+wrong; what belongs here is what `git log` will not tell you.
 
 **The Synology is fixed.** Drive 2 was replaced on 17 August 2026 — a WD40EFZZ
 (4 TB, CMR) for the WD30EFRX that had shed 231 uncorrectable sectors. Pool
