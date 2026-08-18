@@ -737,13 +737,32 @@ private struct MachineProcessPane: View {
                         ? MetricKind.cpu.color
                         : .orange,
                     title: Text(activity.shortLabel),
-                    value: Text(
-                        "\(activity.cpuCores, format: .number.precision(.fractionLength(1)))c"
-                    )
+                    subtitle: coreCount.map { count in
+                        Text(
+                            "\(activity.cpuCores, format: .number.precision(.fractionLength(1))) of \(count) cores"
+                        )
+                    },
+                    value: share(of: activity).map {
+                        Text($0 / 100, format: .percent.precision(.fractionLength(0)))
+                    }
+                        // Without a core count there is no machine to be a share
+                        // of, so the honest figure is the one we measured.
+                        ?? Text(
+                            "\(activity.cpuCores, format: .number.precision(.fractionLength(1)))c"
+                        )
                 )
                 .help(Text(activity.tooltip))
             }
         }
+    }
+
+    private var coreCount: Int? { machine.coreCount }
+
+    private func share(of activity: MachineActivity) -> Double? {
+        ProcessShare.percent(
+            ofOneCore: activity.cpuPercent,
+            coreCount: coreCount
+        )
     }
 
     /// Anything under a twentieth of a core rounds to "0.0c" and reads as
@@ -774,10 +793,20 @@ private struct MachineMemoryPane: View {
                     tint: MetricKind.memory.color,
                     bundlePath: consumer.bundlePath,
                     title: Text(consumer.name),
-                    value: Text(
+                    // The size stays: "Chrome is using 4 GB" says something a
+                    // percentage cannot, and says it across machines with
+                    // different amounts of memory.
+                    subtitle: Text(
                         Int64(consumer.residentBytes),
                         format: .byteCount(style: .memory)
-                    )
+                    ),
+                    value: memoryShare(of: consumer).map {
+                        Text($0 / 100, format: .percent.precision(.fractionLength(0)))
+                    }
+                        ?? Text(
+                            Int64(consumer.residentBytes),
+                            format: .byteCount(style: .memory)
+                        )
                 ) {
                     if let evidence = consumer.growthEvidence {
                         Circle()
@@ -799,6 +828,13 @@ private struct MachineMemoryPane: View {
                 }
             }
         }
+    }
+
+    private func memoryShare(of consumer: MemoryConsumer) -> Double? {
+        ProcessShare.percent(
+            residentBytes: consumer.residentBytes,
+            totalBytes: machine.memory.capacity
+        )
     }
 
     private var consumers: [MemoryConsumer] {

@@ -219,6 +219,9 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
     /// through DSM does today; a Mac reports volumes but not the health of the
     /// hardware underneath them.
     let drives: [SynologyDrive]
+    /// Logical cores, so a process's share of one core can be expressed as a
+    /// share of the whole machine. Nil where the machine does not say.
+    let coreCount: Int?
 
     init(
         timestamp: Date,
@@ -228,7 +231,8 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
         storageVolumes: [StorageVolume] = [],
         memoryPressure: MemoryPressureLevel? = nil,
         memoryConsumers: [MemoryConsumer] = [],
-        drives: [SynologyDrive] = []
+        drives: [SynologyDrive] = [],
+        coreCount: Int? = nil
     ) {
         self.timestamp = timestamp
         self.readings = readings
@@ -238,6 +242,7 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
         self.memoryPressure = memoryPressure
         self.memoryConsumers = memoryConsumers
         self.drives = drives
+        self.coreCount = coreCount
     }
 }
 
@@ -311,7 +316,8 @@ actor MetricsSampler {
             agentSessions: processHighlights.agentSessions,
             storageVolumes: storageVolumes,
             memoryPressure: memoryPressure,
-            memoryConsumers: processHighlights.memoryConsumers
+            memoryConsumers: processHighlights.memoryConsumers,
+            coreCount: ProcessInfo.processInfo.activeProcessorCount
         )
     }
 

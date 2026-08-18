@@ -37,6 +37,9 @@ final class MachineMonitorModel: Identifiable {
     /// Little Herd can notice.
     private(set) var drives: [SynologyDrive] = []
     private(set) var memoryPressure: MemoryPressureLevel?
+    /// Logical cores, once the machine has said. Used to express a process's
+    /// share of one core as a share of the whole machine.
+    private(set) var coreCount: Int?
     private(set) var memoryConsumers: [MemoryConsumer] = []
     /// Why the machine is unreachable, when it is. Kept beside `state` so the
     /// interface can say more than "Unavailable".
@@ -80,6 +83,9 @@ final class MachineMonitorModel: Identifiable {
         storageVolumes = snapshot.storageVolumes
         drives = snapshot.drives
         memoryPressure = snapshot.memoryPressure
+        // Kept across samples: a machine's core count does not change, and a
+        // sample that omits it should not blank the figure.
+        coreCount = snapshot.coreCount ?? coreCount
         memoryConsumers = memoryGrowthDetector.annotate(
             consumers: snapshot.memoryConsumers,
             at: snapshot.timestamp

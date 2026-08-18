@@ -855,6 +855,73 @@ struct SignInLostTests {
     }
 }
 
+/// A process's share of the machine, rather than of one core.
+///
+/// `ps` reports CPU against a single core, so a busy process reads 380% and was
+/// shown as "3.8c". Honest, but not comparable: 3.8 of the mini's 14 cores is a
+/// different situation from 3.8 of this Mac's 10, and neither could be set
+/// against the machine figure directly above it in the same pane.
+struct ProcessShareTests {
+    /// The two Macs here are weighted differently — 14 cores against 10 — which
+    /// is exactly why the same cores figure had to become different percentages.
+    @Test
+    func theSameLoadReadsDifferentlyOnDifferentMachines() {
+        let onTheMini = ProcessShare.percent(ofOneCore: 380, coreCount: 14)
+        let onTheAir = ProcessShare.percent(ofOneCore: 380, coreCount: 10)
+
+        #expect(onTheMini.map { Int($0.rounded()) } == 27)
+        #expect(onTheAir.map { Int($0.rounded()) } == 38)
+    }
+
+    /// Without a core count there is no machine to be a share of, so the caller
+    /// keeps showing what was actually measured rather than inventing a
+    /// denominator of one.
+    @Test
+    func noCoreCountMeansNoPercentage() {
+        #expect(ProcessShare.percent(ofOneCore: 380, coreCount: nil) == nil)
+        #expect(ProcessShare.percent(ofOneCore: 380, coreCount: 0) == nil)
+    }
+
+    /// A process pinning every core is the whole machine and no more.
+    @Test
+    func aProcessCannotExceedTheMachine() {
+        #expect(ProcessShare.percent(ofOneCore: 1_400, coreCount: 14) == 100)
+        #expect(ProcessShare.percent(ofOneCore: 5_000, coreCount: 14) == 100)
+        #expect(ProcessShare.percent(ofOneCore: -5, coreCount: 14) == 0)
+    }
+
+    @Test
+    func memoryIsAShareOfWhatTheMachineHas() {
+        let fourGigs = 4.0 * 1_024 * 1_024 * 1_024
+        let sixteen = 16.0 * 1_024 * 1_024 * 1_024
+
+        #expect(ProcessShare.percent(residentBytes: fourGigs, totalBytes: sixteen) == 25)
+        #expect(ProcessShare.percent(residentBytes: fourGigs, totalBytes: nil) == nil)
+        #expect(ProcessShare.percent(residentBytes: fourGigs, totalBytes: 0) == nil)
+    }
+
+    /// The core count outlives a sample that omits it — a machine does not grow
+    /// or lose cores, and a momentary gap should not blank the column.
+    @Test
+    @MainActor
+    func theCoreCountSurvivesASampleThatDoesNotRepeatIt() {
+        let machine = mac()
+        machine.apply(
+            SystemSnapshot(
+                timestamp: .now,
+                readings: [.cpu: MetricReading(value: 20)],
+                coreCount: 10
+            )
+        )
+        #expect(machine.coreCount == 10)
+
+        machine.apply(
+            SystemSnapshot(timestamp: .now, readings: [.cpu: MetricReading(value: 25)])
+        )
+        #expect(machine.coreCount == 10)
+    }
+}
+
 // MARK: - Machines to look at
 
 @MainActor

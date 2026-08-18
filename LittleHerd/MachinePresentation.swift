@@ -302,3 +302,29 @@ nonisolated enum ThermometerBand: Equatable, CaseIterable, Sendable {
         }
     }
 }
+
+/// What share of a whole machine a single process is using.
+///
+/// `ps` reports CPU as a percentage of one core, so a process can legitimately
+/// read 380% — which is why this used to be shown as "3.8c". Cores are honest
+/// but not comparable: 3.8 of the mini's 14 is a different situation from 3.8
+/// of this Mac's 10, and neither can be set against the machine figure directly
+/// above it.
+///
+/// Against the whole machine the rows land on the same scale as everything else
+/// and visibly sum toward the machine's own reading.
+nonisolated enum ProcessShare {
+    /// - Parameter coreCount: how many logical cores the machine has. Without
+    ///   it there is no machine to be a share *of*, so the caller keeps showing
+    ///   cores rather than inventing a denominator.
+    static func percent(ofOneCore cpuPercent: Double, coreCount: Int?) -> Double? {
+        guard let coreCount, coreCount > 0 else { return nil }
+        return min(max(cpuPercent / Double(coreCount), 0), 100)
+    }
+
+    /// What a process is holding, as a share of the machine's memory.
+    static func percent(residentBytes: Double, totalBytes: Double?) -> Double? {
+        guard let totalBytes, totalBytes > 0 else { return nil }
+        return min(max(residentBytes / totalBytes * 100, 0), 100)
+    }
+}

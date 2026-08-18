@@ -398,7 +398,8 @@ actor RemoteMetricsSampler {
             agentSessions: cachedAgentSessions,
             storageVolumes: storageVolumes,
             memoryPressure: memoryPressure,
-            memoryConsumers: RemoteOutputParser.parseMemoryConsumers(output)
+            memoryConsumers: RemoteOutputParser.parseMemoryConsumers(output),
+            coreCount: raw["cores"]?.first.map { Int($0) }
         )
     }
 
@@ -466,6 +467,7 @@ actor RemoteMetricsSampler {
     private static let macOSCommandTemplate = #"""
     export LC_ALL=C
     cpu=$(/usr/sbin/iostat -c 2 -w @CPU_WINDOW@ | /usr/bin/awk 'NR>2 {idle=$(NF-3)} END {printf "%.2f", 100-idle}')
+    echo "cores=$(/usr/sbin/sysctl -n hw.ncpu)"
     total=$(/usr/sbin/sysctl -n hw.memsize)
     pressure=$(/usr/sbin/sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null)
     page=$(/usr/bin/pagesize)
@@ -526,6 +528,7 @@ actor RemoteMetricsSampler {
 
     private static let linuxCommand = #"""
     export LC_ALL=C
+    echo "cores=$(/usr/bin/nproc)"
     cpu=$(/usr/bin/awk '/^cpu / {for(i=2;i<=NF;i++) printf "%s%s", $i, i==NF?"":" "; exit}' /proc/stat)
     mem=$(/usr/bin/awk '/^MemTotal:/ {t=$2*1024} /^MemAvailable:/ {a=$2*1024} END {printf "%.0f %.0f", t, a}' /proc/meminfo)
     iface=$(/usr/bin/awk '$2 == "00000000" {print $1; exit}' /proc/net/route)
