@@ -147,6 +147,24 @@ skew is the standing condition rather than a cleanup. Both point the same way:
 resolve an absolute agent path per machine and probe for the flag you need
 (`claude --help | grep -q -- --session-id`), never pin a version.
 
+**Usage limits are read only from this Mac, and only through CodexBar.**
+`AIUsageLimitsSampler` uses `homeDirectoryForCurrentUser` for both providers;
+no remote sampler collects usage at all. Codex comes from CodexBar's
+`codex-account-snapshots.json` and Claude from `Library/Caches/CodexBar/Cache.db`
+— the latter by scraping that app's HTTP response cache, joining
+`cfurl_cache_receiver_data` to `cfurl_cache_response` for a request key ending
+`/usage`. That is another app's `NSURLCache` internals, as fragile as the
+`.jsonl` parsing above. A 15-minute freshness window drops stale readings, so an
+empty usage display means either "no limit" or "CodexBar is not running", and
+the interface does not distinguish them.
+
+Because the herd shares one account the local reading *is* the herd's budget, so
+this is a smaller gap than it looks — but it is unconnected to anything. On
+18 August the mini's Codex hit its limit until the following evening with three
+`emailtriage` slots due, and the app that had the number said nothing. That is
+the case for item 3, and the reason item 6 checks budget once rather than per
+machine.
+
 ## Method notes
 
 **Look at it.** Four times in one session something obviously correct on paper
@@ -211,8 +229,11 @@ it; the files survived only because the directory had not been reaped yet.
 
    Say *which* reason a machine is not a destination, the way
    `RemoteUnavailability` already does for reachability — "excluded here", "no
-   agent on the PATH ssh sees", "no checkout of that repo", and "out of budget"
-   are four different answers and only the first is a preference. **The NAS is
+   agent on the PATH ssh sees", and "no checkout of that repo" are three
+   different answers and only the first is a preference. **Budget is not one of
+   them: it is a herd-level precondition, not a per-machine one.** The machines
+   share one account, so an exhausted limit cannot be escaped by choosing a
+   different destination — check it once, before offering a move at all. **The NAS is
    never a destination for this herd** — DSM restricts shell access to
    administrators, the login shell is `/bin/sh`, and there is no package
    manager, so it fails the probe on every count. The setting exists so someone
