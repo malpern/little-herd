@@ -243,6 +243,22 @@ identity tied to the project path is their known root cause (#41630, auto-closed
 by a bot, nothing committed); cross-device sync is open and unshipped on both
 sides (#72578 stale; openai/codex#21803 filed 17 August).
 
+**Codex's cloud is visible headlessly; Claude's is not — and listing survives
+budget exhaustion.** Measured 18 August: `codex cloud list` from a
+non-interactive ssh shell on the mini returned real tasks — title, `[READY]`,
+repo, date, diff-presence — *while the account's usage limit was exhausted*,
+because listing is not a model request. The whole loop exists non-interactively:
+`list`, `status`, `diff`, and `apply`, the last being the vendor's own
+cloud→local vehicle. The subcommand is marked EXPERIMENTAL and emits text, not
+JSON — probe for it, parse defensively, never load-bearing. Claude has no
+headless cloud listing: cloud sessions surface only through Remote
+Control-connected sessions, and `--teleport`'s picker is interactive, though
+`--teleport <id>` accepts a known session id. Separately and just as useful:
+**`claude agents --json` is a sanctioned JSON listing of active local sessions,
+and it answered over ssh where authentication does not work** — monitoring works
+where hosting does not, so the AI panel gains a stable source for live sessions
+to sit beside the fragile `.jsonl` history parsing it uses today.
+
 ## Method notes
 
 **Look at it.** Four times in one session something obviously correct on paper
@@ -373,6 +389,23 @@ it; the files survived only because the directory had not been reaped yet.
    The same machinery gives **park** and **fork** nearly free, which is a sign
    the factoring is right.
 
+   **Cross-vendor handoff is the same protocol and the one move that buys
+   tokens.** Adopted 18 August. A Codex session out of budget hands off to
+   Claude by the identical seven steps — the successor command differs, nothing
+   else — and it is the payoff of choosing a plain-markdown briefing over
+   transcripts, which are vendor-locked. This amends the budget rule: within a
+   provider a move rebalances silicon only; across providers it is the one move
+   that changes the budget, so budget is herd-level *per provider* and provider
+   is part of placement. The trigger is the sharp part: **summarising costs
+   tokens on the source vendor, so at 0% a session cannot write its own
+   briefing** — the mini's Codex proved it today. `AIUsageBudgetStatus` already
+   fires at 25/10/1% with `resetsAt` beside it: at critical, always prepare the
+   briefing (park is cheap and needs no destination); then `resetsAt` decides —
+   reset soon, park and wait; reset tomorrow with work due, offer the move.
+   **Automate the offer and the preparation, never the move** — the signal is
+   CodexBar's scrape, and eligibility gains one probe: capability parity, since
+   the tools a session leaned on may not exist on the other vendor.
+
 7. **iOS, scoped to the herd rather than to sessions.** Do not rebuild session
    steering; Remote Control and the Claude app already do it, with the local
    filesystem and MCP servers attached. What has no answer today is the herd:
@@ -387,6 +420,30 @@ it; the files survived only because the directory had not been reaped yet.
 
 8. **Show each machine's agent versions.** Cheap, and skew is invisible today
    while being the standing condition; see the facts above.
+
+9. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
+   18 August. Show cloud work beside the machines (the Herdware set already
+   holds an unused `owl-cloud.png`) and move it down with the vendors' own
+   commands, never our protocol: `codex cloud apply` and `claude --teleport`.
+   Little Herd's contribution is the placement decision — which machine
+   receives it — which is the eligibility probe again, plus one natural
+   extension: the Codex task names its repo, so the probe checks the
+   destination has that checkout. The two vendors get honestly different
+   treatment, per the facts above: Codex cloud tasks are *rows* (headless
+   `list`/`status` work today, even at 0% budget); Claude cloud is an
+   *affordance* ("pull a session by id onto…"), because nothing can enumerate
+   it from here. Say so in the interface rather than pretending parity.
+   Local→cloud stays out entirely — that is the vendors' own button.
+
+10. **Local models are blocked, not pending.** Considered and deferred
+    18 August. No herd machine runs a model server; the linux box is an AMD
+    APU with integrated graphics; the best local-model host owned is the M5
+    Air — the machine transfers exist to unload. A briefing written for a
+    frontier successor would swamp a small local model, and Claude cannot even
+    reach one without `ANTHROPIC_BASE_URL`, which forfeits Remote Control.
+    Reopen when a real runner exists on a herd machine *and* there is a
+    concrete reason — offline or privacy, not symmetry. Frame it then as a
+    degraded park, not a peer destination.
 
 ## Keeping this file honest
 
