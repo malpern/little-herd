@@ -6,9 +6,9 @@ Installed and running: 0.1.21. Nothing unreleased.
 **The Synology is fixed.** Drive 2 was replaced on 17 August 2026 — a WD40EFZZ
 (4 TB, CMR) for the WD30EFRX that had shed 231 uncorrectable sectors. Pool
 `reuse_1` rebuilt overnight and now reports `normal`, raid status 1, 4/4
-devices, every drive at `unc=0`. **Re-enable Time Machine on the mini**
-(`sudo tmutil enable`) — it was paused for the rebuild and turning it back on
-was never verified. The extra 1 TB stays stranded until a second 3 TB drive is
+devices, every drive at `unc=0`. Time Machine on the mini was paused for the
+rebuild and is back on — verified: `AutoBackup = 1`, last backup
+2026-08-17 21:54, one running since. The extra 1 TB stays stranded until a second 3 TB drive is
 replaced; SHR needs two disks larger than the rest before it can use the space.
 All three survivors are the same age and batch as the one that failed.
 
