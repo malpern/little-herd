@@ -1,8 +1,11 @@
 # Little Herd — handoff
 
-**State:** `main` @ `d995182`, clean, pushed. Latest release `v0.1.21`;
-the cancellation fix since then is unreleased. 264 tests.
-Installed and running: 0.1.21. Nothing unreleased.
+**State:** `main` @ `612cd95`, clean, pushed. Latest release `v0.1.22`, which
+carried one code change — the scan-cancellation fix — and the rest of this
+file. 264 tests, all passing. Nothing unreleased. The feed is live and was
+checked rather than assumed: the appcast at the `releases/latest` URL names
+`LittleHerd-0.1.22.zip`, carries a signature, and the asset returns 200.
+Installed and running here is still 0.1.21, so Sparkle has an update pending.
 
 **The Synology is fixed.** Drive 2 was replaced on 17 August 2026 — a WD40EFZZ
 (4 TB, CMR) for the WD30EFRX that had shed 231 uncorrectable sectors. Pool
