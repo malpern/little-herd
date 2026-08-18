@@ -208,6 +208,41 @@ reading an app is not the same as recommending it. Note also that reading
 another app's container is impossible under App Sandbox, so this design settles
 the Mac App Store question — it is a Developer ID app, on purpose.
 
+**Copying `~/.claude` to another machine resumes fine in the CLI — and is still
+the wrong transport.** Researched 18 August 2026 in anthropics/claude-code#69585
+(open): a user moved the whole directory to a new machine and `claude --resume`
+listed all ~30 historical sessions with correct titles, timestamps, and
+branches; two commenters confirm, one with ~50. So the docs' anti-duplicate
+guard blocks a second copy on the *same* machine, not a cross-machine move.
+Three things keep it from being our transport anyway. Every reported success is
+same-username, same-path — this herd is `malpern` on the Air and `clawd` on the
+mini, the project directory *name* encodes the absolute path, and every record
+embeds a `cwd`. The desktop app indexes none of it: its sidebar trusts only the
+`local_*.json` wrappers it wrote itself, and the community workaround is to mint
+a fresh session and rewrite the old transcript's session id into it — surgery on
+a format the vendor documents as internal and version-unstable, to produce
+sessions the left rail cannot see. The summarisation handoff stands.
+
+**Transcripts are durable; indexes are host-local. Never share the state
+directory.** openai/codex#30957 (open): `CODEX_HOME` on NFS shared across
+several hosts — the obvious shortcut for a herd — corrupts all four WAL sqlite
+databases. The recovery path is the lesson: Codex rebuilds by rescanning the
+JSONL rollouts, so the transcript is the record and the sqlite is a rebuildable
+index. Claude Desktop's `local_*.json` wrappers are the same shape. Carry
+transcripts if you must carry anything; never carry or share an index.
+
+**`--teleport` is the vendors' own implementation of this design's shape.** A
+real flag in 2.1.234, cloud→local only: it verifies you are in the right
+repository, fetches and checks out the session's branch, loads the conversation,
+and the terminal gets its *own copy* while the cloud session stays intact. Git
+as transport, a repo check as precondition, copy-not-move semantics — the
+transfer-branch design, shipped by Anthropic for the one direction they support.
+No local↔local variant exists; that is the gap this project fills, in the same
+shape, so if they ship one the designs converge rather than collide. Session
+identity tied to the project path is their known root cause (#41630, auto-closed
+by a bot, nothing committed); cross-device sync is open and unshipped on both
+sides (#72578 stale; openai/codex#21803 filed 17 August).
+
 ## Method notes
 
 **Look at it.** Four times in one session something obviously correct on paper
