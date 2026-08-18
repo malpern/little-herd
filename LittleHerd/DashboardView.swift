@@ -847,8 +847,11 @@ private struct MachineStoragePane: View {
 
     var body: some View {
         MetricDetailPane(
+            // No chart: disk usage moves in single percentage points over
+            // days, so the line is flat whatever is happening. A graph that
+            // always looks the same is the storage equivalent of a badge that
+            // is always lit.
             title: "VOLUMES",
-            series: machine.series(for: .disk),
             summary: fullest.map {
                 Text($0 / 100, format: .percent.precision(.fractionLength(0)))
             },
