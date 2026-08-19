@@ -415,23 +415,35 @@ struct StreamingProcessRunnerTests {
     /// child is still walking the disk. One counted processes with a command
     /// containing the pattern it grepped for. The third assumed breaking out of
     /// a `for await` tears the stream down — it does not, which is why nothing
-    /// was being terminated at all. This one takes a census and cancels the
-    /// task, which is where cancellation actually comes from.
+    /// was being terminated at all.
+    ///
+    /// A fourth was wrong more quietly: it counted *every* `sleep` on the
+    /// machine and compared the total before and after, so it measured what
+    /// else happened to be running as much as it measured cancellation, and it
+    /// gave the kill a fixed two seconds to land. It failed a release on a busy
+    /// machine while the code it tests was fine. This one watches only its own
+    /// child, by sleeping for a duration nothing else would, and waits for the
+    /// process to go rather than assuming how long that takes.
     @Test
     func cancellingTheTaskKillsTheProcess() async throws {
-        func sleepers() async -> Int {
+        // A duration nothing else on this machine will be sleeping for, so the
+        // count below can only ever be this test's own processes. It matches
+        // both the shell and the `sleep` it spawned, which is the point: the
+        // bug was the grandchild outliving the shell, so both have to go.
+        let marker = "314159"
+
+        func survivors() async -> Int {
             let output = await LocalProcessRunner.run(
                 executablePath: "/usr/bin/pgrep",
-                arguments: ["-x", "sleep"]
+                arguments: ["-f", "sleep \(marker)"]
             )
             return (output ?? "").split(whereSeparator: \.isNewline)
                 .filter { !$0.isEmpty }.count
         }
 
-        let before = await sleepers()
         let run = StreamingProcessRunner.lines(
             executablePath: "/bin/sh",
-            arguments: ["-c", "printf 'first\\n'; sleep 27"]
+            arguments: ["-c", "printf 'first\\n'; sleep \(marker)"]
         )
         let task = Task {
             await withTaskCancellationHandler {
@@ -448,11 +460,26 @@ struct StreamingProcessRunnerTests {
                 run.terminate()
             }
         }
-        try? await Task.sleep(for: .milliseconds(700))
-        task.cancel()
-        try? await Task.sleep(for: .seconds(2))
+        // Prove the thing exists before proving it dies: a test that cancels
+        // before anything spawned would pass having demonstrated nothing.
+        var started = 0
+        for _ in 0 ..< 50 where started == 0 {
+            try? await Task.sleep(for: .milliseconds(100))
+            started = await survivors()
+        }
+        #expect(started > 0, "the child never started, so nothing was tested")
 
-        #expect(await sleepers() <= before)
+        task.cancel()
+
+        // Waited for rather than assumed. A fixed pause turns a slow machine
+        // into a failing test, which is how this cost a release.
+        var remaining = started
+        for _ in 0 ..< 100 where remaining > 0 {
+            try? await Task.sleep(for: .milliseconds(100))
+            remaining = await survivors()
+        }
+
+        #expect(remaining == 0)
     }
 
 
