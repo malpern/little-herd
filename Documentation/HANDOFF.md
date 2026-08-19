@@ -1,8 +1,8 @@
 # Little Herd — handoff
 
-**State:** `main` is clean and pushed, and carries the `v0.1.24` release plus
-edits to this file — no unreleased code, so the last code commit is the tag.
-270 tests, all passing. The feed is live and was checked rather than assumed:
+**State:** the last release is `v0.1.24`; the Synology sign-in fix below is
+committed and unreleased, so there is code ahead of the tag for the first time
+in a while. 271 tests, all passing. The feed is live and was checked rather than assumed:
 the appcast at the `releases/latest` URL names `LittleHerd-0.1.24.zip`, carries
 a signature, and the asset returns 200. 0.1.23 added the four-state usage display, 0.1.24 the splash timing, size and
 corner, and a sign-in message that signs you in. Sparkle's own path from 0.1.21
@@ -14,12 +14,18 @@ its predecessor: a line naming a commit is out of date the moment anything is
 committed, this file included. `git log` answers that question and cannot be
 wrong; what belongs here is what `git log` will not tell you.
 
-**The Synology is on the tailnet, and Little Herd still cannot sign in to it.**
-Since 18 August it is `nas` / `100.102.192.34` with key expiry disabled, serving
-a 2048-bit certificate that replaced a 1024-bit one from 2015, with the DSM API
-answering over the tailnet from off-site. None of that fixed the app: see the
-open bug in **Next**, which lists what has been ruled out so the next session
-does not repeat an evening of it.
+**The Synology sign-in was App Transport Security, and it is fixed — but nobody
+has typed the real password into it yet.** The NAS has been `nas` /
+`100.102.192.34` since 18 August, with key expiry disabled and a 2048-bit
+certificate replacing the 1024-bit one from 2015; none of that was ever the
+problem. ATS was refusing the certificate before `SynologyTrustEvaluator` was
+consulted — the fact below has the whole shape of it. Measured from inside the
+app after the fix: `SynologyDSMClient.signIn()` against the live NAS now reaches
+DSM, which answers `400 Wrong account or password` to a deliberately wrong one.
+That is the transport proved end to end and the credential proved not at all.
+**Sign in for real and confirm the sheet says "Connected", the keychain gains
+`malpern@nas.tail9d0bb8.ts.net:5001`, and the pin recorded is
+`5a9996474975067b06779b8694dea6d744236612f7810f9f213705d38c42a099`.**
 
 **The Synology hardware is fixed.** Drive 2 was replaced on 17 August 2026 — a WD40EFZZ
 (4 TB, CMR) for the WD30EFRX that had shed 231 uncorrectable sectors. Pool
@@ -73,6 +79,37 @@ holds 945 GB. Believing it reads a nearly full disk as a quarter full.
 **`SYNO.FileStation.DirSize` is unusable on this DSM.** It starts a task,
 returns an id, then answers 599 — "no such task" — to every status call, on
 both API versions, for two shares. Measured against the live NAS.
+
+**App Transport Security decides before your delegate does, and a command-line
+probe cannot see it happen.** This is what "Little Herd cannot sign in to the
+Synology" was, after an evening of ruling out eight other things. ATS runs its
+own system-trust evaluation, and a certificate that fails it is refused *before*
+`URLSession` asks the delegate — so `SynologyTrustEvaluator` computed the
+correct pin, returned `useCredential`, and was overruled, surfacing as
+`NSURLErrorDomain -1200`. The tell was one line in the app's own log,
+`ATS failed system trust`, sitting beside a TLS trace that had been read a dozen
+times. The fix is in `Info.plist`, with the reason next to it.
+
+The previous session's decisive evidence pointed the wrong way for a reason
+worth keeping: **a command-line tool has no `Info.plist`, so ATS never applies
+to it.** "The same algorithm works outside the app and fails inside it" was
+true, and was not about the algorithm. The instrument that settles this in 34
+milliseconds is a test in the hosted bundle — `TEST_HOST` runs the suite inside
+the real app, so it inherits the real `Info.plist` — and a sign-in with a
+deliberately *wrong* password separates the layers: a working transport answers
+`400 Wrong account or password`, and only a TLS failure looks like a TLS
+failure. Testing the thing that was broken needed no real credential at all.
+
+Three smaller facts fell out of it, each measured rather than reasoned.
+`NSAllowsLocalNetworking` does not cover a tailnet name — `nas.tail9d0bb8.ts.net`
+is fully qualified, so it is not "local" to ATS however local it feels. An entry
+in `NSExceptionDomains` still binds when `NSAllowsArbitraryLoads` is true, which
+is why the update feed keeps the ATS floor while a NAS on any name at all does
+not. And the fix this replaces — plain HTTP to port 5000 over the tailnet —
+would not have worked: ATS stops `http://` with `-1022` before it leaves the
+process, so it needed the same `Info.plist` change anyway, and once that change
+exists TLS with first-use pinning works and beats sending a DSM password in
+clear.
 
 **This Mac reporting only its startup volume is deliberate, not drift.** It was
 listed as an inconsistency to fix and should not have been: enumerating mounted
@@ -190,7 +227,7 @@ until the following evening with three `emailtriage` slots due — and the app w
 not silent, which is the more useful finding: it had been showing an urgent red
 LED on the Codex mark the whole time. A six-pixel unlabelled dot in the corner of
 a header is the same as silence to the person it is for. That is the case for
-item 3 in one image, and the reason item 6 checks budget once rather than per
+item 4 in one image, and the reason item 5 checks budget once rather than per
 machine.
 
 **CodexBar is read, not bundled and not recommended, and that is deliberate.**
@@ -295,6 +332,14 @@ was wrong when run — and every UI defect (a folder named `Library` rendered as
 `L`, no disclosure triangle, a spinner that never moved) was invisible to 263
 passing tests.
 
+**Validate the instrument before believing what it says.** Silence from an
+`NSLog` added to a delegate read as proof the delegate was never called; the
+instrumentation had silently vanished from the source, so the silence proved
+nothing, and the delegate had been running correctly the whole time. Note also
+that `grep` and `strings` on the built binary find *none* of its known string
+literals, so neither can tell you whether a build contains a change — check by
+running the build, not by reading it.
+
 **Break the test to prove it works.** Every substantive rule was verified by
 reintroducing the bug and watching the suite fail. Two tests that passed without
 proving anything were caught this way: one watched a side effect a killed shell
@@ -342,75 +387,21 @@ it; the files survived only because the directory had not been reaped yet.
    rule would collapse to "Linux failed to resolve", which is what the tooltip
    already says. Build it when a second machine becomes reachable only over the
    tailnet, and not before.
-3. **OPEN BUG — Little Herd cannot sign in to the Synology: "A TLS error caused
-   the secure connection to fail."** Unresolved as of 19 August 2026, after an
-   evening on it. The NAS is healthy and reachable; the failure is inside the
-   app.
+3. **The sign-in sheet hides the reason it failed.**
+   `SynologyTrustEvaluator` records a precise `certificateMismatch` — with the
+   expected and received fingerprints — and `SynologyDSMError.detailForAPICode`
+   maps every DSM code to a sentence a person can act on. The credentials sheet
+   surfaces neither, reporting the generic URLSession error instead. The ATS bug
+   above is what that costs: the sheet said "A TLS error caused the secure
+   connection to fail" for an evening while the app's own log had already named
+   ATS, and a sheet that reported which of its own branches refused would have
+   pointed at the certificate rather than at the code that never got asked.
+   Third instance of the same defect this week, after the usage row and the
+   empty state — so the thing to write is the rule, not the third one-off:
+   **a surface that refuses something must say which of its own branches
+   refused, and never hand the user a lower layer's error verbatim.**
 
-   **What happens.** The sign-in sheet (Synology → "sign in to DSM") fails
-   immediately. `log stream --predicate 'process == "Little Herd"'` shows the
-   TLS 1.3 handshake reaching the certificate, then `Performing external trust
-   evaluation` → `Asyncing for external verify block` → **`Cancelled during
-   verify block`**, `TLS Trust result -9802`, surfacing as `NSURLErrorDomain
-   -1200`. So the connection is made and something in the trust path refuses it.
-
-   **Ruled out, each by measurement — do not re-test these.**
-   Not 2FA (the error is TLS, and the auth API answers `{"error":{"code":400}}`
-   to a bogus account rather than a 2FA code). Not a blocked IP (400, not 407).
-   Not App Transport Security (connections succeed by name *and* by IP with a
-   permissive delegate; there is no ATS key in Info.plist, so defaults apply).
-   Not the stored pin — it was cleared, so the delegate should take its
-   trust-on-first-use path, and the failure is identical. Not the certificate:
-   the NAS served a 1024-bit RSA certificate from 2015, which was replaced with
-   a 2048-bit one naming every route to the box, and the error did not change.
-   Not the endpoint (`entry.cgi`, `SYNO.API.Auth` v7, which this DSM supports to
-   v7), not a redirect (none), not TLS version (1.2, 1.3 and default all
-   succeed from outside).
-
-   **The decisive evidence.** A standalone Swift program using the app's *exact*
-   algorithm — `SecTrustCopyCertificateChain` → `SecCertificateCopyKey` →
-   `SecKeyCopyExternalRepresentation` → SHA-256 — against the live NAS computes
-   the right pin, sees system trust correctly rejected, falls through, and gets
-   **HTTP 200**. The same code path works outside the app and fails inside it.
-   That is the whole shape of the bug and the place to start.
-
-   **Two traps that cost time here.** Instrumenting the delegate with `NSLog`
-   produced no output, which looked like proof the delegate is never called — but
-   the instrumentation had silently vanished from the source, so the silence
-   proved nothing. And `grep`/`strings` on the built binary finds *none* of its
-   known string literals, so it cannot be used to check whether a build contains
-   a change. **Validate the instrument before believing it**, which is the same
-   lesson as the census test in the method notes below.
-
-   **Proposed fix, not yet tried: stop using TLS for this hop.** The app
-   hardcodes `https` in `SynologyDSMEndpoint` (`components.scheme = "https"`) and
-   connects on `dsmPort` 5001. Over the tailnet, WireGuard already encrypts and
-   authenticates, so TLS is carrying no weight — and port 5000 serves the same
-   DSM API (verified: HTTP 200 over the tailnet). Allowing plain HTTP *when the
-   host is a tailnet name* removes the entire layer that defeated every
-   hypothesis above. Keep it conditional: over the LAN or the open internet the
-   DSM password would cross in clear, so this must not become the general case.
-
-   **Current state to pick up from.** The NAS is `nas` on the tailnet
-   (`100.102.192.34`), key expiry disabled, serving
-   `CN=nas.tail9d0bb8.ts.net` (2048-bit, to 2036) on 5001 with the DSM API
-   answering HTTP 200. Little Herd's configuration points at
-   `nas.tail9d0bb8.ts.net:5001` with **no stored pin** (cleared deliberately) and
-   **no keychain credential** — the old `malpern@AlpernServer.local:5001` entry
-   was removed when the host was renamed, since that keychain account is keyed
-   `user@host:port`. So a successful sign-in should both store a credential and
-   record pin `5a9996474975067b06779b8694dea6d744236612f7810f9f213705d38c42a099`.
-
-4. **The sign-in sheet hides the reason it failed.** Related to the above and
-   worth fixing regardless. `SynologyTrustEvaluator` records a precise
-   `certificateMismatch` — with the expected and received fingerprints — and
-   `SynologyDSMError.detailForAPICode` maps every DSM code to a sentence a person
-   can act on. The credentials sheet surfaces neither, reporting the generic
-   URLSession error instead. Chasing this bug would have been much shorter if the
-   sheet had said which of its own branches refused. Third instance of the same
-   defect this week, after the usage row and the empty state.
-
-5. **The AI panel is the next thing to build.** It is the weakest surface in the
+4. **The AI panel is the next thing to build.** It is the weakest surface in the
    app. Looked at on 18 August with seven sessions in it: every row carries the
    same orange glyph, so the loudest element says nothing; the primary label is
    the project name, which repeated "Clawd" three times and "Little Herd" twice
@@ -426,7 +417,7 @@ it; the files survived only because the directory had not been reaped yet.
    active, then a collapsed count of what finished. `waiting` is the single most
    actionable fact in the model and is currently indistinguishable from done.
 
-6. **Probe destination eligibility, and let the user express intent separately.**
+5. **Probe destination eligibility, and let the user express intent separately.**
    Capability is measured — an agent binary resolvable over a non-interactive
    ssh shell, git, and a checkout of the repo. Intent is a setting: some
    machines can host a session and still should not.
@@ -462,14 +453,14 @@ it; the files survived only because the directory had not been reaped yet.
 
    This rung is useful on its own and everything below depends on it.
 
-7. **Join activity to metrics — the highest-leverage thing not yet built.** The
+6. **Join activity to metrics — the highest-leverage thing not yet built.** The
    app samples both and correlates neither, so "the Air is at 90% sustained" and
    "three Claude sessions are on the Air" sit on two screens as unrelated facts.
    Saying it once — you are saturating the Air, the mini is idle — is what turns
    a monitor into something that answers "what should I do?", and it is the
    input any placement decision needs. It needs no new architecture.
 
-8. **Transfer a session between machines, at the session level.** Not process
+7. **Transfer a session between machines, at the session level.** Not process
    migration, which is not possible and not wanted: stop the session, have it
    write full context, start a successor on the target that has the repo. It is
    the same thing this file does by hand between sessions, which is the reason
@@ -486,7 +477,7 @@ it; the files survived only because the directory had not been reaped yet.
    artifact, start the successor, verify it behaviourally, and **only then**
    retire the source. A half-finished transfer must leave you where you started.
    Only a quiescent session can move safely, which is to say a `waiting` one —
-   the same state item 3 is about surfacing.
+   the same state item 4 is about surfacing.
 
    Expect the summary to omit what matters least to a model and most to you:
    uncommitted work, background processes (documented as *not* restored on
@@ -518,22 +509,22 @@ it; the files survived only because the directory had not been reaped yet.
    CodexBar's scrape, and eligibility gains one probe: capability parity, since
    the tools a session leaned on may not exist on the other vendor.
 
-9. **iOS, scoped to the herd rather than to sessions.** Do not rebuild session
+8. **iOS, scoped to the herd rather than to sessions.** Do not rebuild session
    steering; Remote Control and the Claude app already do it, with the local
    filesystem and MCP servers attached. What has no answer today is the herd:
    which machine is hot, what is waiting on you, what the budget looks like,
    and starting a transfer. Do not sample from the phone either — iOS will not
    ssh-poll in the background. It wants a resident collector on the mini, which
-   is the same helper item 6 needs for the Keychain problem and the same one a
+   is the same helper item 5 needs for the Keychain problem and the same one a
    durable successor session needs. Build it once. The model layer is already
    portable — 29 of 48 source files import neither SwiftUI nor AppKit, and
    `MachinePresentation` exists precisely because display decisions were pulled
    out of the view bodies.
 
-10. **Show each machine's agent versions.** Cheap, and skew is invisible today
+9. **Show each machine's agent versions.** Cheap, and skew is invisible today
    while being the standing condition; see the facts above.
 
-11. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
+10. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
    18 August. Show cloud work beside the machines (the Herdware set already
    holds an unused `owl-cloud.png`) and move it down with the vendors' own
    commands, never our protocol: `codex cloud apply` and `claude --teleport`.
@@ -547,7 +538,7 @@ it; the files survived only because the directory had not been reaped yet.
    it from here. Say so in the interface rather than pretending parity.
    Local→cloud stays out entirely — that is the vendors' own button.
 
-12. **Local models are blocked, not pending.** Considered and deferred
+11. **Local models are blocked, not pending.** Considered and deferred
     18 August. No herd machine runs a model server; the linux box is an AMD
     APU with integrated graphics; the best local-model host owned is the M5
     Air — the machine transfers exist to unload. A briefing written for a

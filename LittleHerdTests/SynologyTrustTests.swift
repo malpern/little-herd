@@ -115,4 +115,38 @@ struct SynologyTrustTests {
             .joined()
         #expect(fingerprint != Self.expectedFingerprint)
     }
+
+    /// The half of this decision that is not written in Swift.
+    ///
+    /// App Transport Security runs its own system-trust evaluation and refuses
+    /// a self-signed certificate *before* the evaluator above is consulted, so
+    /// every accept path here is dead unless Info.plist lifts that blanket.
+    /// That is not a hypothesis: with the key absent, a NAS that answers `curl`
+    /// gives this app `NSURLErrorDomain -1200` and logs `ATS failed system
+    /// trust`, while the evaluator computes the correct pin and is overruled.
+    /// Nothing else in the suite would notice the key going away, because the
+    /// only thing it breaks is talking to a real Synology.
+    @Test
+    func appTransportSecurityLeavesTheDecisionToTheEvaluator() throws {
+        let policy = try #require(
+            Bundle.main.object(forInfoDictionaryKey: "NSAppTransportSecurity")
+                as? [String: Any]
+        )
+        #expect(policy["NSAllowsArbitraryLoads"] as? Bool == true)
+
+        // The update feed is the one host known in advance, so it stays under
+        // ATS: an exception still binds when arbitrary loads are allowed.
+        // Tying this to the feed URL rather than to a literal means moving the
+        // feed and forgetting the exception fails here rather than in the wild.
+        let domains = try #require(
+            policy["NSExceptionDomains"] as? [String: Any]
+        )
+        let feed = try #require(
+            Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String
+        )
+        let host = try #require(URL(string: feed)?.host)
+        #expect(
+            domains.keys.contains { host == $0 || host.hasSuffix(".\($0)") }
+        )
+    }
 }
