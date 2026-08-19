@@ -204,8 +204,13 @@ final class DashboardWindowObserverView: NSView {
         guard let contentView = window.contentView else { return }
         contentView.wantsLayer = true
         contentView.layer?.cornerCurve = .continuous
-        contentView.layer?.cornerRadius = 26
+        contentView.layer?.cornerRadius = LittleHerdSplashMetrics.cornerRadius
         contentView.layer?.masksToBounds = true
+        // Without this the layer keeps an opaque backing, and the mask's
+        // antialiased edge blends the artwork against it — a pale halo tracing
+        // every corner. The splash view clips itself to the same radius, so
+        // this mask is now a second line of defence rather than the only one.
+        contentView.layer?.backgroundColor = NSColor.clear.cgColor
         window.invalidateShadow()
     }
 

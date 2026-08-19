@@ -214,7 +214,10 @@ struct DashboardView: View {
             let configuredDelay = ProcessInfo.processInfo.environment[
                 "LITTLE_HERD_SPLASH_DELAY"
             ].flatMap(Double.init)
-            let minimumSplashDuration = min(max(configuredDelay ?? 1.05, 0), 10)
+            let minimumSplashDuration = min(
+                max(configuredDelay ?? LittleHerdSplashMetrics.minimumDuration, 0),
+                10
+            )
             try? await Task.sleep(for: .seconds(minimumSplashDuration))
             guard !Task.isCancelled else { return }
 

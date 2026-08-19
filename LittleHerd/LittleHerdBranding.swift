@@ -12,6 +12,29 @@ enum LittleHerdLaunchSplashSession {
     }
 }
 
+/// The splash's geometry and timing, shared with the window chrome that frames
+/// it so the two cannot drift apart.
+enum LittleHerdSplashMetrics {
+    /// Read both by the splash view, which clips its own artwork, and by
+    /// `DashboardWindowBridge`, which rounds the window. Rounding in only one
+    /// of those places is what produced the pale fringe along the curve: the
+    /// layer mask antialiased the artwork against an opaque backing, and the
+    /// backing showed through as a halo hugging each corner.
+    static let cornerRadius: CGFloat = 26
+
+    /// How long the artwork takes to arrive.
+    static let entranceDuration: Double = 0.42
+
+    /// How long it stays *after* arriving. The splash used to hold for 1.05
+    /// seconds including its own entrance, which left it fully drawn for barely
+    /// half a second — long enough to register as a flicker rather than a
+    /// greeting.
+    static let holdAfterEntrance: Double = 1.0
+
+    /// What the launch flow waits for before dismissing.
+    static var minimumDuration: Double { entranceDuration + holdAfterEntrance }
+}
+
 struct LittleHerdSplashView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isPresented = false
@@ -41,13 +64,20 @@ struct LittleHerdSplashView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(LittleHerdTheme.background)
-        .clipped()
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: LittleHerdSplashMetrics.cornerRadius,
+                style: .continuous
+            )
+        )
         .accessibilityElement(children: .combine)
         .onAppear {
             if reduceMotion {
                 isPresented = true
             } else {
-                withAnimation(.easeOut(duration: 0.42)) {
+                withAnimation(
+                    .easeOut(duration: LittleHerdSplashMetrics.entranceDuration)
+                ) {
                     isPresented = true
                 }
             }

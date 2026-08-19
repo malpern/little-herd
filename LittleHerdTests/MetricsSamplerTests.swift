@@ -820,6 +820,20 @@ struct MetricsSamplerTests {
     }
 
     @Test
+    func theSplashHoldsForABeatAfterItsEntranceFinishes() {
+        // The bug this pins: the old 1.05s minimum *included* the 0.42s
+        // entrance, so the artwork was fully drawn for barely half a second.
+        #expect(
+            LittleHerdSplashMetrics.minimumDuration
+                > LittleHerdSplashMetrics.entranceDuration
+        )
+        #expect(
+            LittleHerdSplashMetrics.minimumDuration
+                - LittleHerdSplashMetrics.entranceDuration >= 0.9
+        )
+    }
+
+    @Test
     func transferEventParserReadsMetadataOnlyHandoff() throws {
         let data = try #require(
             """
