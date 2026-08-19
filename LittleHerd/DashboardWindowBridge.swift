@@ -191,15 +191,16 @@ final class DashboardWindowObserverView: NSView {
         window.backgroundColor = .clear
         window.hasShadow = true
 
-        window.setFrame(
-            NSRect(
-                x: currentCenter.x - 150,
-                y: currentCenter.y - 125,
-                width: 300,
-                height: 250
-            ),
-            display: true
+        let splashContentRect = NSRect(
+            origin: .zero,
+            size: LittleHerdSplashMetrics.contentSize
         )
+        var splashFrame = window.frameRect(forContentRect: splashContentRect)
+        splashFrame.origin = NSPoint(
+            x: currentCenter.x - splashFrame.width / 2,
+            y: currentCenter.y - splashFrame.height / 2
+        )
+        window.setFrame(splashFrame, display: true)
 
         guard let contentView = window.contentView else { return }
         contentView.wantsLayer = true

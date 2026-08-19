@@ -31,6 +31,17 @@ enum LittleHerdSplashMetrics {
     /// `DashboardWindowBridge`, which rounds the window layer to the same value.
     static let cornerRadius: CGFloat = 11
 
+    /// The splash's *content* size. This is the number that decides how big the
+    /// splash is: the scene is `.windowResizability(.contentSize)`, so SwiftUI
+    /// sizes the window from its content and a `setFrame` fighting that is
+    /// simply overruled. The window bridge derives its frame from this rather
+    /// than carrying a second copy.
+    ///
+    /// Half again the 300×218 it started at, keeping that proportion so the
+    /// artwork crops exactly as it did before. The `@2x` asset is 1200×1000
+    /// pixels, so nothing here is upscaled.
+    static let contentSize = CGSize(width: 450, height: 327)
+
     /// How long the artwork takes to arrive.
     static let entranceDuration: Double = 0.42
 

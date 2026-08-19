@@ -179,7 +179,7 @@ struct DashboardView: View {
 
     private var windowContentSize: CGSize {
         isShowingLaunchSplash
-            ? CGSize(width: 300, height: 218)
+            ? LittleHerdSplashMetrics.contentSize
             : dashboardContentSize
     }
 
