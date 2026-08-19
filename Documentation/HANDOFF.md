@@ -1,11 +1,12 @@
 # Little Herd — handoff
 
-**State:** `main` is clean and pushed, and carries the `v0.1.22` release plus
+**State:** `main` is clean and pushed, and carries the `v0.1.24` release plus
 edits to this file — no unreleased code, so the last code commit is the tag.
-264 tests, all passing. The feed is live and was checked rather than assumed:
-the appcast at the `releases/latest` URL names `LittleHerd-0.1.22.zip`, carries
-a signature, and the asset returns 200. Installed and running here is 0.1.22,
-taken there through Sparkle from 0.1.21 and verified — see below.
+270 tests, all passing. The feed is live and was checked rather than assumed:
+the appcast at the `releases/latest` URL names `LittleHerd-0.1.24.zip`, carries
+a signature, and the asset returns 200. 0.1.23 added the four-state usage display, 0.1.24 the splash timing, size and
+corner, and a sign-in message that signs you in. Sparkle's own path from 0.1.21
+to 0.1.22 was watched end to end — see below.
 
 Deliberately no commit hash in this paragraph. The previous two sessions each
 left one that was stale within the hour, including the one written to correct
@@ -259,6 +260,27 @@ and it answered over ssh where authentication does not work** — monitoring wor
 where hosting does not, so the AI panel gains a stable source for live sessions
 to sit beside the fragile `.jsonl` history parsing it uses today.
 
+**A machine addressed by a LAN-only name is indistinguishable from a dead one
+the moment you leave the house.** Both of this herd's non-Mac-Air machines were
+named this way and both read as "down" from off-site on 18 August while being
+perfectly healthy — the mini had been up twelve days, the NAS eighty-seven.
+`keypath-lab-mini` and `AlpernServer.local` are mDNS names, not tailnet ones;
+the MagicDNS names are `mini` and `nas`. The trap is that this is invisible at
+home, where mDNS answers and everything works.
+
+Two details cost the most time. The ssh config carried a fallback meant to use
+mDNS "when Tailscale is down", but its guard asked whether `keypath-lab-mini`
+resolved — a name MagicDNS never served — so the condition was permanently true
+and the fallback fired on *every* connection, working only because Bonjour
+happened to catch it. And **Little Herd reaches Macs over ssh but the Synology
+over HTTPS**, so repairing `ssh/config` fixed the mini and did nothing at all
+for the NAS, whose hostname lives in the app's own configuration.
+
+One consequence worth knowing before renaming anything: the app keys its DSM
+password in the keychain as `user@host:port`, deliberately, so two NASes cannot
+collide. Renaming the host therefore *signs it out* rather than breaking it —
+the credential is orphaned, not wrong, and the fix is to sign in again.
+
 ## Method notes
 
 **Look at it.** Four times in one session something obviously correct on paper
@@ -271,6 +293,21 @@ reintroducing the bug and watching the suite fail. Two tests that passed without
 proving anything were caught this way: one watched a side effect a killed shell
 would not perform, another counted processes with a command containing the
 pattern it grepped for.
+
+**A test that measures the machine is not testing your code.** The cancellation
+test above counted every `sleep` on this Mac and compared the total before and
+after, so its result depended on whatever else happened to be running, and it
+allowed the kill a fixed two seconds. It failed a release on a loaded machine
+and passed four quiet runs of the same commit — the worst possible signal, since
+the obvious reading is that the code is broken. Watching only its own child (a
+sleep of a duration nothing else would use) and waiting for the process to go
+rather than assuming how long that takes fixed both halves, and made it ten
+times faster as a side effect: nothing sleeps two seconds to see what happened.
+
+The same test also has to prove its subject existed. The version before this one
+would have passed had the process never spawned at all — which is the fourth
+variant of that mistake this one test has produced, and they are all recorded
+above it in the source.
 
 **Commit early.** A worktree was deleted mid-session with uncommitted work in
 it; the files survived only because the directory had not been reaped yet.
