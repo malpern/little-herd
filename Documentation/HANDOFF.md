@@ -14,18 +14,21 @@ its predecessor: a line naming a commit is out of date the moment anything is
 committed, this file included. `git log` answers that question and cannot be
 wrong; what belongs here is what `git log` will not tell you.
 
-**The Synology sign-in was App Transport Security, and it is fixed — but nobody
-has typed the real password into it yet.** The NAS has been `nas` /
-`100.102.192.34` since 18 August, with key expiry disabled and a 2048-bit
-certificate replacing the 1024-bit one from 2015; none of that was ever the
-problem. ATS was refusing the certificate before `SynologyTrustEvaluator` was
-consulted — the fact below has the whole shape of it. Measured from inside the
-app after the fix: `SynologyDSMClient.signIn()` against the live NAS now reaches
-DSM, which answers `400 Wrong account or password` to a deliberately wrong one.
-That is the transport proved end to end and the credential proved not at all.
-**Sign in for real and confirm the sheet says "Connected", the keychain gains
-`malpern@nas.tail9d0bb8.ts.net:5001`, and the pin recorded is
-`5a9996474975067b06779b8694dea6d744236612f7810f9f213705d38c42a099`.**
+**The Synology sign-in was App Transport Security, and it is fixed and
+verified.** The NAS has been `nas` / `100.102.192.34` since 18 August, with key
+expiry disabled and a 2048-bit certificate replacing the 1024-bit one from 2015;
+none of that was ever the problem. ATS was refusing the certificate before
+`SynologyTrustEvaluator` was consulted — the fact below has the whole shape of
+it. Proved from inside the app with the real DSM account: sign-in succeeds, and
+`SYNO.Storage.CGI.Storage` comes back with Volume 1 and all four drives —
+`sdb` now the WD40EFZZ, every one `normal` at `unc=0`, 27–29 °C — against a
+recorded pin of `5a9996474975067b06779b8694dea6d744236612f7810f9f213705d38c42a099`.
+The credential is `SYNOLOGY_PASSWORD_HOME` in sops; a test can decrypt it in
+process, but sops needs `SOPS_AGE_KEY_FILE` set explicitly or it cannot find the
+age key from inside a GUI app. **What remains is one click, not a question:**
+the credentials sheet has to be filled in once by hand so the keychain gains
+`malpern@nas.tail9d0bb8.ts.net:5001` and routine sampling has a password to
+read.
 
 **The Synology hardware is fixed.** Drive 2 was replaced on 17 August 2026 — a WD40EFZZ
 (4 TB, CMR) for the WD30EFRX that had shed 231 uncorrectable sectors. Pool
