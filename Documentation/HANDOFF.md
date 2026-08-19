@@ -114,6 +114,19 @@ process, so it needed the same `Info.plist` change anyway, and once that change
 exists TLS with first-use pinning works and beats sending a DSM password in
 clear.
 
+**A plain `xcodebuild -configuration Release build` produces an app that cannot
+launch.** It signs ad hoc, and dyld then refuses to map the bundled Sparkle:
+`Library not loaded: @rpath/Sparkle.framework/…`, `mapping process and mapped
+file (non-platform) have different Team IDs`. The crash report says "Library
+missing", which sends you looking for a file that is sitting right there — the
+signature is what is missing, not the framework. To test a Release build without
+running `scripts/release`, pass the same identity it does:
+`DEVELOPMENT_TEAM=X2RKZ5TG99 CODE_SIGN_IDENTITY="Developer ID Application"
+CODE_SIGN_STYLE=Manual`. Worth doing rather than falling back to the Debug
+build, because a keychain item's ACL is bound to the signature that stored it —
+a DSM password saved by an ad-hoc build is not cleanly readable by the shipped
+one.
+
 **This Mac reporting only its startup volume is deliberate, not drift.** It was
 listed as an inconsistency to fix and should not have been: enumerating mounted
 volumes can raise macOS's network-volume privacy prompt even when network
