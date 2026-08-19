@@ -20,6 +20,13 @@ struct MetricDetailPane<Rows: View>: View {
     var series: MetricSeries?
     var summary: Text?
     var emptyMessage: LocalizedStringResource?
+    /// What to do about the empty state, when there is something to do.
+    ///
+    /// A message that names the fix and cannot perform it is a dead end, and
+    /// the state with nothing to show is the one most in need of a way forward.
+    /// Supplied only where a fix exists — a NAS that has never signed in — so
+    /// the ordinary empty states stay plain text with nothing to click.
+    var emptyAction: (() -> Void)?
     @ViewBuilder var rows: () -> Rows
 
     var body: some View {
@@ -51,9 +58,19 @@ struct MetricDetailPane<Rows: View>: View {
             }
 
             if let emptyMessage {
-                Text(emptyMessage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if let emptyAction {
+                    Button(action: emptyAction) {
+                        Text(emptyMessage)
+                            .font(.caption)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.link)
+                    .accessibilityHint(Text("Sign in to DSM"))
+                } else {
+                    Text(emptyMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer(minLength: 0)
             } else {
                 // Scrolls, because the window is sized to its content and

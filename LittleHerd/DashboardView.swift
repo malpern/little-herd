@@ -75,7 +75,8 @@ struct DashboardView: View {
                             machine: selectedMachine,
                             metric: model.overviewMetric,
                             namespace: machineTransition,
-                            onBack: { model.selection = .overview }
+                            onBack: { model.selection = .overview },
+                            onSignIn: signInAction(for: selectedMachine)
                         )
                     } else if let selectedMachine = model.selectedMachine {
                         HStack(spacing: 0) {
@@ -652,6 +653,7 @@ private struct MachineMetricDetail: View {
     let metric: OverviewMetric
     var namespace: Namespace.ID?
     let onBack: () -> Void
+    var onSignIn: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -688,7 +690,11 @@ private struct MachineMetricDetail: View {
 
             Divider()
 
-            MachineMetricDetailContent(machine: machine, metric: metric)
+            MachineMetricDetailContent(
+                machine: machine,
+                metric: metric,
+                onSignIn: onSignIn
+            )
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
@@ -708,19 +714,21 @@ private struct MachineMetricDetail: View {
 private struct MachineMetricDetailContent: View {
     let machine: MachineMonitorModel
     let metric: OverviewMetric
+    var onSignIn: (() -> Void)?
 
     var body: some View {
         switch metric {
-        case .cpu: MachineProcessPane(machine: machine)
-        case .memory: MachineMemoryPane(machine: machine)
-        case .disk: MachineStoragePane(machine: machine)
-        case .ai: MachineAgentPane(machine: machine)
+        case .cpu: MachineProcessPane(machine: machine, onSignIn: onSignIn)
+        case .memory: MachineMemoryPane(machine: machine, onSignIn: onSignIn)
+        case .disk: MachineStoragePane(machine: machine, onSignIn: onSignIn)
+        case .ai: MachineAgentPane(machine: machine, onSignIn: onSignIn)
         }
     }
 }
 
 private struct MachineProcessPane: View {
     let machine: MachineMonitorModel
+    var onSignIn: (() -> Void)?
 
     var body: some View {
         MetricDetailPane(
@@ -731,7 +739,8 @@ private struct MachineProcessPane: View {
                     Text($0 / 100, format: .percent.precision(.fractionLength(0)))
                 }
                 : nil,
-            emptyMessage: activities.isEmpty ? unavailableMessage(for: machine) : nil
+            emptyMessage: activities.isEmpty ? unavailableMessage(for: machine) : nil,
+            emptyAction: onSignIn
         ) {
             ForEach(Array(activities.enumerated()), id: \.offset) { _, activity in
                 MetricDetailRow(
@@ -780,6 +789,7 @@ private struct MachineProcessPane: View {
 
 private struct MachineMemoryPane: View {
     let machine: MachineMonitorModel
+    var onSignIn: (() -> Void)?
 
     var body: some View {
         MetricDetailPane(
@@ -788,7 +798,8 @@ private struct MachineMemoryPane: View {
             summary: machine.state == .live
                 ? machine.memoryPressure.map { Text($0.title) }
                 : nil,
-            emptyMessage: consumers.isEmpty ? unavailableMessage(for: machine) : nil
+            emptyMessage: consumers.isEmpty ? unavailableMessage(for: machine) : nil,
+            emptyAction: onSignIn
         ) {
             ForEach(consumers) { consumer in
                 MetricDetailRow(
@@ -847,6 +858,7 @@ private struct MachineMemoryPane: View {
 
 private struct MachineStoragePane: View {
     let machine: MachineMonitorModel
+    var onSignIn: (() -> Void)?
     /// One browser per volume, made when a volume is first opened. Kept here
     /// rather than in the machine model because it is view state: what someone
     /// has open, not anything about the machine.
@@ -863,7 +875,8 @@ private struct MachineStoragePane: View {
             summary: fullest.map {
                 Text($0 / 100, format: .percent.precision(.fractionLength(0)))
             },
-            emptyMessage: volumes.isEmpty ? unavailableMessage(for: machine) : nil
+            emptyMessage: volumes.isEmpty ? unavailableMessage(for: machine) : nil,
+            emptyAction: onSignIn
         ) {
             ForEach(volumes) { volume in
                 let browser = browser(for: volume)
@@ -1031,6 +1044,7 @@ private struct MachineStoragePane: View {
 
 private struct MachineAgentPane: View {
     let machine: MachineMonitorModel
+    var onSignIn: (() -> Void)?
 
     var body: some View {
         MetricDetailPane(
@@ -1038,7 +1052,8 @@ private struct MachineAgentPane: View {
             summary: sessions.isEmpty
                 ? nil
                 : Text("\(sessions.count { $0.state == .active }) active"),
-            emptyMessage: sessions.isEmpty ? agentEmptyMessage : nil
+            emptyMessage: sessions.isEmpty ? agentEmptyMessage : nil,
+            emptyAction: onSignIn
         ) {
             ForEach(sessions) { session in
                 MetricDetailRow(
@@ -1085,7 +1100,7 @@ private func unavailableMessage(
     // exactly which step.
     if machine.hasNeverConnected {
         return machine.isStorage
-            ? "Not connected \u{2014} sign in to DSM in Settings"
+            ? "Not connected \u{2014} sign in to DSM"
             : "Not connected yet"
     }
     switch machine.state {
