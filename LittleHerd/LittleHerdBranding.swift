@@ -15,12 +15,21 @@ enum LittleHerdLaunchSplashSession {
 /// The splash's geometry and timing, shared with the window chrome that frames
 /// it so the two cannot drift apart.
 enum LittleHerdSplashMetrics {
-    /// Read both by the splash view, which clips its own artwork, and by
-    /// `DashboardWindowBridge`, which rounds the window. Rounding in only one
-    /// of those places is what produced the pale fringe along the curve: the
-    /// layer mask antialiased the artwork against an opaque backing, and the
-    /// backing showed through as a halo hugging each corner.
-    static let cornerRadius: CGFloat = 26
+    /// Deliberately close to the radius macOS rounds a titled window at, and
+    /// not the 26 this used to be.
+    ///
+    /// The splash cannot be rounder than the frame it sits in. At 26 the window
+    /// frame's own lighter background showed through the crescent between the
+    /// two curves — a pale halo hugging every corner, measurable as a bright
+    /// band just outside the artwork and absent along the straight edges, which
+    /// is what identified it. Removing the frame for the splash does cure it,
+    /// and costs more than it saves: swapping `styleMask` replaces the window's
+    /// frame view, and the dashboard came back blank when the mask was restored.
+    /// Matching the frame instead leaves nothing to show through.
+    ///
+    /// Read by the splash view, which clips its own artwork, and by
+    /// `DashboardWindowBridge`, which rounds the window layer to the same value.
+    static let cornerRadius: CGFloat = 11
 
     /// How long the artwork takes to arrive.
     static let entranceDuration: Double = 0.42
