@@ -8,9 +8,9 @@ is not a destination. 378 tests pass.
 
 Watched in the running app on 20 August, not only rendered: the Settings
 checkbox ticks, persists into `machineConfigurationsV1`, survives a relaunch,
-and the AI panel's Destinations section appears under a waiting session. Doing
-that found two defects a green suite and seven renders had all missed — both
-are in the facts below.
+the AI panel's Destinations section appears under a waiting session, and a
+machine's AI page lists what it has installed. Doing that found four defects a
+green suite and eight renders had all missed — every one is in the facts below.
 
 Eight releases went out on 19 August. **Two of them — 0.1.30 and 0.1.31 — were
 published without the features their notes announced**, because a merge failed
@@ -463,14 +463,24 @@ every row and the "waiting" label said twice; the rule underneath all three is
 that information which does not distinguish one row from its neighbour is not
 information.
 
-**`claude --version` answers `2.1.234 (Claude Code)`, and every fixture had
-used a bare number.** Verified over ssh to the mini after the panel showed
-"Can host a session — Claude 2.1.234 (Claude Code)" wrapped onto two lines,
-saying the vendor's name twice. The version is now the first whitespace-
-delimited token, which leaves Codex's `0.148.0-alpha.15` whole. Nothing was
-wrong with the parsing rule; what was wrong was that the fixtures were written
-from the handoff's own version table rather than from the command's output.
-**When a fixture and a machine can disagree, run the command.**
+**No two agents print `--version` the same way, and the fixtures had invented
+a fourth shape.** Every one of these was measured by running the command:
+
+    claude  2.1.234 (Claude Code)                       number first
+    codex   codex-cli 0.148.0-alpha.15                  name first
+    codex   mise …/config.toml tools: codex@0.147.0     a shim's banner
+
+The first fix took the first token, which is right for Claude and gave a
+version column reading **`codex-cli`** for Codex — and then, since a token with
+no digits in it compares as zero, every real version in the herd looked newer
+than it and every Codex row claimed to be behind. The rule is the first token
+that *starts with a digit*; the shim's banner is stripped in the probe before
+that. Anything unparseable is passed through whole rather than dropped.
+
+Both halves of this were found by looking at the running app, and the same
+sentence covers both: the fixtures were written from this file's own version
+table rather than from the command's output. **When a fixture and a machine can
+disagree, run the command.**
 
 **A session outside a checkout has no destination, and the first version said
 it had three.** The panel names the repository the destination list is
@@ -482,6 +492,22 @@ question is not asked of anybody, so every account came back eligible for work
 that cannot travel at all. It now says "Not in a checkout" once, rather than
 either lying or vanishing — a section that silently disappears is the false
 silence this project keeps having to write tests against.
+
+**A pinned footer under `MetricDetailPane` does not work, and three attempts
+say so.** The installed-agents block wants to stay in view while the sessions
+scroll under it — on this Mac the AI pane has two dozen sessions, and anything
+below them is as invisible as it was before there was anywhere to put it. Every
+way of pinning it left the last line cut off by the window edge: stacked under
+the pane in a `VStack`, with `layoutPriority` on the footer, and moved inside
+the pane so its own `ScrollView` would yield (with `layoutPriority(-1)` on the
+scroll view). Raising the window from 330 to 362 did not help either — the
+clip moved with the window, so the scroll view grows to whatever it is given
+and the overflow is constant. Three views have to agree about height here:
+`MetricDetailPane`, the `maxHeight: .infinity, alignment: .top` frame around
+`MachineMetricDetailContent`, and the fixed `dashboardContentSize` table. The
+versions sit at the *top* of the scrolling list instead, which is visible on
+arrival and cost nothing. Reopen only with a way to test the layout that is
+cheaper than a build-and-look each time.
 
 **The installed 0.1.32 will quietly drop `mayHostSessionsPreference` if you run
 it.** Unknown keys do not fail a `Decodable`, so the older build reads a
@@ -778,8 +804,18 @@ it; the files survived only because the directory had not been reaped yet.
    `MachinePresentation` exists precisely because display decisions were pulled
    out of the view bodies.
 
-6. **Show each machine's agent versions.** Cheap, and skew is invisible today
-   while being the standing condition; see the facts above.
+6. **Agent versions are shown; the herd-level view of skew is not.**
+   A machine's AI page now lists what it has installed, above the sessions,
+   with the path it was found at and — when another account has a newer copy —
+   which one and what version. Skew is marked rather than announced, because
+   it is the standing condition rather than an incident.
+
+   What is still missing is seeing the herd at once. Today you learn that the
+   Air is on Codex `0.148.0-alpha.15` and the mini on `alpha.21` by visiting
+   two pages and remembering. That is enough to answer "is this machine
+   behind", which was the complaint; it is not enough to answer "how many
+   builds is this herd running". Worth doing only if the answer would change
+   something.
 
 7. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
    18 August. Show cloud work beside the machines (the Herdware set already

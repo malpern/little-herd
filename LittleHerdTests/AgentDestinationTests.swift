@@ -66,6 +66,14 @@ struct AgentDestinationTests {
             line("claude", "2.1.234 (Claude Code)", "/Users/clawd/.local/bin/claude")
         )
         #expect(try #require(installs.first).version == "2.1.234")
+        // Codex puts its name first, which is the opposite of Claude, and a
+        // first-token rule gave a version column reading "codex-cli".
+        #expect(
+            AgentInstallOutputParser.versionNumber(in: "codex-cli 0.148.0-alpha.15")
+                == "0.148.0-alpha.15"
+        )
+        // Nothing recognisable is passed through rather than dropped.
+        #expect(AgentInstallOutputParser.versionNumber(in: "unknown") == "unknown")
         // A pre-release number is one token and survives whole.
         #expect(
             AgentInstallOutputParser.versionNumber(in: "0.148.0-alpha.15")
@@ -407,5 +415,134 @@ struct CheckoutTests {
         #expect(CheckoutOutputParser.parse("checkout=\tnotbase64").isEmpty)
         #expect(CheckoutOutputParser.parse("something else").isEmpty)
         #expect(CheckoutOutputParser.parse("").isEmpty)
+    }
+}
+
+/// What each account has installed, set against the newest copy in the herd.
+struct AgentVersionReaderTests {
+    private func account(
+        _ id: String,
+        _ name: String,
+        _ installations: [AgentInstallation]?
+    ) -> DestinationAccount {
+        DestinationAccount(
+            machine: MachineID(id),
+            name: name,
+            symbolName: "macmini",
+            report: installations.map {
+                DestinationReport(installations: $0, checkouts: [:])
+            },
+            mayHostSessions: false
+        )
+    }
+
+    private func install(
+        _ provider: AgentTaskProvider,
+        _ version: String,
+        _ path: String = "/x"
+    ) -> AgentInstallation {
+        AgentInstallation(provider: provider, version: version, path: path)
+    }
+
+    /// The herd as measured on 19 August: Claude is the same everywhere and
+    /// Codex is three different builds. Only the copies that are behind get
+    /// marked — this is the standing condition, not an incident, so a herd-wide
+    /// announcement would be read once and never again.
+    private var herd: [DestinationAccount] {
+        [
+            account("air", "Air", [
+                install(.claude, "2.1.234"),
+                install(.codex, "0.148.0-alpha.15"),
+            ]),
+            account("mini", "Mini", [
+                install(.claude, "2.1.234"),
+                install(.codex, "0.148.0-alpha.9"),
+            ]),
+            account("linux", "Linux", [
+                install(.claude, "2.1.234"),
+                install(.codex, "0.147.0"),
+            ]),
+        ]
+    }
+
+    @Test
+    func acopyBehindTheHerdNamesWhatIsNewerAndWhere() throws {
+        let linux = AgentVersionReader.reports(
+            for: MachineID("linux"),
+            among: herd
+        )
+        #expect(linux.map(\.installation.provider) == [.claude, .codex])
+
+        let claude = try #require(linux.first { $0.id == "claude" })
+        #expect(claude.newer == nil, "the same version everywhere is not behind")
+
+        let codex = try #require(linux.first { $0.id == "codex" })
+        #expect(codex.newer?.version == "0.148.0-alpha.15")
+        #expect(codex.newer?.accountName == "Air")
+    }
+
+    /// The newest copy is not behind anything, and the middle one names the
+    /// newest rather than merely something newer than itself.
+    @Test
+    func theNewestNamesNobodyAndTheMiddleNamesTheNewest() throws {
+        let air = AgentVersionReader.reports(for: MachineID("air"), among: herd)
+        #expect(air.allSatisfy { $0.newer == nil })
+
+        let mini = AgentVersionReader.reports(for: MachineID("mini"), among: herd)
+        let codex = try #require(mini.first { $0.id == "codex" })
+        #expect(codex.newer?.accountName == "Air")
+    }
+
+    /// An account that has not reported has nothing to show, which is not the
+    /// same as having no agents — the pane says "not measured" rather than
+    /// listing an empty herd's worth of versions.
+    @Test
+    func anunmeasuredAccountReportsNothing() {
+        let accounts = [account("nas", "NAS", nil)] + herd
+        #expect(
+            AgentVersionReader.reports(
+                for: MachineID("nas"),
+                among: accounts
+            ).isEmpty
+        )
+        #expect(
+            AgentVersionReader.reports(
+                for: MachineID("unknown"),
+                among: accounts
+            ).isEmpty
+        )
+    }
+
+    /// An agent nobody else has is not behind anything.
+    @Test
+    func asoleInstallIsNotBehind() throws {
+        let alone = [
+            account("air", "Air", [install(.codex, "0.147.0")]),
+            account("mini", "Mini", [install(.claude, "2.1.234")]),
+        ]
+        let air = AgentVersionReader.reports(for: MachineID("air"), among: alone)
+        #expect(try #require(air.first).newer == nil)
+    }
+
+    /// The path says which copy answered, which matters here: no machine in
+    /// this herd has an agent on the PATH ssh sees, so where it was found is
+    /// the whole story. Folded back to ~ because the Mac one is five levels
+    /// inside "Application Support".
+    @Test
+    func thepathIsShownRelativeToHome() {
+        let report = AgentVersionReport(
+            installation: install(
+                .claude,
+                "2.1.234",
+                "/Users/clawd/.local/bin/claude"
+            ),
+            newer: nil
+        )
+        #expect(report.shortPath(home: "/Users/clawd") == "~/.local/bin/claude")
+        // A path outside the home directory is left exactly as measured.
+        #expect(
+            report.shortPath(home: "/Users/someone-else")
+                == "/Users/clawd/.local/bin/claude"
+        )
     }
 }

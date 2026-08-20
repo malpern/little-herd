@@ -62,16 +62,24 @@ nonisolated enum AgentInstallOutputParser {
 
     /// The number alone, out of whatever else the agent prints beside it.
     ///
-    /// Measured in the running app rather than in a fixture: `claude
-    /// --version` answers `2.1.234 (Claude Code)`, and the whole line reached
-    /// the panel, where "Can host a session — Claude 2.1.234 (Claude Code)"
-    /// wrapped onto a second line and said the vendor's name twice. The
-    /// fixtures had all used a bare number, so nothing caught it.
+    /// Every one of these was measured by running the command rather than read
+    /// off a table, and no two agree:
+    ///
+    ///     claude  2.1.234 (Claude Code)                       number first
+    ///     codex   codex-cli 0.148.0-alpha.15                  name first
+    ///     codex   mise …/config.toml tools: codex@0.147.0     a shim's banner
+    ///
+    /// The first version of this took the first token, which is right for
+    /// Claude and gives "codex-cli" for Codex — a version column reading
+    /// `codex-cli`, and a skew comparison that then found every real version
+    /// newer than it. So the rule is the first token that *starts with a
+    /// digit*, and the shim's banner is stripped in the probe before it gets
+    /// here. Anything unrecognisable is passed through whole rather than
+    /// dropped: a version nobody can parse is still worth showing.
     static func versionNumber(in raw: String) -> String {
-        String(
-            raw.trimmingCharacters(in: .whitespaces)
-                .prefix { !$0.isWhitespace }
-        )
+        let tokens = raw.split(whereSeparator: \.isWhitespace)
+        let numeric = tokens.first { $0.first?.isNumber == true }
+        return String(numeric ?? tokens.first ?? "")
     }
 
     /// Compared piece by piece as numbers, so 2.1.9 does not outrank 2.1.221 —
@@ -215,11 +223,11 @@ nonisolated struct DestinationReport: Equatable, Sendable {
     }
 }
 
-/// One account, as the destination question sees it.
+/// One account, as the herd-level questions see it.
 ///
-/// A destination is an account and not a machine: the home directory decides
-/// which repositories exist, the agent install is per-user, and so are the
-/// credentials. The mini has two accounts and they are not interchangeable.
+/// An account and not a machine: the home directory decides which repositories
+/// exist, the agent install is per-user, and so are the credentials. The mini
+/// has two accounts and they are not interchangeable.
 nonisolated struct DestinationAccount: Equatable, Identifiable, Sendable {
     let machine: MachineID
     let name: String
@@ -290,5 +298,106 @@ nonisolated enum DestinationRoster {
     /// and so is the fix.
     static func isEntirelyUnchosen(_ candidates: [DestinationCandidate]) -> Bool {
         !candidates.isEmpty && candidates.allSatisfy { $0.eligibility == .excluded }
+    }
+}
+
+/// One installed agent, set against the newest copy of it in the herd.
+///
+/// Version skew here is not an incident, it is the standing condition — Codex
+/// is three different builds across three machines and has been for as long as
+/// anyone has looked. So this marks the copies that are behind rather than
+/// announcing skew as news: a banner that is always lit is read once and never
+/// again, and the moment the difference matters is the moment you are looking
+/// at the machine it is on.
+nonisolated struct AgentVersionReport: Equatable, Identifiable, Sendable {
+    /// Where the newest copy in the herd is, when it is not this one.
+    nonisolated struct Newer: Equatable, Sendable {
+        let version: String
+        let accountName: String
+    }
+
+    let installation: AgentInstallation
+    let newer: Newer?
+
+    var id: String { installation.provider.rawValue }
+
+    /// The path, with the home directory folded back to `~`.
+    ///
+    /// Claude on a Mac lives five levels inside "Application Support" and the
+    /// full path is longer than this pane is wide; what the line is for is
+    /// saying *which* copy answered, and the tail carries that.
+    func shortPath(home: String = NSHomeDirectory()) -> String {
+        let path = installation.path
+        guard !home.isEmpty, path.hasPrefix(home) else { return path }
+        return "~" + path.dropFirst(home.count)
+    }
+}
+
+nonisolated enum AgentVersionReader {
+    /// What one account has installed, and which of it the herd has newer.
+    ///
+    /// Only what is installed here: an agent this account lacks entirely is a
+    /// different statement, and `DestinationEligibility` already makes it.
+    static func reports(
+        for account: MachineID,
+        among accounts: [DestinationAccount]
+    ) -> [AgentVersionReport] {
+        guard let mine = accounts.first(where: { $0.machine == account })?.report
+        else {
+            return []
+        }
+
+        return mine.installations
+            .sorted { $0.provider.rawValue < $1.provider.rawValue }
+            .map { installation in
+                AgentVersionReport(
+                    installation: installation,
+                    // Compared against the whole herd including this
+                    // account. Filtering itself out reads as the careful
+                    // thing and cannot change the answer — the comparison is
+                    // strict, so a version is never newer than itself — and a
+                    // guard that cannot bind still has to be understood by
+                    // everyone who reads it. Established by deleting it and
+                    // watching the suite stay green.
+                    newer: newest(
+                        of: installation.provider,
+                        beating: installation.version,
+                        among: accounts
+                    )
+                )
+            }
+    }
+
+    private static func newest(
+        of provider: AgentTaskProvider,
+        beating version: String,
+        among others: [DestinationAccount]
+    ) -> AgentVersionReport.Newer? {
+        var best: AgentVersionReport.Newer?
+        for other in others {
+            guard let candidate = other.report?.installations
+                .first(where: { $0.provider == provider })
+            else {
+                continue
+            }
+            guard AgentInstallOutputParser.isNewer(candidate.version, than: version)
+            else {
+                continue
+            }
+            // Ties keep the herd's order rather than the last one seen, so the
+            // line names the same machine on every sample.
+            if let current = best,
+               !AgentInstallOutputParser.isNewer(
+                   candidate.version,
+                   than: current.version
+               ) {
+                continue
+            }
+            best = AgentVersionReport.Newer(
+                version: candidate.version,
+                accountName: other.name
+            )
+        }
+        return best
     }
 }

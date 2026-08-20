@@ -74,6 +74,7 @@ struct DashboardView: View {
                         MachineMetricDetail(
                             machine: selectedMachine,
                             metric: model.overviewMetric,
+                            herd: model.machines.map(\.destinationAccount),
                             namespace: machineTransition,
                             onBack: { model.selection = .overview },
                             onSignIn: signInAction(for: selectedMachine)
@@ -709,6 +710,7 @@ private struct MachineDetailBar: View {
 private struct MachineMetricDetail: View {
     let machine: MachineMonitorModel
     let metric: OverviewMetric
+    var herd: [DestinationAccount] = []
     var namespace: Namespace.ID?
     let onBack: () -> Void
     var onSignIn: (() -> Void)?
@@ -751,6 +753,7 @@ private struct MachineMetricDetail: View {
             MachineMetricDetailContent(
                 machine: machine,
                 metric: metric,
+                herd: herd,
                 onSignIn: onSignIn
             )
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -772,6 +775,7 @@ private struct MachineMetricDetail: View {
 private struct MachineMetricDetailContent: View {
     let machine: MachineMonitorModel
     let metric: OverviewMetric
+    var herd: [DestinationAccount] = []
     var onSignIn: (() -> Void)?
 
     var body: some View {
@@ -779,7 +783,8 @@ private struct MachineMetricDetailContent: View {
         case .cpu: MachineProcessPane(machine: machine, onSignIn: onSignIn)
         case .memory: MachineMemoryPane(machine: machine, onSignIn: onSignIn)
         case .disk: MachineStoragePane(machine: machine, onSignIn: onSignIn)
-        case .ai: MachineAgentPane(machine: machine, onSignIn: onSignIn)
+        case .ai:
+            MachineAgentPane(machine: machine, herd: herd, onSignIn: onSignIn)
         }
     }
 }
@@ -1102,6 +1107,9 @@ private struct MachineStoragePane: View {
 
 private struct MachineAgentPane: View {
     let machine: MachineMonitorModel
+    /// The rest of the herd, so a version can be set against the newest copy
+    /// of itself. Skew is only visible in comparison.
+    var herd: [DestinationAccount] = []
     var onSignIn: (() -> Void)?
 
     var body: some View {
@@ -1113,38 +1121,120 @@ private struct MachineAgentPane: View {
             emptyMessage: sessions.isEmpty ? agentEmptyMessage : nil,
             emptyAction: onSignIn
         ) {
-            ForEach(sessions) { session in
-                MetricDetailRow(
-                    symbolName: "sparkles",
-                    tint: session.provider == .codex ? .green : .orange,
-                    // The same three things the overview panel shows, so a
-                    // session reads the same on both screens: its own name,
-                    // what it is doing, and how long since it moved.
-                    title: Text(session.displayTitle),
-                    subtitle: session.statusLine.map(Text.init),
-                    value: Text(AIAgentRow.compactAge(of: session.updatedAt))
-                )
-            }
+            MachineAgentRows(sessions: sessions, versions: versions)
         }
+    }
+
+    private var versions: [AgentVersionReport] {
+        AgentVersionReader.reports(for: machine.machine, among: herd)
     }
 
     private var sessions: [AgentSession] { machine.agentSessions }
-
-    private func sessionDetail(for session: AgentSession) -> String {
-        if let step = session.progress?.currentStep, !step.isEmpty {
-            return step
-        }
-        let elapsed = Date.now.timeIntervalSince(session.updatedAt)
-        guard elapsed >= 60 else { return "just now" }
-        return Duration.seconds(elapsed).formatted(
-            .units(allowed: [.hours, .minutes], width: .narrow)
-        ) + " ago"
-    }
 
     private var agentEmptyMessage: LocalizedStringResource {
         machine.state == .live
             ? "No recent agent sessions"
             : unavailableMessage(for: machine)
+    }
+}
+
+/// The pane's session rows, separated from the `ScrollView` that holds them.
+///
+/// Not a tidiness refactor, and the second time this project has needed it:
+/// `MetricDetailPane` scrolls, `ImageRenderer` does not lay out a `ScrollView`,
+/// and the first render of this pane produced a header over an empty box and
+/// reported success. Exactly what `AIAgentPanelContent` exists to avoid.
+struct MachineAgentRows: View {
+    let sessions: [AgentSession]
+    var versions: [AgentVersionReport] = []
+
+    /// The path most of the time, and what is newer when something is.
+    ///
+    /// Which copy answered is worth knowing — no machine in this herd has an
+    /// agent on the PATH ssh sees, so the absolute path is the whole story of
+    /// where it came from — but being behind the rest of the herd outranks it.
+    static func subtitle(for report: AgentVersionReport) -> String {
+        guard let newer = report.newer else { return report.shortPath() }
+        return "\(newer.accountName) has \(newer.version)"
+    }
+
+    var body: some View {
+        // What the machine has comes before what it is doing with it, and that
+        // order was chosen by looking rather than by taste. Underneath the
+        // list, on a Mac with twenty-four sessions, the versions were as
+        // invisible as they had been before there was anywhere to put them —
+        // which was the whole complaint. Pinning them below the scroll would
+        // be better still and is not worth what it costs: the pane, the window
+        // and the detail frame all have to agree about height, and three
+        // attempts at it each left the last line cut off by the window edge.
+        if !versions.isEmpty {
+            InstalledAgentsHeader()
+
+            ForEach(versions) { report in
+                MetricDetailRow(
+                    symbolName: "shippingbox",
+                    tint: report.installation.provider == .codex
+                        ? .green
+                        : .orange,
+                    title: Text(report.installation.providerName),
+                    subtitle: Text(Self.subtitle(for: report)),
+                    value: Text(report.installation.version)
+                )
+            }
+
+            if !sessions.isEmpty {
+                SessionsHeader()
+            }
+        }
+
+        ForEach(sessions) { session in
+            MetricDetailRow(
+                symbolName: "sparkles",
+                tint: session.provider == .codex ? .green : .orange,
+                // The same three things the overview panel shows, so a
+                // session reads the same on both screens: its own name, what
+                // it is doing, and how long since it moved.
+                title: Text(session.displayTitle),
+                subtitle: session.statusLine.map(Text.init),
+                value: Text(AIAgentRow.compactAge(of: session.updatedAt))
+            )
+        }
+    }
+}
+
+/// A word and a rule, so the two kinds of thing in this pane have a seam.
+///
+/// Version skew is the standing condition here rather than an incident — Codex
+/// has been three different builds across three machines for as long as anyone
+/// has looked — so a copy that is behind is named in the same grey as
+/// everything else, where you are already looking at that machine. A warning
+/// colour on a permanent condition is read once and then stops being read.
+private struct InstalledAgentsHeader: View {
+    var body: some View {
+        SeamHeader(title: "INSTALLED")
+    }
+}
+
+private struct SessionsHeader: View {
+    var body: some View {
+        SeamHeader(title: "SESSIONS")
+            .padding(.top, 2)
+    }
+}
+
+private struct SeamHeader: View {
+    let title: LocalizedStringResource
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .tracking(0.35)
+                .foregroundStyle(.tertiary)
+                .accessibilityAddTraits(.isHeader)
+
+            VStack { Divider() }
+        }
     }
 }
 

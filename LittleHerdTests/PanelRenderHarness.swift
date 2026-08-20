@@ -372,6 +372,125 @@ struct PanelRenderHarness {
         )
     }
 
+    /// A machine's own AI page, with what it has installed under what it is
+    /// doing. Rendered at the width the pane gets beside the identity column.
+    @Test
+    func renderMachineAgentPane() throws {
+        func machine(
+            _ id: String,
+            _ name: String,
+            installations: [AgentInstallation],
+            sessions: [AgentSession]
+        ) -> MachineMonitorModel {
+            let model = MachineMonitorModel(
+                configuration: MachineConfiguration(
+                    id: MachineID(id),
+                    name: name,
+                    shortName: name,
+                    hostname: id,
+                    hardwareSummary: "",
+                    platform: .linux,
+                    connection: .ssh,
+                    avatar: .rabbitNUC,
+                    identityFile: nil,
+                    serverNames: [],
+                    supportsGPU: false
+                )
+            )
+            model.apply(
+                SystemSnapshot(
+                    timestamp: .now,
+                    readings: [:],
+                    agentSessions: sessions,
+                    destination: DestinationReport(
+                        installations: installations,
+                        checkouts: [:]
+                    )
+                )
+            )
+            return model
+        }
+
+        func install(
+            _ provider: AgentTaskProvider,
+            _ version: String,
+            _ path: String
+        ) -> AgentInstallation {
+            AgentInstallation(provider: provider, version: version, path: path)
+        }
+
+        let linux = machine(
+            "linux",
+            "Linux",
+            installations: [
+                install(.claude, "2.1.234", "\(NSHomeDirectory())/.local/bin/claude"),
+                install(.codex, "0.147.0", "\(NSHomeDirectory())/.local/bin/codex"),
+            ],
+            sessions: [
+                AgentSession(
+                    id: "claude:aa11",
+                    provider: .claude,
+                    projectName: "dotfiles",
+                    state: .active,
+                    updatedAt: .now.addingTimeInterval(-120),
+                    progress: nil,
+                    title: "Clevis TPM auto-unlock"
+                ),
+            ]
+        )
+
+        let herd: [DestinationAccount] = [
+            DestinationAccount(
+                machine: MachineID("air"),
+                name: "Air",
+                symbolName: "laptopcomputer",
+                report: DestinationReport(
+                    installations: [
+                        install(.claude, "2.1.234", "/a"),
+                        install(.codex, "0.148.0-alpha.15", "/a"),
+                    ],
+                    checkouts: [:]
+                ),
+                mayHostSessions: false
+            ),
+            linux.destinationAccount,
+        ]
+
+        let reports = AgentVersionReader.reports(
+            for: linux.machine,
+            among: herd
+        )
+
+        // The pane's rows at the width they get beside the identity column.
+        try render(
+            VStack(alignment: .leading, spacing: 6) {
+                MachineAgentRows(
+                    sessions: linux.agentSessions,
+                    versions: reports
+                )
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12),
+            size: CGSize(width: 324, height: 190),
+            named: "machine-agent-pane"
+        )
+
+        // A machine with no sessions at all is the one whose versions you came
+        // to read, and it still shows them: the pane's empty message is keyed
+        // on the sessions alone, and an earlier version hid everything.
+        try render(
+            VStack(alignment: .leading, spacing: 6) {
+                MachineAgentRows(sessions: [], versions: reports)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12),
+            size: CGSize(width: 324, height: 190),
+            named: "machine-agent-pane-idle"
+        )
+    }
+
     @Test
     func renderAgentPanelEmpty() throws {
         try render(
