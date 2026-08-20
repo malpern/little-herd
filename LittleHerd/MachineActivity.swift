@@ -1184,7 +1184,11 @@ nonisolated enum AgentTaskProbe {
                     to: AgentSessionOutputParser.parse(output)
                 )
             ),
-            codexUsage: AgentUsageOutputParser.parse(output)
+            codexUsage: AgentUsageOutputParser.parse(output),
+            destination: DestinationReport(
+                installations: AgentInstallOutputParser.parse(output),
+                checkouts: CheckoutOutputParser.parse(output)
+            )
         )
         logger.debug(
             "Task metadata probe found \(snapshot.sessions.count) sessions"

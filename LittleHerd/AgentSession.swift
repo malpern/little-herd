@@ -577,15 +577,21 @@ nonisolated struct AgentProbeSnapshot: Equatable, Sendable {
     let sessions: [AgentSession]
     /// What this machine last saw of the Codex account's limits.
     let codexUsage: AIUsageLimit?
+    /// What this account can run and which repositories it has. Nil when the
+    /// probe did not run, which is not the same as an account that has
+    /// nothing.
+    let destination: DestinationReport?
 
     init(
         tasksByProvider: [AgentTaskProvider: AgentTaskSummary],
         sessions: [AgentSession],
-        codexUsage: AIUsageLimit? = nil
+        codexUsage: AIUsageLimit? = nil,
+        destination: DestinationReport? = nil
     ) {
         self.tasksByProvider = tasksByProvider
         self.sessions = sessions
         self.codexUsage = codexUsage
+        self.destination = destination
     }
 
     static let empty = AgentProbeSnapshot(tasksByProvider: [:], sessions: [])

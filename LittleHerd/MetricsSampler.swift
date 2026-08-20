@@ -230,6 +230,10 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
     /// runs `emailtriage` twice a day; this Mac runs Codex when someone opens
     /// it. The freshest copy wins, wherever it was found.
     let codexUsage: AIUsageLimit?
+    /// What this account can run and which repositories it has, once the
+    /// probe has answered. Nil for a machine Little Herd runs no probe on — a
+    /// NAS reached through DSM — and nil is not the same as nothing.
+    let destination: DestinationReport?
 
     init(
         timestamp: Date,
@@ -241,7 +245,8 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
         memoryConsumers: [MemoryConsumer] = [],
         drives: [SynologyDrive] = [],
         coreCount: Int? = nil,
-        codexUsage: AIUsageLimit? = nil
+        codexUsage: AIUsageLimit? = nil,
+        destination: DestinationReport? = nil
     ) {
         self.timestamp = timestamp
         self.readings = readings
@@ -253,6 +258,7 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
         self.drives = drives
         self.coreCount = coreCount
         self.codexUsage = codexUsage
+        self.destination = destination
     }
 }
 
@@ -262,6 +268,7 @@ actor MetricsSampler {
         let memoryConsumers: [MemoryConsumer]
         let agentSessions: [AgentSession]
         var codexUsage: AIUsageLimit?
+        var destination: DestinationReport?
     }
 
     private struct CPUCounters: Sendable {
@@ -283,6 +290,7 @@ actor MetricsSampler {
     private var cachedAgentTasks: [AgentTaskProvider: AgentTaskSummary] = [:]
     private var cachedAgentSessions: [AgentSession] = []
     private var cachedCodexUsage: AIUsageLimit?
+    private var cachedDestination: DestinationReport?
     private var previousAgentTaskTimestamp: ContinuousClock.Instant?
     private let clock = ContinuousClock()
 
@@ -330,7 +338,8 @@ actor MetricsSampler {
             memoryPressure: memoryPressure,
             memoryConsumers: processHighlights.memoryConsumers,
             coreCount: ProcessInfo.processInfo.activeProcessorCount,
-            codexUsage: processHighlights.codexUsage
+            codexUsage: processHighlights.codexUsage,
+            destination: processHighlights.destination
         )
     }
 
@@ -340,7 +349,8 @@ actor MetricsSampler {
             activities: cachedActivities,
             memoryConsumers: cachedMemoryConsumers,
             agentSessions: cachedAgentSessions,
-            codexUsage: cachedCodexUsage
+            codexUsage: cachedCodexUsage,
+            destination: cachedDestination
         )
 
         if let previousActivityTimestamp,
@@ -373,6 +383,7 @@ actor MetricsSampler {
             // Kept even when nil is returned, so a probe that ran while no
             // rollout carried a limit does not erase a reading taken earlier.
             if let usage = agentSnapshot.codexUsage { cachedCodexUsage = usage }
+            cachedDestination = agentSnapshot.destination
             previousAgentTaskTimestamp = now
         }
 
@@ -400,7 +411,8 @@ actor MetricsSampler {
             activities: cachedActivities,
             memoryConsumers: cachedMemoryConsumers,
             agentSessions: cachedAgentSessions,
-            codexUsage: cachedCodexUsage
+            codexUsage: cachedCodexUsage,
+            destination: cachedDestination
         )
     }
 

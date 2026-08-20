@@ -56,6 +56,17 @@ struct AgentDestinationTests {
         )
     }
 
+    private func report(
+        _ installations: [AgentInstallation] = [],
+        checkouts: [String: String] = [:]
+    ) -> DestinationReport {
+        DestinationReport(installations: installations, checkouts: checkouts)
+    }
+
+    private var claude: AgentInstallation {
+        AgentInstallation(provider: .claude, version: "2.1.234", path: "/x")
+    }
+
     /// A machine you have said no to reads as excluded, not as a list of what
     /// it lacks. Both may be true; only one is the reason, and the other would
     /// invite someone to fix a machine they had already decided about.
@@ -63,12 +74,43 @@ struct AgentDestinationTests {
     func intentIsReportedBeforeCapability() {
         #expect(
             DestinationEligibility.resolve(
-                installations: [],
-                hasGit: false,
-                isAllowed: false,
-                hasReported: true
+                report: report(),
+                repository: "little-herd",
+                isAllowed: false
             ) == .excluded
         )
+    }
+
+    /// Off unless chosen, and chosen is a thing the herd remembers.
+    @Test
+    func hostingIsOffUntilItIsTurnedOn() {
+        var machine = MachineConfiguration.local()
+        #expect(!machine.mayHostSessions)
+        machine.mayHostSessions = true
+        #expect(machine.mayHostSessions)
+        #expect(machine.mayHostSessionsPreference == true)
+    }
+
+    /// A machine saved before this setting existed still decodes.
+    ///
+    /// The store reads the herd entry by entry and keeps out whatever it
+    /// cannot decode, so a required key here would have emptied a saved herd
+    /// on the first launch after an update. Swift's synthesised decoder does
+    /// not consult a property's default value, so this is not free.
+    @Test
+    func amachineSavedBeforeTheSettingExistedStillDecodes() throws {
+        let saved = try JSONEncoder().encode(MachineConfiguration.local())
+        var fields = try #require(
+            try JSONSerialization.jsonObject(with: saved) as? [String: Any]
+        )
+        fields.removeValue(forKey: "mayHostSessionsPreference")
+        let older = try JSONSerialization.data(withJSONObject: fields)
+
+        let decoded = try JSONDecoder().decode(
+            MachineConfiguration.self,
+            from: older
+        )
+        #expect(!decoded.mayHostSessions)
     }
 
     /// Each missing piece is named, because they have different fixes — the
@@ -78,51 +120,224 @@ struct AgentDestinationTests {
     func eachMissingPieceIsNamedSeparately() {
         #expect(
             DestinationEligibility.resolve(
-                installations: [],
-                hasGit: true,
-                isAllowed: true,
-                hasReported: true
+                report: report(checkouts: ["little-herd": "/w"]),
+                repository: "little-herd",
+                isAllowed: true
             ) == .noAgent
         )
         #expect(
             DestinationEligibility.resolve(
-                installations: [
-                    AgentInstallation(provider: .claude, version: "2.1.234", path: "/x"),
-                ],
-                hasGit: false,
-                isAllowed: true,
-                hasReported: true
-            ) == .noGit
+                report: report([claude], checkouts: ["add-secret": "/a"]),
+                repository: "little-herd",
+                isAllowed: true
+            ) == .noCheckout(repository: "little-herd")
+        )
+    }
+
+    /// The measurement the checkout probe exists for: on 19 August the mini
+    /// had seven repositories and Little Herd was not one of them, so it could
+    /// run the agent and still not take this work. An eligibility check that
+    /// stopped at the agent would have offered it.
+    @Test
+    func anagentIsNotEnoughWithoutTheRepository() {
+        let mini = report(
+            [claude],
+            checkouts: [
+                "add-secret": "/Users/clawd/local-code/add-secret",
+                "imsg": "/Users/clawd/local-code/imsg",
+            ]
+        )
+        #expect(
+            !DestinationEligibility.resolve(
+                report: mini,
+                repository: "little-herd",
+                isAllowed: true
+            ).isEligible
+        )
+        #expect(
+            DestinationEligibility.resolve(
+                report: mini,
+                repository: "add-secret",
+                isAllowed: true
+            ).isEligible
         )
     }
 
     /// Never asked is not the same as answered no. A machine that has not
-    /// reported yet must not read as ineligible.
+    /// reported yet must not read as ineligible — and an account that *was*
+    /// asked and has nothing is a real measurement, not an absent one.
     @Test
-    func anUnmeasuredMachineIsNotCalledIneligible() {
-        let eligibility = DestinationEligibility.resolve(
-            installations: [],
-            hasGit: false,
-            isAllowed: true,
-            hasReported: false
+    func anunmeasuredMachineIsNotCalledIneligible() {
+        let unmeasured = DestinationEligibility.resolve(
+            report: nil,
+            repository: "little-herd",
+            isAllowed: true
         )
-        #expect(eligibility == .unknown)
-        #expect(!eligibility.isEligible)
-        #expect(eligibility.detail == "Not measured yet.")
+        #expect(unmeasured == .unknown)
+        #expect(!unmeasured.isEligible)
+        #expect(unmeasured.detail == "Not measured yet.")
+
+        #expect(
+            DestinationEligibility.resolve(
+                report: report(),
+                repository: "little-herd",
+                isAllowed: true
+            ) == .noAgent
+        )
+    }
+
+    /// Settings has no session in front of it, so it asks about the account
+    /// alone — and must not manufacture a repository complaint out of that.
+    @Test
+    func noRepositoryMeansTheCheckoutQuestionIsNotAsked() {
+        #expect(
+            DestinationEligibility.resolve(
+                report: report([claude]),
+                repository: nil,
+                isAllowed: true
+            ) == .eligible(claude)
+        )
     }
 
     @Test
-    func acapableAllowedMachineNamesWhatItWouldRun() throws {
+    func acapableAllowedMachineNamesWhatItWouldRun() {
         let eligibility = DestinationEligibility.resolve(
-            installations: [
-                AgentInstallation(provider: .claude, version: "2.1.234", path: "/x"),
-            ],
-            hasGit: true,
-            isAllowed: true,
-            hasReported: true
+            report: report([claude], checkouts: ["little-herd": "/w"]),
+            repository: "little-herd",
+            isAllowed: true
         )
         #expect(eligibility.isEligible)
-        #expect(eligibility.detail.contains("2.1.234"))
+        #expect(eligibility.detail == "Can host a session — Claude 2.1.234")
+    }
+
+    /// The newest agent is the one a transfer would start, so it is the one
+    /// the row names.
+    @Test
+    func theReportNamesItsNewestAgent() throws {
+        let report = report([
+            AgentInstallation(provider: .claude, version: "2.1.221", path: "/old"),
+            AgentInstallation(provider: .claude, version: "2.1.234", path: "/new"),
+        ])
+        #expect(try #require(report.bestInstallation).path == "/new")
+    }
+}
+
+/// Where a parked session could go, and why the rest of the herd could not.
+struct DestinationRosterTests {
+    private func account(
+        _ id: String,
+        allowed: Bool,
+        report: DestinationReport?
+    ) -> DestinationAccount {
+        DestinationAccount(
+            machine: MachineID(id),
+            name: id,
+            symbolName: "macmini",
+            report: report,
+            mayHostSessions: allowed
+        )
+    }
+
+    private var claude: AgentInstallation {
+        AgentInstallation(provider: .claude, version: "2.1.234", path: "/x")
+    }
+
+    /// The account the work is already on is not a destination for itself.
+    @Test
+    func theOriginIsNotOfferedAsItsOwnDestination() {
+        let candidates = DestinationRoster.candidates(
+            among: [
+                account("air", allowed: true, report: DestinationReport(
+                    installations: [claude],
+                    checkouts: ["little-herd": "/l"]
+                )),
+                account("mini", allowed: true, report: DestinationReport(
+                    installations: [claude],
+                    checkouts: [:]
+                )),
+            ],
+            forRepository: "little-herd",
+            excluding: MachineID("air")
+        )
+        #expect(candidates.map(\.id) == [MachineID("mini")])
+    }
+
+    /// Somewhere the work could go leads; the reasons the others could not are
+    /// the answer to a second question. Ties keep the herd's order, so the
+    /// list does not rearrange itself between samples.
+    @Test
+    func somewhereItCouldGoComesFirst() {
+        let candidates = DestinationRoster.candidates(
+            among: [
+                account("mini", allowed: false, report: nil),
+                account("linux", allowed: true, report: DestinationReport(
+                    installations: [claude],
+                    checkouts: [:]
+                )),
+                account("studio", allowed: true, report: DestinationReport(
+                    installations: [claude],
+                    checkouts: ["little-herd": "/l"]
+                )),
+            ],
+            forRepository: "little-herd",
+            excluding: nil
+        )
+        #expect(
+            candidates.map(\.id) == [
+                MachineID("studio"), MachineID("mini"), MachineID("linux"),
+            ]
+        )
+        #expect(candidates[0].eligibility == .eligible(claude))
+        #expect(candidates[1].eligibility == .excluded)
+        #expect(
+            candidates[2].eligibility == .noCheckout(repository: "little-herd")
+        )
+    }
+
+    /// Before anyone has chosen a destination every row says the same
+    /// sentence, and a column that repeats itself is a column people stop
+    /// reading. Caught in a render, not by a test — the rule is here so it
+    /// stays caught.
+    @Test
+    func alistThatWouldRepeatItselfIsSaidOnce() {
+        let untouched = DestinationRoster.candidates(
+            among: [
+                account("mini", allowed: false, report: nil),
+                account("linux", allowed: false, report: nil),
+                account("nas", allowed: false, report: nil),
+            ],
+            forRepository: "little-herd",
+            excluding: nil
+        )
+        #expect(DestinationRoster.isEntirelyUnchosen(untouched))
+
+        // One machine turned on is enough to make the rows differ, and then
+        // every reason is worth its own line again.
+        let mixed = DestinationRoster.candidates(
+            among: [
+                account("mini", allowed: false, report: nil),
+                account("linux", allowed: true, report: DestinationReport(
+                    installations: [claude],
+                    checkouts: [:]
+                )),
+            ],
+            forRepository: "little-herd",
+            excluding: nil
+        )
+        #expect(!DestinationRoster.isEntirelyUnchosen(mixed))
+        #expect(!DestinationRoster.isEntirelyUnchosen([]))
+    }
+
+    /// A herd of one has nothing to say, and says nothing.
+    @Test
+    func aherdOfOneOffersNothing() {
+        #expect(
+            DestinationRoster.candidates(
+                among: [account("air", allowed: true, report: nil)],
+                forRepository: "little-herd",
+                excluding: MachineID("air")
+            ).isEmpty
+        )
     }
 }
 

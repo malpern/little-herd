@@ -115,6 +115,7 @@ struct LittleHerdApp: App {
         Settings {
             LittleHerdSettingsView(
                 machineStore: machineStore,
+                model: model,
                 onConfigurationsChanged: model.applyConfigurations
             )
         }
@@ -497,6 +498,10 @@ private struct MenuBarMachineRow: View {
 
 private struct LittleHerdSettingsView: View {
     let machineStore: MachineConfigurationStore
+    /// Read only for what each account has been measured to be capable of, so
+    /// the checkbox can be set against what turning it on would actually get
+    /// you.
+    let model: MonitorModel
     let onConfigurationsChanged: ([MachineConfiguration]) -> Void
     @Environment(\.openWindow) private var openWindow
     @AppStorage(LittleHerdPreferences.menuBarEnabledKey)
@@ -561,7 +566,7 @@ private struct LittleHerdSettingsView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Machines")
                         .font(.body.weight(.medium))
-                    Text("\(machineStore.machines.count) saved. Drag to reorder; this is the order they appear in everywhere.")
+                    Text("\(machineStore.machines.count) saved. Drag to reorder; this is the order they appear in everywhere. Tick a machine to let a session be moved onto it.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -590,6 +595,8 @@ private struct LittleHerdSettingsView: View {
                         onRemove: { remove(machine.id) },
                         onConnect: { configuringNAS = machine },
                         onMove: { move(machine.id, by: $0) },
+                        capability: capability(of: machine.id),
+                        onSetHosting: { setHosting(machine.id, to: $0) },
                         credentialsRevision: credentialsRevision
                     )
                     .listRowInsets(
@@ -625,6 +632,35 @@ private struct LittleHerdSettingsView: View {
         onConfigurationsChanged(machineStore.machines)
     }
 
+    /// What this account could do *if* it were allowed to, which is the
+    /// question a checkbox that is currently off raises. Asking with the
+    /// preference itself would only answer "you have not ticked it", which the
+    /// checkbox already says.
+    private func capability(of machineID: MachineID) -> DestinationEligibility {
+        guard let machine = model.diskMachines
+            .first(where: { $0.machine == machineID })
+        else {
+            return .unknown
+        }
+        return DestinationEligibility.resolve(
+            report: machine.destinationReport,
+            repository: nil,
+            isAllowed: true
+        )
+    }
+
+    private func setHosting(_ machineID: MachineID, to mayHost: Bool) {
+        guard var machine = machineStore.machines
+            .first(where: { $0.id == machineID }),
+            machine.mayHostSessions != mayHost
+        else {
+            return
+        }
+        machine.mayHostSessions = mayHost
+        machineStore.update(machine)
+        onConfigurationsChanged(machineStore.machines)
+    }
+
     private func position(of machineID: MachineID) -> ListPosition {
         guard let index = machineStore.machines
             .firstIndex(where: { $0.id == machineID })
@@ -653,6 +689,69 @@ private struct LittleHerdSettingsView: View {
             toOffset: destination
         )
         onConfigurationsChanged(machineStore.machines)
+    }
+}
+
+/// Whether a session may be moved onto this account, and the caveat when the
+/// answer would not work.
+///
+/// Off by default and for every machine, because the two mistakes are not
+/// equally cheap: a machine wrongly offered invites work to be moved somewhere
+/// it will fail, and a machine wrongly withheld costs one click here.
+///
+/// The caveat appears only when it contradicts the tick. Saying "Can host a
+/// session" beside every ticked machine would be a label nobody reads by the
+/// third row, and the one row that needed reading would look like the rest.
+struct DestinationCheckbox: View {
+    let machineName: String
+    let isOn: Bool
+    let capability: DestinationEligibility
+    let onChange: (Bool) -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if isOn, let caveat {
+                Text(caveat)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .lineLimit(1)
+            }
+
+            Toggle(
+                "",
+                isOn: Binding(get: { isOn }, set: onChange)
+            )
+            .labelsHidden()
+            .toggleStyle(.checkbox)
+            .frame(width: 16, alignment: .trailing)
+            .help(help)
+            .accessibilityLabel("Let a session be moved onto \(machineName)")
+            .accessibilityValue(Text(capability.detail))
+        }
+    }
+
+    /// The short form, for a row with a name and a hostname already in it.
+    private var caveat: String? {
+        switch capability {
+        case .noAgent: "No agent"
+        case .unknown: "Not measured"
+        // A repository is not asked about here — Settings has no session in
+        // front of it — and an eligible account needs no remark.
+        case .eligible, .excluded, .noCheckout: nil
+        }
+    }
+
+    private var help: String {
+        switch capability {
+        case .eligible(let install):
+            "Sessions may be moved onto \(machineName), which has \(install.providerName) \(install.version) at \(install.path)."
+        case .noAgent:
+            "\(machineName) has no agent Little Herd can run, so a session moved there would have nothing to run in."
+        case .unknown:
+            "Little Herd has not measured \(machineName) yet — it runs no probe on a NAS, and a machine it cannot reach has not answered."
+        case .excluded, .noCheckout:
+            "Let a session be moved onto \(machineName)."
+        }
     }
 }
 
@@ -754,7 +853,10 @@ private struct DragGrip: View {
     }
 }
 
-private struct SettingsMachineRow: View {
+/// Not private, and not a tidiness slip: `ImageRenderer` cannot lay out the
+/// `List` this sits in, so the render harness reaches for the row itself. The
+/// same reason `AIAgentPanelContent` is separated from its `ScrollView`.
+struct SettingsMachineRow: View {
     let machine: MachineConfiguration
     let canRemove: Bool
     let isReorderable: Bool
@@ -762,12 +864,21 @@ private struct SettingsMachineRow: View {
     let onRemove: () -> Void
     let onConnect: () -> Void
     let onMove: (Int) -> Void
+    /// What this account could host if it were allowed to. The checkbox
+    /// carries the choice; this carries what the choice would get you, which
+    /// is not the same question and has a different answer on two of this
+    /// herd's machines.
+    let capability: DestinationEligibility
+    let onSetHosting: (Bool) -> Void
     /// Read so that saving a password redraws this row. The keychain is not
     /// observable, so without it the label can outlive the thing it describes.
     let credentialsRevision: Int
 
     @State private var isHovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Wide enough for "This Mac", which is the longest thing that goes here.
+    static let trailingSlotWidth: CGFloat = 54
 
     /// What the row can honestly claim.
     ///
@@ -861,19 +972,33 @@ private struct SettingsMachineRow: View {
                     .help(signInState.help)
             }
 
-            if canRemove {
-                Button(action: onRemove) {
-                    Image(systemName: "minus.circle")
-                        .foregroundStyle(.secondary)
+            DestinationCheckbox(
+                machineName: machine.name,
+                isOn: machine.mayHostSessions,
+                capability: capability,
+                onChange: onSetHosting
+            )
+
+            // Both trailing controls share one slot, and the checkbox before
+            // them has a fixed one, so the column of ticks runs straight down
+            // the list. Left to size themselves, they drifted with whatever
+            // text happened to sit to their left — four rows, four positions.
+            Group {
+                if canRemove {
+                    Button(action: onRemove) {
+                        Image(systemName: "minus.circle")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Remove \(machine.name) from the herd")
+                    .accessibilityLabel("Remove \(machine.name)")
+                } else {
+                    Text("This Mac")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
-                .buttonStyle(.borderless)
-                .help("Remove \(machine.name) from the herd")
-                .accessibilityLabel("Remove \(machine.name)")
-            } else {
-                Text("This Mac")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
             }
+            .frame(width: Self.trailingSlotWidth, alignment: .trailing)
         }
         .frame(height: 36)
         // A row that lights up under the pointer is the other half of saying it

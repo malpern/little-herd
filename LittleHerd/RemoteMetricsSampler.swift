@@ -261,6 +261,7 @@ actor RemoteMetricsSampler {
     private var previousNetworkTimestamp: ContinuousClock.Instant?
     private var cachedAgentTasks: [AgentTaskProvider: AgentTaskSummary] = [:]
     private var cachedAgentSessions: [AgentSession] = []
+    private var cachedDestination: DestinationReport?
     private var previousAgentTaskTimestamp: ContinuousClock.Instant?
     private let clock = ContinuousClock()
 
@@ -331,6 +332,10 @@ actor RemoteMetricsSampler {
                     processes: AgentProcessOutputParser.parse(output),
                     to: AgentSessionOutputParser.parse(output)
                 )
+            )
+            cachedDestination = DestinationReport(
+                installations: AgentInstallOutputParser.parse(output),
+                checkouts: CheckoutOutputParser.parse(output)
             )
             previousAgentTaskTimestamp = now
         }
@@ -405,7 +410,8 @@ actor RemoteMetricsSampler {
             storageVolumes: storageVolumes,
             memoryPressure: memoryPressure,
             memoryConsumers: RemoteOutputParser.parseMemoryConsumers(output),
-            coreCount: raw["cores"]?.first.map { Int($0) }
+            coreCount: raw["cores"]?.first.map { Int($0) },
+            destination: cachedDestination
         )
     }
 

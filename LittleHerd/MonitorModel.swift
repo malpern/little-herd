@@ -227,6 +227,14 @@ final class MonitorModel {
 
     func applyConfigurations(_ configurations: [MachineConfiguration]) {
         guard !configurations.isEmpty else { return }
+        // A destination preference changes nothing about how a machine is
+        // measured, so it must not cost a rebuild. Tearing every sampler down
+        // and starting it again would blank the dashboard for a sampling
+        // interval and reset the alert center — a startling amount of damage
+        // for a checkbox, and it would clear the very readings the checkbox is
+        // there to be judged against.
+        if applyHostingPreferencesOnly(configurations) { return }
+
         let shouldRestart = !activeSurfaces.isEmpty
         stop()
         alerts.reset()
@@ -237,6 +245,40 @@ final class MonitorModel {
             selection = .overview
         }
         if shouldRestart { start() }
+    }
+
+    /// Applies a change that is *only* a change of destination preferences,
+    /// and says whether that is what this was.
+    ///
+    /// Deliberately conservative: anything else about the herd differing —
+    /// order, names, a machine added or removed — falls through to the full
+    /// rebuild, because getting that wrong means a machine quietly monitored
+    /// under stale settings.
+    private func applyHostingPreferencesOnly(
+        _ configurations: [MachineConfiguration]
+    ) -> Bool {
+        guard configurations.count == self.configurations.count else {
+            return false
+        }
+        let pairs = zip(self.configurations, configurations)
+        let differsOnlyInIntent = pairs.allSatisfy { current, updated in
+            var normalized = updated
+            normalized.mayHostSessionsPreference =
+                current.mayHostSessionsPreference
+            return normalized == current
+        }
+        guard differsOnlyInIntent else { return false }
+
+        self.configurations = configurations
+        let intent = Dictionary(
+            configurations.map { ($0.id, $0.mayHostSessions) },
+            uniquingKeysWith: { _, latest in latest }
+        )
+        for model in diskMachines {
+            guard let mayHost = intent[model.machine] else { continue }
+            model.setMayHostSessions(mayHost)
+        }
+        return true
     }
 
     func activate(_ surface: MonitorSurface) {

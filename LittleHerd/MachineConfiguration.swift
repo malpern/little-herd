@@ -48,6 +48,32 @@ nonisolated struct MachineConfiguration: Codable, Equatable, Identifiable,
     /// trust that certificate. See `SynologyTrustEvaluator`.
     var dsmCertificateFingerprint: String?
 
+    /// Whether a session may be moved onto this account.
+    ///
+    /// Stored as an optional so that a machine saved before this setting
+    /// existed still decodes. The store reads the herd entry by entry and
+    /// keeps out whatever it cannot decode, so a new non-optional key would
+    /// have emptied everyone's saved herd on the first launch after an update.
+    /// Measured rather than assumed: a non-optional `Bool` with a default
+    /// value in its declaration *still* throws on a missing key, because
+    /// Swift's synthesised decoder never consults the default.
+    ///
+    /// Read through `mayHostSessions`, which is the question the rest of the
+    /// app asks.
+    var mayHostSessionsPreference: Bool?
+
+    /// Intent, and only intent.
+    ///
+    /// Off until someone says otherwise, because the consequence of a wrong
+    /// answer is not symmetric: a machine wrongly offered as a destination
+    /// invites work to be moved somewhere it will fail, and a machine wrongly
+    /// withheld costs one toggle. Whether the machine *could* host anything is
+    /// a separate, measured question — see `DestinationEligibility`.
+    var mayHostSessions: Bool {
+        get { mayHostSessionsPreference ?? false }
+        set { mayHostSessionsPreference = newValue }
+    }
+
     var isStorage: Bool {
         connection == .smb || connection == .dsm || platform == .storage
     }

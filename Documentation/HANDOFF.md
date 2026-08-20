@@ -1,8 +1,16 @@
 # Little Herd — handoff
 
 **State:** `v0.1.32` is released, installed in `/Applications`, and running.
-Two commits sit ahead of it on `claude/roadmap-3-4-6`: the destination-capability
-probe and the checkout probe. 367 tests pass.
+`claude/destination-eligibility-18b608` sits ahead of it with roadmap item 3
+finished: the destination-capability probe, the checkout probe, the per-account
+"may host a session" setting, and the interface that says which reason a machine
+is not a destination. 378 tests pass.
+
+**Not yet seen in the running app.** The Settings pane's new checkbox column has
+been rendered but not clicked: permission to drive the app was declined, so
+nobody has watched a toggle persist, survive a relaunch, or reach the AI panel.
+Do that before releasing — this project has shipped a dormant feature before,
+and it was a launch that revealed it rather than a suite.
 
 Eight releases went out on 19 August. **Two of them — 0.1.30 and 0.1.31 — were
 published without the features their notes announced**, because a merge failed
@@ -22,12 +30,16 @@ context ring drawn in `.secondary`, the same tone as its own track; and two
 test had asserted the presence of for a release and a half. Not one was visible
 to a green suite. **Render a view before shipping it.**
 
-Three things it cannot see. It renders neither `ScrollView` nor a lazy stack —
+Four things it cannot see. It renders neither `ScrollView` nor a lazy stack —
 the first version wrapped both, wrote a blank image and reported success — nor
 a `Form`, which is why the sign-in sheet renders with a blank band where its
-fields are. And it cannot show a hover state, so anything that appears on hover
-has to be checked in the running app: the AI panel's section chevrons and every
-tooltip are unverified by eye.
+fields are. **A `.borderless` or `.link` button draws as a yellow no-entry
+placeholder**, so the Settings rows render with one where the remove button is
+and another where the NAS's "Connect…" link is; an ordinary bordered button in
+the same suite draws correctly, which is how that was pinned on the style rather
+than on the row. And it cannot show a hover state, so anything that appears on
+hover has to be checked in the running app: the AI panel's section chevrons and
+every tooltip are unverified by eye.
 
 **The Synology hardware is fixed.** Drive 2 was replaced on 17 August 2026 — a WD40EFZZ
 (4 TB, CMR) for the WD30EFRX that had shed 231 uncorrectable sectors. Pool
@@ -428,6 +440,29 @@ panel's state moved to the leading edge and gained a glyph per state rather than
 a colour per state, and it is the reason item 3 checks budget once rather than
 per machine.
 
+**A new non-optional key in `MachineConfiguration` would empty a saved herd,
+and a default value does not save you.** Measured, because the obvious reading
+of the language is wrong: Swift's *synthesised* `Decodable` never consults a
+property's default value, so `var mayHostSessions: Bool = false` throws
+`keyNotFound` on every machine written before that key existed. The store
+decodes entry by entry and keeps out whatever it cannot read — deliberately, so
+a machine written by a newer build survives an older one — which turns that
+throw into a silently emptied herd on the first launch after an update, for the
+one thing the user cannot recover by pointing Little Herd at the network again.
+Declare the stored property optional and read it through a computed accessor
+that supplies the default. The test that guards this strips the key out of the
+encoded form and decodes what is left.
+
+**A column that says one sentence three times is a column people stop reading.**
+The destination list renders one row per account with its reason — and before
+anyone has ticked anything, every reason is the same, so the first render was
+three identical lines of "Excluded here — turn it on in Settings." It says it
+once now. This is the third time this panel has been trimmed of a repetition
+that a passing suite could not see, after the row disambiguator that marked
+every row and the "waiting" label said twice; the rule underneath all three is
+that information which does not distinguish one row from its neighbour is not
+information.
+
 **CodexBar is read, not bundled and not recommended, and that is deliberate.**
 Two decisions taken 18 August 2026 so they are not re-litigated. **Do not bundle
 it:** it is `com.steipete.codexbar`, another developer's signed application, so
@@ -618,38 +653,39 @@ it; the files survived only because the directory had not been reaped yet.
    rule would collapse to "Linux failed to resolve", which is what the tooltip
    already says. Build it when a second machine becomes reachable only over the
    tailnet, and not before.
-3. **Finish destination eligibility: the intent half, and saying it.**
-   The measured halves are done and on the branch. Every account now reports
-   which agents it can run and where — no machine in this herd has one on the
-   PATH ssh sees, and all three can run both from absolute paths — and which
-   repositories it has checked out, keyed by the origin remote's slug. The
-   facts above carry the numbers.
+3. **Destination eligibility is done; one thing it exposed is not.**
+   Every account reports which agents it can run and where, and which
+   repositories it has checked out keyed by the origin remote's slug.
+   `MachineConfiguration.mayHostSessions` is the choice, off by default and
+   persisted. `DestinationEligibility` answers with one of five things and
+   reports intent before capability on purpose, and two surfaces show it: a
+   checkbox per machine in Settings, captioned with what turning it on would
+   actually get you; and a **Destinations** section in the AI panel, which
+   appears only when a session is waiting — the transfer design already
+   settled that only a quiescent session can move — and names the repository
+   it is answering for.
 
-   What is left is the part that is a choice rather than a measurement.
-   `MachineConfiguration` needs a per-account "may host a session" setting,
-   defaulting to **off**, and the interface has to say *which* reason a machine
-   is not a destination — "excluded here", "no agent", "no checkout of that
-   repo" have three different fixes and only the first is a preference.
-   `DestinationEligibility` already models this and reports intent before
-   capability on purpose; nothing displays it yet.
-
-   **A destination is an account, not a machine.** The mini has `clawd` and
-   `malpern`, and everything deciding whether a session can land is per-user:
-   the home directory and so which repos exist, the agent install, the
-   credentials, and the GUI login session the Keychain fact turns on. That last
-   point may invert the obvious choice — `malpern` is the account logged in
-   graphically, so it, not the automation account, is where a Claude session
-   can authenticate. `MachineConfiguration` refuses a second entry with the
-   same hostname, so this needs an account-qualified `MachineID`, which costs
-   the published `transfer.json` contract nothing since `MachineID` wraps a
-   `String`.
+   **What is left is that a destination is an account and the herd stores
+   machines.** `MachineConfiguration` refuses a second entry with the same
+   hostname, so the mini's `clawd` and `malpern` cannot both be in the herd,
+   and everything that decides whether a session can land is per-user: the home
+   directory and so which repos exist, the agent install, the credentials, and
+   the GUI login session the Keychain fact turns on. That last point may invert
+   the obvious choice — `malpern` is the account logged in graphically, so it,
+   not the automation account, is where a Claude session can authenticate.
+   Fixing it needs an account-qualified `MachineID` and an ssh user in the
+   configuration, which costs the published `transfer.json` contract nothing
+   since `MachineID` wraps a `String`. Until then the setting is per *entry*,
+   which happens to be per account only because each entry reaches exactly one.
 
    **Budget is not one of the reasons.** The machines share one account, so an
    exhausted limit cannot be escaped by choosing a different destination —
    check it once, before offering a move at all. **The NAS is never a
    destination here**: DSM restricts shell access to administrators, the login
-   shell is `/bin/sh`, and there is no package manager. The setting exists so
-   someone with a capable NAS can opt in, not as a safety control.
+   shell is `/bin/sh`, and there is no package manager. It reads "not measured"
+   rather than "no agent", because Little Herd runs no probe on it and never
+   asking is not the same as being told no. The setting exists so someone with
+   a capable NAS can opt in, not as a safety control.
 
 4. **Transfer a session between machines, at the session level.** Not process
    migration, which is not possible and not wanted: stop the session, have it

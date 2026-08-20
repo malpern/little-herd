@@ -589,7 +589,8 @@ private struct OverviewMetricContent: View {
                 compactionThresholds: compactionThresholds,
                 agentCPU: agentCPU,
                 agentCompactedAt: agentCompactedAt,
-                machineName: machines.first { $0.machine == focused }?.shortName
+                machineName: machines.first { $0.machine == focused }?.shortName,
+                destinationAccounts: machines.map(\.destinationAccount)
             )
         } else {
             CPUOverviewView(

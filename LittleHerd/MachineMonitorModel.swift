@@ -26,6 +26,13 @@ final class MachineMonitorModel: Identifiable {
     private(set) var activities: [MachineActivity] = []
     private(set) var agentSessions: [AgentSession] = []
     private(set) var storageVolumes: [StorageVolume] = []
+    /// What this account last said it can run and which repositories it has.
+    /// Nil until the probe has answered, which is why it is not an empty
+    /// report: never asked and asked-and-empty read the same otherwise.
+    private(set) var destinationReport: DestinationReport?
+    /// Whether a session may be moved onto this account. A choice, kept here
+    /// so the interface can set it against what the account can actually do.
+    private(set) var mayHostSessions: Bool
     /// How the failing drive's sector count has moved, when there is enough
     /// history to say. The number that turns "229 bad sectors" into a decision:
     /// 229 accumulated over years is a different situation from 229 since
@@ -74,6 +81,7 @@ final class MachineMonitorModel: Identifiable {
         supportsGPU = configuration.supportsGPU
         isStorage = configuration.isStorage
         isLocal = configuration.connection == .local
+        mayHostSessions = configuration.mayHostSessions
         identityFile = configuration.identityFile
         remotePlatform = configuration.remotePlatform
         self.cpu = cpu
@@ -95,6 +103,10 @@ final class MachineMonitorModel: Identifiable {
         activities = snapshot.activities
         agentSessions = snapshot.agentSessions
         storageVolumes = snapshot.storageVolumes
+        // Kept across samples: the probe runs every thirty seconds and the
+        // metrics every few, so most samples carry nothing here and blanking
+        // it would make the destination flicker between measured and unknown.
+        destinationReport = snapshot.destination ?? destinationReport
         drives = snapshot.drives
         memoryPressure = snapshot.memoryPressure
         // Kept across samples: a machine's core count does not change, and a
@@ -185,6 +197,43 @@ final class MachineMonitorModel: Identifiable {
         state = .offline
         unavailability = reason
         agentSessions = agentSessions.map { $0.waitingIfActive() }
+    }
+
+    /// Changes only the choice, leaving every measurement in place.
+    ///
+    /// A preference is not a reason to tear the herd's monitors down and put
+    /// them back up: doing that on a toggle would blank the dashboard and
+    /// throw away the readings the toggle is meant to be judged against.
+    func setMayHostSessions(_ mayHost: Bool) {
+        mayHostSessions = mayHost
+    }
+
+    /// Whether this account could take a session, and if not, which of the
+    /// three unrelated reasons applies.
+    ///
+    /// - Parameter repository: the slug of the repository the work is in, when
+    ///   the question is about particular work. Nil asks about the account
+    ///   alone, which is what Settings can answer.
+    func destinationEligibility(
+        forRepository repository: String? = nil
+    ) -> DestinationEligibility {
+        DestinationEligibility.resolve(
+            report: destinationReport,
+            repository: repository,
+            isAllowed: mayHostSessions
+        )
+    }
+
+    /// This account as the destination question sees it: a name, a choice, and
+    /// what it last reported about itself.
+    var destinationAccount: DestinationAccount {
+        DestinationAccount(
+            machine: machine,
+            name: shortName,
+            symbolName: symbolName,
+            report: destinationReport,
+            mayHostSessions: mayHostSessions
+        )
     }
 
     func markConnecting() {

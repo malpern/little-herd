@@ -19,6 +19,9 @@ struct AIAgentsView: View {
     /// because a panel scoped to one machine that never says which one is a
     /// panel you cannot trust.
     var machineName: String?
+    /// The rest of the herd, for the one question a parked session raises.
+    /// Empty in a herd of one, and then the section never appears.
+    var destinationAccounts: [DestinationAccount] = []
 
     /// Which groups are folded. Every section folds, not only the finished
     /// one — a panel where one header behaves differently from its neighbours
@@ -45,6 +48,7 @@ struct AIAgentsView: View {
                     layout: layout,
                     workload: workload,
                     machineName: machineName,
+                    destinationAccounts: destinationAccounts,
                     compactionThresholds: compactionThresholds,
                     agentCPU: agentCPU,
                     agentCompactedAt: agentCompactedAt,
@@ -76,6 +80,7 @@ struct AIAgentPanelContent: View {
     let layout: AgentPanelLayout
     var workload: HerdWorkloadFinding?
     var machineName: String?
+    var destinationAccounts: [DestinationAccount] = []
     var compactionThresholds = AgentCompactionThresholds()
     var agentCPU: [String: Double] = [:]
     var agentCompactedAt: [String: Date] = [:]
@@ -94,6 +99,7 @@ struct AIAgentPanelContent: View {
 
             section(.running, label: machineName, rows: layout.active)
             section(.waiting, rows: layout.waiting)
+            destinationSection
             section(.finished, rows: layout.finished)
         }
         .padding(.horizontal, 14)
@@ -127,6 +133,61 @@ struct AIAgentPanelContent: View {
             )
             if !collapsed.contains(section) {
                 rows(sectionRows)
+            }
+        }
+    }
+
+    /// Where the parked work could go.
+    ///
+    /// Shown only when something is waiting, which is not a way of keeping the
+    /// panel tidy but the rule the transfer design already settled on: only a
+    /// quiescent session can move safely, so a herd of running sessions has
+    /// nothing to ask this about. It also makes the subject unambiguous — the
+    /// list answers for the session named in the header, not for the panel.
+    @ViewBuilder
+    private var destinationSection: some View {
+        if let subject = layout.waiting.first, !destinationAccounts.isEmpty {
+            let repository = subject.session.session.repo?.slug
+            let candidates = DestinationRoster.candidates(
+                among: destinationAccounts,
+                forRepository: repository,
+                excluding: subject.session.machine
+            )
+            if !candidates.isEmpty {
+                AgentSectionHeader(
+                    section: .destinations,
+                    label: "Could take \(repository ?? subject.session.session.projectName)",
+                    hiddenCount: candidates.count,
+                    isExpanded: Binding(
+                        get: { !collapsed.contains(.destinations) },
+                        set: { expanded in
+                            if expanded {
+                                collapsed.remove(.destinations)
+                            } else {
+                                collapsed.insert(.destinations)
+                            }
+                        }
+                    )
+                )
+                if !collapsed.contains(.destinations) {
+                    if DestinationRoster.isEntirelyUnchosen(candidates) {
+                        DestinationNoticeRow(
+                            symbolName: DestinationEligibility.excluded.symbolName,
+                            title: "No destination chosen",
+                            detail: "Tick a machine in Settings to let a session be moved onto it."
+                        )
+
+                        Divider()
+                            .padding(.leading, AIAgentRow.titleInset)
+                    } else {
+                        ForEach(candidates) { candidate in
+                            DestinationRow(candidate: candidate)
+
+                            Divider()
+                                .padding(.leading, AIAgentRow.titleInset)
+                        }
+                    }
+                }
             }
         }
     }
@@ -595,6 +656,11 @@ private struct AgentProgressRing: View {
 nonisolated enum AgentPanelSection: String, CaseIterable, Sendable {
     case running
     case waiting
+    /// Where a parked session could go, and why the rest of the herd could
+    /// not. Not a group of sessions like the other three, but it folds the
+    /// same way — a header that behaves differently from its neighbours
+    /// teaches people that headers are decoration.
+    case destinations
     case finished
 
     /// A glyph does the naming. "Waiting" as a word was being said twice — once
@@ -607,6 +673,7 @@ nonisolated enum AgentPanelSection: String, CaseIterable, Sendable {
         switch self {
         case .running: "waveform"
         case .waiting: "clock"
+        case .destinations: "arrowshape.turn.up.right"
         case .finished: "checkmark"
         }
     }
@@ -616,8 +683,72 @@ nonisolated enum AgentPanelSection: String, CaseIterable, Sendable {
         switch self {
         case .running: "Running"
         case .waiting: "Waiting"
+        case .destinations: "Destinations"
         case .finished: "Finished"
         }
+    }
+}
+
+/// One account, and whether the parked work could go there.
+///
+/// The reason is spelled out rather than reduced to a mark, because the three
+/// answers have three different fixes and only one of them is a preference —
+/// "excluded here" is a click away in Settings, "no agent" and "no checkout"
+/// are not, and a row that only said "no" would send someone to the wrong one.
+private struct DestinationRow: View {
+    let candidate: DestinationCandidate
+
+    var body: some View {
+        DestinationNoticeRow(
+            symbolName: candidate.eligibility.symbolName,
+            title: candidate.name,
+            detail: candidate.eligibility.detail,
+            // Green only for the one that can. Nothing else here is a fault —
+            // a machine you switched off is not broken — so the rest stay in
+            // the panel's own quiet grey rather than borrowing a warning
+            // colour.
+            tint: candidate.eligibility.isEligible ? .green : .secondary
+        )
+    }
+}
+
+/// The shape of a destination line: a glyph, a name, and the sentence under
+/// it.
+///
+/// The glyph column is `titleInset` wide including its spacing, so these names
+/// sit on the same vertical line as the session titles above them. Four points
+/// of drift here is the sort of thing that reads as carelessness even when
+/// nobody can say what moved.
+private struct DestinationNoticeRow: View {
+    let symbolName: String
+    let title: String
+    let detail: String
+    var tint: Color = .secondary
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Image(systemName: symbolName)
+                .font(.caption2)
+                .foregroundStyle(tint)
+                .frame(width: AIAgentRow.titleInset - 4)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.caption.weight(.medium))
+                    .lineLimit(1)
+
+                Text(detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 5)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text("\(title). \(detail)"))
     }
 }
 

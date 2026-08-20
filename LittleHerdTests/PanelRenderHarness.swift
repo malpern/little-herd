@@ -157,12 +157,14 @@ struct PanelRenderHarness {
     private func panel(
         sessions: [MachineAgentSession],
         workload: HerdWorkloadFinding? = nil,
-        showingFinished: Bool = false
+        showingFinished: Bool = false,
+        destinationAccounts: [DestinationAccount] = []
     ) -> some View {
         AIAgentPanelContent(
             layout: AgentPanelLayout.make(from: sessions, showingFinished: showingFinished),
             workload: workload,
             machineName: "Air",
+            destinationAccounts: destinationAccounts,
             compactionThresholds: AgentCompactionThresholds(observed: ["claude-opus-5": 1_000_000]),
             agentCPU: ["claude:aa11bb22": 96, "claude:1234abcd": 31],
             hoveredAgentID: .constant(nil),
@@ -212,6 +214,161 @@ struct PanelRenderHarness {
         try render(
             panel(sessions: busyHerd(), showingFinished: true),
             named: "ai-panel-expanded"
+        )
+    }
+
+    /// The herd as it stands, against the panel's first waiting session — which
+    /// is in `add-secret`. Three rows, three different reasons, so the whole
+    /// vocabulary is on screen at once.
+    private func herdAccounts(everythingOff: Bool = false) -> [DestinationAccount] {
+        let claude = AgentInstallation(
+            provider: .claude,
+            version: "2.1.234",
+            path: "/Users/clawd/.local/bin/claude"
+        )
+        func account(
+            _ id: String,
+            _ name: String,
+            _ symbol: String,
+            allowed: Bool,
+            report: DestinationReport?
+        ) -> DestinationAccount {
+            DestinationAccount(
+                machine: MachineID(id),
+                name: name,
+                symbolName: symbol,
+                report: report,
+                mayHostSessions: everythingOff ? false : allowed
+            )
+        }
+        return [
+            account("macBookAir", "Air", "laptopcomputer", allowed: true, report: nil),
+            account(
+                "macMini", "Mini", "macmini",
+                allowed: true,
+                report: DestinationReport(
+                    installations: [claude],
+                    checkouts: ["add-secret": "/Users/clawd/local-code/add-secret"]
+                )
+            ),
+            account(
+                "linux", "Linux", "server.rack",
+                allowed: true,
+                report: DestinationReport(
+                    installations: [claude],
+                    checkouts: ["dotfiles": "/home/malpern/dotfiles"]
+                )
+            ),
+            account("nas", "NAS", "externaldrive", allowed: false, report: nil),
+        ]
+    }
+
+    @Test
+    func renderAgentPanelWithDestinations() throws {
+        try render(
+            panel(
+                sessions: busyHerd(),
+                destinationAccounts: herdAccounts()
+            ),
+            size: Self.reviewSize,
+            named: "ai-panel-destinations"
+        )
+    }
+
+    /// What everyone sees before they have chosen anything: the setting is off
+    /// on every machine, so every row says the same thing and points at the
+    /// one place that changes it.
+    @Test
+    func renderAgentPanelWithNoDestinationChosen() throws {
+        try render(
+            panel(
+                sessions: busyHerd(),
+                destinationAccounts: herdAccounts(everythingOff: true)
+            ),
+            size: Self.reviewSize,
+            named: "ai-panel-destinations-none"
+        )
+    }
+
+    /// The Settings machine list, one row at a time.
+    ///
+    /// The `List` those rows sit in is a lazy container that `ImageRenderer`
+    /// will not lay out, so this renders the rows directly — at 400 points,
+    /// which is the 420-point Settings pane less its row insets.
+    @Test
+    func renderSettingsMachineRows() throws {
+        let claude = AgentInstallation(
+            provider: .claude,
+            version: "2.1.234",
+            path: "/Users/malpern/.local/bin/claude"
+        )
+        func machine(
+            _ id: String,
+            _ name: String,
+            _ host: String,
+            _ platform: MachinePlatform,
+            mayHost: Bool
+        ) -> MachineConfiguration {
+            var configuration = MachineConfiguration(
+                id: MachineID(id),
+                name: name,
+                shortName: name,
+                hostname: host,
+                hardwareSummary: "",
+                platform: platform,
+                connection: platform == .storage ? .dsm : .ssh,
+                avatar: MachineConfiguration.inferredAvatar(
+                    name: name,
+                    platform: platform
+                ),
+                identityFile: nil,
+                serverNames: [],
+                supportsGPU: false
+            )
+            configuration.mayHostSessions = mayHost
+            return configuration
+        }
+
+        let rows: [(MachineConfiguration, DestinationEligibility)] = [
+            (
+                machine("air", "MacBook Air", "air", .macOS, mayHost: true),
+                .eligible(claude)
+            ),
+            (
+                machine("mini", "Mac mini", "openclaw", .macOS, mayHost: false),
+                .eligible(claude)
+            ),
+            (
+                machine("linux", "Linux box", "linux", .linux, mayHost: true),
+                .noAgent
+            ),
+            (
+                machine("nas", "Synology", "nas", .storage, mayHost: true),
+                .unknown
+            ),
+        ]
+
+        try render(
+            VStack(spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+                    SettingsMachineRow(
+                        machine: row.0,
+                        canRemove: index > 0,
+                        isReorderable: true,
+                        position: ListPosition(index: index, count: rows.count),
+                        onRemove: {},
+                        onConnect: {},
+                        onMove: { _ in },
+                        capability: row.1,
+                        onSetHosting: { _ in },
+                        credentialsRevision: 0
+                    )
+                    Divider()
+                }
+                Spacer(minLength: 0)
+            },
+            size: CGSize(width: 400, height: 180),
+            named: "settings-machines"
         )
     }
 
