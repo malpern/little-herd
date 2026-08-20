@@ -513,6 +513,24 @@ struct SynologyDSMTests {
         #expect(evidence.contains("aaa111"))
         #expect(evidence.contains("bbb222"))
         #expect(explanation.stage.caption == "Certificate refused")
+
+        // What is *shown* has to survive one line at 420 points. Two
+        // 64-character fingerprints truncate to "Expected aa…bbbbbbbbbbbb" —
+        // the expected value gone, the received one a run of identical
+        // characters, and no way to tell which is which. This test asserted
+        // only the line above for a release and a half, and it passed the
+        // whole time, because both values were present in a string nobody
+        // could read.
+        let long = SynologyDSMError.certificateChanged(
+            expected: String(repeating: "a", count: 64),
+            received: String(repeating: "b", count: 64)
+        ).explanation(host: "nas.example")
+        let shown = try #require(long.displayEvidence)
+        #expect(shown.count < 48, "shown as: \(shown)")
+        #expect(shown.contains("Expected aaaaaaaa"))
+        #expect(shown.contains("Received bbbbbbbb"))
+        // The full pair is still there to hover and to copy.
+        #expect(try #require(long.evidence).count > 128)
     }
 
     /// DSM's own code is kept beside the sentence: the sentence is for the

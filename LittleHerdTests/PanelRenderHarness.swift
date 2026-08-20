@@ -224,3 +224,97 @@ struct PanelRenderHarness {
         )
     }
 }
+
+/// The sign-in sheet, in the states that only appear when something is wrong.
+///
+/// It has a fixed 460×360 frame with a comment above it recording that it once
+/// clipped the password field, and its failure area has since gained a second
+/// line — and until now nobody had looked at it, because reaching these states
+/// means typing a wrong password at a real NAS.
+@MainActor
+struct CredentialsSheetRenderHarness {
+    private static let sheetSize = CGSize(width: 460, height: 360)
+
+    private var machine: MachineConfiguration {
+        MachineConfiguration(
+            id: MachineID("alpernserver"),
+            name: "Synology",
+            shortName: "Synology",
+            hostname: "nas.tail9d0bb8.ts.net",
+            hardwareSummary: "Network storage",
+            platform: .storage,
+            connection: .dsm,
+            avatar: .pigletNAS,
+            identityFile: nil,
+            serverNames: ["nas.tail9d0bb8.ts.net"],
+            supportsGPU: false,
+            dsmUsername: "malpern",
+            dsmPort: 5001
+        )
+    }
+
+    @discardableResult
+    private func render(
+        _ status: SynologyCredentialsView.Status,
+        named name: String
+    ) throws -> URL {
+        let renderer = ImageRenderer(
+            content: SynologyCredentialsView(
+                machine: machine,
+                onSave: { _ in },
+                initialStatus: status
+            )
+            .frame(width: Self.sheetSize.width, height: Self.sheetSize.height)
+            .background(Color(nsColor: .windowBackgroundColor))
+        )
+        renderer.scale = 2
+        let image = try #require(renderer.nsImage, "\(name) rendered nothing")
+        let tiff = try #require(image.tiffRepresentation)
+        let bitmap = try #require(NSBitmapImageRep(data: tiff))
+        let png = try #require(bitmap.representation(using: .png, properties: [:]))
+        let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("little-herd-panels", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        let url = directory.appendingPathComponent("\(name).png")
+        try png.write(to: url)
+        print("RENDERED \(url.path)")
+        return url
+    }
+
+    /// The longest thing this sheet can say, which is the one that would push
+    /// the buttons off the bottom if anything were going to.
+    @Test
+    func renderTheLongestFailure() throws {
+        try render(
+            .failed(
+                SynologyDSMError
+                    .transport("The Internet connection appears to be offline.")
+                    .explanation(host: "nas.tail9d0bb8.ts.net")
+            ),
+            named: "credentials-longest-failure"
+        )
+    }
+
+    /// Two 64-character fingerprints on one line, which is the widest evidence
+    /// it will ever carry.
+    @Test
+    func renderACertificateMismatch() throws {
+        try render(
+            .failed(
+                SynologyDSMError.certificateChanged(
+                    expected: String(repeating: "a", count: 64),
+                    received: String(repeating: "b", count: 64)
+                ).explanation(host: "nas.tail9d0bb8.ts.net")
+            ),
+            named: "credentials-certificate"
+        )
+    }
+
+    @Test
+    func renderSuccess() throws {
+        try render(.succeeded(volumes: 1, drives: 4), named: "credentials-success")
+    }
+}

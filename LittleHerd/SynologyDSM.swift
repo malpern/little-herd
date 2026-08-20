@@ -76,6 +76,13 @@ nonisolated enum SynologyDSMError: Error, Equatable, Sendable {
         }
     }
 
+    /// The first characters of a fingerprint, which is where two of them
+    /// differ if they differ at all.
+    static func abbreviated(_ fingerprint: String) -> String {
+        guard fingerprint.count > 10 else { return fingerprint }
+        return String(fingerprint.prefix(8)) + "…"
+    }
+
     /// What the sign-in sheet says, and which of its own branches refused.
     ///
     /// The sheet used to report `detail` alone, which for a transport failure
@@ -112,7 +119,11 @@ nonisolated enum SynologyDSMError: Error, Equatable, Sendable {
                 // was set after it once clipped the password field, so evidence
                 // that grows without bound is a layout bug waiting to happen.
                 // The full pair is here to be copied and hovered, not read.
-                evidence: "Expected \(expected) · Received \(received)"
+                evidence: "Expected \(expected) · Received \(received)",
+                // Enough of each to compare at a glance. A fingerprint differs
+                // from its neighbour in the first characters or not at all, so
+                // the head is the part worth showing.
+                displayEvidence: "Expected \(Self.abbreviated(expected)) · Received \(Self.abbreviated(received))"
             )
         case .api(let code, let detail):
             .init(stage: .dsm, headline: detail, evidence: "DSM error \(code)")
@@ -156,11 +167,34 @@ nonisolated struct SynologySignInExplanation: Equatable, Sendable {
 
     let stage: Stage
     let headline: String
-    /// The specifics — fingerprints, a DSM code, the original message. Kept
-    /// because a sentence a person can act on and the string an engineer needs
-    /// are rarely the same one, and discarding the second to get the first is
-    /// how the certificate fingerprints went missing in the first place.
+    /// The specifics in full — fingerprints, a DSM code, the original message.
+    /// Kept because a sentence a person can act on and the string an engineer
+    /// needs are rarely the same one, and discarding the second to get the
+    /// first is how the certificate fingerprints went missing in the first
+    /// place. This is what a tooltip shows and what selecting the line copies.
     let evidence: String?
+    /// The same thing, short enough to survive one line.
+    ///
+    /// Two 64-character fingerprints on a 420-point line truncate in the middle
+    /// to `Expected aa…bbbbbbbbbbbb` — the expected value gone entirely, the
+    /// received one reduced to a run of identical characters, and no way to
+    /// tell which is which. It read as text on screen and as nothing at all to
+    /// a person. Rendering the sheet is what caught it; the test asserting both
+    /// fingerprints were present passed throughout, because they were.
+    var displayEvidence: String?
+
+    init(
+        stage: Stage,
+        headline: String,
+        evidence: String?,
+        displayEvidence: String? = nil
+    ) {
+        self.stage = stage
+        self.headline = headline
+        self.evidence = evidence
+        // Most evidence is already short enough to show as it is.
+        self.displayEvidence = displayEvidence ?? evidence
+    }
 }
 
 /// Why a DSM request never got an answer, classified once.

@@ -16,7 +16,13 @@ struct SynologyCredentialsView: View {
     @State private var port: String
     @State private var status: Status = .idle
 
-    private enum Status: Equatable {
+    /// Internal rather than private so the render harness can put the sheet
+    /// into a state a person would otherwise have to reach by typing a wrong
+    /// password at a real NAS. This sheet has a fixed height and a comment
+    /// above that frame recording that it once clipped the password field, so
+    /// being able to look at its failure state without a network is worth one
+    /// initialiser argument.
+    enum Status: Equatable {
         case idle
         case testing
         case failed(SynologySignInExplanation)
@@ -25,10 +31,12 @@ struct SynologyCredentialsView: View {
 
     init(
         machine: MachineConfiguration,
-        onSave: @escaping (MachineConfiguration) -> Void
+        onSave: @escaping (MachineConfiguration) -> Void,
+        initialStatus: Status = .idle
     ) {
         self.machine = machine
         self.onSave = onSave
+        _status = State(initialValue: initialStatus)
         _username = State(initialValue: machine.dsmUsername ?? "")
         _port = State(
             initialValue: String(machine.dsmPort ?? SynologyDSM.defaultPort)
@@ -117,7 +125,7 @@ struct SynologyCredentialsView: View {
                 // is the part a person can paste somewhere. Selectable because
                 // a fingerprint you cannot copy is a fingerprint you retype
                 // wrongly.
-                if let evidence = explanation.evidence {
+                if let evidence = explanation.displayEvidence {
                     // Deliberately one line. The headline wraps as it always
                     // did; evidence is a fingerprint or a framework string and
                     // must not be able to push the buttons off a sheet whose
@@ -129,8 +137,9 @@ struct SynologyCredentialsView: View {
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                         .lineLimit(1)
-                        .truncationMode(.middle)
-                        .help(evidence)
+                        .truncationMode(.tail)
+                        // The whole of it, for hovering and for copying.
+                        .help(explanation.evidence ?? evidence)
                 } else {
                     Text(explanation.stage.caption)
                         .font(.caption2)
