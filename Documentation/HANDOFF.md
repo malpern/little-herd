@@ -1,51 +1,24 @@
 # Little Herd — handoff
 
-**State:** `v0.1.25` carried the Synology sign-in fix; `v0.1.26` carries the
-sign-in sheet's explanations, the AI panel reordering, and the workload join.
-289 tests pass, and both feeds were verified rather than assumed. 0.1.23 added
-the four-state usage display, 0.1.24 the splash timing, size and corner, and a
+**State:** `v0.1.25` carried the Synology sign-in fix; `v0.1.26` the sign-in
+sheet's explanations, the AI panel reordering, and the workload join; `v0.1.27`
+the panel's context figure and the defects that looking at it found. 297 tests
+pass, and every feed was verified rather than assumed. 0.1.23 added the
+four-state usage display, 0.1.24 the splash timing, size and corner, and a
 sign-in message that signs you in. Sparkle's own path from 0.1.21 to 0.1.22 was
 watched end to end — see below.
 
-**0.1.26 shipped without anyone looking at it, knowingly.** The concern was
-raised and the call was to ship; this is written down so the next session does
-not assume it was checked. The redesign changed row layout, added section
-headers, a collapsed disclosure, and a wrapping sentence at the top, in a window
-that is 300 points wide — and every visual defect this project has ever had was
-invisible to a green suite. **Look at it, and expect to find something.** Three
-specific risks: whether the project name still has room beside the state glyph,
-whether "Needs you" and "Running" read as headers rather than as rows, and
-whether the workload sentence wraps sensibly at that width. The sign-in sheet
-needs the same look — it has a fixed 360-point height with a comment recording
-that it once clipped the password field, and the failure area gained a second
-line. There is no preview harness in this project, which is why none of this was
-checked; building one may be worth more than the next feature.
-
-Deliberately no commit hash in this paragraph. The previous two sessions each
-left one that was stale within the hour, including the one written to correct
-its predecessor: a line naming a commit is out of date the moment anything is
-committed, this file included. `git log` answers that question and cannot be
-wrong; what belongs here is what `git log` will not tell you.
-
-**The Synology sign-in was App Transport Security, and it is fixed and
-verified.** The NAS has been `nas` / `100.102.192.34` since 18 August, with key
-expiry disabled and a 2048-bit certificate replacing the 1024-bit one from 2015;
-none of that was ever the problem. ATS was refusing the certificate before
-`SynologyTrustEvaluator` was consulted — the fact below has the whole shape of
-it. Proved from inside the app with the real DSM account: sign-in succeeds, and
-`SYNO.Storage.CGI.Storage` comes back with Volume 1 and all four drives —
-`sdb` now the WD40EFZZ, every one `normal` at `unc=0`, 27–29 °C — against a
-recorded pin of `5a9996474975067b06779b8694dea6d744236612f7810f9f213705d38c42a099`.
-The credential is `SYNOLOGY_PASSWORD_HOME` in sops; a test can decrypt it in
-process, but sops needs `SOPS_AGE_KEY_FILE` set explicitly or it cannot find the
-age key from inside a GUI app.
-
-**And then it was done by hand, in the interface, which is the only version of
-this that counts.** The credentials sheet reported "Connected", the keychain
-gained `malpern@nas.tail9d0bb8.ts.net:5001`, the configuration recorded that
-pin, and the app has been sampling DSM on its own schedule since — 24 completed
-requests and no ATS line at all in 12,463 log lines. The feature has never
-worked before this.
+**There is a preview harness now, and it earned itself immediately.**
+`PanelRenderHarness` writes PNGs of real views at their real widths, because
+tests run inside the app bundle and `ImageRenderer` can therefore do what an
+Xcode preview does. 0.1.26 shipped unlooked-at, knowingly, and looking at it
+afterwards found four defects that 289 passing tests could not: a session from
+last week reading "213h ago", a one-line sentence wrapping to two and stranding
+"has averaged 8%.", a row marked as ambiguous against a row folded inside a
+collapsed group, and no answer at all to which session was the heavy one. Use it
+before shipping a view. **The sign-in sheet has still not been looked at** — it
+has a fixed 360-point height with a comment recording that it once clipped the
+password field, and its failure area gained a second line in 0.1.26.
 
 **The Synology hardware is fixed.** Drive 2 was replaced on 17 August 2026 — a WD40EFZZ
 (4 TB, CMR) for the WD30EFRX that had shed 231 uncorrectable sectors. Pool
@@ -130,6 +103,21 @@ would not have worked: ATS stops `http://` with `-1022` before it leaves the
 process, so it needed the same `Info.plist` change anyway, and once that change
 exists TLS with first-use pinning works and beats sending a DSM password in
 clear.
+
+**A transcript records what a turn used, never what the model allows — so
+there is no honest context percentage.** Claude's `.jsonl` carries
+`input_tokens`, `cache_read_input_tokens` and `cache_creation_input_tokens`,
+which sum to what was in front of the model on that turn, and reading the last
+one gives the current context. Nothing anywhere records the limit. A
+model-to-limit table was written to turn that into a percentage and thrown
+away after measuring: a live session on this Mac was carrying **425,107
+tokens**, against a table that would have called the limit 200,000. It was
+wrong on the day it was written, in this herd, for the model actually in use.
+So the panel shows the number and no bar. If a proportion is ever wanted, the
+limit has to come from the user, not from a constant. Codex's rollouts record
+no equivalent figure at all, so that field is empty for half the herd — and
+empty must stay empty rather than becoming a zero, which would claim an empty
+context.
 
 **A plain `xcodebuild -configuration Release build` produces an app that cannot
 launch.** It signs ad hoc, and dyld then refuses to map the bundled Sparkle:
@@ -382,6 +370,13 @@ nothing, and the delegate had been running correctly the whole time. Note also
 that `grep` and `strings` on the built binary find *none* of its known string
 literals, so neither can tell you whether a build contains a change — check by
 running the build, not by reading it.
+
+**Render it and open the file.** `PanelRenderHarness` exists so that "look at
+it" costs one test run instead of a launch, a menu click, and a screenshot that
+cannot see a menu-bar window. It caught itself before it caught anything else:
+the first version wrapped the panel's real `ScrollView` and lazy stack, neither
+of which `ImageRenderer` lays out, so it wrote a blank image and passed. Both
+are why the rows now live in `AIAgentPanelContent` and the stack is eager.
 
 **Break the test to prove it works.** Every substantive rule was verified by
 reintroducing the bug and watching the suite fail. Two tests that passed without
