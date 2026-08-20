@@ -140,3 +140,54 @@ struct AgentResourceTests {
         #expect(rated.first?.resource?.cpuPercent == nil)
     }
 }
+
+/// The inline thermometer's arithmetic, which is presentation and therefore
+/// testable without drawing anything.
+@MainActor
+struct InlineThermometerTests {
+    private func filled(_ value: Double?, blocks: Int = 5) -> Int {
+        guard let value else { return 0 }
+        return min(max(Int(ceil(value / (100 / Double(blocks)))), 0), blocks)
+    }
+
+    /// Any work at all lights a block, so a session doing something never looks
+    /// the same as one doing nothing — the rule the column thermometer follows.
+    @Test
+    func anyWorkLightsTheFirstBlock() {
+        #expect(filled(0.4) == 1)
+        #expect(filled(nil) == 0)
+        #expect(filled(0) == 0)
+    }
+
+    @Test
+    func aFullCoreFillsEveryBlock() {
+        #expect(filled(100) == 5)
+        // More than one core's worth is still a full bar rather than an
+        // overflowing one.
+        #expect(filled(340) == 5)
+    }
+
+    @Test
+    func theScaleIsProportional() {
+        #expect(filled(20) == 1)
+        #expect(filled(21) == 2)
+        #expect(filled(60) == 3)
+        #expect(filled(96) == 5)
+    }
+
+    /// Five blocks across a row read the same colours as ten down a column: a
+    /// session at 95% must be the red a machine at 95% is, or the shared
+    /// vocabulary is a lie.
+    @Test
+    func aRowUsesTheSameBandsAsAColumn() {
+        func band(position: Int, blocks: Int) -> ThermometerBand {
+            ThermometerScale.band(
+                forLevel: Int((Double(position) + 0.5) / Double(blocks) * 10)
+            )
+        }
+        #expect(band(position: 0, blocks: 5) == .calm)
+        #expect(band(position: 4, blocks: 5) == .critical)
+        #expect(band(position: 9, blocks: 10) == .critical)
+        #expect(band(position: 0, blocks: 10) == .calm)
+    }
+}

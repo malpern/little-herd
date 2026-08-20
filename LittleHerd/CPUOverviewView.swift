@@ -286,6 +286,57 @@ private struct CPUPercentage: View {
     }
 }
 
+/// The same thermometer, lying down.
+///
+/// A row is thirty-three points tall and three hundred wide, so the column form
+/// cannot go in one — but a session's CPU is the same quantity as a machine's,
+/// read off the same scale and coloured by the same bands, and it should not
+/// arrive in the interface as an unrelated-looking percentage. Same blocks,
+/// same colours, turned ninety degrees.
+///
+/// Fewer blocks than the column on purpose. Ten segments across forty points
+/// is a dotted line rather than a reading; five carries the shape of the number
+/// at a glance, which is all a row has room to say.
+struct InlineSegmentedThermometer: View {
+    let value: Double?
+    var blockCount = 5
+    var blockWidth: CGFloat = 5
+    var blockHeight: CGFloat = 9
+    var spacing: CGFloat = 1.5
+
+    var body: some View {
+        HStack(spacing: spacing) {
+            ForEach(0 ..< blockCount, id: \.self) { position in
+                RoundedRectangle(cornerRadius: 1.25, style: .continuous)
+                    .fill(
+                        position < filledBlockCount
+                            ? ThermometerScale.band(
+                                // Mapped back onto the ten-level scale the
+                                // bands are defined against, so a session at
+                                // 95% is the same red a machine at 95% is.
+                                forLevel: Int(
+                                    (Double(position) + 0.5)
+                                        / Double(blockCount) * 10
+                                )
+                            ).color
+                            : LittleHerdTheme.emptyBlock
+                    )
+                    .frame(width: blockWidth, height: blockHeight)
+            }
+        }
+        .animation(.smooth(duration: 0.45), value: value)
+        .accessibilityHidden(true)
+    }
+
+    private var filledBlockCount: Int {
+        guard let value else { return 0 }
+        return min(
+            max(Int(ceil(value / (100 / Double(blockCount)))), 0),
+            blockCount
+        )
+    }
+}
+
 struct SegmentedThermometer: View {
     let value: Double?
     var blockWidth: CGFloat = 30

@@ -157,6 +157,7 @@ struct PanelRenderHarness {
             machineName: "Air",
             contextLimits: AgentContextLimits(observed: ["claude-opus-5": 1_000_000]),
             agentCPU: ["claude:aa11bb22": 96, "claude:1234abcd": 31],
+            machineCPUPercent: 94,
             hoveredAgentID: .constant(nil),
             isShowingFinished: .constant(showingFinished),
             onSelectMachine: nil

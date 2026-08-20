@@ -13,6 +13,9 @@ struct AIAgentsView: View {
     var contextLimits = AgentContextLimits()
     /// What each session is costing its machine, by session id.
     var agentCPU: [String: Double] = [:]
+    /// What the focused machine's CPU is doing overall, so the header can put
+    /// the sessions' shares against the whole.
+    var machineCPUPercent: Double?
     /// Which machine these sessions are on. Named once, in the first header,
     /// because a panel scoped to one machine that never says which one is a
     /// panel you cannot trust.
@@ -38,6 +41,7 @@ struct AIAgentsView: View {
                     machineName: machineName,
                     contextLimits: contextLimits,
                     agentCPU: agentCPU,
+                    machineCPUPercent: machineCPUPercent,
                     hoveredAgentID: $hoveredAgentID,
                     isShowingFinished: $isShowingFinished,
                     onSelectMachine: onSelectMachine
@@ -68,6 +72,7 @@ struct AIAgentPanelContent: View {
     var machineName: String?
     var contextLimits = AgentContextLimits()
     var agentCPU: [String: Double] = [:]
+    var machineCPUPercent: Double?
     @Binding var hoveredAgentID: MachineAgentSession.ID?
     @Binding var isShowingFinished: Bool
     var onSelectMachine: ((MachineID) -> Void)?
@@ -81,7 +86,8 @@ struct AIAgentPanelContent: View {
                 )
             }
 
-            section(runningTitle, rows: layout.active)
+            runningHeader
+            rows(layout.active)
             section("Waiting", rows: layout.waiting)
 
             if !layout.finished.isEmpty {
@@ -106,6 +112,40 @@ struct AIAgentPanelContent: View {
     private var runningTitle: LocalizedStringKey {
         guard let machineName else { return "Running" }
         return "Running on \(machineName)"
+    }
+
+    /// The whole, with the parts underneath it.
+    ///
+    /// The panel shows one machine, so its thermometer belongs at the top of
+    /// the list of what is running on it — the same component, the same scale
+    /// and the same colours as the CPU screen. Read together, the header says
+    /// how hard the machine is working and the rows say which sessions are the
+    /// reason, which is two screens' worth of the old answer in one line.
+    @ViewBuilder
+    private var runningHeader: some View {
+        if !layout.active.isEmpty {
+            HStack(spacing: 6) {
+                Text(runningTitle)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Spacer(minLength: 4)
+
+                if let machineCPUPercent {
+                    InlineSegmentedThermometer(
+                        value: machineCPUPercent,
+                        blockCount: 10,
+                        blockWidth: 4,
+                        blockHeight: 7
+                    )
+                    Text("\(Int(machineCPUPercent.rounded()))%")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.top, 6)
+            .padding(.bottom, 2)
+        }
     }
 
     @ViewBuilder
@@ -281,10 +321,15 @@ struct AIAgentRow: View {
                     // only when it is worth noticing: every session uses some
                     // CPU, and a row that always carries a number teaches
                     // people to stop reading it.
+                    //
+                    // Drawn as the app's own thermometer rather than as a
+                    // percentage. It is the same quantity as the one on the
+                    // CPU screen, off the same scale and in the same colours,
+                    // and a session at 95% should be the same red a machine at
+                    // 95% is.
                     if let cpuPercent, cpuPercent >= 15 {
-                        Text("\(Int(cpuPercent.rounded()))% CPU")
-                            .monospacedDigit()
-                            .foregroundStyle(cpuPercent >= 90 ? Color.orange : Color.secondary)
+                        InlineSegmentedThermometer(value: cpuPercent)
+                            .help("\(Int(cpuPercent.rounded()))% of a core")
                     }
 
                     if let disambiguator = row.disambiguator {
