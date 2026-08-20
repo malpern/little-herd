@@ -155,13 +155,55 @@ nonisolated struct AIUsageLimitsSnapshot: Equatable, Sendable {
 actor AIUsageLimitsSampler {
     private let freshnessInterval: TimeInterval = 15 * 60
 
-    func sample(now: Date = .now) -> AIUsageLimitsSnapshot {
+    func sample(now: Date = .now) async -> AIUsageLimitsSnapshot {
         let installed = isSourceInstalled
+        let codex = await codexLimit()
 
         return AIUsageLimitsSnapshot(
-            codex: availability(readCodexLimit(), installed: installed, now: now),
+            // Codex is no longer subject to CodexBar being *installed* — its
+            // own rollouts are a source in their own right — but the reading
+            // still has to pass the same freshness test as any other. It is a
+            // file written when a session last ran, not a poll.
+            codex: availability(
+                codex,
+                installed: installed || codex != nil,
+                now: now
+            ),
             claude: availability(readClaudeLimit(), installed: installed, now: now)
         )
+    }
+
+    /// Codex's limit, from whichever source saw it more recently.
+    ///
+    /// Not "prefer first-party", which is what this tried first and what a
+    /// check against the real files disproved within a minute. A rollout is
+    /// written when a session runs, so on a Mac where Codex is used
+    /// occasionally the newest reading in one was **five days old and said
+    /// 30%**, while CodexBar — which polls on a timer whenever it is running —
+    /// had a figure from the day before saying 100%. Preferring the file would
+    /// have replaced a nearly-right number with a badly wrong one.
+    ///
+    /// Each source is better exactly when the other is not. The rollout needs
+    /// no second application and is written the moment a turn ends; the scrape
+    /// keeps polling while no session runs at all. Taking the later of the two
+    /// needs no rule about which to trust.
+    private func codexLimit() async -> AIUsageLimit? {
+        let scraped = readCodexLimit()
+        guard let reading = await CodexRolloutUsage.latest(),
+              let window = reading.blocking
+        else {
+            return scraped
+        }
+
+        let fromRollout = AIUsageLimit(
+            provider: .codex,
+            remainingPercent: min(max(100 - window.usedPercent, 0), 100),
+            windowMinutes: window.windowMinutes,
+            resetsAt: window.resetsAt,
+            updatedAt: reading.observedAt
+        )
+        guard let scraped else { return fromRollout }
+        return scraped.updatedAt > fromRollout.updatedAt ? scraped : fromRollout
     }
 
     private func availability(

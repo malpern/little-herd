@@ -160,6 +160,21 @@ costs nothing; scanning transcripts for compaction markers would mean reading
 38 MB files every ten seconds. Nothing is claimed for a model until a fall has
 been seen.
 
+**Two usage sources, and neither is better — they fail at opposite times.**
+Codex's rate limits can be read from its own rollouts *and* from CodexBar's
+scrape, and the obvious rule, prefer the first-party file, is wrong. Measured:
+the newest populated block in a rollout on this Mac was **five days old and
+said 30%**, while CodexBar's copy was a day old and said **100%** — because a
+rollout is written when a session runs and this Mac runs Codex occasionally,
+whereas CodexBar polls on a timer whenever it happens to be running. Preferring
+the file would have replaced a nearly-right number with a badly wrong one.
+
+Take the later of the two and no rule about trust is needed. The rollout needs
+no second application and is written the moment a turn ends; the scrape keeps
+polling when no session runs at all. Both are then subject to the same
+freshness test, because a file written five days ago is five days old whoever
+wrote it.
+
 **Codex records more about itself than Claude does, in files already on disk.**
 A rollout at `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` carries, per turn:
 `turn_context.payload.model`; `token_count.info.last_token_usage.total_tokens`;
@@ -520,19 +535,15 @@ it; the files survived only because the directory had not been reaped yet.
    rule would collapse to "Linux failed to resolve", which is what the tooltip
    already says. Build it when a second machine becomes reachable only over the
    tailnet, and not before.
-3. **Read Codex's rate limits from its own rollouts.** The facts above have
-   the evidence: `used_percent`, `window_minutes` and `resets_at`, first-party,
-   in files on disk, in 216 rollouts on this Mac. Wiring it up would remove the
-   CodexBar dependency for half the providers, and — because it is a file
-   rather than a running GUI app — would make usage readable on the mini and
-   the linux box, which the handoff has recorded as impossible since the
-   feature was built. Claude still has no equivalent: `rateLimits` is `null` in
-   all 1,083 occurrences, so CodexBar stays necessary for it.
-
-   Not small. `AIUsageLimitsModel` reads local files on a timer and would gain
-   a second source with different freshness, and the remote path means a new
-   probe. Worth it: it turns the weakest dependency in the app into a file
-   read.
+3. **Extend usage past this Mac, now that one provider needs no local app.**
+   Codex's limits come from its own rollouts, which are files — so the reading
+   can be taken over ssh on the mini and the linux box, where usage has never
+   been readable at all because CodexBar is a GUI application that has to be
+   running. `AIUsageLimitsSampler` reads local paths directly; a remote path
+   means a probe, and the herd shares one account so the figures should agree —
+   which makes disagreement between machines a signal worth showing rather than
+   noise to hide. Claude stays local-only: it has no first-party source, and
+   `rateLimits` is `null` in all 1,083 occurrences of it here.
 
 4. **Probe destination eligibility, and let the user express intent separately.**
    Capability is measured — an agent binary resolvable over a non-interactive
