@@ -71,6 +71,16 @@ final class MonitorModel {
     }
 
     /// Feeds a machine's sessions to the learner and keeps what it works out.
+    /// Passes a machine's view of the Codex limits to the usage model.
+    ///
+    /// Every machine sees the same account, so this is not four readings but
+    /// four copies of one, of differing ages — and the newest is the true one
+    /// wherever it came from.
+    func observeUsage(_ snapshot: SystemSnapshot) {
+        guard let usage = snapshot.codexUsage else { return }
+        Task { await aiUsageLimits.report(codexUsage: usage) }
+    }
+
     func observeContext(of sessions: [AgentSession]) {
         for session in cpuTracker.rating(sessions, now: .now) {
             guard let percent = session.resource?.cpuPercent else { continue }
@@ -269,6 +279,8 @@ final class MonitorModel {
                     let snapshot = try await monitor.sampler.sample()
                     monitor.machine.apply(snapshot)
                     observeContext(of: snapshot.agentSessions)
+                observeUsage(snapshot)
+                    observeUsage(snapshot)
                 }
             } catch {
                 monitor.machine.markOffline()
@@ -536,6 +548,7 @@ final class MonitorModel {
                 let snapshot = await sampler.sample()
                 machine.apply(snapshot)
                 observeContext(of: snapshot.agentSessions)
+                observeUsage(snapshot)
                 recordHistory(for: machine, from: snapshot)
                 alerts.evaluate(machine, isEnabled: alertsEnabled)
 
@@ -562,7 +575,10 @@ final class MonitorModel {
                     let snapshot = try await sampler.sample()
                     machine.apply(snapshot)
                     observeContext(of: snapshot.agentSessions)
+                observeUsage(snapshot)
+                    observeUsage(snapshot)
                 observeContext(of: snapshot.agentSessions)
+                observeUsage(snapshot)
                     recordHistory(for: machine, from: snapshot)
                 } catch {
                     machine.markOffline(RemoteUnavailability.classify(error))
@@ -611,7 +627,10 @@ final class MonitorModel {
                     let snapshot = try await sampler.sample()
                     machine.apply(snapshot)
                     observeContext(of: snapshot.agentSessions)
+                observeUsage(snapshot)
+                    observeUsage(snapshot)
                 observeContext(of: snapshot.agentSessions)
+                observeUsage(snapshot)
                     recordHistory(for: machine, from: snapshot)
                 } catch let error as SynologyDSMError {
                     // Asked only on the way to reporting a failure, so the
@@ -646,7 +665,10 @@ final class MonitorModel {
                     let snapshot = try await sampler.sample()
                     machine.apply(snapshot)
                     observeContext(of: snapshot.agentSessions)
+                observeUsage(snapshot)
+                    observeUsage(snapshot)
                 observeContext(of: snapshot.agentSessions)
+                observeUsage(snapshot)
                     recordHistory(for: machine, from: snapshot)
                 } catch SMBStorageMonitorError.noMountedShares {
                     // "Unavailable" on its own reads as a broken NAS. Nothing

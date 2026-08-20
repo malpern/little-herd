@@ -222,6 +222,14 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
     /// Logical cores, so a process's share of one core can be expressed as a
     /// share of the whole machine. Nil where the machine does not say.
     let coreCount: Int?
+    /// The Codex account limits this machine last saw, when it has run Codex.
+    ///
+    /// A per-machine reading of an account-wide fact. The herd shares one
+    /// account, so every machine sees the same limits — but only as recently
+    /// as it last ran a session, and they do not run Codex equally. The mini
+    /// runs `emailtriage` twice a day; this Mac runs Codex when someone opens
+    /// it. The freshest copy wins, wherever it was found.
+    let codexUsage: AIUsageLimit?
 
     init(
         timestamp: Date,
@@ -232,7 +240,8 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
         memoryPressure: MemoryPressureLevel? = nil,
         memoryConsumers: [MemoryConsumer] = [],
         drives: [SynologyDrive] = [],
-        coreCount: Int? = nil
+        coreCount: Int? = nil,
+        codexUsage: AIUsageLimit? = nil
     ) {
         self.timestamp = timestamp
         self.readings = readings
@@ -243,6 +252,7 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
         self.memoryConsumers = memoryConsumers
         self.drives = drives
         self.coreCount = coreCount
+        self.codexUsage = codexUsage
     }
 }
 
@@ -251,6 +261,7 @@ actor MetricsSampler {
         let activities: [MachineActivity]
         let memoryConsumers: [MemoryConsumer]
         let agentSessions: [AgentSession]
+        var codexUsage: AIUsageLimit?
     }
 
     private struct CPUCounters: Sendable {
@@ -271,6 +282,7 @@ actor MetricsSampler {
     private var previousActivityTimestamp: ContinuousClock.Instant?
     private var cachedAgentTasks: [AgentTaskProvider: AgentTaskSummary] = [:]
     private var cachedAgentSessions: [AgentSession] = []
+    private var cachedCodexUsage: AIUsageLimit?
     private var previousAgentTaskTimestamp: ContinuousClock.Instant?
     private let clock = ContinuousClock()
 
@@ -317,7 +329,8 @@ actor MetricsSampler {
             storageVolumes: storageVolumes,
             memoryPressure: memoryPressure,
             memoryConsumers: processHighlights.memoryConsumers,
-            coreCount: ProcessInfo.processInfo.activeProcessorCount
+            coreCount: ProcessInfo.processInfo.activeProcessorCount,
+            codexUsage: processHighlights.codexUsage
         )
     }
 
@@ -326,7 +339,8 @@ actor MetricsSampler {
         let cachedHighlights = ProcessHighlights(
             activities: cachedActivities,
             memoryConsumers: cachedMemoryConsumers,
-            agentSessions: cachedAgentSessions
+            agentSessions: cachedAgentSessions,
+            codexUsage: cachedCodexUsage
         )
 
         if let previousActivityTimestamp,
@@ -356,6 +370,9 @@ actor MetricsSampler {
             let agentSnapshot = await AgentTaskProbe.readLocalSnapshot()
             cachedAgentTasks = agentSnapshot.tasksByProvider
             cachedAgentSessions = agentSnapshot.sessions
+            // Kept even when nil is returned, so a probe that ran while no
+            // rollout carried a limit does not erase a reading taken earlier.
+            if let usage = agentSnapshot.codexUsage { cachedCodexUsage = usage }
             previousAgentTaskTimestamp = now
         }
 
@@ -382,7 +399,8 @@ actor MetricsSampler {
         return ProcessHighlights(
             activities: cachedActivities,
             memoryConsumers: cachedMemoryConsumers,
-            agentSessions: cachedAgentSessions
+            agentSessions: cachedAgentSessions,
+            codexUsage: cachedCodexUsage
         )
     }
 

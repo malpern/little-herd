@@ -160,6 +160,21 @@ costs nothing; scanning transcripts for compaction markers would mean reading
 38 MB files every ten seconds. Nothing is claimed for a model until a fall has
 been seen.
 
+**Usage is a herd reading now, and the machines genuinely disagree.** Codex's
+limits live in files, so the same extraction runs over ssh — measured on both
+machines the same evening:
+
+    Air    2026-08-14T09:01:59   30%
+    mini   2026-08-15T01:34:15   42%
+
+One account, two ages, sixteen hours apart, and the same `resets_at` on both.
+The mini is fresher because it runs `emailtriage` twice a day while this Mac
+runs Codex when someone opens it — which is the whole argument for reading
+every machine rather than the one you are sitting at. The newest wins wherever
+it was found. The handoff's old line that "usage is read only from this Mac"
+no longer holds for Codex; it still holds for Claude, which has no first-party
+source at all.
+
 **Two usage sources, and neither is better — they fail at opposite times.**
 Codex's rate limits can be read from its own rollouts *and* from CodexBar's
 scrape, and the obvious rule, prefer the first-party file, is wrong. Measured:
@@ -342,7 +357,7 @@ not silent, which is the more useful finding: it had been showing an urgent red
 LED on the Codex mark the whole time. A six-pixel unlabelled dot in the corner of
 a header is the same as silence to the person it is for. That is why the AI
 panel's state moved to the leading edge and gained a glyph per state rather than
-a colour per state, and it is the reason item 4 checks budget once rather than
+a colour per state, and it is the reason item 3 checks budget once rather than
 per machine.
 
 **CodexBar is read, not bundled and not recommended, and that is deliberate.**
@@ -535,17 +550,7 @@ it; the files survived only because the directory had not been reaped yet.
    rule would collapse to "Linux failed to resolve", which is what the tooltip
    already says. Build it when a second machine becomes reachable only over the
    tailnet, and not before.
-3. **Extend usage past this Mac, now that one provider needs no local app.**
-   Codex's limits come from its own rollouts, which are files — so the reading
-   can be taken over ssh on the mini and the linux box, where usage has never
-   been readable at all because CodexBar is a GUI application that has to be
-   running. `AIUsageLimitsSampler` reads local paths directly; a remote path
-   means a probe, and the herd shares one account so the figures should agree —
-   which makes disagreement between machines a signal worth showing rather than
-   noise to hide. Claude stays local-only: it has no first-party source, and
-   `rateLimits` is `null` in all 1,083 occurrences of it here.
-
-4. **Probe destination eligibility, and let the user express intent separately.**
+3. **Probe destination eligibility, and let the user express intent separately.**
    Capability is measured — an agent binary resolvable over a non-interactive
    ssh shell, git, and a checkout of the repo. Intent is a setting: some
    machines can host a session and still should not.
@@ -581,7 +586,7 @@ it; the files survived only because the directory had not been reaped yet.
 
    This rung is useful on its own and everything below depends on it.
 
-5. **Transfer a session between machines, at the session level.** Not process
+4. **Transfer a session between machines, at the session level.** Not process
    migration, which is not possible and not wanted: stop the session, have it
    write full context, start a successor on the target that has the repo. It is
    the same thing this file does by hand between sessions, which is the reason
@@ -631,22 +636,22 @@ it; the files survived only because the directory had not been reaped yet.
    CodexBar's scrape, and eligibility gains one probe: capability parity, since
    the tools a session leaned on may not exist on the other vendor.
 
-6. **iOS, scoped to the herd rather than to sessions.** Do not rebuild session
+5. **iOS, scoped to the herd rather than to sessions.** Do not rebuild session
    steering; Remote Control and the Claude app already do it, with the local
    filesystem and MCP servers attached. What has no answer today is the herd:
    which machine is hot, what is waiting on you, what the budget looks like,
    and starting a transfer. Do not sample from the phone either — iOS will not
    ssh-poll in the background. It wants a resident collector on the mini, which
-   is the same helper item 4 needs for the Keychain problem and the same one a
+   is the same helper item 3 needs for the Keychain problem and the same one a
    durable successor session needs. Build it once. The model layer is already
    portable — 29 of 48 source files import neither SwiftUI nor AppKit, and
    `MachinePresentation` exists precisely because display decisions were pulled
    out of the view bodies.
 
-7. **Show each machine's agent versions.** Cheap, and skew is invisible today
+6. **Show each machine's agent versions.** Cheap, and skew is invisible today
    while being the standing condition; see the facts above.
 
-8. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
+7. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
    18 August. Show cloud work beside the machines (the Herdware set already
    holds an unused `owl-cloud.png`) and move it down with the vendors' own
    commands, never our protocol: `codex cloud apply` and `claude --teleport`.
@@ -660,7 +665,7 @@ it; the files survived only because the directory had not been reaped yet.
    it from here. Say so in the interface rather than pretending parity.
    Local→cloud stays out entirely — that is the vendors' own button.
 
-9. **Local models are blocked, not pending.** Considered and deferred
+8. **Local models are blocked, not pending.** Considered and deferred
     18 August. No herd machine runs a model server; the linux box is an AMD
     APU with integrated graphics; the best local-model host owned is the M5
     Air — the machine transfers exist to unload. A briefing written for a

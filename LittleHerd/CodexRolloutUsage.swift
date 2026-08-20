@@ -171,3 +171,79 @@ nonisolated struct CodexRolloutUsage: Sendable {
         return formatter.date(from: raw)
     }
 }
+
+/// The same reading, when it arrives from a probe rather than from local files.
+///
+/// A remote machine cannot run the reader above — it runs a shell script over
+/// ssh — so the extraction happens there and the interpretation happens here.
+/// One line, the newest reading that machine has, in the order the probe found
+/// it: timestamp, then each window's used percent, minutes and reset.
+nonisolated enum AgentUsageOutputParser {
+    static func parse(_ output: String) -> AIUsageLimit? {
+        output.split(whereSeparator: \.isNewline)
+            .compactMap(parseLine)
+            .max { $0.updatedAt < $1.updatedAt }
+    }
+
+    private static func parseLine(_ line: Substring) -> AIUsageLimit? {
+        let fields = line.split(
+            separator: "\t",
+            maxSplits: 7,
+            omittingEmptySubsequences: false
+        )
+        guard fields.count == 8,
+              fields[0] == "agent_usage=codex",
+              let observed = timestamp(String(fields[1]))
+        else {
+            return nil
+        }
+
+        let windows = [
+            window(fields[2], fields[3], fields[4]),
+            window(fields[5], fields[6], fields[7]),
+        ].compactMap(\.self)
+        guard let blocking = CodexRolloutUsage.Reading(
+            windows: windows,
+            observedAt: observed
+        ).blocking else {
+            return nil
+        }
+
+        return AIUsageLimit(
+            provider: .codex,
+            remainingPercent: min(max(100 - blocking.usedPercent, 0), 100),
+            windowMinutes: blocking.windowMinutes,
+            resetsAt: blocking.resetsAt,
+            updatedAt: observed
+        )
+    }
+
+    /// The probe writes -1 for a window the API did not report, because an
+    /// absent limit and a limit at zero percent are not the same thing and an
+    /// empty field would not tell them apart.
+    private static func window(
+        _ used: Substring,
+        _ minutes: Substring,
+        _ resets: Substring
+    ) -> CodexRolloutUsage.Window? {
+        guard let usedPercent = Double(used), usedPercent >= 0,
+              let windowMinutes = Int(minutes), windowMinutes > 0
+        else {
+            return nil
+        }
+        return CodexRolloutUsage.Window(
+            usedPercent: usedPercent,
+            windowMinutes: windowMinutes,
+            resetsAt: Double(resets).flatMap {
+                $0 > 0 ? Date(timeIntervalSince1970: $0) : nil
+            }
+        )
+    }
+
+    private static func timestamp(_ raw: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        if let plain = formatter.date(from: raw) { return plain }
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: raw)
+    }
+}

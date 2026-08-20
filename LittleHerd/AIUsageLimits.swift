@@ -123,6 +123,11 @@ final class AIUsageLimitsModel {
     @ObservationIgnored
     private var monitoringTask: Task<Void, Never>?
 
+    /// Hands a machine's Codex reading to the sampler, which keeps the newest.
+    func report(codexUsage: AIUsageLimit) async {
+        await sampler.report(codexUsage: codexUsage)
+    }
+
     func start() {
         guard monitoringTask == nil else { return }
 
@@ -154,6 +159,25 @@ nonisolated struct AIUsageLimitsSnapshot: Equatable, Sendable {
 
 actor AIUsageLimitsSampler {
     private let freshnessInterval: TimeInterval = 15 * 60
+
+    /// The best Codex reading any machine in the herd has reported.
+    ///
+    /// The account is shared, so every machine sees the same limits — but only
+    /// as recently as it last ran a session, and they do not run Codex equally.
+    /// The mini runs `emailtriage` twice a day; this Mac runs Codex when
+    /// someone opens it, and its newest reading was five days old when this was
+    /// written. The freshest copy is the true one wherever it was found.
+    private var reportedCodexUsage: AIUsageLimit?
+
+    func report(codexUsage: AIUsageLimit) {
+        guard let existing = reportedCodexUsage else {
+            reportedCodexUsage = codexUsage
+            return
+        }
+        if codexUsage.updatedAt > existing.updatedAt {
+            reportedCodexUsage = codexUsage
+        }
+    }
 
     func sample(now: Date = .now) async -> AIUsageLimitsSnapshot {
         let installed = isSourceInstalled
@@ -188,7 +212,7 @@ actor AIUsageLimitsSampler {
     /// keeps polling while no session runs at all. Taking the later of the two
     /// needs no rule about which to trust.
     private func codexLimit() async -> AIUsageLimit? {
-        let scraped = readCodexLimit()
+        let scraped = later(readCodexLimit(), reportedCodexUsage)
         guard let reading = await CodexRolloutUsage.latest(),
               let window = reading.blocking
         else {
@@ -202,8 +226,16 @@ actor AIUsageLimitsSampler {
             resetsAt: window.resetsAt,
             updatedAt: reading.observedAt
         )
-        guard let scraped else { return fromRollout }
-        return scraped.updatedAt > fromRollout.updatedAt ? scraped : fromRollout
+        return later(scraped, fromRollout)
+    }
+
+    private func later(
+        _ first: AIUsageLimit?,
+        _ second: AIUsageLimit?
+    ) -> AIUsageLimit? {
+        guard let first else { return second }
+        guard let second else { return first }
+        return first.updatedAt > second.updatedAt ? first : second
     }
 
     private func availability(

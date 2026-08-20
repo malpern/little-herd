@@ -208,3 +208,54 @@ struct CodexUsageSourceTests {
         }
     }
 }
+
+/// The reading as it arrives from a probe, which is how a remote machine's copy
+/// gets here — it runs a shell script over ssh and cannot run the reader.
+struct AgentUsageOutputParserTests {
+    /// The exact line the mini produced over ssh, which is 16 hours newer than
+    /// the one this Mac could produce: the same account, seen at two ages.
+    @Test
+    func theLineTheMiniProducedIsRead() throws {
+        let limit = try #require(
+            AgentUsageOutputParser.parse(
+                "agent_usage=codex\t2026-08-15T01:34:15.613Z\t42.0\t10080\t1787197401\t-1\t0\t0"
+            )
+        )
+        #expect(limit.provider == .codex)
+        #expect(limit.remainingPercent == 58)
+        #expect(limit.windowMinutes == 10_080)
+        #expect(limit.resetsAt == Date(timeIntervalSince1970: 1_787_197_401))
+    }
+
+    /// -1 means the API reported no such window. An absent limit and a limit at
+    /// zero percent are different things, and a blank field could not tell them
+    /// apart — which is why the probe writes a number that cannot be mistaken
+    /// for a reading.
+    @Test
+    func anAbsentWindowIsNotReadAsEmpty() {
+        #expect(
+            AgentUsageOutputParser.parse(
+                "agent_usage=codex\t2026-08-15T01:34:15.613Z\t-1\t0\t0\t-1\t0\t0"
+            ) == nil
+        )
+    }
+
+    /// Both windows populated: the fuller one, by the rule both sources share.
+    @Test
+    func bothWindowsAreConsidered() throws {
+        let limit = try #require(
+            AgentUsageOutputParser.parse(
+                "agent_usage=codex\t2026-08-15T01:34:15Z\t20.0\t300\t0\t88.0\t10080\t0"
+            )
+        )
+        #expect(limit.remainingPercent == 12)
+        #expect(limit.windowMinutes == 10_080)
+    }
+
+    /// Anything else on the probe's output is not this line.
+    @Test
+    func otherProbeOutputIsIgnored() {
+        #expect(AgentUsageOutputParser.parse("agent_session=codex\tx\ty") == nil)
+        #expect(AgentUsageOutputParser.parse("") == nil)
+    }
+}

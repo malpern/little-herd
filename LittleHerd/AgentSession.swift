@@ -531,6 +531,18 @@ nonisolated enum MachineAgentSessionBuilder {
 nonisolated struct AgentProbeSnapshot: Equatable, Sendable {
     let tasksByProvider: [AgentTaskProvider: AgentTaskSummary]
     let sessions: [AgentSession]
+    /// What this machine last saw of the Codex account's limits.
+    let codexUsage: AIUsageLimit?
+
+    init(
+        tasksByProvider: [AgentTaskProvider: AgentTaskSummary],
+        sessions: [AgentSession],
+        codexUsage: AIUsageLimit? = nil
+    ) {
+        self.tasksByProvider = tasksByProvider
+        self.sessions = sessions
+        self.codexUsage = codexUsage
+    }
 
     static let empty = AgentProbeSnapshot(tasksByProvider: [:], sessions: [])
 }

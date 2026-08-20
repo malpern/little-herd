@@ -718,6 +718,36 @@ nonisolated enum AgentTaskProbe {
     little_herd_active_window_ms=120000
     little_herd_recent_window_ms=43200000
 
+    # The Codex account limits, from the files Codex writes them into.
+    #
+    # An account-wide fact recorded per machine, and machines do not run Codex
+    # equally — the mini runs emailtriage twice a day, this Mac when someone
+    # opens it — so the freshest copy is worth having wherever it lives. The
+    # newest six rollouts only: limits are appended to every one of them, and
+    # reading the whole directory to learn one number would cost what a full
+    # scan costs, every sample. Measured at 99 ms.
+    if command -v jq >/dev/null 2>&1 && [ -d "$HOME/.codex/sessions" ]; then
+      little_herd_rollouts=$(ls -t "$HOME"/.codex/sessions/*/*/*/*.jsonl 2>/dev/null | head -6)
+      if [ -n "$little_herd_rollouts" ]; then
+        printf '%s\n' "$little_herd_rollouts" | while IFS= read -r rollout; do
+          little_herd_limit_line=$(grep '"primary":{' "$rollout" 2>/dev/null | tail -n 1)
+          [ -n "$little_herd_limit_line" ] || continue
+          printf '%s\n' "$little_herd_limit_line" | jq -r '
+            .payload.rate_limits as $limits |
+            [(.timestamp // ""),
+             ($limits.primary.used_percent // -1),
+             ($limits.primary.window_minutes // 0),
+             ($limits.primary.resets_at // 0),
+             ($limits.secondary.used_percent // -1),
+             ($limits.secondary.window_minutes // 0),
+             ($limits.secondary.resets_at // 0)] | @tsv' 2>/dev/null
+        done | sort -r | head -n 1 | while IFS= read -r little_herd_limits; do
+          [ -n "$little_herd_limits" ] || continue
+          printf "agent_usage=codex\t%s\n" "$little_herd_limits"
+        done
+      fi
+    fi
+
     codex_db="$HOME/.codex/state_5.sqlite"
     if command -v sqlite3 >/dev/null 2>&1 && [ -r "$codex_db" ]; then
       codex_cutoff_ms=$((little_herd_now_ms - little_herd_recent_window_ms))
@@ -1045,7 +1075,8 @@ nonisolated enum AgentTaskProbe {
             sessions: AgentResourceJoin.attach(
                 processes: AgentProcessOutputParser.parse(output),
                 to: AgentSessionOutputParser.parse(output)
-            )
+            ),
+            codexUsage: AgentUsageOutputParser.parse(output)
         )
         logger.debug(
             "Task metadata probe found \(snapshot.sessions.count) sessions"
