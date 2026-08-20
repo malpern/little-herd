@@ -124,10 +124,12 @@ struct AIAgentPanelContent: View {
     @ViewBuilder
     private var runningHeader: some View {
         if !layout.active.isEmpty {
-            HStack(spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(runningTitle)
                     .font(.caption2.weight(.semibold))
+                    .tracking(0.3)
                     .foregroundStyle(.secondary)
+                    .padding(.leading, AIAgentRow.titleInset)
 
                 Spacer(minLength: 4)
 
@@ -135,24 +137,30 @@ struct AIAgentPanelContent: View {
                 // geometry as the sessions' — so the whole sits directly above
                 // its parts and the two can be read against each other rather
                 // than merely near each other.
+                // Stacked exactly as a row is — meter on the first line, its
+                // number on the second — and in the same column, so the
+                // machine's bar sits directly above the sessions' bars. Laid
+                // out side by side it landed a few points left of them, which
+                // is the difference between a grid and things that happen to
+                // be near each other.
                 VStack(alignment: .trailing, spacing: 2) {
                     InlineSegmentedThermometer(value: machineCPUPercent)
+                        .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
 
                     Text(
-                        machineCPUPercent.map {
-                            "\(Int($0.rounded()))%"
-                        } ?? " "
+                        machineCPUPercent.map { "\(Int($0.rounded()))%" } ?? ""
                     )
-                    .font(.caption2.monospacedDigit())
+                    .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
+                    .fixedSize()
                 }
                 .frame(
                     width: AIAgentRow.measureColumnWidth,
                     alignment: .trailing
                 )
             }
-            .padding(.top, 6)
-            .padding(.bottom, 2)
+            .padding(.top, 12)
+            .padding(.bottom, 4)
         }
     }
 
@@ -164,10 +172,14 @@ struct AIAgentPanelContent: View {
         if !sectionRows.isEmpty {
             Text(title)
                 .font(.caption2.weight(.semibold))
+                // Positive tracking at this size, per the same rule that
+                // tightens large text: small type reads as cramped without it.
+                .tracking(0.3)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 10)
-                .padding(.bottom, 2)
+                .padding(.leading, AIAgentRow.titleInset)
+                .padding(.top, 12)
+                .padding(.bottom, 4)
             rows(sectionRows)
         }
     }
@@ -194,10 +206,10 @@ struct AIAgentPanelContent: View {
                 }
             }
 
-            // Inset to where the titles begin — the dot column plus its
-            // spacing — rather than to where a twenty-point icon used to end.
+            // Inset to where the titles begin, so the dividers, the section
+            // headers and the titles share one vertical line.
             Divider()
-                .padding(.leading, 15)
+                .padding(.leading, AIAgentRow.titleInset)
         }
     }
 }
@@ -247,12 +259,15 @@ private struct FinishedSessionsDisclosure: View {
             HStack(spacing: 4) {
                 Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                     .font(.caption2.weight(.semibold))
+                    .frame(width: 9)
                 Text("\(count) finished")
                     .font(.caption2.weight(.semibold))
+                    .tracking(0.3)
                 Spacer(minLength: 0)
             }
             .foregroundStyle(.secondary)
-            .padding(.vertical, 6)
+            .padding(.top, 12)
+            .padding(.bottom, 6)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -274,17 +289,23 @@ private struct AIAgentsEmptyState: View {
 
 /// One session, laid out on the panel's grid.
 ///
-/// Everything measured sits in a fixed trailing column, so the bars line up
-/// down the panel and can be compared by eye. They used to follow the status
-/// text, which is a different length on every row, so each one started
-/// somewhere else and the column read as ragged — a bar you have to hunt for
-/// is a bar doing none of the work a bar is for.
+/// **Type.** Title and status used to be `.caption` and `.caption2`, which on
+/// macOS are both about ten points — the same size, distinguished only by
+/// colour, which is why the row read as flat however the pieces were arranged.
+/// Hierarchy is built from size, weight and colour together: twelve-point
+/// medium against ten-point regular secondary is a step you can see before you
+/// read either of them. Semantic styles rather than fixed points, so the panel
+/// follows the system text size instead of ignoring it.
 ///
-/// There is no application icon. It was twenty points of full colour, identical
-/// on every row of a panel scoped to one machine, and it was the loudest thing
-/// on a screen whose subject is the titles. Which agent a session belongs to
-/// lives in the tooltip, where it is available and quiet, and a coloured dot
-/// carries the state instead — the only per-row fact that changes.
+/// **Grid.** Everything measured sits in one trailing column, and the meter is
+/// pulled onto the title's baseline rather than floating at the top of its
+/// stack — a bar that sits a point or two off the line it belongs to is the
+/// kind of thing you feel without being able to name.
+///
+/// **Restraint.** No application icon: twenty points of full colour, identical
+/// on every row of a panel scoped to one machine, saying the same word over and
+/// over. A seven-point dot carries the state, which is the only per-row fact
+/// that changes.
 struct AIAgentRow: View {
     let row: AgentPanelRow
     var contextLimits = AgentContextLimits()
@@ -292,21 +313,23 @@ struct AIAgentRow: View {
     var cpuPercent: Double?
 
     /// One width for every measured thing in the panel, header included.
-    static let measureColumnWidth: CGFloat = 58
+    static let measureColumnWidth: CGFloat = 54
+    /// The leading column: the dot plus the space to the title. Dividers and
+    /// section headers inset to this, so one vertical line runs down the panel.
+    static let titleInset: CGFloat = 15
 
     private var machineSession: MachineAgentSession { row.session }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             AgentStateDot(state: machineSession.session.state)
-                .accessibilityLabel(Text(machineSession.session.state.title))
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 // The session's own name, in the agent's own words — the same
                 // string its sidebar shows, so a session is called one thing
                 // wherever you meet it.
                 Text(machineSession.session.displayTitle)
-                    .font(.caption.weight(.medium))
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -321,7 +344,10 @@ struct AIAgentRow: View {
                             .foregroundStyle(.tertiary)
                     }
                 }
-                .font(.caption2)
+                // Small text wants a little air between its letters; large text
+                // wants less. This is the small end.
+                .font(.caption)
+                .tracking(0.1)
                 .lineLimit(1)
                 .truncationMode(.tail)
             }
@@ -329,20 +355,21 @@ struct AIAgentRow: View {
             Spacer(minLength: 6)
 
             VStack(alignment: .trailing, spacing: 2) {
-                // Work on the top line, against the machine's own bar in the
-                // header directly above it. Only above fifteen percent: every
-                // session uses some CPU, and a number that is always there is
-                // a number people stop reading.
-                if let cpuPercent, cpuPercent >= 15 {
-                    InlineSegmentedThermometer(value: cpuPercent)
-                        .help("\(Int(cpuPercent.rounded()))% of a core")
-                } else {
-                    // Holds the line's height so the second line does not
-                    // shuffle up and down between rows.
-                    Color.clear.frame(width: 1, height: 9)
+                // Work on the title's line, against the machine's own bar in
+                // the header directly above it. Only above fifteen percent:
+                // every session uses some CPU, and a number that is always
+                // there is a number people stop reading.
+                Group {
+                    if let cpuPercent, cpuPercent >= 15 {
+                        InlineSegmentedThermometer(value: cpuPercent)
+                            .help("\(Int(cpuPercent.rounded()))% of a core")
+                    } else {
+                        Color.clear.frame(width: 1, height: 9)
+                    }
                 }
+                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
 
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     // Only once this model has been watched compacting. Before
                     // that there is no honest denominator, and a percentage
                     // would be the invention this design exists to avoid.
@@ -357,11 +384,11 @@ struct AIAgentRow: View {
                     Text(Self.compactAge(of: machineSession.session.updatedAt))
                         .foregroundStyle(.tertiary)
                 }
-                .font(.caption2.monospacedDigit())
+                .font(.caption.monospacedDigit())
             }
             .frame(width: Self.measureColumnWidth, alignment: .trailing)
         }
-        .frame(minHeight: 33)
+        .padding(.vertical, 5)
         .contentShape(Rectangle())
         .help(helpText)
         .accessibilityElement(children: .ignore)
@@ -581,6 +608,10 @@ private struct AgentStateDot: View {
             }
         }
         .frame(width: 7, height: 7)
+        // Optically on the title's baseline: a marker that floats above or
+        // below the line it belongs to is the sort of thing you feel rather
+        // than notice.
+        .alignmentGuide(.firstTextBaseline) { $0[.bottom] + 1 }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(state.title))
     }

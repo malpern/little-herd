@@ -25,6 +25,9 @@ struct PanelRenderHarness {
     /// content area is what is left under the header. Rendering at any other
     /// size would answer a question nobody asked.
     private static let panelSize = CGSize(width: 300, height: 228)
+    /// Taller than the real panel, for reading the whole list at once. The
+    /// real one scrolls; this is for judging the layout, not the fit.
+    private static let reviewSize = CGSize(width: 300, height: 320)
 
     private static var outputDirectory: URL {
         URL(fileURLWithPath: NSTemporaryDirectory())
@@ -149,7 +152,8 @@ struct PanelRenderHarness {
     private func panel(
         sessions: [MachineAgentSession],
         workload: HerdWorkloadFinding? = nil,
-        showingFinished: Bool = false
+        showingFinished: Bool = false,
+        machineCPU: Double? = 94
     ) -> some View {
         AIAgentPanelContent(
             layout: AgentPanelLayout.make(from: sessions, showingFinished: showingFinished),
@@ -157,7 +161,7 @@ struct PanelRenderHarness {
             machineName: "Air",
             contextLimits: AgentContextLimits(observed: ["claude-opus-5": 1_000_000]),
             agentCPU: ["claude:aa11bb22": 96, "claude:1234abcd": 31],
-            machineCPUPercent: 94,
+            machineCPUPercent: machineCPU,
             hoveredAgentID: .constant(nil),
             isShowingFinished: .constant(showingFinished),
             onSelectMachine: nil
@@ -188,6 +192,15 @@ struct PanelRenderHarness {
                 )
             ),
             named: "ai-panel-workload"
+        )
+    }
+
+    @Test
+    func renderAgentPanelFullList() throws {
+        try render(
+            panel(sessions: busyHerd(), machineCPU: 94),
+            size: Self.reviewSize,
+            named: "ai-panel-full"
         )
     }
 
