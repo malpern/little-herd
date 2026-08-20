@@ -113,6 +113,11 @@ enum LittleHerdPreferences {
     static let menuBarEnabledKey = "menuBarItemEnabled"
     static let machineConfigurationsKey = "machineConfigurationsV1"
     static let alertsEnabledKey = "alertsEnabled"
+    /// Whether Little Herd starts CodexBar when it finds it installed and not
+    /// running. Default on, because the alternative is a usage figure that
+    /// silently stops moving — but a setting rather than a habit, since this
+    /// starts another developer's application on someone's Mac.
+    static let startsUsageSourceKey = "startsUsageSource"
     static let networkVolumeAccessOnboardingCompletedKey =
         "networkVolumeAccessOnboardingCompleted"
 
@@ -475,6 +480,8 @@ private struct LittleHerdSettingsView: View {
     private var menuBarEnabled = false
     @AppStorage(LittleHerdPreferences.alertsEnabledKey)
     private var alertsEnabled = false
+    @AppStorage(LittleHerdPreferences.startsUsageSourceKey)
+    private var startsUsageSource = true
     @State private var configuringNAS: MachineConfiguration?
     /// Bumped when a password is saved.
     ///
@@ -492,6 +499,16 @@ private struct LittleHerdSettingsView: View {
                     .font(.body.weight(.medium))
 
                 Text("A notification when a disk is nearly full, memory is critical, or a machine stops responding — once per event, and once when it recovers.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            VStack(alignment: .leading, spacing: 7) {
+                Toggle("Start CodexBar if it isn’t running", isOn: $startsUsageSource)
+                    .font(.body.weight(.medium))
+
+                Text("Usage figures come from CodexBar, because neither vendor writes a limit anywhere Little Herd can read. When CodexBar isn’t running the figure quietly stops moving, which looks the same as having no limit at all.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

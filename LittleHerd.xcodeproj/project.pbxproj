@@ -59,8 +59,10 @@
 		ADFBD220A565C255B252322A /* Machine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90FE8216081F585ED580AE1C /* Machine.swift */; };
 		AE7E668C1245F5127C1E588D /* NetworkVolumeOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */; };
 		B3560BD65BAB29961DD5DB6C /* HoveredMachineMetricHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 672A36609CA039974CDF72E7 /* HoveredMachineMetricHeader.swift */; };
+		B503079BC74767A615F0B400 /* CodexBarSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1B84E18576938DDB61E77B6 /* CodexBarSource.swift */; };
 		B8613453826F6A56D32919D6 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A2C8E4C049BD68DD7C9764E /* IOKit.framework */; };
 		BF0A72836087C3E499B9E54D /* InMemoryConfigurationStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28A334FD1C930D9B96C4E2F1 /* InMemoryConfigurationStorage.swift */; };
+		BF4C5C635505FCDC2EDDE8EC /* CodexBarOfferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F405C1D91AB9D95F0D588013 /* CodexBarOfferTests.swift */; };
 		C3EC710A9D4AC5B469D730AE /* SynologyCredentialsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33E5557F8559949577B4F98F /* SynologyCredentialsView.swift */; };
 		C75E46029BE72838F29E96DE /* MachineMonitorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6125192CA7CFE81311C048BC /* MachineMonitorModel.swift */; };
 		CBADC8EDC9632AE4731B8C4C /* SoftwareUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4164BB6C590812113B80A9E9 /* SoftwareUpdater.swift */; };
@@ -142,6 +144,7 @@
 		BD1898FFA14E2C7BC9A924C2 /* HerdWorkloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdWorkloadTests.swift; sourceTree = "<group>"; };
 		BE23C778660407B336F50BA0 /* MetricsSamplerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricsSamplerTests.swift; sourceTree = "<group>"; };
 		C1A0DC0F7A6B9443E5F6E450 /* PanelRenderHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelRenderHarness.swift; sourceTree = "<group>"; };
+		C1B84E18576938DDB61E77B6 /* CodexBarSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexBarSource.swift; sourceTree = "<group>"; };
 		CE6423E97058743B9C08DD97 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D047AA9280E8D79DC01E7EC3 /* TaskTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskTransfer.swift; sourceTree = "<group>"; };
 		D0F1DDCC19A6E8B6C26AC5A1 /* MetricKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricKind.swift; sourceTree = "<group>"; };
@@ -152,6 +155,7 @@
 		E4F112CE5D8A49060A44E52A /* SSHHostName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHHostName.swift; sourceTree = "<group>"; };
 		E5C36AC033CCD76A2AA262A9 /* TaskTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskTransferView.swift; sourceTree = "<group>"; };
 		EBD5EAFC1911B210500E6BD9 /* SecretCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretCache.swift; sourceTree = "<group>"; };
+		F405C1D91AB9D95F0D588013 /* CodexBarOfferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexBarOfferTests.swift; sourceTree = "<group>"; };
 		F82C710E619943CBDCBE3355 /* HerdWorkload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdWorkload.swift; sourceTree = "<group>"; };
 		F92F0519C69CB99B932A38ED /* FolderBrowserModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderBrowserModel.swift; sourceTree = "<group>"; };
 		F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteUnavailabilityTests.swift; sourceTree = "<group>"; };
@@ -183,6 +187,7 @@
 				FD201A3C46AB062F71E564EF /* AIUsageLimits.swift */,
 				387B8471B05B8FEFC2973329 /* Assets.xcassets */,
 				BC14D9861665A4B5069FBEF7 /* BonjourMachineDiscovery.swift */,
+				C1B84E18576938DDB61E77B6 /* CodexBarSource.swift */,
 				133A808E3BA4EEA2AF234D6E /* CPUOverviewView.swift */,
 				199544A93AE05F23B93D38E4 /* DashboardTransition.swift */,
 				D833CE2704E28207ED01D856 /* DashboardView.swift */,
@@ -255,6 +260,7 @@
 			isa = PBXGroup;
 			children = (
 				694A0E6E34E815E5A5218AA0 /* AgentProbeShellTests.swift */,
+				F405C1D91AB9D95F0D588013 /* CodexBarOfferTests.swift */,
 				3CBDB146412416AE14C5CEB4 /* ConfigurationDurabilityTests.swift */,
 				52D5157BE29095D9CF3FED86 /* FolderSizeTests.swift */,
 				BD1898FFA14E2C7BC9A924C2 /* HerdWorkloadTests.swift */,
@@ -385,6 +391,7 @@
 				45C4B87B06C248B32DE821B4 /* AgentSession.swift in Sources */,
 				58521A8BB8088855A0F9DA8D /* BonjourMachineDiscovery.swift in Sources */,
 				231FCA9BBB2F8387C363203F /* CPUOverviewView.swift in Sources */,
+				B503079BC74767A615F0B400 /* CodexBarSource.swift in Sources */,
 				F45BA889DF0A918F2B8A1CE7 /* DashboardTransition.swift in Sources */,
 				094E80A6E07234899B305A38 /* DashboardView.swift in Sources */,
 				A23B343EAFCC59009DBBB951 /* DashboardWindowBridge.swift in Sources */,
@@ -436,6 +443,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2CFA6E28CE4D7F2470879499 /* AgentProbeShellTests.swift in Sources */,
+				BF4C5C635505FCDC2EDDE8EC /* CodexBarOfferTests.swift in Sources */,
 				0B46A10585034F62414676B1 /* ConfigurationDurabilityTests.swift in Sources */,
 				5716E746539B82A0D580CDB7 /* FolderSizeTests.swift in Sources */,
 				A3B86273DEF5E8F43616CE18 /* HerdWorkloadTests.swift in Sources */,

@@ -159,10 +159,27 @@ struct DashboardView: View {
                     && !shouldPresentNetworkVolumeOnboarding
             )
             model.activate(.dashboard)
+            startUsageSourceIfWanted()
         }
         .onDisappear {
             model.deactivate(.dashboard)
         }
+    }
+
+    /// Starts the usage source if it is installed, not running, and allowed.
+    ///
+    /// Little Herd cannot measure a vendor limit itself, so a usage figure is
+    /// only as alive as CodexBar is — and CodexBar not running looks exactly
+    /// like having no limit. Starting it is cheap, reversible by quitting it,
+    /// and off by one switch in Settings for anyone who would rather Little
+    /// Herd did not launch another application on their Mac.
+    private func startUsageSourceIfWanted() {
+        guard UserDefaults.standard.object(
+            forKey: LittleHerdPreferences.startsUsageSourceKey
+        ) as? Bool ?? true else {
+            return
+        }
+        CodexBarSource.launchIfNeeded()
     }
 
     private var visibleTransfer: TaskTransferEvent? {
@@ -1313,6 +1330,17 @@ private struct AIUsageLimitRow: View {
     let provider: AIUsageProvider
     let availability: AIUsageAvailability
 
+    /// Asked on each render rather than cached: the answer changes the moment
+    /// someone starts or quits CodexBar, and a stale "not running" that offers
+    /// to start an app already running is worse than no offer.
+    private var offer: CodexBarOffer {
+        CodexBarOffer.resolve(
+            availability: availability,
+            isInstalled: CodexBarSource.isInstalled,
+            isRunning: CodexBarSource.isRunning
+        )
+    }
+
     var body: some View {
         AIUsageProviderControl(
             provider: provider,
@@ -1325,7 +1353,8 @@ private struct AIUsageLimitRow: View {
             // Little Herd reads that app but does not recommend it.
             isActionable: isUrgent || limit == nil,
             accessibilityValue: accessibilityValue,
-            helpText: helpText
+            helpText: helpText,
+            offer: offer
         )
     }
 
@@ -1374,11 +1403,11 @@ private struct AIUsageLimitRow: View {
                 Text("\(provider.displayName) usage unavailable")
             case .sourceMissing:
                 Text(
-                    "\(provider.displayName) usage needs CodexBar, which isn’t installed on this Mac. Click to open usage and billing."
+                    "\(provider.displayName) usage needs CodexBar, which isn’t installed on this Mac. Little Herd reads it; it can’t measure this itself. Click to see what it is."
                 )
             case let .stale(since):
                 Text(
-                    "\(provider.displayName) usage last updated \(since, format: .relative(presentation: .named)); CodexBar may not be running. Click to open usage and billing."
+                    "\(provider.displayName) usage last updated \(since, format: .relative(presentation: .named)). CodexBar isn’t running, so the figure has stopped moving. Click to start it."
                 )
             case .noReading:
                 Text(
@@ -1395,9 +1424,38 @@ private struct AIUsageProviderControl: View {
     let isActionable: Bool
     let accessibilityValue: Text
     let helpText: Text
+    /// What to offer about the source itself, when the number is missing
+    /// because of the source rather than because of the vendor.
+    var offer: CodexBarOffer = .none
 
     var body: some View {
-        if isActionable {
+        if offer == .start {
+            // A number that stopped moving is fixed by starting the thing that
+            // moves it, not by opening a billing page. One click, no dialog:
+            // the app is already on this Mac and starting it is undone by
+            // quitting it.
+            Button {
+                CodexBarSource.launchIfNeeded()
+            } label: {
+                AIUsageProviderStatusMark(provider: provider, limit: limit)
+            }
+            .buttonStyle(.plain)
+            .help(helpText)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(provider.displayName))
+            .accessibilityValue(accessibilityValue)
+            .accessibilityHint("Start CodexBar to resume usage readings")
+        } else if offer == .install {
+            Link(destination: CodexBarSource.downloadURL) {
+                AIUsageProviderStatusMark(provider: provider, limit: limit)
+            }
+            .buttonStyle(.plain)
+            .help(helpText)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(provider.displayName))
+            .accessibilityValue(accessibilityValue)
+            .accessibilityHint("Open the CodexBar project page")
+        } else if isActionable {
             Link(destination: provider.usageAndBillingURL) {
                 AIUsageProviderStatusMark(provider: provider, limit: limit)
             }
