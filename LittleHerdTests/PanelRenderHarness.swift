@@ -158,7 +158,8 @@ struct PanelRenderHarness {
         sessions: [MachineAgentSession],
         workload: HerdWorkloadFinding? = nil,
         showingFinished: Bool = false,
-        destinationAccounts: [DestinationAccount] = []
+        destinationAccounts: [DestinationAccount] = [],
+        collapsed: Set<AgentPanelSection>? = nil
     ) -> some View {
         AIAgentPanelContent(
             layout: AgentPanelLayout.make(from: sessions, showingFinished: showingFinished),
@@ -168,7 +169,9 @@ struct PanelRenderHarness {
             compactionThresholds: AgentCompactionThresholds(observed: ["claude-opus-5": 1_000_000]),
             agentCPU: ["claude:aa11bb22": 96, "claude:1234abcd": 31],
             hoveredAgentID: .constant(nil),
-            collapsed: .constant(showingFinished ? [] : [.finished]),
+            collapsed: .constant(
+                collapsed ?? (showingFinished ? [] : [.finished])
+            ),
             onSelectMachine: nil
         )
         .frame(maxHeight: .infinity, alignment: .top)
@@ -261,6 +264,21 @@ struct PanelRenderHarness {
             ),
             account("nas", "NAS", "externaldrive", allowed: false, report: nil),
         ]
+    }
+
+    /// What the panel looks like by default, which is folded: a question in a
+    /// header rather than a list of machines that cannot take the work.
+    @Test
+    func renderAgentPanelWithDestinationsFolded() throws {
+        try render(
+            panel(
+                sessions: busyHerd(),
+                destinationAccounts: herdAccounts(),
+                collapsed: [.finished, .destinations]
+            ),
+            size: Self.reviewSize,
+            named: "ai-panel-destinations-folded"
+        )
     }
 
     @Test

@@ -263,7 +263,26 @@ Reading `.git/config` beats asking git, for identical answers: 38 checkouts
 took 783 ms through `git remote get-url` and 303 ms read directly, because the
 first spawns thirty-eight processes and the second spawns none.
 
-**zsh aborts the whole script on a glob that matches nothing.** The agent probe
+**zsh aborts the whole script on a glob that matches nothing — and this has
+now happened twice.** The second time was the checkout scan, which shipped in
+0.1.33 globbing `"$root"/*`, so a single **empty** `~/code` on a Mac took the
+whole probe down: no sessions, no agent versions, and over ssh no metrics
+either, because `SSHCommandRunner` throws on a non-zero exit and the sample is
+discarded. **A machine would have read as down because a directory was empty.**
+No machine in this herd tripped it — the mini's `~/local-code` has nine entries
+and the linux box runs bash, where an unmatched glob is passed through — which
+is exactly why it survived a release. There is a test for it now, and it was
+watched failing with the glob put back.
+
+Two details for next time. Not every glob here is fatal: the rollout scan's
+`ls -t …/*/*.jsonl` sits inside `$(…)`, so the abort kills only that subshell
+and the script carries on — measured, and the reason it was left alone. And a
+`find` needs its depth measured rather than counted: a checkout's `.git/config`
+is **three** levels below the search root, and two and four each find nothing
+while failing silently, which looks identical to an account with no
+repositories.
+
+**The original of this lesson, which the above repeats.** The agent probe
 runs under `/bin/zsh -c`, and a pattern with no matches is a fatal error there
 where `sh` would pass it through untouched. A glob added to look for a bundled
 agent took out *every session in the AI panel* on any Mac without that bundle —
@@ -492,6 +511,17 @@ question is not asked of anybody, so every account came back eligible for work
 that cannot travel at all. It now says "Not in a checkout" once, rather than
 either lying or vanishing — a section that silently disappears is the false
 silence this project keeps having to write tests against.
+
+**A panel that answers a question nobody asked reads as a complaint.** The
+destinations section shipped expanded, so the AI panel carried a standing list
+of machines that could *not* take the work — and the first person to see it
+read it as the app announcing that it now needed a repository on the other Mac
+before it would run. Nothing of the kind is true: `isEligible` is consulted in
+three places in the whole app and all three are a text colour or a sort order,
+and monitoring has never depended on any of it. The section folds by default
+now and its header asks the question — "Where add-secret could go" — rather
+than listing the answers unbidden. Worth generalising: this app's readers take
+anything permanently on screen as a statement about whether it is working.
 
 **A pinned footer under `MetricDetailPane` does not work, and three attempts
 say so.** The installed-agents block wants to stay in view while the sessions

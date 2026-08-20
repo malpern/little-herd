@@ -83,6 +83,58 @@ struct AgentProbeShellTests {
     /// same way. They used different APIs, and the generous one credited
     /// purgeable space, so the same machine read ~39 GB emptier when it was the
     /// local one.
+    /// The bug this test exists for: **an empty checkout root used to abort the
+    /// entire probe.**
+    ///
+    /// The scan globbed `"$root"/*`, and zsh treats a pattern that matches
+    /// nothing as a fatal error rather than passing it through as `sh` does. So
+    /// one empty `~/code` on a Mac cost every session in the AI panel and every
+    /// agent version — and over ssh it cost the machine's whole metrics sample,
+    /// because a non-zero exit makes `SSHCommandRunner` throw and the reading
+    /// is discarded. The machine read as down because a directory was empty.
+    ///
+    /// The assertion is that the *rest of the script still runs*, which is why
+    /// it looks for a session rather than for a checkout: a checkout scan that
+    /// silently found nothing would pass a test that only counted checkouts.
+    @Test
+    func anEmptyCheckoutRootDoesNotTakeTheProbeWithIt() async throws {
+        let home = try FixtureHome()
+        try home.makeCheckoutRoot()
+        try home.writeClaudeSession(
+            projectPath: "/Users/tester/code/little-herd",
+            sessionID: "session-empty-root",
+            tasks: [("Keep going", "Keeping going", "in_progress")]
+        )
+
+        let snapshot = await AgentTaskProbe.readSnapshot(homeDirectory: home.path)
+        #expect(
+            snapshot.sessions.contains { $0.provider == .claude },
+            "an empty checkout root aborted the probe before it read any sessions"
+        )
+    }
+
+    /// And the scan still finds what it is for, keyed by the origin remote
+    /// rather than by the folder — this herd has `keyboard-newswire` checked
+    /// out in a directory called `keyboard-wire`.
+    @Test
+    func theCheckoutScanReportsRepositoriesByTheirRemoteSlug() async throws {
+        let home = try FixtureHome()
+        try home.writeCheckout(directory: "keyboard-wire", originSlug: "keyboard-newswire")
+        try home.writeCheckout(directory: "little-herd", originSlug: "little-herd")
+        // A directory that is not a checkout at all sits alongside them.
+        try FileManager.default.createDirectory(
+            atPath: "\(home.path)/local-code/scratch",
+            withIntermediateDirectories: true
+        )
+
+        let snapshot = await AgentTaskProbe.readSnapshot(homeDirectory: home.path)
+        let checkouts = try #require(snapshot.destination?.checkouts)
+        #expect(checkouts["keyboard-newswire"] != nil)
+        #expect(checkouts["little-herd"] != nil)
+        #expect(checkouts["keyboard-wire"] == nil)
+        #expect(checkouts["scratch"] == nil)
+    }
+
     @Test
     func localAndRemoteAgreeOnFreeSpace() async throws {
         let sampler = MetricsSampler()
@@ -229,6 +281,39 @@ private struct FixtureHome {
 
         try lines.joined(separator: "\n").appending("\n").write(
             toFile: "\(directory)/\(sessionID).jsonl",
+            atomically: true,
+            encoding: .utf8
+        )
+    }
+
+    /// An empty checkout root — the one thing that used to take the whole
+    /// script down under zsh.
+    func makeCheckoutRoot(_ name: String = "local-code") throws {
+        try FileManager.default.createDirectory(
+            atPath: "\(path)/\(name)",
+            withIntermediateDirectories: true
+        )
+    }
+
+    /// A checkout, identified the way git identifies it: by the origin
+    /// remote's slug rather than by the directory it sits in.
+    func writeCheckout(
+        directory: String,
+        originSlug: String,
+        root: String = "local-code"
+    ) throws {
+        let gitDirectory = "\(path)/\(root)/\(directory)/.git"
+        try FileManager.default.createDirectory(
+            atPath: gitDirectory,
+            withIntermediateDirectories: true
+        )
+        try """
+        [core]
+        \trepositoryformatversion = 0
+        [remote "origin"]
+        \turl = git@github.com:malpern/\(originSlug).git
+        """.write(
+            toFile: "\(gitDirectory)/config",
             atomically: true,
             encoding: .utf8
         )

@@ -785,16 +785,31 @@ nonisolated enum AgentTaskProbe {
     # Matched later by the remote's slug rather than by directory name: this
     # herd has "keyboard-newswire" checked out in a directory called
     # "keyboard-wire", and the folder is not what the repository is.
+    #
+    # `find` rather than a glob, and this is the second time that lesson has had
+    # to be learnt here. This script runs under zsh on a Mac, where a pattern
+    # matching nothing is a *fatal* error that takes the whole script with it —
+    # so a single empty ~/code cost every session in the AI panel, every agent
+    # version, and, over ssh, the machine's entire metrics sample, because
+    # `SSHCommandRunner` throws on a non-zero exit and the reading is discarded.
+    # A machine would have read as down because a directory was empty. It
+    # shipped in 0.1.33 and no machine in this herd happened to trip it.
+    #
+    # Depth three is the checkout's own `.git/config`, measured rather than
+    # counted: two and four both find nothing while failing silently, which
+    # looks exactly like an account with no repositories.
     for little_herd_root in "$HOME/local-code" "$HOME/code" "$HOME/src" "$HOME/Developer"; do
       [ -d "$little_herd_root" ] || continue
-      for little_herd_checkout in "$little_herd_root"/*; do
-        [ -f "$little_herd_checkout/.git/config" ] || continue
+      find "$little_herd_root" -mindepth 3 -maxdepth 3 -type f \
+        -path '*/.git/config' 2>/dev/null \
+        | while IFS= read -r little_herd_config; do
+        little_herd_checkout=${little_herd_config%/.git/config}
         little_herd_url=$(awk '
           /^[[:space:]]*\[remote "origin"\]/ { inorigin = 1; next }
           /^[[:space:]]*\[/ { inorigin = 0 }
           inorigin && /^[[:space:]]*url[[:space:]]*=/ {
             sub(/^[[:space:]]*url[[:space:]]*=[[:space:]]*/, ""); print; exit
-          }' "$little_herd_checkout/.git/config")
+          }' "$little_herd_config")
         [ -n "$little_herd_url" ] || continue
         printf "checkout=%s\t%s\n" \
           "$(printf '%s' "$little_herd_url" | sed 's#\.git$##' | sed 's#.*[/:]##')" \

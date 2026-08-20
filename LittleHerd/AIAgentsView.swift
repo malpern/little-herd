@@ -30,7 +30,14 @@ struct AIAgentsView: View {
     /// Finished starts folded: it is the majority of what a probe returns and
     /// the least useful thing on screen, and six finished sessions used to
     /// carry the same weight as the one that was live.
-    @State private var collapsed: Set<AgentPanelSection> = [.finished]
+    ///
+    /// Destinations starts folded too, and for a different reason. Expanded, it
+    /// listed every machine that could not take the work — and a list of
+    /// reasons nobody asked for reads as the app complaining that it needs
+    /// something, which is how the first person to see it read it. Where a
+    /// session could go is a question you ask, so the header asks it and the
+    /// answers are one click away.
+    @State private var collapsed: Set<AgentPanelSection> = [.finished, .destinations]
 
     private var layout: AgentPanelLayout {
         AgentPanelLayout.make(
@@ -161,7 +168,11 @@ struct AIAgentPanelContent: View {
                     // time this ran against the real herd it produced "Could
                     // take Local Code", which reads like a repository and is a
                     // folder.
-                    label: repository.map { "Could take \($0)" },
+                    // Always labelled. Folded, an unlabelled section is a
+                    // lone glyph and a number, which says nothing about what
+                    // is behind it.
+                    label: repository.map { "Where \($0) could go" }
+                        ?? "Where this work could go",
                     hiddenCount: candidates.count,
                     isExpanded: Binding(
                         get: { !collapsed.contains(.destinations) },
