@@ -227,6 +227,25 @@ which fails the 15-minute freshness window, so the app showed nothing — and
 nothing looks exactly like "no limit". Little Herd starts it now when it is
 installed and not running, and names it where a number is missing.
 
+**A pipeline's exit status is the last command's, so `&&` will not protect
+you.** Two releases shipped without the work they announce because of this one
+line:
+
+    git merge --ff-only origin/branch | tail -1 && scripts/release ...
+
+The merge failed — `main` had moved and could not fast-forward — and `tail`
+exited 0, so the `&&` sailed past it and the release script cut a build from an
+unchanged `main`. Nothing in the output said so: the script's preflight checks
+that the tree is clean and the branch is `main`, both of which were true, and
+its notes come from a file rather than from the diff. 0.1.30 and 0.1.31 both
+went out describing a feature they did not contain, and both have since been
+corrected on GitHub.
+
+Never pipe a command whose exit status matters. Run it bare and read it, or set
+`pipefail`. And treat "the release script succeeded" as evidence about the
+script rather than about what is in the build — the only thing that settles
+that is asking git whether the commit is an ancestor of the tag.
+
 **A plain `xcodebuild -configuration Release build` produces an app that cannot
 launch.** It signs ad hoc, and dyld then refuses to map the bundled Sparkle:
 `Library not loaded: @rpath/Sparkle.framework/…`, `mapping process and mapped
