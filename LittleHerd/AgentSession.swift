@@ -175,6 +175,12 @@ nonisolated struct AgentActivity: Equatable, Sendable {
     private var fallbackPhrase: String {
         switch tool {
         case "": "Working"
+        // Codex names the call and not what it is for: every shell command it
+        // runs arrives as "exec". Better than the raw argument, which is a
+        // block of JavaScript.
+        case "exec", "shell", "local_shell": "Running a command"
+        case "apply_patch": "Editing files"
+        case "update_plan": "Planning"
         case "WebSearch": "Searching the web"
         case "AskUserQuestion": "Asking you a question"
         default: "Running \(tool)"
@@ -213,6 +219,13 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
     let workingDirectory: String?
     /// What it is costing the machine, when a process could be matched to it.
     let resource: AgentResourceUsage?
+    /// The context this model is allowed, when the provider says so.
+    ///
+    /// Codex writes `model_context_window` into every rollout; Claude records
+    /// nothing of the kind, which is why the compaction threshold has to be
+    /// learned by watching. Where both are known the measured threshold wins:
+    /// it is where sessions actually compact, which is below the window.
+    let contextWindow: Int?
     /// Which model is answering. The context a session may hold depends on it,
     /// and the limit is learned per model rather than assumed.
     let model: String?
@@ -229,7 +242,8 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
         activity: AgentActivity? = nil,
         model: String? = nil,
         workingDirectory: String? = nil,
-        resource: AgentResourceUsage? = nil
+        resource: AgentResourceUsage? = nil,
+        contextWindow: Int? = nil
     ) {
         self.id = id
         self.provider = provider
@@ -243,6 +257,7 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
         self.model = model
         self.workingDirectory = workingDirectory
         self.resource = resource
+        self.contextWindow = contextWindow
     }
 
     /// The same session with what it is costing attached.
@@ -259,7 +274,8 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
             activity: activity,
             model: model,
             workingDirectory: workingDirectory,
-            resource: resource
+            resource: resource,
+            contextWindow: contextWindow
         )
     }
 
@@ -530,10 +546,10 @@ nonisolated enum AgentSessionOutputParser {
     private static func parseLine(_ line: Substring) -> AgentSession? {
         let fields = line.split(
             separator: "\t",
-            maxSplits: 13,
+            maxSplits: 14,
             omittingEmptySubsequences: false
         )
-        guard fields.count == 14,
+        guard fields.count == 15,
               fields[0].hasPrefix("agent_session="),
               let provider = AgentTaskProvider(
                   rawValue: String(fields[0].dropFirst("agent_session=".count))
@@ -592,7 +608,8 @@ nonisolated enum AgentSessionOutputParser {
                     detail: decodeBase64(fields[12]) ?? ""
                 ),
             model: fields[13].isEmpty ? nil : String(fields[13]),
-            workingDirectory: workingDirectory
+            workingDirectory: workingDirectory,
+            contextWindow: Int(fields[14]).flatMap { $0 > 0 ? $0 : nil }
         )
     }
 

@@ -160,6 +160,27 @@ costs nothing; scanning transcripts for compaction markers would mean reading
 38 MB files every ten seconds. Nothing is claimed for a model until a fall has
 been seen.
 
+**Codex records more about itself than Claude does, in files already on disk.**
+A rollout at `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` carries, per turn:
+`turn_context.payload.model`; `token_count.info.last_token_usage.total_tokens`;
+**`token_count.info.model_context_window`** — the window stated outright, where
+Claude records nothing of the kind and it has to be learned; a `compacted` entry
+type, so compaction is marked rather than inferred; and `custom_tool_call`
+entries for activity. It names the call and not its purpose, though — every
+shell command arrives as `exec` with a block of JavaScript as its argument,
+which is why Codex rows say "Running a command" where a Claude row says what
+the command was for.
+
+**And the vendor's own rate limits are in there too.** 216 rollouts on this Mac
+carry a populated block:
+
+    "primary":{"used_percent":100.0,"window_minutes":10080,"resets_at":1786388138}
+
+That is the same shape CodexBar supplies, first-party, on disk, with no
+third-party application in the path — and readable over ssh, which CodexBar is
+not, so it would extend usage past "this Mac only". Not wired up: it is a
+larger change than the panel work it was found during. See the item in **Next**.
+
 **CodexBar keeps two different things, and the one this app was reading is the
 lesser.** `~/Library/Caches/CodexBar/Cache.db` is the `NSURLCache` scrape;
 `cost-usage/` is the real store, with per-day per-model token counts in
@@ -306,7 +327,7 @@ not silent, which is the more useful finding: it had been showing an urgent red
 LED on the Codex mark the whole time. A six-pixel unlabelled dot in the corner of
 a header is the same as silence to the person it is for. That is why the AI
 panel's state moved to the leading edge and gained a glyph per state rather than
-a colour per state, and it is the reason item 5 checks budget once rather than
+a colour per state, and it is the reason item 4 checks budget once rather than
 per machine.
 
 **CodexBar is read, not bundled and not recommended, and that is deliberate.**
@@ -499,23 +520,21 @@ it; the files survived only because the directory had not been reaped yet.
    rule would collapse to "Linux failed to resolve", which is what the tooltip
    already says. Build it when a second machine becomes reachable only over the
    tailnet, and not before.
-3. **Codex records none of what the panel now shows.** Half the herd has no
-   session title, no activity line, no context figure and no compaction
-   threshold, because Codex's rollouts carry none of it — the wire format sends
-   empty fields rather than letting the two providers drift apart. A Mini row
-   is visibly poorer than an Air row and there is nothing in the interface
-   saying why. Find out what a rollout does record before designing around the
-   gap; do not invent parity that the data cannot support.
+3. **Read Codex's rate limits from its own rollouts.** The facts above have
+   the evidence: `used_percent`, `window_minutes` and `resets_at`, first-party,
+   in files on disk, in 216 rollouts on this Mac. Wiring it up would remove the
+   CodexBar dependency for half the providers, and — because it is a file
+   rather than a running GUI app — would make usage readable on the mini and
+   the linux box, which the handoff has recorded as impossible since the
+   feature was built. Claude still has no equivalent: `rateLimits` is `null` in
+   all 1,083 occurrences, so CodexBar stays necessary for it.
 
-4. **Seed the compaction thresholds from transcripts once, at first launch.**
-   Until a model has been watched compacting, rows show no proportion and the
-   warning dot never fires — correct, and it means the feature looks absent on
-   a fresh install for days. The thresholds are extractable from existing
-   transcripts (the measurement in the facts above was taken that way), so one
-   background scan on the local machine would seed it. Local only: doing it
-   over ssh for every remote machine is a different and much larger job.
+   Not small. `AIUsageLimitsModel` reads local files on a timer and would gain
+   a second source with different freshness, and the remote path means a new
+   probe. Worth it: it turns the weakest dependency in the app into a file
+   read.
 
-5. **Probe destination eligibility, and let the user express intent separately.**
+4. **Probe destination eligibility, and let the user express intent separately.**
    Capability is measured — an agent binary resolvable over a non-interactive
    ssh shell, git, and a checkout of the repo. Intent is a setting: some
    machines can host a session and still should not.
@@ -551,7 +570,7 @@ it; the files survived only because the directory had not been reaped yet.
 
    This rung is useful on its own and everything below depends on it.
 
-6. **Transfer a session between machines, at the session level.** Not process
+5. **Transfer a session between machines, at the session level.** Not process
    migration, which is not possible and not wanted: stop the session, have it
    write full context, start a successor on the target that has the repo. It is
    the same thing this file does by hand between sessions, which is the reason
@@ -601,22 +620,22 @@ it; the files survived only because the directory had not been reaped yet.
    CodexBar's scrape, and eligibility gains one probe: capability parity, since
    the tools a session leaned on may not exist on the other vendor.
 
-7. **iOS, scoped to the herd rather than to sessions.** Do not rebuild session
+6. **iOS, scoped to the herd rather than to sessions.** Do not rebuild session
    steering; Remote Control and the Claude app already do it, with the local
    filesystem and MCP servers attached. What has no answer today is the herd:
    which machine is hot, what is waiting on you, what the budget looks like,
    and starting a transfer. Do not sample from the phone either — iOS will not
    ssh-poll in the background. It wants a resident collector on the mini, which
-   is the same helper item 5 needs for the Keychain problem and the same one a
+   is the same helper item 4 needs for the Keychain problem and the same one a
    durable successor session needs. Build it once. The model layer is already
    portable — 29 of 48 source files import neither SwiftUI nor AppKit, and
    `MachinePresentation` exists precisely because display decisions were pulled
    out of the view bodies.
 
-8. **Show each machine's agent versions.** Cheap, and skew is invisible today
+7. **Show each machine's agent versions.** Cheap, and skew is invisible today
    while being the standing condition; see the facts above.
 
-9. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
+8. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
    18 August. Show cloud work beside the machines (the Herdware set already
    holds an unused `owl-cloud.png`) and move it down with the vendors' own
    commands, never our protocol: `codex cloud apply` and `claude --teleport`.
@@ -630,7 +649,7 @@ it; the files survived only because the directory had not been reaped yet.
    it from here. Say so in the interface rather than pretending parity.
    Local→cloud stays out entirely — that is the vendors' own button.
 
-10. **Local models are blocked, not pending.** Considered and deferred
+9. **Local models are blocked, not pending.** Considered and deferred
     18 August. No herd machine runs a model server; the linux box is an AMD
     APU with integrated graphics; the best local-model host owned is the M5
     Air — the machine transfers exist to unload. A briefing written for a

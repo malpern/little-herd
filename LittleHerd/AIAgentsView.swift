@@ -262,7 +262,8 @@ struct AIAgentRow: View {
                 state: machineSession.session.state,
                 contextFraction: compactionThresholds.fraction(
                     tokens: machineSession.session.contextTokens,
-                    model: machineSession.session.model
+                    model: machineSession.session.model,
+                    declaredWindow: machineSession.session.contextWindow
                 )
             )
 

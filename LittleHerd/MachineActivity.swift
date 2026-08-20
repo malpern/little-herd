@@ -817,9 +817,36 @@ nonisolated enum AgentTaskProbe {
           fi
           codex_id64=$(printf '%s' "$codex_id" | base64 | tr -d '\n')
           codex_cwd64=$(printf "%s" "$codex_cwd" | base64 | tr -d '\n')
-          printf "agent_session=codex\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+          # Codex records more about itself than Claude does: the size of the
+          # context, the window it is allowed, the model, and the last tool it
+          # called — all in the rollout this probe is already reading.
+          codex_context=""
+          codex_window=""
+          codex_model=""
+          codex_tool=""
+          if [ -n "$codex_path" ] && [ -r "$codex_path" ] && command -v jq >/dev/null 2>&1; then
+            codex_usage=$(tail -n 400 "$codex_path" 2>/dev/null | jq -r '
+              select(.payload.type == "token_count") | .payload.info |
+              select(. != null) |
+              [(.last_token_usage.total_tokens // 0),
+               (.model_context_window // 0)] | @tsv
+            ' 2>/dev/null | tail -n 1)
+            codex_context=$(printf '%s' "$codex_usage" | cut -f1)
+            codex_window=$(printf '%s' "$codex_usage" | cut -f2)
+            codex_model=$(tail -n 400 "$codex_path" 2>/dev/null | jq -r '
+              select(.type == "turn_context") | .payload.model // empty
+            ' 2>/dev/null | tail -n 1)
+            codex_tool=$(tail -n 200 "$codex_path" 2>/dev/null | jq -r '
+              select(.type == "response_item") |
+              select(.payload.type == "custom_tool_call" or .payload.type == "function_call") |
+              .payload.name // empty
+            ' 2>/dev/null | tail -n 1)
+          fi
+
+          printf "agent_session=codex\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
             "$codex_id64" "$codex_status" "$codex_updated_ms" "$codex_cwd64" \
-            "$codex_completed" "$codex_total" "$codex_current" "$codex_step64" "" "" "" "" ""
+            "$codex_completed" "$codex_total" "$codex_current" "$codex_step64" \
+            "$codex_context" "" "$codex_tool" "" "$codex_model" "$codex_window"
         fi
       done
     fi
@@ -978,11 +1005,11 @@ nonisolated enum AgentTaskProbe {
             ' 2>/dev/null | tail -n 1)
 
             claude_id64=$(printf '%s' "$claude_id" | base64 | tr -d '\n')
-            printf "agent_session=claude\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+            printf "agent_session=claude\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
               "$claude_id64" "$claude_status" "$((claude_mtime * 1000))" "$claude_cwd64" \
               "$claude_completed" "$claude_total" "$claude_current" "$claude_step64" \
               "$claude_context" "$claude_title64" "$claude_tool" "$claude_detail64" \
-              "$claude_model"
+              "$claude_model" ""
           fi
         fi
       done

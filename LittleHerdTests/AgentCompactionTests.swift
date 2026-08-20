@@ -209,3 +209,50 @@ struct CompactionNoticeTests {
         )
     }
 }
+
+/// Codex says what its models hold; Claude does not.
+struct DeclaredWindowTests {
+    /// Until a Codex session has been watched compacting, the window it
+    /// declares is the only ceiling there is — and it is a real one, written
+    /// into every rollout as `model_context_window`.
+    @Test
+    func aDeclaredWindowIsUsedWhenNothingHasBeenMeasured() {
+        let thresholds = AgentCompactionThresholds()
+        #expect(
+            thresholds.fraction(
+                tokens: 129_200,
+                model: "gpt-5.6-sol",
+                declaredWindow: 258_400
+            ) == 0.5
+        )
+    }
+
+    /// Once a compaction has been watched, that wins. It is where sessions
+    /// actually compact, which is below the window — measuring beats being
+    /// told, and the app is about to stop being told anyway when the next
+    /// model arrives.
+    @Test
+    func aMeasuredThresholdBeatsADeclaredWindow() throws {
+        let thresholds = AgentCompactionThresholds(
+            observed: ["gpt-5.6-sol": 200_000]
+        )
+        let fraction = try #require(
+            thresholds.fraction(
+                tokens: 100_000,
+                model: "gpt-5.6-sol",
+                declaredWindow: 258_400
+            )
+        )
+        #expect(fraction == 0.5)
+    }
+
+    /// Claude declares nothing, so an unmeasured Claude model still says
+    /// nothing rather than guessing.
+    @Test
+    func nothingDeclaredAndNothingMeasuredStaysSilent() {
+        let thresholds = AgentCompactionThresholds()
+        #expect(
+            thresholds.fraction(tokens: 400_000, model: "claude-opus-5") == nil
+        )
+    }
+}

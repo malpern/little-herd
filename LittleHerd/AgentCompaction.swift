@@ -78,14 +78,21 @@ nonisolated struct AgentCompactionThresholds: Equatable, Sendable {
     /// How close this session is to compacting, when the model's threshold has
     /// been measured. Nil is not "empty" — it is "not yet known", and the interface
     /// has to say the two differently.
-    func fraction(tokens: Int?, model: String?) -> Double? {
-        guard let tokens, tokens > 0,
-              let threshold = threshold(for: model),
-              threshold > 0
-        else {
-            return nil
-        }
-        return min(Double(tokens) / Double(threshold), 1)
+    /// - Parameter declaredWindow: what the provider says the model holds, when
+    ///   it says. Codex writes it into every rollout; Claude records nothing of
+    ///   the kind. A measured threshold beats it where both exist, because that
+    ///   is where sessions actually compact and it sits below the window — so a
+    ///   Codex session reads against its window until one of its compactions
+    ///   has been watched, and against the truth afterwards.
+    func fraction(
+        tokens: Int?,
+        model: String?,
+        declaredWindow: Int? = nil
+    ) -> Double? {
+        guard let tokens, tokens > 0 else { return nil }
+        let ceiling = threshold(for: model) ?? declaredWindow
+        guard let ceiling, ceiling > 0 else { return nil }
+        return min(Double(tokens) / Double(ceiling), 1)
     }
 }
 
