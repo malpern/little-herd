@@ -1,24 +1,27 @@
 # Little Herd — handoff
 
-**State:** `v0.1.25` carried the Synology sign-in fix; `v0.1.26` the sign-in
-sheet's explanations, the AI panel reordering, and the workload join; `v0.1.27`
-the panel's context figure and the defects that looking at it found. 297 tests
-pass, and every feed was verified rather than assumed. 0.1.23 added the
-four-state usage display, 0.1.24 the splash timing, size and corner, and a
-sign-in message that signs you in. Sparkle's own path from 0.1.21 to 0.1.22 was
-watched end to end — see below.
+**State:** `v0.1.27` is the last release. `v0.1.28` carries the AI panel
+rebuilt as a session rail, per-session CPU and memory, learned compaction
+thresholds, and CodexBar handling. 328 tests pass and every feed was verified
+rather than assumed.
 
-**There is a preview harness now, and it earned itself immediately.**
+**There is a preview harness, and it has earned itself repeatedly.**
 `PanelRenderHarness` writes PNGs of real views at their real widths, because
-tests run inside the app bundle and `ImageRenderer` can therefore do what an
-Xcode preview does. 0.1.26 shipped unlooked-at, knowingly, and looking at it
-afterwards found four defects that 289 passing tests could not: a session from
-last week reading "213h ago", a one-line sentence wrapping to two and stranding
-"has averaged 8%.", a row marked as ambiguous against a row folded inside a
-collapsed group, and no answer at all to which session was the heavy one. Use it
-before shipping a view. **The sign-in sheet has still not been looked at** — it
-has a fixed 360-point height with a comment recording that it once clipped the
-password field, and its failure area gained a second line in 0.1.26.
+tests run inside the app bundle and `ImageRenderer` can do there what a preview
+does in Xcode. It has now caught, in order: a session from last week reading
+"213h ago"; a sentence wrapping and stranding "has averaged 8%."; a row marked
+ambiguous against a row hidden inside a collapsed group; a warning dot that
+faded to invisible on a light background; a header number wrapping to two lines;
+and a context ring drawn in `.secondary`, which is the same tone as its own
+track. Not one was visible to a green suite. **Render a view before shipping
+it.**
+
+Two things it cannot see, so remember them: it renders neither `ScrollView` nor
+a lazy stack — the first version wrapped both, wrote a blank image and reported
+success — and it cannot show a hover state, so anything that appears on hover
+has to be checked in the app. **The sign-in sheet has still never been looked
+at**, and it has a fixed 360-point height with a comment recording that it once
+clipped the password field.
 
 **The Synology hardware is fixed.** Drive 2 was replaced on 17 August 2026 — a WD40EFZZ
 (4 TB, CMR) for the WD30EFRX that had shed 231 uncorrectable sectors. Pool
@@ -118,6 +121,60 @@ limit has to come from the user, not from a constant. Codex's rollouts record
 no equivalent figure at all, so that field is empty for half the herd — and
 empty must stay empty rather than becoming a zero, which would claim an empty
 context.
+
+**A session is a process, and its working directory is the only thing tying the
+two together.** Nothing in a process list names a session, but a transcript
+records the session's `cwd` and `lsof` records the process's, and they match —
+verified on this Mac at five processes, five joined, none unmatched. One
+`lsof -a -d cwd -p <pids>` covers every session on a machine in about 42 ms, so
+ask once rather than once per session, and match on the `claude-code` binary
+path rather than the command name or the desktop application answers to
+"claude" too. Two sessions started in the same directory cannot be told apart
+this way and are given no figure at all: a wrong attribution reads as "this is
+the expensive one" and could send someone to move the wrong work.
+
+CPU needs the same treatment a whole machine already gets. `ps` reports a
+process's average over its entire life, so a session that worked hard this
+morning and has idled since reads as busy; the honest figure is cumulative CPU
+seconds differenced across the interval between two samples. One reading yields
+no rate rather than a lifetime average dressed as a current one, and a counter
+that goes backwards — a restarted process — is not negative work.
+
+**Where a model compacts is measurable, and it is not the model's context
+window.** Measured across every compaction in this Mac's transcripts:
+
+    claude-sonnet-4-6   n=4   164,490 … 166,702   spread 1.3%
+    claude-opus-5       n=1   998,120
+    claude-opus-4-8     n=6   354,689 … 997,232   spread 64%
+
+Sonnet compacts near 165,000 against a 200,000 window — about 82% of it — so
+the figure to learn is the *compaction threshold*, and calling it a limit is
+the looser word. Opus-4-8's wide spread is the other lesson: four of its six
+compactions cluster at ~995,000 and two sit far below, which is what a hand-run
+`/compact` looks like. A manual compaction is always *below* the real trigger
+and never above, so taking the **maximum** observed converges on the truth and
+ignores them — that was reasoning when it was written and is measurement now.
+
+The app learns this by watching the number fall between two samples, which
+costs nothing; scanning transcripts for compaction markers would mean reading
+38 MB files every ten seconds. Nothing is claimed for a model until a fall has
+been seen.
+
+**CodexBar keeps two different things, and the one this app was reading is the
+lesser.** `~/Library/Caches/CodexBar/Cache.db` is the `NSURLCache` scrape;
+`cost-usage/` is the real store, with per-day per-model token counts in
+`claude-v6.json` built by scanning the same `~/.claude/projects/*.jsonl` files
+Little Herd already parses. So consumption needs no CodexBar at all. What does
+need it is the *limit and reset* half — `codex-account-snapshots.json` carries
+`usedPercent`, `resetsAt` and `windowMinutes` from OAuth, which is genuine
+vendor state. Claude has no first-party equivalent: `rateLimits` appears in the
+transcripts and is `null` in all 1,083 occurrences.
+
+The practical failure is not the mechanism, it is that CodexBar has to be
+running. It last wrote at 14:50 and everything was a day stale by evening,
+which fails the 15-minute freshness window, so the app showed nothing — and
+nothing looks exactly like "no limit". Little Herd starts it now when it is
+installed and not running, and names it where a number is missing.
 
 **A plain `xcodebuild -configuration Release build` produces an app that cannot
 launch.** It signs ad hoc, and dyld then refuses to map the bundled Sparkle:
@@ -249,7 +306,7 @@ not silent, which is the more useful finding: it had been showing an urgent red
 LED on the Codex mark the whole time. A six-pixel unlabelled dot in the corner of
 a header is the same as silence to the person it is for. That is why the AI
 panel's state moved to the leading edge and gained a glyph per state rather than
-a colour per state, and it is the reason item 3 checks budget once rather than
+a colour per state, and it is the reason item 5 checks budget once rather than
 per machine.
 
 **CodexBar is read, not bundled and not recommended, and that is deliberate.**
@@ -442,7 +499,23 @@ it; the files survived only because the directory had not been reaped yet.
    rule would collapse to "Linux failed to resolve", which is what the tooltip
    already says. Build it when a second machine becomes reachable only over the
    tailnet, and not before.
-3. **Probe destination eligibility, and let the user express intent separately.**
+3. **Codex records none of what the panel now shows.** Half the herd has no
+   session title, no activity line, no context figure and no compaction
+   threshold, because Codex's rollouts carry none of it — the wire format sends
+   empty fields rather than letting the two providers drift apart. A Mini row
+   is visibly poorer than an Air row and there is nothing in the interface
+   saying why. Find out what a rollout does record before designing around the
+   gap; do not invent parity that the data cannot support.
+
+4. **Seed the compaction thresholds from transcripts once, at first launch.**
+   Until a model has been watched compacting, rows show no proportion and the
+   warning dot never fires — correct, and it means the feature looks absent on
+   a fresh install for days. The thresholds are extractable from existing
+   transcripts (the measurement in the facts above was taken that way), so one
+   background scan on the local machine would seed it. Local only: doing it
+   over ssh for every remote machine is a different and much larger job.
+
+5. **Probe destination eligibility, and let the user express intent separately.**
    Capability is measured — an agent binary resolvable over a non-interactive
    ssh shell, git, and a checkout of the repo. Intent is a setting: some
    machines can host a session and still should not.
@@ -478,7 +551,7 @@ it; the files survived only because the directory had not been reaped yet.
 
    This rung is useful on its own and everything below depends on it.
 
-4. **Transfer a session between machines, at the session level.** Not process
+6. **Transfer a session between machines, at the session level.** Not process
    migration, which is not possible and not wanted: stop the session, have it
    write full context, start a successor on the target that has the repo. It is
    the same thing this file does by hand between sessions, which is the reason
@@ -528,22 +601,22 @@ it; the files survived only because the directory had not been reaped yet.
    CodexBar's scrape, and eligibility gains one probe: capability parity, since
    the tools a session leaned on may not exist on the other vendor.
 
-5. **iOS, scoped to the herd rather than to sessions.** Do not rebuild session
+7. **iOS, scoped to the herd rather than to sessions.** Do not rebuild session
    steering; Remote Control and the Claude app already do it, with the local
    filesystem and MCP servers attached. What has no answer today is the herd:
    which machine is hot, what is waiting on you, what the budget looks like,
    and starting a transfer. Do not sample from the phone either — iOS will not
    ssh-poll in the background. It wants a resident collector on the mini, which
-   is the same helper item 3 needs for the Keychain problem and the same one a
+   is the same helper item 5 needs for the Keychain problem and the same one a
    durable successor session needs. Build it once. The model layer is already
    portable — 29 of 48 source files import neither SwiftUI nor AppKit, and
    `MachinePresentation` exists precisely because display decisions were pulled
    out of the view bodies.
 
-6. **Show each machine's agent versions.** Cheap, and skew is invisible today
+8. **Show each machine's agent versions.** Cheap, and skew is invisible today
    while being the standing condition; see the facts above.
 
-7. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
+9. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
    18 August. Show cloud work beside the machines (the Herdware set already
    holds an unused `owl-cloud.png`) and move it down with the vendors' own
    commands, never our protocol: `codex cloud apply` and `claude --teleport`.
@@ -557,7 +630,7 @@ it; the files survived only because the directory had not been reaped yet.
    it from here. Say so in the interface rather than pretending parity.
    Local→cloud stays out entirely — that is the vendors' own button.
 
-8. **Local models are blocked, not pending.** Considered and deferred
+10. **Local models are blocked, not pending.** Considered and deferred
     18 August. No herd machine runs a model server; the linux box is an AMD
     APU with integrated graphics; the best local-model host owned is the M5
     Air — the machine transfers exist to unload. A briefing written for a
