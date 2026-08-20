@@ -333,6 +333,12 @@ struct AIAgentRow: View {
     /// reading. Long enough to be seen on a panel nobody watches continuously.
     static let compactionNoticeWindow: TimeInterval = 600
 
+    /// The share of a core below which a session's meter stays empty.
+    ///
+    /// Named rather than inline so the reason above it has somewhere to live
+    /// and so a test can hold it to account.
+    static let meterFloorPercent: Double = 5
+
     /// One width for every measured thing in the panel, header included.
     static let measureColumnWidth: CGFloat = 48
     /// The two measures each keep their own slot inside that column, filled or
@@ -422,10 +428,18 @@ struct AIAgentRow: View {
                     Spacer(minLength: 4)
 
                     Group {
-                        // Only above fifteen percent: every session uses some
-                        // CPU, and a number that is always there is a number
-                        // people stop reading.
-                        if let cpuPercent, cpuPercent >= 15 {
+                        // Above five percent of a core. Fifteen was the
+                        // first guess and it was too high by an order of
+                        // magnitude: three live Claude sessions on this Mac,
+                        // measured across a thirty-second window, ran at 1.8,
+                        // 2.3 and 2.6 percent, so the meter drew for none of
+                        // them and the panel read as though the feature had
+                        // been taken out. An agent spends most of its time
+                        // waiting on a model, not on a core. The rule it is
+                        // still enforcing is the right one — a mark that is
+                        // always lit is a mark nobody reads — but the number
+                        // has to come from what sessions actually do.
+                        if let cpuPercent, cpuPercent >= Self.meterFloorPercent {
                             InlineSegmentedThermometer(value: cpuPercent)
                                 .help("\(Int(cpuPercent.rounded()))% of a core")
                                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }

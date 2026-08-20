@@ -167,7 +167,12 @@ struct PanelRenderHarness {
             machineName: "Air",
             destinationAccounts: destinationAccounts,
             compactionThresholds: AgentCompactionThresholds(observed: ["claude-opus-5": 1_000_000]),
-            agentCPU: ["claude:aa11bb22": 96, "claude:1234abcd": 31],
+            // 96% is a session compiling; 8% is what one that is merely
+            // working actually costs — measured on this Mac, where three live
+            // sessions sat between 1.8 and 2.6 percent of a core. The second
+            // figure is here so the low end of the meter gets looked at, since
+            // that is the end almost every real session lives at.
+            agentCPU: ["claude:aa11bb22": 96, "claude:1234abcd": 8],
             hoveredAgentID: .constant(nil),
             collapsed: .constant(
                 collapsed ?? (showingFinished ? [] : [.finished])
