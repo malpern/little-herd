@@ -53,6 +53,18 @@ struct LittleHerdApp: App {
             model?.applyConfigurations(machineStore.machines)
         }
         _model = State(initialValue: model)
+
+        // Started here rather than from a view.
+        //
+        // It hung off DashboardView's `.task` first, which never ran: this is a
+        // menu-bar app, and it can launch with no window ever appearing. The
+        // app was installed and left running for half a minute with an empty
+        // thresholds store to prove it. Anything that has to happen once per
+        // launch has to be attached to the launch, not to a screen someone may
+        // never open.
+        Task { [model] in
+            await model.seedCompactionThresholdsIfNeeded()
+        }
     }
 
     var body: some Scene {

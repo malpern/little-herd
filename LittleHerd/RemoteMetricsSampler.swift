@@ -326,8 +326,11 @@ actor RemoteMetricsSampler {
         if shouldRefreshAgentTasks {
             cachedAgentTasks = AgentTaskOutputParser.parse(output)
             cachedAgentSessions = AgentResourceJoin.attach(
-                processes: AgentProcessOutputParser.parse(output),
-                to: AgentSessionOutputParser.parse(output)
+                repoStates: AgentRepoStateOutputParser.parse(output),
+                to: AgentResourceJoin.attach(
+                    processes: AgentProcessOutputParser.parse(output),
+                    to: AgentSessionOutputParser.parse(output)
+                )
             )
             previousAgentTaskTimestamp = now
         }

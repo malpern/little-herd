@@ -304,7 +304,17 @@ struct AIAgentRow: View {
                                 .foregroundStyle(.secondary)
                         }
 
-                        if let disambiguator = row.disambiguator {
+                            // Work that exists only on this machine, marked only
+                        // when it does. A session whose branch is pushed needs
+                        // nothing said about it, and a mark on every row would
+                        // be one more thing to stop reading.
+                        if machineSession.session.repo?.carriesUnsharedWork == true {
+                            Image(systemName: "arrow.triangle.branch")
+                                .foregroundStyle(.tertiary)
+                                .help(unsharedWorkDescription)
+                        }
+
+                    if let disambiguator = row.disambiguator {
                             Text(disambiguator)
                                 .monospaced()
                                 .foregroundStyle(.tertiary)
@@ -342,6 +352,29 @@ struct AIAgentRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(Text(machineSession.session.state.title))
+    }
+
+    /// Said in full on hover, because the glyph can only say "something".
+    private var unsharedWorkDescription: String {
+        guard let repo = machineSession.session.repo else { return "" }
+        var parts = ["on \(repo.branch)"]
+        if repo.uncommittedFileCount > 0 {
+            parts.append(
+                repo.uncommittedFileCount == 1
+                    ? "1 uncommitted file"
+                    : "\(repo.uncommittedFileCount) uncommitted files"
+            )
+        }
+        if !repo.hasUpstream {
+            parts.append("never pushed anywhere")
+        } else if repo.unpushedCommitCount > 0 {
+            parts.append(
+                repo.unpushedCommitCount == 1
+                    ? "1 unpushed commit"
+                    : "\(repo.unpushedCommitCount) unpushed commits"
+            )
+        }
+        return parts.joined(separator: ", ")
     }
 
     private var compactionNotice: String? {

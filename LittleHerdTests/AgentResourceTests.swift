@@ -191,3 +191,107 @@ struct InlineThermometerTests {
         #expect(band(position: 0, blocks: 10) == .calm)
     }
 }
+
+/// What a session's checkout says about moving the work.
+struct AgentRepoStateTests {
+    private func session(id: String, directory: String?) -> AgentSession {
+        AgentSession(
+            id: id,
+            provider: .claude,
+            projectName: "Little Herd",
+            state: .waiting,
+            updatedAt: .now,
+            progress: nil,
+            workingDirectory: directory
+        )
+    }
+
+    /// The exact line the probe produced against this repository.
+    @Test
+    func aProbeLineIsRead() throws {
+        let directory = Data("/Users/x/local-code/little-herd".utf8)
+            .base64EncodedString()
+        let branch = Data("claude/roadmap-3-4-6".utf8).base64EncodedString()
+        let states = AgentRepoStateOutputParser.parse(
+            "repo_state=\(directory)\t\(branch)\t0\t0"
+        )
+        let state = try #require(states["/Users/x/local-code/little-herd"])
+        #expect(state.branch == "claude/roadmap-3-4-6")
+        #expect(state.isPushedSomewhereElse)
+        #expect(!state.carriesUnsharedWork)
+    }
+
+    /// Uncommitted work is what a summary forgets and a transfer has to carry.
+    @Test
+    func uncommittedWorkIsUnshared() {
+        let state = AgentRepoState(
+            branch: "main",
+            uncommittedFileCount: 3,
+            unpushedCommitCount: 0
+        )
+        #expect(state.carriesUnsharedWork)
+        #expect(!state.isPushedSomewhereElse)
+    }
+
+    /// Committed is not the same as reachable. A target machine can fetch a
+    /// branch and cannot fetch what was never pushed.
+    @Test
+    func committedButUnpushedIsAlsoUnshared() {
+        let state = AgentRepoState(
+            branch: "main",
+            uncommittedFileCount: 0,
+            unpushedCommitCount: 2
+        )
+        #expect(state.carriesUnsharedWork)
+    }
+
+    /// No upstream is a stronger statement than nothing to push: the branch
+    /// exists on this machine and nowhere else at all.
+    @Test
+    func aBranchWithNoUpstreamIsNotMistakenForAPushedOne() {
+        let state = AgentRepoState(
+            branch: "scratch",
+            uncommittedFileCount: 0,
+            unpushedCommitCount: -1
+        )
+        #expect(!state.hasUpstream)
+        #expect(state.carriesUnsharedWork)
+        #expect(!state.isPushedSomewhereElse)
+    }
+
+    /// Two sessions in one directory share its repository state truthfully —
+    /// unlike a process, it is a fact about the directory rather than about
+    /// either session, so both are told.
+    @Test
+    func sessionsSharingADirectoryBothLearnItsState() {
+        let states = [
+            "/shared": AgentRepoState(
+                branch: "main",
+                uncommittedFileCount: 1,
+                unpushedCommitCount: 0
+            ),
+        ]
+        let joined = AgentResourceJoin.attach(
+            repoStates: states,
+            to: [
+                session(id: "one", directory: "/shared"),
+                session(id: "two", directory: "/shared"),
+            ]
+        )
+        #expect(joined.allSatisfy { $0.repo?.branch == "main" })
+        #expect(joined.allSatisfy { $0.repo?.carriesUnsharedWork == true })
+    }
+
+    @Test
+    func aSessionOutsideAnyCheckoutLearnsNothing() {
+        let joined = AgentResourceJoin.attach(
+            repoStates: ["/elsewhere": AgentRepoState(
+                branch: "main",
+                uncommittedFileCount: 0,
+                unpushedCommitCount: 0
+            )],
+            to: [session(id: "one", directory: "/Users/x/Documents")]
+        )
+        #expect(joined.first?.repo == nil)
+    }
+}

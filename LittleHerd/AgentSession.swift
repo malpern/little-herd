@@ -110,6 +110,24 @@ nonisolated enum AgentResourceJoin {
     /// way, and rather than attribute one session's cost to both, neither is
     /// given a figure. A wrong attribution here would be read as "this session
     /// is the expensive one" and could send someone to move the wrong work.
+    /// Attaches what each session's checkout says, matched on the same working
+    /// directory the processes are matched on. Unlike a process, two sessions
+    /// sharing a directory share its repository state truthfully — it is a fact
+    /// about the directory, not about either of them.
+    static func attach(
+        repoStates: [String: AgentRepoState],
+        to sessions: [AgentSession]
+    ) -> [AgentSession] {
+        sessions.map { session in
+            guard let directory = session.workingDirectory,
+                  let state = repoStates[directory]
+            else {
+                return session
+            }
+            return session.inRepo(state)
+        }
+    }
+
     static func attach(
         processes: [AgentProcessSample],
         to sessions: [AgentSession]
@@ -219,6 +237,9 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
     let workingDirectory: String?
     /// What it is costing the machine, when a process could be matched to it.
     let resource: AgentResourceUsage?
+    /// What its working directory says about moving the work, when that
+    /// directory is a checkout.
+    let repo: AgentRepoState?
     /// The context this model is allowed, when the provider says so.
     ///
     /// Codex writes `model_context_window` into every rollout; Claude records
@@ -243,7 +264,8 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
         model: String? = nil,
         workingDirectory: String? = nil,
         resource: AgentResourceUsage? = nil,
-        contextWindow: Int? = nil
+        contextWindow: Int? = nil,
+        repo: AgentRepoState? = nil
     ) {
         self.id = id
         self.provider = provider
@@ -258,6 +280,27 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
         self.workingDirectory = workingDirectory
         self.resource = resource
         self.contextWindow = contextWindow
+        self.repo = repo
+    }
+
+    /// The same session with what its checkout says attached.
+    func inRepo(_ repo: AgentRepoState?) -> AgentSession {
+        AgentSession(
+            id: id,
+            provider: provider,
+            projectName: projectName,
+            state: state,
+            updatedAt: updatedAt,
+            progress: progress,
+            contextTokens: contextTokens,
+            title: title,
+            activity: activity,
+            model: model,
+            workingDirectory: workingDirectory,
+            resource: resource,
+            contextWindow: contextWindow,
+            repo: repo
+        )
     }
 
     /// The same session with what it is costing attached.
@@ -275,7 +318,8 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
             model: model,
             workingDirectory: workingDirectory,
             resource: resource,
-            contextWindow: contextWindow
+            contextWindow: contextWindow,
+            repo: repo
         )
     }
 
@@ -656,5 +700,85 @@ nonisolated enum AgentSessionOutputParser {
         case .waiting: 1
         case .completed: 2
         }
+    }
+}
+
+/// What a session's working directory says about moving the work.
+///
+/// A session is a conversation and a checkout, and the checkout is the half a
+/// summary cannot carry. The transfer design already records this: uncommitted
+/// work and background processes are what a model's own account of a session
+/// leaves out, and they must be required rather than hoped for. These are the
+/// three facts that decide whether the work is anywhere but this disk.
+nonisolated struct AgentRepoState: Equatable, Sendable {
+    let branch: String
+    let uncommittedFileCount: Int
+    /// Commits on this branch that the remote does not have.
+    ///
+    /// `-1` when the branch has no upstream at all, which is a stronger
+    /// statement than "nothing to push": the branch exists on this machine and
+    /// nowhere else, so there is nothing for another machine to fetch.
+    let unpushedCommitCount: Int
+
+    var hasUpstream: Bool { unpushedCommitCount >= 0 }
+
+    /// Whether everything here could be had from the remote by another machine.
+    ///
+    /// Not a verdict on whether a session *should* move — that needs the
+    /// destination, which is a different question this app cannot answer yet.
+    /// This is only the part knowable from here.
+    var isPushedSomewhereElse: Bool {
+        uncommittedFileCount == 0 && unpushedCommitCount == 0
+    }
+
+    /// What a transfer would have to carry beyond the conversation itself.
+    var carriesUnsharedWork: Bool { !isPushedSomewhereElse }
+}
+
+nonisolated enum AgentRepoStateOutputParser {
+    static func parse(_ output: String) -> [String: AgentRepoState] {
+        var states: [String: AgentRepoState] = [:]
+        for line in output.split(whereSeparator: \.isNewline) {
+            guard let (directory, state) = parseLine(line) else { continue }
+            states[directory] = state
+        }
+        return states
+    }
+
+    private static func parseLine(
+        _ line: Substring
+    ) -> (String, AgentRepoState)? {
+        let fields = line.split(
+            separator: "\t",
+            maxSplits: 3,
+            omittingEmptySubsequences: false
+        )
+        guard fields.count == 4,
+              fields[0].hasPrefix("repo_state="),
+              let directory = decode(fields[0].dropFirst("repo_state=".count)),
+              let branch = decode(fields[1]),
+              let uncommitted = Int(fields[2]),
+              let unpushed = Int(fields[3])
+        else {
+            return nil
+        }
+        return (
+            directory,
+            AgentRepoState(
+                branch: branch,
+                uncommittedFileCount: uncommitted,
+                unpushedCommitCount: unpushed
+            )
+        )
+    }
+
+    private static func decode(_ value: Substring) -> String? {
+        guard !value.isEmpty,
+              let data = Data(base64Encoded: String(value)),
+              let decoded = String(data: data, encoding: .utf8)
+        else {
+            return nil
+        }
+        return decoded
     }
 }

@@ -156,11 +156,6 @@ struct DashboardView: View {
         .task {
             await advanceLaunchFlowWhenReady()
         }
-        .task {
-            // Off the launch path's critical section on purpose: this reads
-            // every transcript on the Mac and the panel is useful without it.
-            await model.seedCompactionThresholdsIfNeeded()
-        }
         .onAppear {
             model.setNetworkStorageMonitoringEnabled(
                 hasCompletedNetworkVolumeOnboarding

@@ -904,6 +904,37 @@ nonisolated enum AgentTaskProbe {
           cwd64=$(printf '%s' "$cwd" | base64 | tr -d '\n')
           printf "agent_process=%s\t%s\t%s\t%s\n" "$pid" "$rss" "$cputime" "$cwd64"
         done
+
+        # Whether each session's work is anywhere but this disk.
+        #
+        # A session's working directory is a checkout, and three facts about it
+        # decide whether the work could move: the branch it is on, how much is
+        # uncommitted, and how much is committed but unpushed. The last two are
+        # what a summary forgets and a transfer has to carry — a target machine
+        # can fetch a branch and cannot fetch what was never pushed.
+        #
+        # Asked of the directories the running sessions are actually in, which
+        # lsof has just produced, and only once each. Measured at about 126 ms
+        # for three, which is cheap at the agent probe's cadence and would not
+        # be at every sample.
+        if command -v git >/dev/null 2>&1; then
+          printf '%s\n' "$little_herd_cwds" | cut -f2- | sort -u \
+            | while IFS= read -r dir; do
+            [ -n "$dir" ] && [ -d "$dir" ] || continue
+            branch=$(git -C "$dir" branch --show-current 2>/dev/null)
+            [ -n "$branch" ] || continue
+            dirty=$(git -C "$dir" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+            ahead=$(git -C "$dir" rev-list --count '@{u}..HEAD' 2>/dev/null)
+            # No upstream is not zero unpushed commits: it means the branch
+            # exists nowhere else at all, which is the strongest form of "this
+            # cannot be fetched from anywhere".
+            [ -n "$ahead" ] || ahead=-1
+            printf "repo_state=%s\t%s\t%s\t%s\n" \
+              "$(printf '%s' "$dir" | base64 | tr -d '\n')" \
+              "$(printf '%s' "$branch" | base64 | tr -d '\n')" \
+              "$dirty" "$ahead"
+          done
+        fi
       fi
     fi
 
@@ -1073,8 +1104,11 @@ nonisolated enum AgentTaskProbe {
         let snapshot = AgentProbeSnapshot(
             tasksByProvider: AgentTaskOutputParser.parse(output),
             sessions: AgentResourceJoin.attach(
-                processes: AgentProcessOutputParser.parse(output),
-                to: AgentSessionOutputParser.parse(output)
+                repoStates: AgentRepoStateOutputParser.parse(output),
+                to: AgentResourceJoin.attach(
+                    processes: AgentProcessOutputParser.parse(output),
+                    to: AgentSessionOutputParser.parse(output)
+                )
             ),
             codexUsage: AgentUsageOutputParser.parse(output)
         )

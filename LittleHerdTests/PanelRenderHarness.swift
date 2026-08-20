@@ -81,7 +81,8 @@ struct PanelRenderHarness {
             context: Int? = nil,
             model: String? = "claude-opus-5",
             title: String? = nil,
-            activity: AgentActivity? = nil
+            activity: AgentActivity? = nil,
+            repo: AgentRepoState? = nil
         ) -> MachineAgentSession {
             MachineAgentSession(
                 machine: machine,
@@ -95,7 +96,8 @@ struct PanelRenderHarness {
                     contextTokens: context,
                     title: title,
                     activity: activity,
-                    model: model
+                    model: model,
+                    repo: repo
                 ),
                 machineName: name,
                 machineSymbolName: "laptopcomputer"
@@ -121,7 +123,8 @@ struct PanelRenderHarness {
                 minutesAgo: 14,
                 context: 187_400,
                 title: "iOS secrets manager private app",
-                activity: AgentActivity(tool: "AskUserQuestion", detail: "")
+                activity: AgentActivity(tool: "AskUserQuestion", detail: ""),
+                repo: AgentRepoState(branch: "claude/ios-secrets", uncommittedFileCount: 4, unpushedCommitCount: 0)
             ),
             make(
                 "claude:ee55ff66", "Clawd", .waiting, .macBookAir, "Air",
