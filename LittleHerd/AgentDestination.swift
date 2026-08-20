@@ -45,8 +45,9 @@ nonisolated enum AgentInstallOutputParser {
               let provider = AgentTaskProvider(
                   rawValue: String(fields[0].dropFirst("agent_install=".count))
               ),
-              let version = decode(fields[1]),
+              let rawVersion = decode(fields[1]),
               let path = decode(fields[2]),
+              case let version = versionNumber(in: rawVersion),
               !version.isEmpty,
               !path.isEmpty
         else {
@@ -56,6 +57,20 @@ nonisolated enum AgentInstallOutputParser {
             provider: provider,
             version: version,
             path: path
+        )
+    }
+
+    /// The number alone, out of whatever else the agent prints beside it.
+    ///
+    /// Measured in the running app rather than in a fixture: `claude
+    /// --version` answers `2.1.234 (Claude Code)`, and the whole line reached
+    /// the panel, where "Can host a session — Claude 2.1.234 (Claude Code)"
+    /// wrapped onto a second line and said the vendor's name twice. The
+    /// fixtures had all used a bare number, so nothing caught it.
+    static func versionNumber(in raw: String) -> String {
+        String(
+            raw.trimmingCharacters(in: .whitespaces)
+                .prefix { !$0.isWhitespace }
         )
     }
 

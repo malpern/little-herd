@@ -156,7 +156,12 @@ struct AIAgentPanelContent: View {
             if !candidates.isEmpty {
                 AgentSectionHeader(
                     section: .destinations,
-                    label: "Could take \(repository ?? subject.session.session.projectName)",
+                    // Named only when there is a name. The project name is not
+                    // a substitute: it comes from the directory, and the first
+                    // time this ran against the real herd it produced "Could
+                    // take Local Code", which reads like a repository and is a
+                    // folder.
+                    label: repository.map { "Could take \($0)" },
                     hiddenCount: candidates.count,
                     isExpanded: Binding(
                         get: { !collapsed.contains(.destinations) },
@@ -170,7 +175,22 @@ struct AIAgentPanelContent: View {
                     )
                 )
                 if !collapsed.contains(.destinations) {
-                    if DestinationRoster.isEntirelyUnchosen(candidates) {
+                    if repository == nil {
+                        // Nothing to fetch, so nowhere is a destination and
+                        // the accounts below would all be answering a question
+                        // that cannot be asked. Said rather than left out: a
+                        // section that silently disappears is the false
+                        // silence this project keeps having to write tests
+                        // against.
+                        DestinationNoticeRow(
+                            symbolName: "arrow.trianglehead.branch",
+                            title: "Not in a checkout",
+                            detail: "This work has no branch another machine could fetch."
+                        )
+
+                        Divider()
+                            .padding(.leading, AIAgentRow.titleInset)
+                    } else if DestinationRoster.isEntirelyUnchosen(candidates) {
                         DestinationNoticeRow(
                             symbolName: DestinationEligibility.excluded.symbolName,
                             title: "No destination chosen",

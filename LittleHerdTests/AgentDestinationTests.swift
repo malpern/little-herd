@@ -56,6 +56,32 @@ struct AgentDestinationTests {
         )
     }
 
+    /// What `claude --version` actually answers on this herd's machines:
+    /// `2.1.234 (Claude Code)`. Found in the running app, where the whole line
+    /// reached the panel and wrapped a row onto two lines. Every fixture until
+    /// then had used a bare number.
+    @Test
+    func theVersionIsTheNumberAndNotTheRestOfTheLine() throws {
+        let installs = AgentInstallOutputParser.parse(
+            line("claude", "2.1.234 (Claude Code)", "/Users/clawd/.local/bin/claude")
+        )
+        #expect(try #require(installs.first).version == "2.1.234")
+        // A pre-release number is one token and survives whole.
+        #expect(
+            AgentInstallOutputParser.versionNumber(in: "0.148.0-alpha.15")
+                == "0.148.0-alpha.15"
+        )
+        // Two copies that differ only in their suffix are still one install.
+        let both = AgentInstallOutputParser.parse(
+            [
+                line("claude", "2.1.221 (Claude Code)", "/old"),
+                line("claude", "2.1.234 (Claude Code)", "/new"),
+            ].joined(separator: "\n")
+        )
+        #expect(both.count == 1)
+        #expect(try #require(both.first).path == "/new")
+    }
+
     private func report(
         _ installations: [AgentInstallation] = [],
         checkouts: [String: String] = [:]

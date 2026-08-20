@@ -6,11 +6,11 @@ finished: the destination-capability probe, the checkout probe, the per-account
 "may host a session" setting, and the interface that says which reason a machine
 is not a destination. 378 tests pass.
 
-**Not yet seen in the running app.** The Settings pane's new checkbox column has
-been rendered but not clicked: permission to drive the app was declined, so
-nobody has watched a toggle persist, survive a relaunch, or reach the AI panel.
-Do that before releasing — this project has shipped a dormant feature before,
-and it was a launch that revealed it rather than a suite.
+Watched in the running app on 20 August, not only rendered: the Settings
+checkbox ticks, persists into `machineConfigurationsV1`, survives a relaunch,
+and the AI panel's Destinations section appears under a waiting session. Doing
+that found two defects a green suite and seven renders had all missed — both
+are in the facts below.
 
 Eight releases went out on 19 August. **Two of them — 0.1.30 and 0.1.31 — were
 published without the features their notes announced**, because a merge failed
@@ -463,6 +463,34 @@ every row and the "waiting" label said twice; the rule underneath all three is
 that information which does not distinguish one row from its neighbour is not
 information.
 
+**`claude --version` answers `2.1.234 (Claude Code)`, and every fixture had
+used a bare number.** Verified over ssh to the mini after the panel showed
+"Can host a session — Claude 2.1.234 (Claude Code)" wrapped onto two lines,
+saying the vendor's name twice. The version is now the first whitespace-
+delimited token, which leaves Codex's `0.148.0-alpha.15` whole. Nothing was
+wrong with the parsing rule; what was wrong was that the fixtures were written
+from the handoff's own version table rather than from the command's output.
+**When a fixture and a machine can disagree, run the command.**
+
+**A session outside a checkout has no destination, and the first version said
+it had three.** The panel names the repository the destination list is
+answering for, taken from the origin remote's slug — and when a session's
+working directory is not a checkout, that is nil and the fall-back was the
+project name. Against the real herd it produced "Could take Local Code", which
+reads like a repository and is a folder; worse, with no slug the checkout
+question is not asked of anybody, so every account came back eligible for work
+that cannot travel at all. It now says "Not in a checkout" once, rather than
+either lying or vanishing — a section that silently disappears is the false
+silence this project keeps having to write tests against.
+
+**The installed 0.1.32 will quietly drop `mayHostSessionsPreference` if you run
+it.** Unknown keys do not fail a `Decodable`, so the older build reads a
+machine carrying the new key perfectly well — and then re-encodes it without
+the key the next time it persists. The `unreadableEntries` mechanism does not
+help here, because it only carries through entries that fail to decode
+*entirely*. Harmless, but do not debug a destination setting that "forgot
+itself" after someone launched the copy in `/Applications`.
+
 **CodexBar is read, not bundled and not recommended, and that is deliberate.**
 Two decisions taken 18 August 2026 so they are not re-litigated. **Do not bundle
 it:** it is `com.steipete.codexbar`, another developer's signed application, so
@@ -663,7 +691,8 @@ it; the files survived only because the directory had not been reaped yet.
    actually get you; and a **Destinations** section in the AI panel, which
    appears only when a session is waiting — the transfer design already
    settled that only a quiescent session can move — and names the repository
-   it is answering for.
+   it is answering for, or says the work is not in a checkout when there is no
+   repository to name.
 
    **What is left is that a destination is an account and the herd stores
    machines.** `MachineConfiguration` refuses a second entry with the same
