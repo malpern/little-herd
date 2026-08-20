@@ -227,6 +227,18 @@ which fails the 15-minute freshness window, so the app showed nothing — and
 nothing looks exactly like "no limit". Little Herd starts it now when it is
 installed and not running, and names it where a number is missing.
 
+**zsh aborts the whole script on a glob that matches nothing.** The agent probe
+runs under `/bin/zsh -c`, and a pattern with no matches is a fatal error there
+where `sh` would pass it through untouched. A glob added to look for a bundled
+agent took out *every session in the AI panel* on any Mac without that bundle —
+not just the version it was looking for. The repo's shell tests caught it
+immediately, which is exactly what they exist for.
+
+Use `find` instead, which also survives the space in "Application Support" that
+any unquoted expansion would not. Watch its `-maxdepth`: the path is five
+components below the search root, and four found nothing while failing
+silently, which looks identical to "no agent installed".
+
 **A pipeline's exit status is the last command's, so `&&` will not protect
 you.** Two releases shipped without the work they announce because of this one
 line:
@@ -342,21 +354,34 @@ which is also what a durable successor session needs, since `-p` exits when it
 finishes. The linux box is unaffected: its credentials are a file at mode 600
 and it runs headless.
 
-**What blocks a Mac from hosting a session is PATH, not version skew — and on
-the Air there is no CLI to find at all.** Its Claude Code runs *inside*
-`/Applications/Claude.app`; there is no binary, no mise shim, and nothing
-bundled, so the Air needs the CLI installed before it can host a Claude session.
-Codex is the opposite and already usable: the binary ships inside
-`/Applications/ChatGPT.app/Contents/Resources/codex`, which is exactly why the
-design resolves an absolute path per machine rather than probing `PATH` — no
-amount of PATH repair finds a binary inside an app bundle. The mini→Air ssh link
-was also missing its key entirely (`id_ed25519_air` did not exist on clawd,
-despite ACCESS.md describing it); it was created and authorised on 18 August and
-the link now works. Meanwhile
-three machines run three different versions — 2.1.126, 2.1.229, 2.1.234 — so
-skew is the standing condition rather than a cleanup. Both point the same way:
-resolve an absolute agent path per machine and probe for the flag you need
-(`claude --help | grep -q -- --session-id`), never pin a version.
+**No machine in this herd has an agent on the PATH ssh sees, and every one of
+them can run both.** Measured 19 August over non-interactive ssh, which is the
+only measurement that counts:
+
+    Air     claude 2.1.234   /Users/malpern/Library/Application Support/Claude/claude-code/2.1.234/claude.app/…
+            codex  0.148.0-alpha.15   /Applications/ChatGPT.app/Contents/Resources/codex
+    mini    claude 2.1.234   ~/.local/bin/claude   (and 2.1.221 in the bundle)
+            codex  0.148.0-alpha.9    ~/.local/bin/codex
+    linux   claude 2.1.234   ~/.local/bin/claude   (a mise shim)
+            codex  0.147.0            ~/.local/bin/codex
+
+`command -v claude` returns nothing on all three. A probe asking the PATH would
+report an empty herd and be wrong about every machine in it, which is why the
+design resolves an absolute path per account.
+
+This corrects the earlier note that the Air "needs the CLI installed before it
+can host a Claude session". It does not: the binary is inside
+`/Applications/Claude.app`'s support directory and answers `--version` fine.
+What the Air cannot do is *authenticate* — that is the Keychain fact below, and
+it is a different problem from having no binary. Version skew is real but
+smaller than recorded: Claude is 2.1.234 everywhere now, Codex is three
+different builds.
+
+**A mise shim answers `--version` with mise's banner, not the agent's.** On the
+linux box both agents are shims, and asking one its version returns
+`mise ~/.config/mise/config.toml tools: claude@2.1.234`. Anything parsing that
+output has to strip it, or the herd's version column reads as nonsense on one
+machine and nobody notices which.
 
 **Usage limits are read only from this Mac, and only through CodexBar.**
 `AIUsageLimitsSampler` uses `homeDirectoryForCurrentUser` for both providers;
