@@ -817,9 +817,9 @@ nonisolated enum AgentTaskProbe {
           fi
           codex_id64=$(printf '%s' "$codex_id" | base64 | tr -d '\n')
           codex_cwd64=$(printf "%s" "$codex_cwd" | base64 | tr -d '\n')
-          printf "agent_session=codex\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+          printf "agent_session=codex\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
             "$codex_id64" "$codex_status" "$codex_updated_ms" "$codex_cwd64" \
-            "$codex_completed" "$codex_total" "$codex_current" "$codex_step64" "" "" "" ""
+            "$codex_completed" "$codex_total" "$codex_current" "$codex_step64" "" "" "" "" ""
         fi
       done
     fi
@@ -945,11 +945,18 @@ nonisolated enum AgentTaskProbe {
             claude_tool=$(printf '%s' "$claude_activity" | cut -f1)
             claude_detail64=$(printf '%s' "$claude_activity" | cut -f2- | base64 | tr -d '\n')
 
+            # Which model, because the context a session may hold depends on it
+            # and the limit is learned per model rather than assumed.
+            claude_model=$(tail -n 200 "$claude_file" 2>/dev/null | jq -r '
+              select(.type == "assistant") | .message.model // empty
+            ' 2>/dev/null | tail -n 1)
+
             claude_id64=$(printf '%s' "$claude_id" | base64 | tr -d '\n')
-            printf "agent_session=claude\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+            printf "agent_session=claude\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
               "$claude_id64" "$claude_status" "$((claude_mtime * 1000))" "$claude_cwd64" \
               "$claude_completed" "$claude_total" "$claude_current" "$claude_step64" \
-              "$claude_context" "$claude_title64" "$claude_tool" "$claude_detail64"
+              "$claude_context" "$claude_title64" "$claude_tool" "$claude_detail64" \
+              "$claude_model"
           fi
         fi
       done

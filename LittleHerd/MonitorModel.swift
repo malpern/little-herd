@@ -12,6 +12,30 @@ final class MonitorModel {
     private(set) var machines: [MachineMonitorModel] = []
     private(set) var diskMachines: [MachineMonitorModel] = []
     let aiUsageLimits = AIUsageLimitsModel()
+
+    /// What each model has been seen to hold before compacting. Observed as
+    /// samples arrive rather than by reading transcripts, and persisted so a
+    /// limit learned once survives a restart.
+    private(set) var contextLimits = AgentContextLimits(
+        observed: UserDefaults.standard.dictionary(
+            forKey: LittleHerdPreferences.observedContextLimitsKey
+        ) as? [String: Int] ?? [:]
+    )
+
+    @ObservationIgnored
+    private lazy var contextLearner = AgentContextLimitLearner(
+        limits: contextLimits
+    )
+
+    /// Feeds a machine's sessions to the learner and keeps what it works out.
+    func observeContext(of sessions: [AgentSession]) {
+        guard contextLearner.observe(sessions) else { return }
+        contextLimits = contextLearner.limits
+        UserDefaults.standard.set(
+            contextLimits.observed,
+            forKey: LittleHerdPreferences.observedContextLimitsKey
+        )
+    }
     let taskTransfers = TaskTransferMonitorModel()
     let alerts = MachineAlertCenter()
     /// What the herd has been doing, so the interface can say whether something
@@ -192,7 +216,11 @@ final class MonitorModel {
         for monitor in storageMonitors {
             monitor.machine.markConnecting()
             do {
-                monitor.machine.apply(try await monitor.sampler.sample())
+                do {
+                    let snapshot = try await monitor.sampler.sample()
+                    monitor.machine.apply(snapshot)
+                    observeContext(of: snapshot.agentSessions)
+                }
             } catch {
                 monitor.machine.markOffline()
             }
@@ -458,6 +486,7 @@ final class MonitorModel {
             while !Task.isCancelled {
                 let snapshot = await sampler.sample()
                 machine.apply(snapshot)
+                observeContext(of: snapshot.agentSessions)
                 recordHistory(for: machine, from: snapshot)
                 alerts.evaluate(machine, isEnabled: alertsEnabled)
 
@@ -483,6 +512,8 @@ final class MonitorModel {
                 do {
                     let snapshot = try await sampler.sample()
                     machine.apply(snapshot)
+                    observeContext(of: snapshot.agentSessions)
+                observeContext(of: snapshot.agentSessions)
                     recordHistory(for: machine, from: snapshot)
                 } catch {
                     machine.markOffline(RemoteUnavailability.classify(error))
@@ -530,6 +561,8 @@ final class MonitorModel {
                 do {
                     let snapshot = try await sampler.sample()
                     machine.apply(snapshot)
+                    observeContext(of: snapshot.agentSessions)
+                observeContext(of: snapshot.agentSessions)
                     recordHistory(for: machine, from: snapshot)
                 } catch let error as SynologyDSMError {
                     // Asked only on the way to reporting a failure, so the
@@ -563,6 +596,8 @@ final class MonitorModel {
                 do {
                     let snapshot = try await sampler.sample()
                     machine.apply(snapshot)
+                    observeContext(of: snapshot.agentSessions)
+                observeContext(of: snapshot.agentSessions)
                     recordHistory(for: machine, from: snapshot)
                 } catch SMBStorageMonitorError.noMountedShares {
                     // "Unavailable" on its own reads as a broken NAS. Nothing

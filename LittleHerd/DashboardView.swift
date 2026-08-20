@@ -99,6 +99,7 @@ struct DashboardView: View {
                             agentSessions: agentSessions,
                             hoveredAgentID: $hoveredAgentID,
                             metric: model.overviewMetric,
+                            contextLimits: model.contextLimits,
                             namespace: machineTransition,
                             onSelectMetric: { model.selection = .machineMetric($0) },
                             onSelectMachine: { model.selection = .machine($0) }
@@ -563,6 +564,7 @@ private struct OverviewMetricContent: View {
     var selectedMachine: MachineID?
     @Binding var hoveredAgentID: MachineAgentSession.ID?
     let metric: OverviewMetric
+    var contextLimits = AgentContextLimits()
     var namespace: Namespace.ID?
     var onSelectMetric: ((MachineID) -> Void)?
     var onSelectMachine: ((MachineID) -> Void)?
@@ -580,6 +582,7 @@ private struct OverviewMetricContent: View {
                 hoveredAgentID: $hoveredAgentID,
                 onSelectMachine: onSelectMetric,
                 workload: HerdWorkloadReader.finding(for: workloadInputs),
+                contextLimits: contextLimits,
                 machineName: machines.first { $0.machine == focused }?.shortName
             )
         } else {

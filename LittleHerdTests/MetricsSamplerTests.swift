@@ -977,7 +977,7 @@ struct MetricsSamplerTests {
         let step = Data("Verify the compact AI view".utf8).base64EncodedString()
         // Codex rollouts carry no context figure, so the field is present and
         // empty rather than absent — the two providers keep one wire format.
-        let output = "agent_session=codex\t\(id)\tactive\t1700000000000\t\(path)\t3\t4\t4\t\(step)\t\t\t\t"
+        let output = "agent_session=codex\t\(id)\tactive\t1700000000000\t\(path)\t3\t4\t4\t\(step)\t\t\t\t\t"
 
         let session = try #require(AgentSessionOutputParser.parse(output).first)
 
@@ -1004,7 +1004,7 @@ struct MetricsSamplerTests {
         let title = Data("Little Herd Synology TLS sign-in".utf8)
             .base64EncodedString()
         let detail = Data("AIAgentsView.swift".utf8).base64EncodedString()
-        let output = "agent_session=claude\t\(id)\tactive\t1700000000000\t\(path)\t0\t0\t0\t\t432041\t\(title)\tEdit\t\(detail)"
+        let output = "agent_session=claude\t\(id)\tactive\t1700000000000\t\(path)\t0\t0\t0\t\t432041\t\(title)\tEdit\t\(detail)\tclaude-opus-5"
 
         let session = try #require(AgentSessionOutputParser.parse(output).first)
         #expect(session.contextTokens == 432_041)
@@ -1015,6 +1015,7 @@ struct MetricsSamplerTests {
         #expect(session.displayTitle == "Little Herd Synology TLS sign-in")
         #expect(session.activity?.tool == "Edit")
         #expect(session.statusLine == "Editing AIAgentsView.swift")
+        #expect(session.model == "claude-opus-5")
     }
 
     /// Every state says something. A session blocked on a person is a status

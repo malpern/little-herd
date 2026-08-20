@@ -76,6 +76,7 @@ struct PanelRenderHarness {
             provider: AgentTaskProvider = .claude,
             progress: AgentSessionProgress? = nil,
             context: Int? = nil,
+            model: String? = "claude-opus-5",
             title: String? = nil,
             activity: AgentActivity? = nil
         ) -> MachineAgentSession {
@@ -90,7 +91,8 @@ struct PanelRenderHarness {
                     progress: progress,
                     contextTokens: context,
                     title: title,
-                    activity: activity
+                    activity: activity,
+                    model: model
                 ),
                 machineName: name,
                 machineSymbolName: "laptopcomputer"
@@ -153,6 +155,7 @@ struct PanelRenderHarness {
             layout: AgentPanelLayout.make(from: sessions, showingFinished: showingFinished),
             workload: workload,
             machineName: "Air",
+            contextLimits: AgentContextLimits(observed: ["claude-opus-5": 1_000_000]),
             hoveredAgentID: .constant(nil),
             isShowingFinished: .constant(showingFinished),
             onSelectMachine: nil

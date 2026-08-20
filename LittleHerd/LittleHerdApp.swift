@@ -118,6 +118,9 @@ enum LittleHerdPreferences {
     /// silently stops moving — but a setting rather than a habit, since this
     /// starts another developer's application on someone's Mac.
     static let startsUsageSourceKey = "startsUsageSource"
+    /// Context sizes seen just before a compaction, by model. Learned from
+    /// this Mac rather than shipped as a table — see `AgentContextLimits`.
+    static let observedContextLimitsKey = "observedContextLimitsV1"
     static let networkVolumeAccessOnboardingCompletedKey =
         "networkVolumeAccessOnboardingCompleted"
 

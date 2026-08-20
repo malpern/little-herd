@@ -8,6 +8,9 @@ struct AIAgentsView: View {
     /// Where the load is, set against where the sessions are. Nil most of the
     /// time, and deliberately so — see `HerdWorkloadReader`.
     var workload: HerdWorkloadFinding?
+    /// What each model has been measured to hold. Empty until a compaction has
+    /// been watched, and then the rows can say how full they are.
+    var contextLimits = AgentContextLimits()
     /// Which machine these sessions are on. Named once, in the first header,
     /// because a panel scoped to one machine that never says which one is a
     /// panel you cannot trust.
@@ -31,6 +34,7 @@ struct AIAgentsView: View {
                     layout: layout,
                     workload: workload,
                     machineName: machineName,
+                    contextLimits: contextLimits,
                     hoveredAgentID: $hoveredAgentID,
                     isShowingFinished: $isShowingFinished,
                     onSelectMachine: onSelectMachine
@@ -59,6 +63,7 @@ struct AIAgentPanelContent: View {
     let layout: AgentPanelLayout
     var workload: HerdWorkloadFinding?
     var machineName: String?
+    var contextLimits = AgentContextLimits()
     @Binding var hoveredAgentID: MachineAgentSession.ID?
     @Binding var isShowingFinished: Bool
     var onSelectMachine: ((MachineID) -> Void)?
@@ -121,7 +126,7 @@ struct AIAgentPanelContent: View {
             Button {
                 onSelectMachine?(row.session.machine)
             } label: {
-                AIAgentRow(row: row)
+                AIAgentRow(row: row, contextLimits: contextLimits)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -211,6 +216,7 @@ private struct AIAgentsEmptyState: View {
 
 struct AIAgentRow: View {
     let row: AgentPanelRow
+    var contextLimits = AgentContextLimits()
 
     private var machineSession: MachineAgentSession { row.session }
 
@@ -273,11 +279,24 @@ struct AIAgentRow: View {
 
             Spacer(minLength: 4)
 
-            // Age at the far right, on the title's line.
-            Text(Self.compactAge(of: machineSession.session.updatedAt))
-                .font(.caption2.monospacedDigit())
-                .foregroundStyle(.tertiary)
-                .fixedSize()
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(Self.compactAge(of: machineSession.session.updatedAt))
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.tertiary)
+
+                // Only once this model has been watched compacting. Before
+                // that there is no honest denominator, and a percentage would
+                // be the invention this whole design exists to avoid.
+                if let fraction = contextLimits.fraction(
+                    tokens: machineSession.session.contextTokens,
+                    model: machineSession.session.model
+                ) {
+                    Text("\(Int((fraction * 100).rounded()))%")
+                        .font(.caption2.monospacedDigit().weight(.medium))
+                        .foregroundStyle(contextTint(for: fraction))
+                }
+            }
+            .fixedSize()
         }
         .frame(minHeight: 33)
         .contentShape(Rectangle())
@@ -326,6 +345,17 @@ struct AIAgentRow: View {
             : [.hours, .minutes]
         return Duration.seconds(elapsed)
             .formatted(.units(allowed: allowed, width: .narrow)) + " ago"
+    }
+
+    /// Quiet until it matters. A context two-thirds full is not news; one that
+    /// is about to compact is the moment to start a successor session, which is
+    /// the whole reason this figure is on screen.
+    private func contextTint(for fraction: Double) -> Color {
+        switch fraction {
+        case ..<0.75: Color.secondary
+        case ..<0.9: Color.orange
+        default: Color.red
+        }
     }
 
     /// Just the number and a unit — "2m", "3h", "4d". The rail's own rail is

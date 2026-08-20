@@ -93,6 +93,9 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
     let title: String?
     /// What it was last seen doing.
     let activity: AgentActivity?
+    /// Which model is answering. The context a session may hold depends on it,
+    /// and the limit is learned per model rather than assumed.
+    let model: String?
 
     init(
         id: String,
@@ -103,7 +106,8 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
         progress: AgentSessionProgress?,
         contextTokens: Int? = nil,
         title: String? = nil,
-        activity: AgentActivity? = nil
+        activity: AgentActivity? = nil,
+        model: String? = nil
     ) {
         self.id = id
         self.provider = provider
@@ -114,6 +118,7 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
         self.contextTokens = contextTokens
         self.title = title
         self.activity = activity
+        self.model = model
     }
 
     /// What the row calls this session. The title if it has one, because that
@@ -148,7 +153,8 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
             progress: progress,
             contextTokens: contextTokens,
             title: title,
-            activity: activity
+            activity: activity,
+            model: model
         )
     }
 
@@ -379,10 +385,10 @@ nonisolated enum AgentSessionOutputParser {
     private static func parseLine(_ line: Substring) -> AgentSession? {
         let fields = line.split(
             separator: "\t",
-            maxSplits: 12,
+            maxSplits: 13,
             omittingEmptySubsequences: false
         )
-        guard fields.count == 13,
+        guard fields.count == 14,
               fields[0].hasPrefix("agent_session="),
               let provider = AgentTaskProvider(
                   rawValue: String(fields[0].dropFirst("agent_session=".count))
@@ -439,7 +445,8 @@ nonisolated enum AgentSessionOutputParser {
                 : AgentActivity(
                     tool: String(fields[11]),
                     detail: decodeBase64(fields[12]) ?? ""
-                )
+                ),
+            model: fields[13].isEmpty ? nil : String(fields[13])
         )
     }
 
