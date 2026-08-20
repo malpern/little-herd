@@ -586,7 +586,6 @@ private struct OverviewMetricContent: View {
                 workload: HerdWorkloadReader.finding(for: workloadInputs),
                 contextLimits: contextLimits,
                 agentCPU: agentCPU,
-                machineCPUPercent: machines.first { $0.machine == focused }?.cpu.value,
                 machineName: machines.first { $0.machine == focused }?.shortName
             )
         } else {

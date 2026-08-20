@@ -13,9 +13,6 @@ struct AIAgentsView: View {
     var contextLimits = AgentContextLimits()
     /// What each session is costing its machine, by session id.
     var agentCPU: [String: Double] = [:]
-    /// What the focused machine's CPU is doing overall, so the header can put
-    /// the sessions' shares against the whole.
-    var machineCPUPercent: Double?
     /// Which machine these sessions are on. Named once, in the first header,
     /// because a panel scoped to one machine that never says which one is a
     /// panel you cannot trust.
@@ -41,7 +38,6 @@ struct AIAgentsView: View {
                     machineName: machineName,
                     contextLimits: contextLimits,
                     agentCPU: agentCPU,
-                    machineCPUPercent: machineCPUPercent,
                     hoveredAgentID: $hoveredAgentID,
                     isShowingFinished: $isShowingFinished,
                     onSelectMachine: onSelectMachine
@@ -72,7 +68,6 @@ struct AIAgentPanelContent: View {
     var machineName: String?
     var contextLimits = AgentContextLimits()
     var agentCPU: [String: Double] = [:]
-    var machineCPUPercent: Double?
     @Binding var hoveredAgentID: MachineAgentSession.ID?
     @Binding var isShowingFinished: Bool
     var onSelectMachine: ((MachineID) -> Void)?
@@ -114,54 +109,24 @@ struct AIAgentPanelContent: View {
         return "Running on \(machineName)"
     }
 
-    /// The whole, with the parts underneath it.
+    /// The running list's header.
     ///
-    /// The panel shows one machine, so its thermometer belongs at the top of
-    /// the list of what is running on it — the same component, the same scale
-    /// and the same colours as the CPU screen. Read together, the header says
-    /// how hard the machine is working and the rows say which sessions are the
-    /// reason, which is two screens' worth of the old answer in one line.
+    /// The machine's own meter and percentage used to sit here. They were the
+    /// same reading the CPU screen already gives, restated at the top of a
+    /// panel whose subject is sessions — and beside the rows' own meters they
+    /// invited a comparison between a machine's total and one session's share
+    /// that neither number was making.
     @ViewBuilder
     private var runningHeader: some View {
         if !layout.active.isEmpty {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(runningTitle)
-                    .font(.caption2.weight(.semibold))
-                    .tracking(0.3)
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, AIAgentRow.titleInset)
-
-                Spacer(minLength: 4)
-
-                if let machineCPUPercent {
-                    Text("\(Int(machineCPUPercent.rounded()))%")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .fixedSize()
-                }
-
-                // The machine's own bar, in the same column and the same
-                // geometry as the sessions' — so the whole sits directly above
-                // its parts and the two can be read against each other rather
-                // than merely near each other.
-                // Stacked exactly as a row is — meter on the first line, its
-                // number on the second — and in the same column, so the
-                // machine's bar sits directly above the sessions' bars. Laid
-                // out side by side it landed a few points left of them, which
-                // is the difference between a grid and things that happen to
-                // be near each other.
-                // The machine's own meter, in the sessions' measure column and
-                // on one line — the stacked version put a lone percentage under
-                // it with nothing in the rows to answer to.
-                InlineSegmentedThermometer(value: machineCPUPercent)
-                    .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
-                    .frame(
-                        width: AIAgentRow.meterSlotWidth,
-                        alignment: .trailing
-                    )
-            }
-            .padding(.top, 12)
-            .padding(.bottom, 4)
+            Text(runningTitle)
+                .font(.caption2.weight(.semibold))
+                .tracking(0.3)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, AIAgentRow.titleInset)
+                .padding(.top, 12)
+                .padding(.bottom, 4)
         }
     }
 
@@ -330,7 +295,13 @@ struct AIAgentRow: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            AgentStateDot(state: machineSession.session.state)
+            AgentStateDot(
+                state: machineSession.session.state,
+                contextFraction: contextLimits.fraction(
+                    tokens: machineSession.session.contextTokens,
+                    model: machineSession.session.model
+                )
+            )
 
             VStack(alignment: .leading, spacing: 3) {
                 // Line one is identity: what this session is, and how long
@@ -374,31 +345,7 @@ struct AIAgentRow: View {
 
                     Spacer(minLength: 4)
 
-                    HStack(spacing: 4) {
-                        // A ring rather than a second percentage. Beside a bar,
-                        // a number reads as another measure of the same thing —
-                        // and these are not the same thing: the bar is a rate,
-                        // how hard this session is working now, and the ring is
-                        // a fraction of a fixed budget that only ever fills.
-                        //
-                        // Only once this model has been watched compacting.
-                        // Before that there is no honest denominator, and a
-                        // proportion would be the invention this design exists
-                        // to avoid.
-                        if let fraction = contextLimits.fraction(
-                            tokens: machineSession.session.contextTokens,
-                            model: machineSession.session.model
-                        ) {
-                            ContextRing(
-                                fraction: fraction,
-                                tint: contextTint(for: fraction)
-                            )
-                            .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
-                            .frame(width: Self.ringSlotWidth)
-                        } else {
-                            Color.clear.frame(width: Self.ringSlotWidth, height: 1)
-                        }
-
+                    Group {
                         // Only above fifteen percent: every session uses some
                         // CPU, and a number that is always there is a number
                         // people stop reading.
@@ -406,13 +353,10 @@ struct AIAgentRow: View {
                             InlineSegmentedThermometer(value: cpuPercent)
                                 .help("\(Int(cpuPercent.rounded()))% of a core")
                                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
-                                .frame(width: Self.meterSlotWidth, alignment: .trailing)
-                        } else {
-                            Color.clear.frame(width: Self.meterSlotWidth, height: 1)
                         }
                     }
                     .frame(
-                        width: Self.measureColumnWidth,
+                        width: Self.meterSlotWidth,
                         alignment: .trailing
                     )
                 }
@@ -631,51 +575,74 @@ private struct AgentProgressRing: View {
     }
 }
 
-/// How much of a session's context is spoken for, as a ring that closes.
-///
-/// The shape is the point. This sits a few points from the CPU meter, and a
-/// second bar — or a bare percentage next to a bar — reads as another measure
-/// of the same quantity. It is not: the meter is a rate that rises and falls
-/// all day, and this is a fraction of a fixed budget that only fills. A ring
-/// closing is the right picture for something you cannot get back, and it is
-/// the picture the agents use for it themselves.
-private struct ContextRing: View {
-    let fraction: Double
-    let tint: Color
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.secondary.opacity(0.25), lineWidth: 2)
-
-            Circle()
-                .trim(from: 0, to: max(fraction, 0.02))
-                .stroke(
-                    tint,
-                    style: StrokeStyle(lineWidth: 2, lineCap: .round)
-                )
-                // From the top, clockwise: the direction a thing filling up
-                // goes everywhere else it is drawn.
-                .rotationEffect(.degrees(-90))
-        }
-        .frame(width: 12, height: 12)
-        .animation(.smooth(duration: 0.45), value: fraction)
-        .accessibilityHidden(true)
-    }
-}
-
-/// State as a single dot at the leading edge.
+/// State as a single dot at the leading edge — and the context warning.
 ///
 /// Small, and the only coloured thing on a row that is otherwise text. Running
 /// is filled and green; waiting is an open ring, which reads as unfinished
 /// without shouting; finished is a faint dot that gets out of the way. Shape
-/// carries the difference as well as colour, so the three are still distinct
-/// where colour is not.
+/// carries the difference as well as colour, so the three stay distinct where
+/// colour does not.
+///
+/// A session close to compacting overrides all three and blinks yellow. It is
+/// the one thing on this panel worth interrupting a glance for — a session
+/// about to compact is a session about to lose the history it has been building
+/// — and it is safe to override the state because the section header above the
+/// row already says what the state is. Blinking follows the usage LED's
+/// behaviour, including holding still for anyone who has asked for less motion:
+/// the colour still changes, so nothing is carried by movement alone.
 private struct AgentStateDot: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let state: AgentSessionState
+    /// How full the session's context is, when its model has been measured.
+    var contextFraction: Double?
+
+    @State private var isDimmed = false
+
+    /// Close enough to compaction to be worth acting on. Measured against the
+    /// point sessions actually compact at, which is what the app learns — not
+    /// against the model's advertised window.
+    static let almostFullFraction = 0.9
+
+    private var isAlmostFull: Bool {
+        (contextFraction ?? 0) >= Self.almostFullFraction
+    }
+
+    private var isBlinking: Bool { isAlmostFull && !reduceMotion }
 
     var body: some View {
-        Group {
+        shape
+            .frame(width: 7, height: 7)
+            // The dim end of the pulse still has to be clearly there. A dot
+            // that fades to nothing on a light background reads as a rendering
+            // fault rather than as a warning, and the point is to be noticed.
+            .scaleEffect(isBlinking && isDimmed ? 0.85 : 1)
+            .opacity(isBlinking && isDimmed ? 0.5 : 1)
+            .animation(
+                isBlinking
+                    ? .easeInOut(duration: 0.56).repeatForever()
+                    : .easeOut(duration: 0.16),
+                value: isDimmed
+            )
+            // Optically on the title's baseline: a marker that floats above or
+            // below the line it belongs to is the sort of thing you feel rather
+            // than notice.
+            .alignmentGuide(.firstTextBaseline) { $0[.bottom] + 1 }
+            .onAppear { isDimmed = isBlinking }
+            .onChange(of: isBlinking) { _, blinking in isDimmed = blinking }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(state.title))
+            .accessibilityValue(
+                isAlmostFull
+                    ? Text("context almost full")
+                    : Text("")
+            )
+    }
+
+    @ViewBuilder
+    private var shape: some View {
+        if isAlmostFull {
+            Circle().fill(Color.yellow)
+        } else {
             switch state {
             case .active:
                 Circle().fill(Color.green)
@@ -685,13 +652,6 @@ private struct AgentStateDot: View {
                 Circle().fill(Color.secondary.opacity(0.35))
             }
         }
-        .frame(width: 7, height: 7)
-        // Optically on the title's baseline: a marker that floats above or
-        // below the line it belongs to is the sort of thing you feel rather
-        // than notice.
-        .alignmentGuide(.firstTextBaseline) { $0[.bottom] + 1 }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(state.title))
     }
 }
 

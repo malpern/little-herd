@@ -106,7 +106,7 @@ struct PanelRenderHarness {
             make(
                 "claude:aa11bb22", "Little Herd", .active, .macBookAir, "Air",
                 minutesAgo: 0,
-                context: 432_041,
+                context: 943_000,
                 title: "Little Herd Synology TLS sign-in",
                 activity: AgentActivity(tool: "Bash", detail: "Running the full test suite")
             ),
@@ -152,8 +152,7 @@ struct PanelRenderHarness {
     private func panel(
         sessions: [MachineAgentSession],
         workload: HerdWorkloadFinding? = nil,
-        showingFinished: Bool = false,
-        machineCPU: Double? = 94
+        showingFinished: Bool = false
     ) -> some View {
         AIAgentPanelContent(
             layout: AgentPanelLayout.make(from: sessions, showingFinished: showingFinished),
@@ -161,7 +160,6 @@ struct PanelRenderHarness {
             machineName: "Air",
             contextLimits: AgentContextLimits(observed: ["claude-opus-5": 1_000_000]),
             agentCPU: ["claude:aa11bb22": 96, "claude:1234abcd": 31],
-            machineCPUPercent: machineCPU,
             hoveredAgentID: .constant(nil),
             isShowingFinished: .constant(showingFinished),
             onSelectMachine: nil
@@ -198,7 +196,7 @@ struct PanelRenderHarness {
     @Test
     func renderAgentPanelFullList() throws {
         try render(
-            panel(sessions: busyHerd(), machineCPU: 94),
+            panel(sessions: busyHerd()),
             size: Self.reviewSize,
             named: "ai-panel-full"
         )
