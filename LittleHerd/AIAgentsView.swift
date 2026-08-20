@@ -131,17 +131,25 @@ struct AIAgentPanelContent: View {
 
                 Spacer(minLength: 4)
 
-                if let machineCPUPercent {
-                    InlineSegmentedThermometer(
-                        value: machineCPUPercent,
-                        blockCount: 10,
-                        blockWidth: 4,
-                        blockHeight: 7
+                // The machine's own bar, in the same column and the same
+                // geometry as the sessions' — so the whole sits directly above
+                // its parts and the two can be read against each other rather
+                // than merely near each other.
+                VStack(alignment: .trailing, spacing: 2) {
+                    InlineSegmentedThermometer(value: machineCPUPercent)
+
+                    Text(
+                        machineCPUPercent.map {
+                            "\(Int($0.rounded()))%"
+                        } ?? " "
                     )
-                    Text("\(Int(machineCPUPercent.rounded()))%")
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
                 }
+                .frame(
+                    width: AIAgentRow.measureColumnWidth,
+                    alignment: .trailing
+                )
             }
             .padding(.top, 6)
             .padding(.bottom, 2)
@@ -158,7 +166,7 @@ struct AIAgentPanelContent: View {
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 6)
+                .padding(.top, 10)
                 .padding(.bottom, 2)
             rows(sectionRows)
         }
@@ -186,8 +194,10 @@ struct AIAgentPanelContent: View {
                 }
             }
 
+            // Inset to where the titles begin — the dot column plus its
+            // spacing — rather than to where a twenty-point icon used to end.
             Divider()
-                .padding(.leading, 38)
+                .padding(.leading, 15)
         }
     }
 }
@@ -262,45 +272,34 @@ private struct AIAgentsEmptyState: View {
     }
 }
 
+/// One session, laid out on the panel's grid.
+///
+/// Everything measured sits in a fixed trailing column, so the bars line up
+/// down the panel and can be compared by eye. They used to follow the status
+/// text, which is a different length on every row, so each one started
+/// somewhere else and the column read as ragged — a bar you have to hunt for
+/// is a bar doing none of the work a bar is for.
+///
+/// There is no application icon. It was twenty points of full colour, identical
+/// on every row of a panel scoped to one machine, and it was the loudest thing
+/// on a screen whose subject is the titles. Which agent a session belongs to
+/// lives in the tooltip, where it is available and quiet, and a coloured dot
+/// carries the state instead — the only per-row fact that changes.
 struct AIAgentRow: View {
     let row: AgentPanelRow
     var contextLimits = AgentContextLimits()
     /// Share of a core since the last sample, when two readings exist.
     var cpuPercent: Double?
 
+    /// One width for every measured thing in the panel, header included.
+    static let measureColumnWidth: CGFloat = 58
+
     private var machineSession: MachineAgentSession { row.session }
 
     var body: some View {
         HStack(spacing: 8) {
-            ZStack(alignment: .bottomTrailing) {
-                ApplicationIcon(
-                    bundlePath: ApplicationIconCache.bundlePath(
-                        forAnyOf: machineSession.session.provider.bundleIdentifiers
-                    ),
-                    fallbackSymbol: "sparkles",
-                    tint: machineSession.session.provider == .codex ? .green : .orange,
-                    size: 20
-                )
-
-                // A running session gets a live dot on its icon and the others
-                // get nothing. Sections already name the state in words, so a
-                // badge on every row repeated the header and spent width the
-                // title wanted — the rail is quiet everywhere except where
-                // something is happening.
-                if machineSession.session.state == .active {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 6, height: 6)
-                        .overlay(
-                            Circle().strokeBorder(
-                                Color(nsColor: .windowBackgroundColor),
-                                lineWidth: 1.5
-                            )
-                        )
-                        .offset(x: 2, y: 2)
-                }
-            }
-            .accessibilityLabel(Text(machineSession.session.state.title))
+            AgentStateDot(state: machineSession.session.state)
+                .accessibilityLabel(Text(machineSession.session.state.title))
 
             VStack(alignment: .leading, spacing: 1) {
                 // The session's own name, in the agent's own words — the same
@@ -316,22 +315,6 @@ struct AIAgentRow: View {
                     Text(machineSession.session.statusLine)
                         .foregroundStyle(.secondary)
 
-                    // Beside what it is doing, because the cost belongs to the
-                    // work rather than to the session in the abstract. Shown
-                    // only when it is worth noticing: every session uses some
-                    // CPU, and a row that always carries a number teaches
-                    // people to stop reading it.
-                    //
-                    // Drawn as the app's own thermometer rather than as a
-                    // percentage. It is the same quantity as the one on the
-                    // CPU screen, off the same scale and in the same colours,
-                    // and a session at 95% should be the same red a machine at
-                    // 95% is.
-                    if let cpuPercent, cpuPercent >= 15 {
-                        InlineSegmentedThermometer(value: cpuPercent)
-                            .help("\(Int(cpuPercent.rounded()))% of a core")
-                    }
-
                     if let disambiguator = row.disambiguator {
                         Text(disambiguator)
                             .monospaced()
@@ -343,26 +326,40 @@ struct AIAgentRow: View {
                 .truncationMode(.tail)
             }
 
-            Spacer(minLength: 4)
+            Spacer(minLength: 6)
 
-            VStack(alignment: .trailing, spacing: 1) {
-                Text(Self.compactAge(of: machineSession.session.updatedAt))
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.tertiary)
-
-                // Only once this model has been watched compacting. Before
-                // that there is no honest denominator, and a percentage would
-                // be the invention this whole design exists to avoid.
-                if let fraction = contextLimits.fraction(
-                    tokens: machineSession.session.contextTokens,
-                    model: machineSession.session.model
-                ) {
-                    Text("\(Int((fraction * 100).rounded()))%")
-                        .font(.caption2.monospacedDigit().weight(.medium))
-                        .foregroundStyle(contextTint(for: fraction))
+            VStack(alignment: .trailing, spacing: 2) {
+                // Work on the top line, against the machine's own bar in the
+                // header directly above it. Only above fifteen percent: every
+                // session uses some CPU, and a number that is always there is
+                // a number people stop reading.
+                if let cpuPercent, cpuPercent >= 15 {
+                    InlineSegmentedThermometer(value: cpuPercent)
+                        .help("\(Int(cpuPercent.rounded()))% of a core")
+                } else {
+                    // Holds the line's height so the second line does not
+                    // shuffle up and down between rows.
+                    Color.clear.frame(width: 1, height: 9)
                 }
+
+                HStack(spacing: 4) {
+                    // Only once this model has been watched compacting. Before
+                    // that there is no honest denominator, and a percentage
+                    // would be the invention this design exists to avoid.
+                    if let fraction = contextLimits.fraction(
+                        tokens: machineSession.session.contextTokens,
+                        model: machineSession.session.model
+                    ) {
+                        Text("\(Int((fraction * 100).rounded()))%")
+                            .foregroundStyle(contextTint(for: fraction))
+                    }
+
+                    Text(Self.compactAge(of: machineSession.session.updatedAt))
+                        .foregroundStyle(.tertiary)
+                }
+                .font(.caption2.monospacedDigit())
             }
-            .fixedSize()
+            .frame(width: Self.measureColumnWidth, alignment: .trailing)
         }
         .frame(minHeight: 33)
         .contentShape(Rectangle())
@@ -370,47 +367,6 @@ struct AIAgentRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(Text(machineSession.session.state.title))
-    }
-
-    /// What this row is, in one line.
-    ///
-    /// A session that publishes a step is titled by that step: it is the only
-    /// thing on the row that differs from its neighbours, and it is the answer
-    /// to the question the panel exists for — what is running right now.
-    /// Everything else falls back to the project, which is at least stable.
-    private var title: String {
-        if let step = machineSession.session.progress?.currentStep,
-           !step.isEmpty,
-           machineSession.session.state == .active
-        {
-            return step
-        }
-        return machineSession.session.projectName
-    }
-
-    /// Where it is running and, for a titled row, what project it belongs to.
-    private var subtitle: String {
-        let machine = machineSession.machineName
-        if title != machineSession.session.projectName {
-            return "\(machineSession.session.projectName) · \(machine)"
-        }
-        return "\(machine) · \(Self.relativeAge(of: machineSession.session.updatedAt))"
-    }
-
-    /// Days once it has been days.
-    ///
-    /// Hours and minutes alone turn a session from last week into "213h ago",
-    /// which is a number nobody converts in their head — seen in the render
-    /// harness, where a fixture from an earlier era printed "224,466h 53m ago"
-    /// and made the defect obvious at a glance.
-    static func relativeAge(of date: Date, now: Date = .now) -> String {
-        let elapsed = now.timeIntervalSince(date)
-        if elapsed < 60 { return "just now" }
-        let allowed: Set<Duration.UnitsFormatStyle.Unit> = elapsed >= 86_400
-            ? [.days, .hours]
-            : [.hours, .minutes]
-        return Duration.seconds(elapsed)
-            .formatted(.units(allowed: allowed, width: .narrow)) + " ago"
     }
 
     /// Quiet until it matters. A context two-thirds full is not news; one that
@@ -600,6 +556,33 @@ private struct AgentProgressRing: View {
         case .completed: .blue
         case .waiting: .orange
         }
+    }
+}
+
+/// State as a single dot at the leading edge.
+///
+/// Small, and the only coloured thing on a row that is otherwise text. Running
+/// is filled and green; waiting is an open ring, which reads as unfinished
+/// without shouting; finished is a faint dot that gets out of the way. Shape
+/// carries the difference as well as colour, so the three are still distinct
+/// where colour is not.
+private struct AgentStateDot: View {
+    let state: AgentSessionState
+
+    var body: some View {
+        Group {
+            switch state {
+            case .active:
+                Circle().fill(Color.green)
+            case .waiting:
+                Circle().strokeBorder(Color.orange, lineWidth: 1.5)
+            case .completed:
+                Circle().fill(Color.secondary.opacity(0.35))
+            }
+        }
+        .frame(width: 7, height: 7)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(state.title))
     }
 }
 

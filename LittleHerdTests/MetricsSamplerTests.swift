@@ -1090,22 +1090,26 @@ struct MetricsSamplerTests {
     }
 
     /// Hours alone turn a session from last week into "213h ago", which nobody
-    /// converts in their head. Caught by looking at a rendered panel.
+    /// converts in their head. Caught by looking at a rendered panel, and the
+    /// figure is now a glance rather than a sentence — the row has a column
+    /// fifty-eight points wide to say it in.
     @Test
-    func aSessionFromDaysAgoIsCountedInDays() {
+    func ageIsReadableAtAGlanceAtEveryScale() {
         let now = Date(timeIntervalSinceReferenceDate: 900_000)
-        let threeDays = AIAgentRow.relativeAge(
-            of: now.addingTimeInterval(-3 * 86_400),
-            now: now
-        )
-        #expect(threeDays.contains("3"))
-        #expect(threeDays.lowercased().contains("d"))
-        #expect(!threeDays.contains("72h"))
-
-        #expect(
-            AIAgentRow.relativeAge(of: now.addingTimeInterval(-30), now: now)
-                == "just now"
-        )
+        func age(_ secondsAgo: Double) -> String {
+            AIAgentRow.compactAge(
+                of: now.addingTimeInterval(-secondsAgo),
+                now: now
+            )
+        }
+        #expect(age(30) == "now")
+        #expect(age(120) == "2m")
+        #expect(age(3 * 3_600) == "3h")
+        #expect(age(3 * 86_400) == "3d")
+        // A session from last week is days, never hundreds of hours.
+        #expect(age(7 * 86_400) == "7d")
+        // Never negative, whatever the clock does.
+        #expect(age(-60) == "now")
     }
 
     /// A row must not be marked as ambiguous against something you cannot see.
