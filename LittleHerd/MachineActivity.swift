@@ -748,6 +748,77 @@ nonisolated enum AgentTaskProbe {
       fi
     fi
 
+    # Which agents this account could actually run.
+    #
+    # Absolute paths, never the PATH. Measured on all three machines: not one
+    # of them has `claude` or `codex` on the PATH a non-interactive ssh shell
+    # sees, and all three have working binaries somewhere — inside an
+    # application bundle on the Macs, in ~/.local/bin on the linux box. A probe
+    # that asked `command -v` would report an empty herd.
+    little_herd_agent_version() {
+        # $1 provider, $2 path
+        [ -x "$2" ] || return 0
+        raw=$("$2" --version 2>/dev/null | head -1 | tr -d '\r')
+        [ -n "$raw" ] || return 0
+        # A mise shim answers --version with mise's own banner rather than the
+        # agent's: "mise ~/.config/mise/config.toml tools: claude@2.1.234".
+        # Measured on the linux box, where both agents are shims.
+        case "$raw" in
+          *"tools:"*)
+            raw=$(printf '%s' "$raw" | sed 's/.*tools: *//' | cut -d' ' -f1)
+            raw=$(printf '%s' "$raw" | sed 's/^[^@]*@//')
+            ;;
+        esac
+        printf "agent_install=%s\t%s\t%s\n" "$1" \
+          "$(printf '%s' "$raw" | base64 | tr -d '\n')" \
+          "$(printf '%s' "$2" | base64 | tr -d '\n')"
+    }
+    # Which repositories this account has a checkout of.
+    #
+    # Read out of .git/config rather than by asking git, which means no process
+    # per repository: 38 checkouts took 783 ms through `git remote get-url` and
+    # 303 ms this way, for identical output. Scoped to the [remote "origin"]
+    # section and not merely the first url in the file — one repository here
+    # has a remote called "sites-origin", and taking the first url gave it a
+    # different identity than git does.
+    #
+    # Matched later by the remote's slug rather than by directory name: this
+    # herd has "keyboard-newswire" checked out in a directory called
+    # "keyboard-wire", and the folder is not what the repository is.
+    for little_herd_root in "$HOME/local-code" "$HOME/code" "$HOME/src" "$HOME/Developer"; do
+      [ -d "$little_herd_root" ] || continue
+      for little_herd_checkout in "$little_herd_root"/*; do
+        [ -f "$little_herd_checkout/.git/config" ] || continue
+        little_herd_url=$(awk '
+          /^[[:space:]]*\[remote "origin"\]/ { inorigin = 1; next }
+          /^[[:space:]]*\[/ { inorigin = 0 }
+          inorigin && /^[[:space:]]*url[[:space:]]*=/ {
+            sub(/^[[:space:]]*url[[:space:]]*=[[:space:]]*/, ""); print; exit
+          }' "$little_herd_checkout/.git/config")
+        [ -n "$little_herd_url" ] || continue
+        printf "checkout=%s\t%s\n" \
+          "$(printf '%s' "$little_herd_url" | sed 's#\.git$##' | sed 's#.*[/:]##')" \
+          "$(printf '%s' "$little_herd_checkout" | base64 | tr -d '\n')"
+      done
+    done
+
+    little_herd_agent_version claude "$HOME/.local/bin/claude"
+    little_herd_agent_version codex "$HOME/.local/bin/codex"
+    little_herd_agent_version codex "/Applications/ChatGPT.app/Contents/Resources/codex"
+
+    # `find` rather than a glob, because this script runs under zsh, and zsh
+    # aborts the *whole script* on a pattern that matches nothing — where sh
+    # would pass it through harmlessly. A Mac without that application bundle
+    # would have lost every session in the AI panel, not just its agent
+    # version. The repo's own shell tests caught it, which is what they are
+    # for. `find` also survives the space in "Application Support" that any
+    # unquoted expansion of the result would not.
+    find "$HOME/Library/Application Support/Claude/claude-code" \
+      -maxdepth 5 -name claude -type f -perm -u+x 2>/dev/null \
+      | while IFS= read -r little_herd_candidate; do
+      little_herd_agent_version claude "$little_herd_candidate"
+    done
+
     codex_db="$HOME/.codex/state_5.sqlite"
     if command -v sqlite3 >/dev/null 2>&1 && [ -r "$codex_db" ]; then
       codex_cutoff_ms=$((little_herd_now_ms - little_herd_recent_window_ms))
@@ -923,16 +994,19 @@ nonisolated enum AgentTaskProbe {
             [ -n "$dir" ] && [ -d "$dir" ] || continue
             branch=$(git -C "$dir" branch --show-current 2>/dev/null)
             [ -n "$branch" ] || continue
+            slug=$(git -C "$dir" remote get-url origin 2>/dev/null \
+              | sed 's#\.git$##' | sed 's#.*[/:]##')
             dirty=$(git -C "$dir" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
             ahead=$(git -C "$dir" rev-list --count '@{u}..HEAD' 2>/dev/null)
             # No upstream is not zero unpushed commits: it means the branch
             # exists nowhere else at all, which is the strongest form of "this
             # cannot be fetched from anywhere".
             [ -n "$ahead" ] || ahead=-1
-            printf "repo_state=%s\t%s\t%s\t%s\n" \
+            printf "repo_state=%s\t%s\t%s\t%s\t%s\n" \
               "$(printf '%s' "$dir" | base64 | tr -d '\n')" \
               "$(printf '%s' "$branch" | base64 | tr -d '\n')" \
-              "$dirty" "$ahead"
+              "$dirty" "$ahead" \
+              "$(printf '%s' "$slug" | base64 | tr -d '\n')"
           done
         fi
       fi

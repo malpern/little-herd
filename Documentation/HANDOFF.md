@@ -1,27 +1,33 @@
 # Little Herd — handoff
 
-**State:** `v0.1.27` is the last release. `v0.1.28` carries the AI panel
-rebuilt as a session rail, per-session CPU and memory, learned compaction
-thresholds, and CodexBar handling. 328 tests pass and every feed was verified
-rather than assumed.
+**State:** `v0.1.32` is released, installed in `/Applications`, and running.
+Two commits sit ahead of it on `claude/roadmap-3-4-6`: the destination-capability
+probe and the checkout probe. 367 tests pass.
+
+Eight releases went out on 19 August. **Two of them — 0.1.30 and 0.1.31 — were
+published without the features their notes announced**, because a merge failed
+silently inside a pipeline; both have been corrected on GitHub and the cause is
+in the facts below. Check that a tag contains a commit before believing a
+release contains a feature.
 
 **There is a preview harness, and it has earned itself repeatedly.**
 `PanelRenderHarness` writes PNGs of real views at their real widths, because
 tests run inside the app bundle and `ImageRenderer` can do there what a preview
-does in Xcode. It has now caught, in order: a session from last week reading
-"213h ago"; a sentence wrapping and stranding "has averaged 8%."; a row marked
-ambiguous against a row hidden inside a collapsed group; a warning dot that
-faded to invisible on a light background; a header number wrapping to two lines;
-and a context ring drawn in `.secondary`, which is the same tone as its own
-track. Not one was visible to a green suite. **Render a view before shipping
-it.**
+does in Xcode. It has now caught: a session from last week reading "213h ago";
+a sentence wrapping and stranding "has averaged 8%."; a row marked ambiguous
+against a row hidden inside a collapsed group; a warning dot that faded to
+invisible on a light background; a header number wrapping to two lines; a
+context ring drawn in `.secondary`, the same tone as its own track; and two
+64-character fingerprints truncating to `Expected aa…bbbbbbbb`, which a passing
+test had asserted the presence of for a release and a half. Not one was visible
+to a green suite. **Render a view before shipping it.**
 
-Two things it cannot see, so remember them: it renders neither `ScrollView` nor
-a lazy stack — the first version wrapped both, wrote a blank image and reported
-success — and it cannot show a hover state, so anything that appears on hover
-has to be checked in the app. **The sign-in sheet has still never been looked
-at**, and it has a fixed 360-point height with a comment recording that it once
-clipped the password field.
+Three things it cannot see. It renders neither `ScrollView` nor a lazy stack —
+the first version wrapped both, wrote a blank image and reported success — nor
+a `Form`, which is why the sign-in sheet renders with a blank band where its
+fields are. And it cannot show a hover state, so anything that appears on hover
+has to be checked in the running app: the AI panel's section chevrons and every
+tooltip are unverified by eye.
 
 **The Synology hardware is fixed.** Drive 2 was replaced on 17 August 2026 — a WD40EFZZ
 (4 TB, CMR) for the WD30EFRX that had shed 231 uncorrectable sectors. Pool
@@ -227,6 +233,36 @@ which fails the 15-minute freshness window, so the app showed nothing — and
 nothing looks exactly like "no limit". Little Herd starts it now when it is
 installed and not running, and names it where a number is missing.
 
+**Only the Air can host a Little Herd session today, and that is the argument
+for asking.** Measured 19 August: the mini has seven repositories under
+`~/local-code` and Little Herd is not one of them; the linux box has no such
+root at all. A destination probe that checked only for an agent and git would
+have offered both machines, and a transfer to either would have failed at the
+first fetch.
+
+Two details the measuring turned up. A repository's identity is its origin
+remote's slug and **not** the directory it sits in — this herd has
+`keyboard-newswire` checked out in a folder called `keyboard-wire`. And that
+slug has to come from the `[remote "origin"]` section specifically: one
+repository here has a remote called `sites-origin`, and reading the first
+`url =` in `.git/config` gave it a different identity than git does.
+
+Reading `.git/config` beats asking git, for identical answers: 38 checkouts
+took 783 ms through `git remote get-url` and 303 ms read directly, because the
+first spawns thirty-eight processes and the second spawns none.
+
+**zsh aborts the whole script on a glob that matches nothing.** The agent probe
+runs under `/bin/zsh -c`, and a pattern with no matches is a fatal error there
+where `sh` would pass it through untouched. A glob added to look for a bundled
+agent took out *every session in the AI panel* on any Mac without that bundle —
+not just the version it was looking for. The repo's shell tests caught it
+immediately, which is exactly what they exist for.
+
+Use `find` instead, which also survives the space in "Application Support" that
+any unquoted expansion would not. Watch its `-maxdepth`: the path is five
+components below the search root, and four found nothing while failing
+silently, which looks identical to "no agent installed".
+
 **A pipeline's exit status is the last command's, so `&&` will not protect
 you.** Two releases shipped without the work they announce because of this one
 line:
@@ -342,21 +378,34 @@ which is also what a durable successor session needs, since `-p` exits when it
 finishes. The linux box is unaffected: its credentials are a file at mode 600
 and it runs headless.
 
-**What blocks a Mac from hosting a session is PATH, not version skew — and on
-the Air there is no CLI to find at all.** Its Claude Code runs *inside*
-`/Applications/Claude.app`; there is no binary, no mise shim, and nothing
-bundled, so the Air needs the CLI installed before it can host a Claude session.
-Codex is the opposite and already usable: the binary ships inside
-`/Applications/ChatGPT.app/Contents/Resources/codex`, which is exactly why the
-design resolves an absolute path per machine rather than probing `PATH` — no
-amount of PATH repair finds a binary inside an app bundle. The mini→Air ssh link
-was also missing its key entirely (`id_ed25519_air` did not exist on clawd,
-despite ACCESS.md describing it); it was created and authorised on 18 August and
-the link now works. Meanwhile
-three machines run three different versions — 2.1.126, 2.1.229, 2.1.234 — so
-skew is the standing condition rather than a cleanup. Both point the same way:
-resolve an absolute agent path per machine and probe for the flag you need
-(`claude --help | grep -q -- --session-id`), never pin a version.
+**No machine in this herd has an agent on the PATH ssh sees, and every one of
+them can run both.** Measured 19 August over non-interactive ssh, which is the
+only measurement that counts:
+
+    Air     claude 2.1.234   /Users/malpern/Library/Application Support/Claude/claude-code/2.1.234/claude.app/…
+            codex  0.148.0-alpha.15   /Applications/ChatGPT.app/Contents/Resources/codex
+    mini    claude 2.1.234   ~/.local/bin/claude   (and 2.1.221 in the bundle)
+            codex  0.148.0-alpha.9    ~/.local/bin/codex
+    linux   claude 2.1.234   ~/.local/bin/claude   (a mise shim)
+            codex  0.147.0            ~/.local/bin/codex
+
+`command -v claude` returns nothing on all three. A probe asking the PATH would
+report an empty herd and be wrong about every machine in it, which is why the
+design resolves an absolute path per account.
+
+This corrects the earlier note that the Air "needs the CLI installed before it
+can host a Claude session". It does not: the binary is inside
+`/Applications/Claude.app`'s support directory and answers `--version` fine.
+What the Air cannot do is *authenticate* — that is the Keychain fact below, and
+it is a different problem from having no binary. Version skew is real but
+smaller than recorded: Claude is 2.1.234 everywhere now, Codex is three
+different builds.
+
+**A mise shim answers `--version` with mise's banner, not the agent's.** On the
+linux box both agents are shims, and asking one its version returns
+`mise ~/.config/mise/config.toml tools: claude@2.1.234`. Anything parsing that
+output has to strip it, or the herd's version column reads as nonsense on one
+machine and nobody notices which.
 
 **Usage limits are read only from this Mac, and only through CodexBar.**
 `AIUsageLimitsSampler` uses `homeDirectoryForCurrentUser` for both providers;
@@ -569,41 +618,38 @@ it; the files survived only because the directory had not been reaped yet.
    rule would collapse to "Linux failed to resolve", which is what the tooltip
    already says. Build it when a second machine becomes reachable only over the
    tailnet, and not before.
-3. **Probe destination eligibility, and let the user express intent separately.**
-   Capability is measured — an agent binary resolvable over a non-interactive
-   ssh shell, git, and a checkout of the repo. Intent is a setting: some
-   machines can host a session and still should not.
+3. **Finish destination eligibility: the intent half, and saying it.**
+   The measured halves are done and on the branch. Every account now reports
+   which agents it can run and where — no machine in this herd has one on the
+   PATH ssh sees, and all three can run both from absolute paths — and which
+   repositories it has checked out, keyed by the origin remote's slug. The
+   facts above carry the numbers.
 
-   **A destination is an account, not a machine.** The mini has both `clawd` and
+   What is left is the part that is a choice rather than a measurement.
+   `MachineConfiguration` needs a per-account "may host a session" setting,
+   defaulting to **off**, and the interface has to say *which* reason a machine
+   is not a destination — "excluded here", "no agent", "no checkout of that
+   repo" have three different fixes and only the first is a preference.
+   `DestinationEligibility` already models this and reports intent before
+   capability on purpose; nothing displays it yet.
+
+   **A destination is an account, not a machine.** The mini has `clawd` and
    `malpern`, and everything deciding whether a session can land is per-user:
    the home directory and so which repos exist, the agent install, the
-   credentials, and the GUI login session that the Keychain fact above turns on.
-   That last point may invert the obvious choice — `malpern` is the account
-   logged in graphically, so it, not the automation account, is where a Claude
-   session can authenticate. Model it as one machine with several accounts, not
-   as several machines: `MachineConfiguration` already refuses a second entry
-   with the same hostname, and defeating that would double-count the mini in a
-   herd view whose job is counting machines. `MachineID` wraps a `String`, so an
-   account-qualified id costs the published `transfer.json` contract nothing.
-   Note that moving between accounts on one box changes capability and not
-   capacity — say so, or it reads as a rebalance that does nothing.
-   Eligibility is both, and neither substitutes for the other. Default a new
-   machine to off and let the probe make the offer.
+   credentials, and the GUI login session the Keychain fact turns on. That last
+   point may invert the obvious choice — `malpern` is the account logged in
+   graphically, so it, not the automation account, is where a Claude session
+   can authenticate. `MachineConfiguration` refuses a second entry with the
+   same hostname, so this needs an account-qualified `MachineID`, which costs
+   the published `transfer.json` contract nothing since `MachineID` wraps a
+   `String`.
 
-   Say *which* reason a machine is not a destination, the way
-   `RemoteUnavailability` already does for reachability — "excluded here", "no
-   agent on the PATH ssh sees", and "no checkout of that repo" are three
-   different answers and only the first is a preference. **Budget is not one of
-   them: it is a herd-level precondition, not a per-machine one.** The machines
-   share one account, so an exhausted limit cannot be escaped by choosing a
-   different destination — check it once, before offering a move at all. **The NAS is
-   never a destination for this herd** — DSM restricts shell access to
-   administrators, the login shell is `/bin/sh`, and there is no package
-   manager, so it fails the probe on every count. The setting exists so someone
-   with a capable NAS can opt in, not as a safety control here; what stops an
-   agent running on the Synology is that there is nothing there to run.
-
-   This rung is useful on its own and everything below depends on it.
+   **Budget is not one of the reasons.** The machines share one account, so an
+   exhausted limit cannot be escaped by choosing a different destination —
+   check it once, before offering a move at all. **The NAS is never a
+   destination here**: DSM restricts shell access to administrators, the login
+   shell is `/bin/sh`, and there is no package manager. The setting exists so
+   someone with a capable NAS can opt in, not as a safety control.
 
 4. **Transfer a session between machines, at the session level.** Not process
    migration, which is not possible and not wanted: stop the session, have it

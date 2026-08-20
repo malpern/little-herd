@@ -712,6 +712,11 @@ nonisolated enum AgentSessionOutputParser {
 /// three facts that decide whether the work is anywhere but this disk.
 nonisolated struct AgentRepoState: Equatable, Sendable {
     let branch: String
+    /// The repository's identity, taken from the origin remote's last path
+    /// component rather than from the directory it sits in — this herd has
+    /// `keyboard-newswire` checked out in a folder called `keyboard-wire`, and
+    /// the folder is not what the repository is.
+    let slug: String?
     let uncommittedFileCount: Int
     /// Commits on this branch that the remote does not have.
     ///
@@ -750,10 +755,10 @@ nonisolated enum AgentRepoStateOutputParser {
     ) -> (String, AgentRepoState)? {
         let fields = line.split(
             separator: "\t",
-            maxSplits: 3,
+            maxSplits: 4,
             omittingEmptySubsequences: false
         )
-        guard fields.count == 4,
+        guard fields.count == 5,
               fields[0].hasPrefix("repo_state="),
               let directory = decode(fields[0].dropFirst("repo_state=".count)),
               let branch = decode(fields[1]),
@@ -766,6 +771,7 @@ nonisolated enum AgentRepoStateOutputParser {
             directory,
             AgentRepoState(
                 branch: branch,
+                slug: decode(fields[4]),
                 uncommittedFileCount: uncommitted,
                 unpushedCommitCount: unpushed
             )
@@ -780,5 +786,36 @@ nonisolated enum AgentRepoStateOutputParser {
             return nil
         }
         return decoded
+    }
+}
+
+
+/// The repositories an account has checked out.
+///
+/// Keyed by the origin remote's slug, because that is what identifies a
+/// repository — not the directory it happens to sit in. Read from
+/// `.git/config` rather than by asking git, which is the difference between
+/// 303 milliseconds and 783 for the same thirty-eight answers.
+nonisolated enum CheckoutOutputParser {
+    static func parse(_ output: String) -> [String: String] {
+        var checkouts: [String: String] = [:]
+        for line in output.split(whereSeparator: \.isNewline) {
+            let fields = line.split(
+                separator: "\t",
+                maxSplits: 1,
+                omittingEmptySubsequences: false
+            )
+            guard fields.count == 2,
+                  fields[0].hasPrefix("checkout="),
+                  let path = Data(base64Encoded: String(fields[1]))
+                      .flatMap({ String(data: $0, encoding: .utf8) })
+            else {
+                continue
+            }
+            let slug = String(fields[0].dropFirst("checkout=".count))
+            guard !slug.isEmpty else { continue }
+            checkouts[slug] = path
+        }
+        return checkouts
     }
 }

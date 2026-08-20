@@ -124,7 +124,7 @@ struct PanelRenderHarness {
                 context: 187_400,
                 title: "iOS secrets manager private app",
                 activity: AgentActivity(tool: "AskUserQuestion", detail: ""),
-                repo: AgentRepoState(branch: "claude/ios-secrets", uncommittedFileCount: 4, unpushedCommitCount: 0)
+                repo: AgentRepoState(branch: "claude/ios-secrets", slug: "add-secret", uncommittedFileCount: 4, unpushedCommitCount: 0)
             ),
             make(
                 "claude:ee55ff66", "Clawd", .waiting, .macBookAir, "Air",
