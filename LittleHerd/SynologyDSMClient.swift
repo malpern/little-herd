@@ -219,6 +219,19 @@ actor SynologyDSMClient {
 /// and may rotate freely (which is what a Let's Encrypt certificate from DSM's
 /// own DDNS integration does every 90 days). A certificate the system does not
 /// trust is pinned to the first one seen, and any later change is refused.
+///
+/// **None of this runs unless `Info.plist` lifts App Transport Security.** ATS
+/// performs its own system-trust evaluation and refuses a certificate that
+/// fails it *before* `URLSession` consults this delegate, so every accept path
+/// below is dead under the default policy: the pin is computed, the credential
+/// is returned, and the connection fails anyway with `NSURLErrorDomain -1200`.
+/// That cost an evening, because the failure looks exactly like a bug in the
+/// code you are reading. The tell is one line in the app's log, `ATS failed
+/// system trust`. ATS has to go rather than be narrowed because a NAS answers
+/// on whatever name its owner typed, which no static domain list can name in
+/// advance — and `NSAllowsLocalNetworking` does not cover a tailnet name, which
+/// is fully qualified and so not "local" to ATS. `SynologyTrustTests` asserts
+/// the key is still there, since nothing else would notice its going.
 final class SynologyTrustEvaluator: NSObject, URLSessionDelegate, @unchecked Sendable {
     private let lock = NSLock()
     private let pinned: String?

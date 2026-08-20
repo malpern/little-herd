@@ -20,17 +20,12 @@
 	<string>25</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
-	<!-- A NAS answers on whatever name its owner typed, so ATS's domain list
-	     cannot name it in advance, and the certificate it serves is usually one
-	     it signed itself. ATS runs its own system-trust evaluation and refuses
-	     that connection before the URLSession delegate is consulted, so the
-	     pinning in SynologyTrustEvaluator never got a say — measured as "ATS
-	     failed system trust" and NSURLErrorDomain -1200 against a NAS that was
-	     answering. Lifting the blanket is what lets that delegate decide, and
-	     the delegate is where the protection actually lives: trust on first
-	     use, then a refusal if the key ever changes. The one host we do know
-	     stays under ATS, because an exception still binds when arbitrary loads
-	     are allowed — measured, not assumed. -->
+	<!-- Removing this stops Little Herd talking to any NAS, and the failure
+	     looks like a bug in the pinning code rather than a policy: ATS refuses
+	     a self-signed certificate before URLSessionDelegate is consulted. The
+	     whole reason is above SynologyTrustEvaluator, next to the code it
+	     governs. The update feed keeps the ATS floor below, because an
+	     exception still binds when arbitrary loads are allowed. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

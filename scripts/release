@@ -107,8 +107,29 @@ build=$(( previous_build + 1 ))
 restore_plist() { git checkout -- "$plist" 2>/dev/null || true }
 [ $dry_run -eq 1 ] && trap restore_plist EXIT
 
-/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $version" "$plist"
-/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $build" "$plist"
+# Edited as text rather than with PlistBuddy's Set, which rewrites the whole
+# file and drops every XML comment in it. Info.plist carries the reason for the
+# App Transport Security exception, and a release that silently deleted it would
+# leave the next person a bare NSAllowsArbitraryLoads to wonder about.
+stamp() {
+  python3 - "$1" "$2" "$plist" <<'PY'
+import re, sys
+
+key, value, path = sys.argv[1], sys.argv[2], sys.argv[3]
+source = open(path).read()
+pattern = re.compile(
+    r"(<key>" + re.escape(key) + r"</key>\s*<string>)[^<]*(</string>)"
+)
+stamped, count = pattern.subn(lambda m: m.group(1) + value + m.group(2), source, 1)
+if count != 1:
+    sys.exit(f"could not stamp {key}: matched {count} times in {path}")
+open(path, "w").write(stamped)
+PY
+}
+
+stamp CFBundleShortVersionString "$version"
+stamp CFBundleVersion "$build"
+plutil -lint "$plist" >/dev/null || die "stamping produced an invalid $plist"
 print "  $previous_short (build $previous_build) → $version (build $build)"
 
 # ------------------------------------------------------------------- build
