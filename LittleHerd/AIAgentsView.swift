@@ -133,6 +133,13 @@ struct AIAgentPanelContent: View {
 
                 Spacer(minLength: 4)
 
+                if let machineCPUPercent {
+                    Text("\(Int(machineCPUPercent.rounded()))%")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .fixedSize()
+                }
+
                 // The machine's own bar, in the same column and the same
                 // geometry as the sessions' — so the whole sits directly above
                 // its parts and the two can be read against each other rather
@@ -143,21 +150,15 @@ struct AIAgentPanelContent: View {
                 // out side by side it landed a few points left of them, which
                 // is the difference between a grid and things that happen to
                 // be near each other.
-                VStack(alignment: .trailing, spacing: 2) {
-                    InlineSegmentedThermometer(value: machineCPUPercent)
-                        .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
-
-                    Text(
-                        machineCPUPercent.map { "\(Int($0.rounded()))%" } ?? ""
+                // The machine's own meter, in the sessions' measure column and
+                // on one line — the stacked version put a lone percentage under
+                // it with nothing in the rows to answer to.
+                InlineSegmentedThermometer(value: machineCPUPercent)
+                    .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
+                    .frame(
+                        width: AIAgentRow.meterSlotWidth,
+                        alignment: .trailing
                     )
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .fixedSize()
-                }
-                .frame(
-                    width: AIAgentRow.measureColumnWidth,
-                    alignment: .trailing
-                )
             }
             .padding(.top, 12)
             .padding(.bottom, 4)
@@ -313,7 +314,14 @@ struct AIAgentRow: View {
     var cpuPercent: Double?
 
     /// One width for every measured thing in the panel, header included.
-    static let measureColumnWidth: CGFloat = 54
+    static let measureColumnWidth: CGFloat = 48
+    /// The two measures each keep their own slot inside that column, filled or
+    /// not. Right-aligning the pair instead let the ring slide under the meter's
+    /// place whenever a row had no meter, so the rings did not line up with
+    /// each other — the sort of drift that reads as carelessness even when
+    /// nobody can say what moved.
+    static let ringSlotWidth: CGFloat = 13
+    static let meterSlotWidth: CGFloat = 31
     /// The leading column: the dot plus the space to the title. Dividers and
     /// section headers inset to this, so one vertical line runs down the panel.
     static let titleInset: CGFloat = 15
@@ -324,69 +332,91 @@ struct AIAgentRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             AgentStateDot(state: machineSession.session.state)
 
-            VStack(alignment: .leading, spacing: 2) {
-                // The session's own name, in the agent's own words — the same
-                // string its sidebar shows, so a session is called one thing
-                // wherever you meet it.
-                Text(machineSession.session.displayTitle)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 3) {
+                // Line one is identity: what this session is, and how long
+                // since it moved. Line two is work: what it is doing, and what
+                // that is costing and consuming. Sorting the row's contents by
+                // what they are about is what stopped the right-hand side
+                // reading as debris — four rows had produced four different
+                // arrangements of the same slots.
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(machineSession.session.displayTitle)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+
+                    Spacer(minLength: 4)
+
+                    Text(Self.compactAge(of: machineSession.session.updatedAt))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.tertiary)
+                        .fixedSize()
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    HStack(spacing: 4) {
+                        Text(machineSession.session.statusLine)
+                            .foregroundStyle(.secondary)
+
+                        if let disambiguator = row.disambiguator {
+                            Text(disambiguator)
+                                .monospaced()
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    // Small text wants a little air between its letters; large
+                    // text wants less. This is the small end.
+                    .font(.caption)
+                    .tracking(0.1)
                     .lineLimit(1)
                     .truncationMode(.tail)
 
-                HStack(spacing: 4) {
-                    Text(machineSession.session.statusLine)
-                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 4)
 
-                    if let disambiguator = row.disambiguator {
-                        Text(disambiguator)
-                            .monospaced()
-                            .foregroundStyle(.tertiary)
+                    HStack(spacing: 4) {
+                        // A ring rather than a second percentage. Beside a bar,
+                        // a number reads as another measure of the same thing —
+                        // and these are not the same thing: the bar is a rate,
+                        // how hard this session is working now, and the ring is
+                        // a fraction of a fixed budget that only ever fills.
+                        //
+                        // Only once this model has been watched compacting.
+                        // Before that there is no honest denominator, and a
+                        // proportion would be the invention this design exists
+                        // to avoid.
+                        if let fraction = contextLimits.fraction(
+                            tokens: machineSession.session.contextTokens,
+                            model: machineSession.session.model
+                        ) {
+                            ContextRing(
+                                fraction: fraction,
+                                tint: contextTint(for: fraction)
+                            )
+                            .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
+                            .frame(width: Self.ringSlotWidth)
+                        } else {
+                            Color.clear.frame(width: Self.ringSlotWidth, height: 1)
+                        }
+
+                        // Only above fifteen percent: every session uses some
+                        // CPU, and a number that is always there is a number
+                        // people stop reading.
+                        if let cpuPercent, cpuPercent >= 15 {
+                            InlineSegmentedThermometer(value: cpuPercent)
+                                .help("\(Int(cpuPercent.rounded()))% of a core")
+                                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
+                                .frame(width: Self.meterSlotWidth, alignment: .trailing)
+                        } else {
+                            Color.clear.frame(width: Self.meterSlotWidth, height: 1)
+                        }
                     }
+                    .frame(
+                        width: Self.measureColumnWidth,
+                        alignment: .trailing
+                    )
                 }
-                // Small text wants a little air between its letters; large text
-                // wants less. This is the small end.
-                .font(.caption)
-                .tracking(0.1)
-                .lineLimit(1)
-                .truncationMode(.tail)
             }
-
-            Spacer(minLength: 6)
-
-            VStack(alignment: .trailing, spacing: 2) {
-                // Work on the title's line, against the machine's own bar in
-                // the header directly above it. Only above fifteen percent:
-                // every session uses some CPU, and a number that is always
-                // there is a number people stop reading.
-                Group {
-                    if let cpuPercent, cpuPercent >= 15 {
-                        InlineSegmentedThermometer(value: cpuPercent)
-                            .help("\(Int(cpuPercent.rounded()))% of a core")
-                    } else {
-                        Color.clear.frame(width: 1, height: 9)
-                    }
-                }
-                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
-
-                HStack(spacing: 5) {
-                    // Only once this model has been watched compacting. Before
-                    // that there is no honest denominator, and a percentage
-                    // would be the invention this design exists to avoid.
-                    if let fraction = contextLimits.fraction(
-                        tokens: machineSession.session.contextTokens,
-                        model: machineSession.session.model
-                    ) {
-                        Text("\(Int((fraction * 100).rounded()))%")
-                            .foregroundStyle(contextTint(for: fraction))
-                    }
-
-                    Text(Self.compactAge(of: machineSession.session.updatedAt))
-                        .foregroundStyle(.tertiary)
-                }
-                .font(.caption.monospacedDigit())
-            }
-            .frame(width: Self.measureColumnWidth, alignment: .trailing)
         }
         .padding(.vertical, 5)
         .contentShape(Rectangle())
@@ -401,7 +431,13 @@ struct AIAgentRow: View {
     /// the whole reason this figure is on screen.
     private func contextTint(for fraction: Double) -> Color {
         switch fraction {
-        case ..<0.75: Color.secondary
+        // The system accent, which is blue on most Macs and whatever the user
+        // chose on the rest. Deliberately not a colour from the thermometer's
+        // green-to-red scale: this is a different quantity, and borrowing that
+        // vocabulary is what made the two read as one measurement. It also has
+        // to be a real colour rather than a grey — drawn in `.secondary` it was
+        // the same tone as its own track and effectively invisible.
+        case ..<0.75: Color.accentColor
         case ..<0.9: Color.orange
         default: Color.red
         }
@@ -427,7 +463,16 @@ struct AIAgentRow: View {
         // Still measured, no longer given a column. It answers "which of these
         // is the heavy one", which is worth a hover and not worth the width
         // the title wants.
-        if let context = machineSession.session.contextLabel {
+        if let fraction = contextLimits.fraction(
+            tokens: machineSession.session.contextTokens,
+            model: machineSession.session.model
+        ) {
+            parts.append(
+                "context \(Int((fraction * 100).rounded()))% full"
+            )
+        } else if let context = machineSession.session.contextLabel {
+            // No measured limit for this model yet, so the count is all that
+            // can honestly be said.
             parts.append("\(context) in context")
         }
         return Text(parts.joined(separator: ", "))
@@ -583,6 +628,39 @@ private struct AgentProgressRing: View {
         case .completed: .blue
         case .waiting: .orange
         }
+    }
+}
+
+/// How much of a session's context is spoken for, as a ring that closes.
+///
+/// The shape is the point. This sits a few points from the CPU meter, and a
+/// second bar — or a bare percentage next to a bar — reads as another measure
+/// of the same quantity. It is not: the meter is a rate that rises and falls
+/// all day, and this is a fraction of a fixed budget that only fills. A ring
+/// closing is the right picture for something you cannot get back, and it is
+/// the picture the agents use for it themselves.
+private struct ContextRing: View {
+    let fraction: Double
+    let tint: Color
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.secondary.opacity(0.25), lineWidth: 2)
+
+            Circle()
+                .trim(from: 0, to: max(fraction, 0.02))
+                .stroke(
+                    tint,
+                    style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                )
+                // From the top, clockwise: the direction a thing filling up
+                // goes everywhere else it is drawn.
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: 12, height: 12)
+        .animation(.smooth(duration: 0.45), value: fraction)
+        .accessibilityHidden(true)
     }
 }
 
