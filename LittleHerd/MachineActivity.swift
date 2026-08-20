@@ -773,6 +773,35 @@ nonisolated enum AgentTaskProbe {
           "$(printf '%s' "$raw" | base64 | tr -d '\n')" \
           "$(printf '%s' "$2" | base64 | tr -d '\n')"
     }
+    # Which repositories this account has a checkout of.
+    #
+    # Read out of .git/config rather than by asking git, which means no process
+    # per repository: 38 checkouts took 783 ms through `git remote get-url` and
+    # 303 ms this way, for identical output. Scoped to the [remote "origin"]
+    # section and not merely the first url in the file — one repository here
+    # has a remote called "sites-origin", and taking the first url gave it a
+    # different identity than git does.
+    #
+    # Matched later by the remote's slug rather than by directory name: this
+    # herd has "keyboard-newswire" checked out in a directory called
+    # "keyboard-wire", and the folder is not what the repository is.
+    for little_herd_root in "$HOME/local-code" "$HOME/code" "$HOME/src" "$HOME/Developer"; do
+      [ -d "$little_herd_root" ] || continue
+      for little_herd_checkout in "$little_herd_root"/*; do
+        [ -f "$little_herd_checkout/.git/config" ] || continue
+        little_herd_url=$(awk '
+          /^[[:space:]]*\[remote "origin"\]/ { inorigin = 1; next }
+          /^[[:space:]]*\[/ { inorigin = 0 }
+          inorigin && /^[[:space:]]*url[[:space:]]*=/ {
+            sub(/^[[:space:]]*url[[:space:]]*=[[:space:]]*/, ""); print; exit
+          }' "$little_herd_checkout/.git/config")
+        [ -n "$little_herd_url" ] || continue
+        printf "checkout=%s\t%s\n" \
+          "$(printf '%s' "$little_herd_url" | sed 's#\.git$##' | sed 's#.*[/:]##')" \
+          "$(printf '%s' "$little_herd_checkout" | base64 | tr -d '\n')"
+      done
+    done
+
     little_herd_agent_version claude "$HOME/.local/bin/claude"
     little_herd_agent_version codex "$HOME/.local/bin/codex"
     little_herd_agent_version codex "/Applications/ChatGPT.app/Contents/Resources/codex"
@@ -965,16 +994,19 @@ nonisolated enum AgentTaskProbe {
             [ -n "$dir" ] && [ -d "$dir" ] || continue
             branch=$(git -C "$dir" branch --show-current 2>/dev/null)
             [ -n "$branch" ] || continue
+            slug=$(git -C "$dir" remote get-url origin 2>/dev/null \
+              | sed 's#\.git$##' | sed 's#.*[/:]##')
             dirty=$(git -C "$dir" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
             ahead=$(git -C "$dir" rev-list --count '@{u}..HEAD' 2>/dev/null)
             # No upstream is not zero unpushed commits: it means the branch
             # exists nowhere else at all, which is the strongest form of "this
             # cannot be fetched from anywhere".
             [ -n "$ahead" ] || ahead=-1
-            printf "repo_state=%s\t%s\t%s\t%s\n" \
+            printf "repo_state=%s\t%s\t%s\t%s\t%s\n" \
               "$(printf '%s' "$dir" | base64 | tr -d '\n')" \
               "$(printf '%s' "$branch" | base64 | tr -d '\n')" \
-              "$dirty" "$ahead"
+              "$dirty" "$ahead" \
+              "$(printf '%s' "$slug" | base64 | tr -d '\n')"
           done
         fi
       fi

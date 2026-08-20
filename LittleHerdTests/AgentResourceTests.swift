@@ -212,11 +212,13 @@ struct AgentRepoStateTests {
         let directory = Data("/Users/x/local-code/little-herd".utf8)
             .base64EncodedString()
         let branch = Data("claude/roadmap-3-4-6".utf8).base64EncodedString()
+        let slug = Data("little-herd".utf8).base64EncodedString()
         let states = AgentRepoStateOutputParser.parse(
-            "repo_state=\(directory)\t\(branch)\t0\t0"
+            "repo_state=\(directory)\t\(branch)\t0\t0\t\(slug)"
         )
         let state = try #require(states["/Users/x/local-code/little-herd"])
         #expect(state.branch == "claude/roadmap-3-4-6")
+        #expect(state.slug == "little-herd")
         #expect(state.isPushedSomewhereElse)
         #expect(!state.carriesUnsharedWork)
     }
@@ -226,6 +228,7 @@ struct AgentRepoStateTests {
     func uncommittedWorkIsUnshared() {
         let state = AgentRepoState(
             branch: "main",
+            slug: "little-herd",
             uncommittedFileCount: 3,
             unpushedCommitCount: 0
         )
@@ -239,6 +242,7 @@ struct AgentRepoStateTests {
     func committedButUnpushedIsAlsoUnshared() {
         let state = AgentRepoState(
             branch: "main",
+            slug: "little-herd",
             uncommittedFileCount: 0,
             unpushedCommitCount: 2
         )
@@ -251,6 +255,7 @@ struct AgentRepoStateTests {
     func aBranchWithNoUpstreamIsNotMistakenForAPushedOne() {
         let state = AgentRepoState(
             branch: "scratch",
+            slug: "little-herd",
             uncommittedFileCount: 0,
             unpushedCommitCount: -1
         )
@@ -267,6 +272,7 @@ struct AgentRepoStateTests {
         let states = [
             "/shared": AgentRepoState(
                 branch: "main",
+                slug: "little-herd",
                 uncommittedFileCount: 1,
                 unpushedCommitCount: 0
             ),
@@ -287,6 +293,7 @@ struct AgentRepoStateTests {
         let joined = AgentResourceJoin.attach(
             repoStates: ["/elsewhere": AgentRepoState(
                 branch: "main",
+                slug: "little-herd",
                 uncommittedFileCount: 0,
                 unpushedCommitCount: 0
             )],

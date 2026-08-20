@@ -227,6 +227,24 @@ which fails the 15-minute freshness window, so the app showed nothing — and
 nothing looks exactly like "no limit". Little Herd starts it now when it is
 installed and not running, and names it where a number is missing.
 
+**Only the Air can host a Little Herd session today, and that is the argument
+for asking.** Measured 19 August: the mini has seven repositories under
+`~/local-code` and Little Herd is not one of them; the linux box has no such
+root at all. A destination probe that checked only for an agent and git would
+have offered both machines, and a transfer to either would have failed at the
+first fetch.
+
+Two details the measuring turned up. A repository's identity is its origin
+remote's slug and **not** the directory it sits in — this herd has
+`keyboard-newswire` checked out in a folder called `keyboard-wire`. And that
+slug has to come from the `[remote "origin"]` section specifically: one
+repository here has a remote called `sites-origin`, and reading the first
+`url =` in `.git/config` gave it a different identity than git does.
+
+Reading `.git/config` beats asking git, for identical answers: 38 checkouts
+took 783 ms through `git remote get-url` and 303 ms read directly, because the
+first spawns thirty-eight processes and the second spawns none.
+
 **zsh aborts the whole script on a glob that matches nothing.** The agent probe
 runs under `/bin/zsh -c`, and a pattern with no matches is a fatal error there
 where `sh` would pass it through untouched. A glob added to look for a bundled

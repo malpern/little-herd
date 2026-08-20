@@ -125,3 +125,46 @@ struct AgentDestinationTests {
         #expect(eligibility.detail.contains("2.1.234"))
     }
 }
+
+/// Which accounts have a checkout of the repository a session is in.
+struct CheckoutTests {
+    private func line(_ slug: String, _ path: String) -> String {
+        "checkout=\(slug)\t\(Data(path.utf8).base64EncodedString())"
+    }
+
+    /// Keyed by the remote's slug, not the directory. This herd has
+    /// `keyboard-newswire` checked out in a folder called `keyboard-wire`, and
+    /// matching on the folder would have missed it — measured on the mini.
+    @Test
+    func checkoutsAreKeyedByRemoteNotByFolder() throws {
+        let checkouts = CheckoutOutputParser.parse(
+            line("keyboard-newswire", "/Users/clawd/local-code/keyboard-wire")
+        )
+        #expect(checkouts["keyboard-newswire"] == "/Users/clawd/local-code/keyboard-wire")
+        #expect(checkouts["keyboard-wire"] == nil)
+    }
+
+    /// The measurement that made this feature worth building: the mini has
+    /// seven repositories and Little Herd is not among them, so today the Air
+    /// is the only machine that could take a Little Herd session. A destination
+    /// probe that did not ask would have offered the mini.
+    @Test
+    func amachineWithoutTheRepositoryDoesNotHaveIt() {
+        let checkouts = CheckoutOutputParser.parse(
+            [
+                line("add-secret", "/Users/clawd/local-code/add-secret"),
+                line("imsg", "/Users/clawd/local-code/imsg"),
+                line("meeting-memory", "/Users/clawd/local-code/meeting-memory"),
+            ].joined(separator: "\n")
+        )
+        #expect(checkouts["little-herd"] == nil)
+        #expect(checkouts["add-secret"] != nil)
+    }
+
+    @Test
+    func malformedLinesAreSkippedRatherThanGuessed() {
+        #expect(CheckoutOutputParser.parse("checkout=\tnotbase64").isEmpty)
+        #expect(CheckoutOutputParser.parse("something else").isEmpty)
+        #expect(CheckoutOutputParser.parse("").isEmpty)
+    }
+}
