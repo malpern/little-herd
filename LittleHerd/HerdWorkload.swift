@@ -43,9 +43,12 @@ nonisolated struct HerdWorkloadFinding: Equatable, Sendable {
     /// quietly contradict. Within one provider a move buys silicon and not
     /// budget, so a sentence that read as "move it there" would be promising
     /// something neither this app nor that machine can necessarily deliver.
+    /// Kept to one line at 300 points. The long-form version wrapped onto a
+    /// second line and left "has averaged 8%." stranded there, which spent the
+    /// panel's scarcest resource on grammar.
     var sentence: String {
         let sessions = sessionCount == 1 ? "1 session" : "\(sessionCount) sessions"
-        return "\(sessions) on \(busyName), which has averaged \(busyPercent)%. \(idleName) has averaged \(idlePercent)%."
+        return "\(sessions) on \(busyName) (\(busyPercent)%) — \(idleName) is at \(idlePercent)%"
     }
 }
 

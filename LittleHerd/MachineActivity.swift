@@ -817,9 +817,9 @@ nonisolated enum AgentTaskProbe {
           fi
           codex_id64=$(printf '%s' "$codex_id" | base64 | tr -d '\n')
           codex_cwd64=$(printf "%s" "$codex_cwd" | base64 | tr -d '\n')
-          printf "agent_session=codex\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+          printf "agent_session=codex\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
             "$codex_id64" "$codex_status" "$codex_updated_ms" "$codex_cwd64" \
-            "$codex_completed" "$codex_total" "$codex_current" "$codex_step64"
+            "$codex_completed" "$codex_total" "$codex_current" "$codex_step64" ""
         fi
       done
     fi
@@ -907,10 +907,22 @@ nonisolated enum AgentTaskProbe {
     EOF
             fi
 
+            # How much is in the model's context right now: the prompt of the
+            # most recent assistant turn, which is what was cached plus what
+            # was not. Read from the tail, because only the latest turn is the
+            # current context — earlier turns describe a smaller conversation.
+            claude_context=$(tail -n 400 "$claude_file" 2>/dev/null | jq -r '
+              select(.type == "assistant") | .message.usage |
+              select(. != null) |
+              ((.input_tokens // 0) + (.cache_read_input_tokens // 0)
+                + (.cache_creation_input_tokens // 0))
+            ' 2>/dev/null | tail -n 1)
+
             claude_id64=$(printf '%s' "$claude_id" | base64 | tr -d '\n')
-            printf "agent_session=claude\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+            printf "agent_session=claude\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
               "$claude_id64" "$claude_status" "$((claude_mtime * 1000))" "$claude_cwd64" \
-              "$claude_completed" "$claude_total" "$claude_current" "$claude_step64"
+              "$claude_completed" "$claude_total" "$claude_current" "$claude_step64" \
+              "$claude_context"
           fi
         fi
       done

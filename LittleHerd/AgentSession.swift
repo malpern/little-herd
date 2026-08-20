@@ -36,6 +36,36 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
     let state: AgentSessionState
     let updatedAt: Date
     let progress: AgentSessionProgress?
+    /// How much is in the model's context right now, when the provider records
+    /// it. Claude's transcripts do; Codex's rollouts do not, so this is nil for
+    /// half the herd and the interface must not pretend otherwise.
+    ///
+    /// **There is deliberately no percentage, and no bar.** A transcript
+    /// records what a turn *used* and never what the model *allows*, so a
+    /// proportion would need a model-to-limit table — and one was written and
+    /// thrown away, because it was already wrong: a session on this very
+    /// machine measured 425,107 tokens against a table that would have called
+    /// the limit 200,000. A number that is real beats a percentage that is
+    /// invented, and the number still tells you which session is the heavy one.
+    let contextTokens: Int?
+
+    init(
+        id: String,
+        provider: AgentTaskProvider,
+        projectName: String,
+        state: AgentSessionState,
+        updatedAt: Date,
+        progress: AgentSessionProgress?,
+        contextTokens: Int? = nil
+    ) {
+        self.id = id
+        self.provider = provider
+        self.projectName = projectName
+        self.state = state
+        self.updatedAt = updatedAt
+        self.progress = progress
+        self.contextTokens = contextTokens
+    }
 
     func waitingIfActive() -> AgentSession {
         guard state == .active else { return self }
@@ -45,8 +75,25 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
             projectName: projectName,
             state: .waiting,
             updatedAt: updatedAt,
-            progress: progress
+            progress: progress,
+            contextTokens: contextTokens
         )
+    }
+
+    /// Compact enough for a row that is 300 points wide, and rounded because
+    /// the last three digits of a context size are noise.
+    var contextLabel: String? {
+        guard let contextTokens, contextTokens > 0 else { return nil }
+        if contextTokens >= 1_000_000 {
+            return String(
+                format: "%.1fM",
+                Double(contextTokens) / 1_000_000
+            )
+        }
+        if contextTokens >= 1_000 {
+            return "\(contextTokens / 1_000)k"
+        }
+        return "\(contextTokens)"
     }
 }
 
@@ -110,7 +157,8 @@ nonisolated struct AgentPanelLayout: Equatable, Sendable {
 
     static func make(
         from sessions: [MachineAgentSession],
-        maximumFinishedCount: Int = 6
+        maximumFinishedCount: Int = 6,
+        showingFinished: Bool = true
     ) -> AgentPanelLayout {
         func rows(
             in state: AgentSessionState,
@@ -127,10 +175,13 @@ nonisolated struct AgentPanelLayout: Equatable, Sendable {
         let active = rows(in: .active)
         let finished = rows(in: .completed, limit: maximumFinishedCount)
 
-        // Ambiguity is judged across everything on screen, not within a group:
-        // the same project waiting on one machine and running on another is
-        // exactly when you need to know which row is which.
-        let visible = waiting + active + finished
+        // Ambiguity is judged across what is actually on screen. Not within a
+        // group — the same project waiting on one machine and running on
+        // another is exactly when you need to know which row is which — but
+        // not across hidden rows either: marking a row because it collides
+        // with something folded inside the finished group explains nothing,
+        // since you cannot see the thing it is being distinguished from.
+        let visible = waiting + active + (showingFinished ? finished : [])
         var counts: [String: Int] = [:]
         for row in visible {
             counts[Self.identity(of: row), default: 0] += 1
@@ -200,10 +251,10 @@ nonisolated enum AgentSessionOutputParser {
     private static func parseLine(_ line: Substring) -> AgentSession? {
         let fields = line.split(
             separator: "\t",
-            maxSplits: 8,
+            maxSplits: 9,
             omittingEmptySubsequences: false
         )
-        guard fields.count == 9,
+        guard fields.count == 10,
               fields[0].hasPrefix("agent_session="),
               let provider = AgentTaskProvider(
                   rawValue: String(fields[0].dropFirst("agent_session=".count))
@@ -250,7 +301,10 @@ nonisolated enum AgentSessionOutputParser {
             updatedAt: Date(
                 timeIntervalSince1970: updatedMilliseconds / 1_000
             ),
-            progress: progress
+            progress: progress,
+            // Empty for a provider that does not report it, and empty is not
+            // zero: zero would claim an empty context.
+            contextTokens: Int(fields[9])
         )
     }
 

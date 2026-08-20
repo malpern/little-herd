@@ -975,7 +975,9 @@ struct MetricsSamplerTests {
         let path = Data("/Users/example/local-code/little-herd".utf8)
             .base64EncodedString()
         let step = Data("Verify the compact AI view".utf8).base64EncodedString()
-        let output = "agent_session=codex\t\(id)\tactive\t1700000000000\t\(path)\t3\t4\t4\t\(step)"
+        // Codex rollouts carry no context figure, so the field is present and
+        // empty rather than absent — the two providers keep one wire format.
+        let output = "agent_session=codex\t\(id)\tactive\t1700000000000\t\(path)\t3\t4\t4\t\(step)\t"
 
         let session = try #require(AgentSessionOutputParser.parse(output).first)
 
@@ -987,6 +989,97 @@ struct MetricsSamplerTests {
         #expect(session.progress?.currentStepIndex == 4)
         #expect(session.progress?.currentStep == "Verify the compact AI view")
         #expect(session.progress?.fractionCompleted == 0.75)
+        // Absent, not zero. Zero would claim an empty context.
+        #expect(session.contextTokens == nil)
+        #expect(session.contextLabel == nil)
+    }
+
+    /// Claude records what each turn put in front of the model, so the panel can
+    /// say which session is the heavy one.
+    @Test
+    func agentSessionParserReadsTheContextSize() throws {
+        let id = Data("session-2".utf8).base64EncodedString()
+        let path = Data("/Users/example/local-code/little-herd".utf8)
+            .base64EncodedString()
+        let output = "agent_session=claude\t\(id)\tactive\t1700000000000\t\(path)\t0\t0\t0\t\t432041"
+
+        let session = try #require(AgentSessionOutputParser.parse(output).first)
+        #expect(session.contextTokens == 432_041)
+        #expect(session.contextLabel == "432k")
+    }
+
+    /// A row is 300 points wide, so the figure is rounded rather than exact —
+    /// and the last three digits of a context size are noise anyway.
+    @Test
+    func theContextLabelFitsInARow() {
+        func label(_ tokens: Int?) -> String? {
+            AgentSession(
+                id: "x",
+                provider: .claude,
+                projectName: "p",
+                state: .active,
+                updatedAt: .now,
+                progress: nil,
+                contextTokens: tokens
+            ).contextLabel
+        }
+        #expect(label(432_041) == "432k")
+        #expect(label(24_800) == "24k")
+        #expect(label(1_400_000) == "1.4M")
+        #expect(label(1_000_000) == "1.0M")
+        #expect(label(940) == "940")
+        // Nothing measured and nothing in context are different situations, and
+        // neither should print a misleading zero.
+        #expect(label(nil) == nil)
+        #expect(label(0) == nil)
+    }
+
+    /// Hours alone turn a session from last week into "213h ago", which nobody
+    /// converts in their head. Caught by looking at a rendered panel.
+    @Test
+    func aSessionFromDaysAgoIsCountedInDays() {
+        let now = Date(timeIntervalSinceReferenceDate: 900_000)
+        let threeDays = AIAgentRow.relativeAge(
+            of: now.addingTimeInterval(-3 * 86_400),
+            now: now
+        )
+        #expect(threeDays.contains("3"))
+        #expect(threeDays.lowercased().contains("d"))
+        #expect(!threeDays.contains("72h"))
+
+        #expect(
+            AIAgentRow.relativeAge(of: now.addingTimeInterval(-30), now: now)
+                == "just now"
+        )
+    }
+
+    /// A row must not be marked as ambiguous against something you cannot see.
+    /// Finished sessions start collapsed, so a collision with one of them
+    /// explains nothing until the group is opened.
+    @Test
+    func collisionsWithHiddenRowsDoNotMarkAnything() throws {
+        let now = Date(timeIntervalSinceReferenceDate: 950_000)
+        func row(_ id: String, _ state: AgentSessionState) -> MachineAgentSession {
+            MachineAgentSession(
+                machine: .macBookAir,
+                session: AgentSession(
+                    id: id,
+                    provider: .claude,
+                    projectName: "Little Herd",
+                    state: state,
+                    updatedAt: now,
+                    progress: nil
+                )
+            )
+        }
+        let sessions = [row("claude:aaaa1111", .active), row("claude:bbbb2222", .completed)]
+
+        let collapsed = AgentPanelLayout.make(from: sessions, showingFinished: false)
+        #expect(collapsed.active.first?.disambiguator == nil)
+
+        let expanded = AgentPanelLayout.make(from: sessions, showingFinished: true)
+        #expect(expanded.active.first?.disambiguator != nil)
+        #expect(expanded.finished.first?.disambiguator != nil)
     }
 
     /// The panel is ordered by what needs you, not by what happened last.

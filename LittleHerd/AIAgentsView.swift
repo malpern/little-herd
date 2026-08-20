@@ -15,41 +15,21 @@ struct AIAgentsView: View {
     @State private var isShowingFinished = false
 
     private var layout: AgentPanelLayout {
-        AgentPanelLayout.make(from: sessions)
+        AgentPanelLayout.make(from: sessions, showingFinished: isShowingFinished)
     }
 
     var body: some View {
-        let layout = layout
         if layout.isEmpty {
             AIAgentsEmptyState()
         } else {
             ScrollView {
-                LazyVStack(spacing: 0) {
-                    if let workload {
-                        HerdWorkloadRow(
-                            finding: workload,
-                            onSelectMachine: onSelectMachine
-                        )
-                    }
-
-                    section("Needs you", rows: layout.waiting)
-                    section("Running", rows: layout.active)
-
-                    if !layout.finished.isEmpty {
-                        FinishedSessionsDisclosure(
-                            count: layout.finished.count,
-                            isExpanded: $isShowingFinished
-                        )
-                        if isShowingFinished {
-                            rows(layout.finished)
-                        }
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.top, 3)
-                // The last row used to sit flush against the bottom edge, so a
-                // clipped row read as the end of the list.
-                .padding(.bottom, 8)
+                AIAgentPanelContent(
+                    layout: layout,
+                    workload: workload,
+                    hoveredAgentID: $hoveredAgentID,
+                    isShowingFinished: $isShowingFinished,
+                    onSelectMachine: onSelectMachine
+                )
             }
             // Was `.hidden`, which is why a list taller than the panel gave no
             // sign that it continued.
@@ -58,6 +38,52 @@ struct AIAgentsView: View {
                 hoveredAgentID = nil
             }
         }
+    }
+
+}
+
+/// The panel's rows, separated from the `ScrollView` that holds them.
+///
+/// Not a tidiness refactor: `ImageRenderer` lays out neither a `ScrollView` nor
+/// a lazy stack, so with the rows inside both, the render harness produced a
+/// blank image and reported success. Rendering this directly is what let anyone
+/// see the panel at all. The stack is eager for the same reason — this list is
+/// bounded to about ten rows, so laziness bought nothing and cost the ability
+/// to look at it.
+struct AIAgentPanelContent: View {
+    let layout: AgentPanelLayout
+    var workload: HerdWorkloadFinding?
+    @Binding var hoveredAgentID: MachineAgentSession.ID?
+    @Binding var isShowingFinished: Bool
+    var onSelectMachine: ((MachineID) -> Void)?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if let workload {
+                HerdWorkloadRow(
+                    finding: workload,
+                    onSelectMachine: onSelectMachine
+                )
+            }
+
+            section("Needs you", rows: layout.waiting)
+            section("Running", rows: layout.active)
+
+            if !layout.finished.isEmpty {
+                FinishedSessionsDisclosure(
+                    count: layout.finished.count,
+                    isExpanded: $isShowingFinished
+                )
+                if isShowingFinished {
+                    rows(layout.finished)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 3)
+        // The last row used to sit flush against the bottom edge, so a clipped
+        // row read as the end of the list.
+        .padding(.bottom, 8)
     }
 
     @ViewBuilder
@@ -122,7 +148,7 @@ private struct HerdWorkloadRow: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(2)
 
                 Spacer(minLength: 0)
             }
@@ -170,7 +196,7 @@ private struct AIAgentsEmptyState: View {
     }
 }
 
-private struct AIAgentRow: View {
+struct AIAgentRow: View {
     let row: AgentPanelRow
 
     private var machineSession: MachineAgentSession { row.session }
@@ -219,11 +245,24 @@ private struct AIAgentRow: View {
 
             Spacer(minLength: 4)
 
-            if let progress = machineSession.session.progress {
-                Text("\(progress.currentStepIndex)/\(progress.totalStepCount)")
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .trailing, spacing: 1) {
+                // How much conversation the model is carrying. Not a bar and
+                // not a percentage — see `AgentSession.contextTokens` for why
+                // there is no honest denominator to divide by.
+                if let context = machineSession.session.contextLabel {
+                    Text(context)
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .help("\(context) tokens in this session’s context")
+                }
+
+                if let progress = machineSession.session.progress {
+                    Text("\(progress.currentStepIndex)/\(progress.totalStepCount)")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.tertiary)
+                }
             }
+            .fixedSize()
         }
         .frame(minHeight: 33)
         .contentShape(Rectangle())
@@ -240,13 +279,23 @@ private struct AIAgentRow: View {
         if let step = machineSession.session.progress?.currentStep, !step.isEmpty {
             return "\(machine) · \(step)"
         }
-        let elapsed = Date.now.timeIntervalSince(machineSession.session.updatedAt)
-        let relative = elapsed < 60
-            ? "just now"
-            : Duration.seconds(elapsed).formatted(
-                .units(allowed: [.hours, .minutes], width: .narrow)
-            ) + " ago"
-        return "\(machine) · \(relative)"
+        return "\(machine) · \(Self.relativeAge(of: machineSession.session.updatedAt))"
+    }
+
+    /// Days once it has been days.
+    ///
+    /// Hours and minutes alone turn a session from last week into "213h ago",
+    /// which is a number nobody converts in their head — seen in the render
+    /// harness, where a fixture from an earlier era printed "224,466h 53m ago"
+    /// and made the defect obvious at a glance.
+    static func relativeAge(of date: Date, now: Date = .now) -> String {
+        let elapsed = now.timeIntervalSince(date)
+        if elapsed < 60 { return "just now" }
+        let allowed: Set<Duration.UnitsFormatStyle.Unit> = elapsed >= 86_400
+            ? [.days, .hours]
+            : [.hours, .minutes]
+        return Duration.seconds(elapsed)
+            .formatted(.units(allowed: allowed, width: .narrow)) + " ago"
     }
 
     private var helpText: Text {
