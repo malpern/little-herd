@@ -1,10 +1,15 @@
 # Little Herd — handoff
 
-**State:** `v0.1.32` is released, installed in `/Applications`, and running.
-`claude/destination-eligibility-18b608` sits ahead of it with roadmap item 3
-finished: the destination-capability probe, the checkout probe, the per-account
-"may host a session" setting, and the interface that says which reason a machine
-is not a destination. 378 tests pass.
+**State:** `v0.1.35` is released, and `main` carries nothing beyond it. 389
+tests pass. Roadmap items 3 and 6 are done — destination eligibility, and each
+machine's agent versions — leaving one piece of item 3 open, which is that a
+destination is an account and the herd still stores machines; it has its own
+entry below.
+
+Three releases went out on 20 August. **0.1.33 shipped a bug that could take a
+machine off the dashboard entirely** — an empty directory aborting the probe
+under zsh — fixed in 0.1.35, and the whole story is in the facts below. Nothing
+in this herd tripped it, which is exactly why it survived a release.
 
 Watched in the running app on 20 August, not only rendered: the Settings
 checkbox ticks, persists into `machineConfigurationsV1`, survives a relaunch,
@@ -539,9 +544,9 @@ versions sit at the *top* of the scrolling list instead, which is visible on
 arrival and cost nothing. Reopen only with a way to test the layout that is
 cheaper than a build-and-look each time.
 
-**The installed 0.1.32 will quietly drop `mayHostSessionsPreference` if you run
-it.** Unknown keys do not fail a `Decodable`, so the older build reads a
-machine carrying the new key perfectly well — and then re-encodes it without
+**Any build older than 0.1.33 will quietly drop `mayHostSessionsPreference` if
+you run it.** Unknown keys do not fail a `Decodable`, so the older build reads
+a machine carrying the new key perfectly well — and then re-encodes it without
 the key the next time it persists. The `unreadableEntries` mechanism does not
 help here, because it only carries through entries that fail to decode
 *entirely*. Harmless, but do not debug a destination setting that "forgot
