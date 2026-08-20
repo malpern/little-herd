@@ -517,6 +517,34 @@ that cannot travel at all. It now says "Not in a checkout" once, rather than
 either lying or vanishing — a section that silently disappears is the false
 silence this project keeps having to write tests against.
 
+**A session's CPU figure measures the agent binary and nothing it starts, so
+it is roughly a hundred times too small.** Measured on this Mac with a burner
+child running under the agent process, over one thirty-second window:
+
+    agent process alone      1.0% of a core
+    agent + descendants    101.2% of a core
+
+The probe matches `ps` lines containing `claude-code/`, which is the agent
+itself — and an agent mostly waits on a model. Everything that actually costs
+the machine is a child: `xcodebuild`, `git`, a test run, a `grep` over a large
+tree. Three live sessions here measured 0.9–2.9% across three consecutive
+windows while doing real work, and the figure barely moves whatever they are
+doing, which makes it close to useless for the question it exists to answer —
+*which session is making this machine hot*.
+
+This is why the row meter never appeared. The threshold was blamed first and
+lowered from 15% to 5%; that was worth doing and does not fix this, because
+the number itself is wrong rather than merely small. See the item in **Next**.
+
+**Validate the instrument, again — the first attempt at that measurement said
+1.0% and 1.0%.** A pid-tree walk built an awk alternation from a list with a
+trailing space, so the regex ended `|)$`, awk rejected it on the second
+iteration, and the walk stopped one level down. It reported the tree as costing
+exactly what the agent alone cost, which is a plausible-looking answer and the
+opposite of the truth. The rewrite asserts that a known burner child is in the
+set before trusting the total; that check is the only reason the second run can
+be believed.
+
 **A panel that answers a question nobody asked reads as a complaint.** The
 destinations section shipped expanded, so the AI panel carried a standing list
 of machines that could *not* take the work — and the first person to see it
@@ -852,7 +880,24 @@ it; the files survived only because the directory had not been reaped yet.
    builds is this herd running". Worth doing only if the answer would change
    something.
 
-7. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
+7. **Attribute a session's CPU to its whole process tree, not its agent
+   binary.** The measurement is in the facts above: 1.0% against 101.2% for the
+   same session in the same window. Today the panel can say a machine is at
+   94% and cannot say which session is doing it, which is the question the
+   figure was added to answer.
+
+   The shape is a pid-to-ppid map walked per agent, summing cumulative CPU
+   across each subtree — awk over one `ps` call, on both platforms, and no
+   extra process. Three things to settle first. **Memory cannot be summed the
+   same way**: resident size double-counts shared pages across a tree, so
+   either leave it as the agent's own or say what it means. **Work that leaves
+   the tree will still be missed** — Xcode delegates compilation to
+   `XCBBuildService`, which launchd owns rather than the agent, and this is
+   *unverified*: no build was running when it was looked for. And the meter's
+   floor should be set again from real numbers once the numbers are real,
+   rather than left at the 5% that was chosen against the broken figure.
+
+8. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
    18 August. Show cloud work beside the machines (the Herdware set already
    holds an unused `owl-cloud.png`) and move it down with the vendors' own
    commands, never our protocol: `codex cloud apply` and `claude --teleport`.
@@ -866,7 +911,7 @@ it; the files survived only because the directory had not been reaped yet.
    it from here. Say so in the interface rather than pretending parity.
    Local→cloud stays out entirely — that is the vendors' own button.
 
-8. **Local models are blocked, not pending.** Considered and deferred
+9. **Local models are blocked, not pending.** Considered and deferred
     18 August. No herd machine runs a model server; the linux box is an AMD
     APU with integrated graphics; the best local-model host owned is the M5
     Air — the machine transfers exist to unload. A briefing written for a
