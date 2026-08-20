@@ -119,3 +119,45 @@ nonisolated struct AgentContextLimitLearner: Sendable {
         return learned
     }
 }
+
+/// Turns cumulative CPU seconds into a share of a core.
+///
+/// A process's lifetime average is not what anyone means by "is this taxing the
+/// machine" — a session started this morning that has been idle since reads the
+/// same as one working now. The difference between two readings over the time
+/// between them is the real answer, and it costs one stored number per session.
+nonisolated struct AgentCPUTracker: Sendable {
+    private struct Reading: Sendable {
+        let cpuSeconds: Double
+        let at: Date
+    }
+
+    private var previous: [String: Reading] = [:]
+
+    /// Fills in `cpuPercent` where there is enough history to compute one.
+    mutating func rating(_ sessions: [AgentSession], now: Date) -> [AgentSession] {
+        var seen: Set<String> = []
+        let rated = sessions.map { session -> AgentSession in
+            seen.insert(session.id)
+            guard let resource = session.resource else { return session }
+            defer {
+                previous[session.id] = Reading(
+                    cpuSeconds: resource.cpuSeconds,
+                    at: now
+                )
+            }
+            guard let last = previous[session.id] else { return session }
+            let elapsed = now.timeIntervalSince(last.at)
+            let burned = resource.cpuSeconds - last.cpuSeconds
+            // A restarted process reuses nothing and its counter goes
+            // backwards; a zero interval divides by nothing. Neither is a
+            // measurement, so neither produces one.
+            guard elapsed > 0.5, burned >= 0 else { return session }
+            var updated = resource
+            updated.cpuPercent = min(burned / elapsed * 100, 100 * 64)
+            return session.consuming(updated)
+        }
+        previous = previous.filter { seen.contains($0.key) }
+        return rated
+    }
+}

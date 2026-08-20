@@ -27,8 +27,18 @@ final class MonitorModel {
         limits: contextLimits
     )
 
+    @ObservationIgnored
+    private var cpuTracker = AgentCPUTracker()
+
+    /// What each session is costing, by session id, once two readings exist.
+    private(set) var agentCPU: [String: Double] = [:]
+
     /// Feeds a machine's sessions to the learner and keeps what it works out.
     func observeContext(of sessions: [AgentSession]) {
+        for session in cpuTracker.rating(sessions, now: .now) {
+            guard let percent = session.resource?.cpuPercent else { continue }
+            agentCPU[session.id] = percent
+        }
         guard contextLearner.observe(sessions) else { return }
         contextLimits = contextLearner.limits
         UserDefaults.standard.set(

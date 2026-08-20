@@ -29,6 +29,120 @@ nonisolated struct AgentSessionProgress: Equatable, Sendable {
     }
 }
 
+/// What a session is costing the machine it runs on.
+///
+/// Memory is exact and instantaneous. CPU is not: `ps` reports a process's
+/// average over its whole life, which for a session started this morning says
+/// almost nothing about now. What is exact is *cumulative* CPU seconds, so the
+/// share of a core a session is using is the difference between two readings
+/// over the time between them — the same trick the remote CPU sampler already
+/// plays with `iostat`, for the same reason.
+nonisolated struct AgentResourceUsage: Equatable, Sendable {
+    let residentBytes: Int
+    let cpuSeconds: Double
+    /// Share of one core since the previous sample, as a percentage. Nil until
+    /// there have been two readings, because one reading cannot describe a
+    /// rate.
+    var cpuPercent: Double?
+
+    var residentLabel: String {
+        Int64(residentBytes).formatted(.byteCount(style: .memory))
+    }
+}
+
+/// One agent process as the machine reports it.
+nonisolated struct AgentProcessSample: Equatable, Sendable {
+    let pid: Int
+    let residentBytes: Int
+    let cpuSeconds: Double
+    let workingDirectory: String
+}
+
+nonisolated enum AgentProcessOutputParser {
+    static func parse(_ output: String) -> [AgentProcessSample] {
+        output.split(whereSeparator: \.isNewline).compactMap(parseLine)
+    }
+
+    private static func parseLine(_ line: Substring) -> AgentProcessSample? {
+        let fields = line.split(
+            separator: "\t",
+            maxSplits: 3,
+            omittingEmptySubsequences: false
+        )
+        guard fields.count == 4,
+              fields[0].hasPrefix("agent_process="),
+              let pid = Int(fields[0].dropFirst("agent_process=".count)),
+              let residentKilobytes = Int(fields[1]),
+              let seconds = cpuSeconds(fields[2]),
+              let data = Data(base64Encoded: String(fields[3])),
+              let directory = String(data: data, encoding: .utf8)
+        else {
+            return nil
+        }
+        return AgentProcessSample(
+            pid: pid,
+            residentBytes: residentKilobytes * 1_024,
+            cpuSeconds: seconds,
+            workingDirectory: directory
+        )
+    }
+
+    /// `ps` writes cumulative CPU as `M:SS.ss`, and as `H:MM:SS.ss` once a
+    /// process has been running for an hour — which agent sessions routinely
+    /// are, so the second form is the common case rather than the exotic one.
+    static func cpuSeconds(_ field: Substring) -> Double? {
+        let parts = field.split(separator: ":")
+        guard !parts.isEmpty, parts.count <= 3 else { return nil }
+        var total = 0.0
+        for part in parts {
+            guard let value = Double(part) else { return nil }
+            total = total * 60 + value
+        }
+        return total
+    }
+}
+
+/// Ties processes to the sessions they are running.
+nonisolated enum AgentResourceJoin {
+    /// Matched on the working directory, which is all the two have in common.
+    ///
+    /// Two sessions started in the same directory cannot be told apart this
+    /// way, and rather than attribute one session's cost to both, neither is
+    /// given a figure. A wrong attribution here would be read as "this session
+    /// is the expensive one" and could send someone to move the wrong work.
+    static func attach(
+        processes: [AgentProcessSample],
+        to sessions: [AgentSession]
+    ) -> [AgentSession] {
+        var byDirectory: [String: [AgentProcessSample]] = [:]
+        for process in processes {
+            byDirectory[process.workingDirectory, default: []].append(process)
+        }
+        var sessionsPerDirectory: [String: Int] = [:]
+        for session in sessions {
+            guard let directory = session.workingDirectory else { continue }
+            sessionsPerDirectory[directory, default: 0] += 1
+        }
+
+        return sessions.map { session in
+            guard let directory = session.workingDirectory,
+                  let matches = byDirectory[directory],
+                  matches.count == 1,
+                  sessionsPerDirectory[directory] == 1
+            else {
+                return session
+            }
+            let process = matches[0]
+            return session.consuming(
+                AgentResourceUsage(
+                    residentBytes: process.residentBytes,
+                    cpuSeconds: process.cpuSeconds
+                )
+            )
+        }
+    }
+}
+
 /// The last thing a session did, as its own transcript recorded it.
 ///
 /// Carries the tool's *description* rather than its arguments. A raw shell
@@ -93,6 +207,12 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
     let title: String?
     /// What it was last seen doing.
     let activity: AgentActivity?
+    /// Where the session is working, kept so a process on the machine can be
+    /// tied back to it — nothing in a process list names a session, and the
+    /// working directory is the only thing the two have in common.
+    let workingDirectory: String?
+    /// What it is costing the machine, when a process could be matched to it.
+    let resource: AgentResourceUsage?
     /// Which model is answering. The context a session may hold depends on it,
     /// and the limit is learned per model rather than assumed.
     let model: String?
@@ -107,7 +227,9 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
         contextTokens: Int? = nil,
         title: String? = nil,
         activity: AgentActivity? = nil,
-        model: String? = nil
+        model: String? = nil,
+        workingDirectory: String? = nil,
+        resource: AgentResourceUsage? = nil
     ) {
         self.id = id
         self.provider = provider
@@ -119,6 +241,26 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
         self.title = title
         self.activity = activity
         self.model = model
+        self.workingDirectory = workingDirectory
+        self.resource = resource
+    }
+
+    /// The same session with what it is costing attached.
+    func consuming(_ resource: AgentResourceUsage?) -> AgentSession {
+        AgentSession(
+            id: id,
+            provider: provider,
+            projectName: projectName,
+            state: state,
+            updatedAt: updatedAt,
+            progress: progress,
+            contextTokens: contextTokens,
+            title: title,
+            activity: activity,
+            model: model,
+            workingDirectory: workingDirectory,
+            resource: resource
+        )
     }
 
     /// What the row calls this session. The title if it has one, because that
@@ -446,7 +588,8 @@ nonisolated enum AgentSessionOutputParser {
                     tool: String(fields[11]),
                     detail: decodeBase64(fields[12]) ?? ""
                 ),
-            model: fields[13].isEmpty ? nil : String(fields[13])
+            model: fields[13].isEmpty ? nil : String(fields[13]),
+            workingDirectory: workingDirectory
         )
     }
 

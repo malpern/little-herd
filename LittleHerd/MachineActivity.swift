@@ -824,6 +824,32 @@ nonisolated enum AgentTaskProbe {
       done
     fi
 
+    # What each session is costing the machine it is on.
+    #
+    # A Claude session is a process, and its working directory is the one thing
+    # that ties it back to a transcript — nothing in the process list names a
+    # session. One lsof call covers every session on the machine (measured at
+    # 42 ms), which is why this asks for all of them at once rather than once
+    # per session. Matched on the claude-code binary path rather than on the
+    # command name, or the desktop application answers to "claude" too and
+    # would be reported as a session that does not exist.
+    if command -v lsof >/dev/null 2>&1; then
+      little_herd_agent_pids=$(ps -Ao pid=,rss=,time=,args= 2>/dev/null \
+        | awk '$0 ~ /claude-code\// && $2 > 20000 {print $1"\t"$2"\t"$3}')
+      if [ -n "$little_herd_agent_pids" ]; then
+        little_herd_pid_list=$(printf '%s\n' "$little_herd_agent_pids" \
+          | cut -f1 | paste -sd, -)
+        little_herd_cwds=$(/usr/sbin/lsof -a -d cwd -p "$little_herd_pid_list" -Fpn 2>/dev/null \
+          | awk '/^p/ {pid=substr($0,2)} /^n/ {print pid"\t"substr($0,2)}')
+        printf '%s\n' "$little_herd_agent_pids" | while IFS="$(printf '\t')" read -r pid rss cputime; do
+          cwd=$(printf '%s\n' "$little_herd_cwds" | awk -F '\t' -v p="$pid" '$1 == p {print $2; exit}')
+          [ -n "$cwd" ] || continue
+          cwd64=$(printf '%s' "$cwd" | base64 | tr -d '\n')
+          printf "agent_process=%s\t%s\t%s\t%s\n" "$pid" "$rss" "$cputime" "$cwd64"
+        done
+      fi
+    fi
+
     if command -v jq >/dev/null 2>&1 && [ -d "$HOME/.claude/projects" ]; then
       if [ "$(uname -s)" = "Darwin" ]; then
         claude_candidates=$(find "$HOME/.claude/projects" -type f -name '*.jsonl' -mtime -1 -exec stat -f '%m %N' {} \; 2>/dev/null | sort -nr | head -n 12)
@@ -989,7 +1015,10 @@ nonisolated enum AgentTaskProbe {
 
         let snapshot = AgentProbeSnapshot(
             tasksByProvider: AgentTaskOutputParser.parse(output),
-            sessions: AgentSessionOutputParser.parse(output)
+            sessions: AgentResourceJoin.attach(
+                processes: AgentProcessOutputParser.parse(output),
+                to: AgentSessionOutputParser.parse(output)
+            )
         )
         logger.debug(
             "Task metadata probe found \(snapshot.sessions.count) sessions"

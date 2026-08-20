@@ -11,6 +11,8 @@ struct AIAgentsView: View {
     /// What each model has been measured to hold. Empty until a compaction has
     /// been watched, and then the rows can say how full they are.
     var contextLimits = AgentContextLimits()
+    /// What each session is costing its machine, by session id.
+    var agentCPU: [String: Double] = [:]
     /// Which machine these sessions are on. Named once, in the first header,
     /// because a panel scoped to one machine that never says which one is a
     /// panel you cannot trust.
@@ -35,6 +37,7 @@ struct AIAgentsView: View {
                     workload: workload,
                     machineName: machineName,
                     contextLimits: contextLimits,
+                    agentCPU: agentCPU,
                     hoveredAgentID: $hoveredAgentID,
                     isShowingFinished: $isShowingFinished,
                     onSelectMachine: onSelectMachine
@@ -64,6 +67,7 @@ struct AIAgentPanelContent: View {
     var workload: HerdWorkloadFinding?
     var machineName: String?
     var contextLimits = AgentContextLimits()
+    var agentCPU: [String: Double] = [:]
     @Binding var hoveredAgentID: MachineAgentSession.ID?
     @Binding var isShowingFinished: Bool
     var onSelectMachine: ((MachineID) -> Void)?
@@ -126,7 +130,11 @@ struct AIAgentPanelContent: View {
             Button {
                 onSelectMachine?(row.session.machine)
             } label: {
-                AIAgentRow(row: row, contextLimits: contextLimits)
+                AIAgentRow(
+                    row: row,
+                    contextLimits: contextLimits,
+                    cpuPercent: agentCPU[row.session.session.id]
+                )
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -217,6 +225,8 @@ private struct AIAgentsEmptyState: View {
 struct AIAgentRow: View {
     let row: AgentPanelRow
     var contextLimits = AgentContextLimits()
+    /// Share of a core since the last sample, when two readings exist.
+    var cpuPercent: Double?
 
     private var machineSession: MachineAgentSession { row.session }
 
@@ -265,6 +275,17 @@ struct AIAgentRow: View {
                 HStack(spacing: 4) {
                     Text(machineSession.session.statusLine)
                         .foregroundStyle(.secondary)
+
+                    // Beside what it is doing, because the cost belongs to the
+                    // work rather than to the session in the abstract. Shown
+                    // only when it is worth noticing: every session uses some
+                    // CPU, and a row that always carries a number teaches
+                    // people to stop reading it.
+                    if let cpuPercent, cpuPercent >= 15 {
+                        Text("\(Int(cpuPercent.rounded()))% CPU")
+                            .monospacedDigit()
+                            .foregroundStyle(cpuPercent >= 90 ? Color.orange : Color.secondary)
+                    }
 
                     if let disambiguator = row.disambiguator {
                         Text(disambiguator)
