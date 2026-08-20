@@ -75,7 +75,9 @@ struct PanelRenderHarness {
             minutesAgo: Double,
             provider: AgentTaskProvider = .claude,
             progress: AgentSessionProgress? = nil,
-            context: Int? = nil
+            context: Int? = nil,
+            title: String? = nil,
+            activity: AgentActivity? = nil
         ) -> MachineAgentSession {
             MachineAgentSession(
                 machine: machine,
@@ -86,7 +88,9 @@ struct PanelRenderHarness {
                     state: state,
                     updatedAt: now.addingTimeInterval(-minutesAgo * 60),
                     progress: progress,
-                    contextTokens: context
+                    contextTokens: context,
+                    title: title,
+                    activity: activity
                 ),
                 machineName: name,
                 machineSymbolName: "laptopcomputer"
@@ -97,20 +101,42 @@ struct PanelRenderHarness {
             make(
                 "claude:aa11bb22", "Little Herd", .active, .macBookAir, "Air",
                 minutesAgo: 0,
-                progress: AgentSessionProgress(
-                    completedStepCount: 3,
-                    totalStepCount: 7,
-                    currentStepIndex: 4,
-                    currentStep: "Rendering the AI panel to a PNG so it can be looked at"
-                ),
-                context: 432_041
+                context: 432_041,
+                title: "Little Herd Synology TLS sign-in",
+                activity: AgentActivity(tool: "Bash", detail: "Running the full test suite")
             ),
-            make("claude:cc33dd44", "Clawd", .waiting, .macMini, "Mini", minutesAgo: 4, context: 187_400),
-            make("claude:ee55ff66", "Clawd", .waiting, .macMini, "Mini", minutesAgo: 12, context: 24_800),
-            make("codex:1122aabb", "keypath", .active, .macMini, "Mini", minutesAgo: 1, provider: .codex),
-            make("claude:99887766", "Clawd", .completed, .macMini, "Mini", minutesAgo: 4_320),
-            make("claude:55443322", "Little Herd", .completed, .macBookAir, "Air", minutesAgo: 51),
-            make("codex:aabbccdd", "dotfiles", .completed, .linux, "Linux", minutesAgo: 63, provider: .codex),
+            make(
+                "claude:1234abcd", "Little Herd", .active, .macBookAir, "Air",
+                minutesAgo: 2,
+                title: "AI panel rail redesign",
+                activity: AgentActivity(tool: "Edit", detail: "AIAgentsView.swift")
+            ),
+            make(
+                "claude:cc33dd44", "Clawd", .waiting, .macBookAir, "Air",
+                minutesAgo: 14,
+                context: 187_400,
+                title: "iOS secrets manager private app"
+            ),
+            make(
+                "claude:ee55ff66", "Clawd", .waiting, .macBookAir, "Air",
+                minutesAgo: 68,
+                title: "Tailscale mobile app testing"
+            ),
+            make(
+                "claude:99887766", "Clawd", .completed, .macBookAir, "Air",
+                minutesAgo: 4_320,
+                title: "Smirk daily snapshot"
+            ),
+            make(
+                "claude:55443322", "Little Herd", .completed, .macBookAir, "Air",
+                minutesAgo: 51,
+                title: "iseeyouseeme Mac app launch"
+            ),
+            make(
+                "codex:aabbccdd", "dotfiles", .completed, .macBookAir, "Air",
+                minutesAgo: 63,
+                provider: .codex
+            ),
         ]
     }
 
@@ -126,6 +152,7 @@ struct PanelRenderHarness {
         AIAgentPanelContent(
             layout: AgentPanelLayout.make(from: sessions, showingFinished: showingFinished),
             workload: workload,
+            machineName: "Air",
             hoveredAgentID: .constant(nil),
             isShowingFinished: .constant(showingFinished),
             onSelectMachine: nil

@@ -8,6 +8,10 @@ struct AIAgentsView: View {
     /// Where the load is, set against where the sessions are. Nil most of the
     /// time, and deliberately so — see `HerdWorkloadReader`.
     var workload: HerdWorkloadFinding?
+    /// Which machine these sessions are on. Named once, in the first header,
+    /// because a panel scoped to one machine that never says which one is a
+    /// panel you cannot trust.
+    var machineName: String?
 
     /// Finished work starts collapsed. It is the majority of what a probe
     /// returns and the least useful thing on screen — six finished sessions
@@ -26,6 +30,7 @@ struct AIAgentsView: View {
                 AIAgentPanelContent(
                     layout: layout,
                     workload: workload,
+                    machineName: machineName,
                     hoveredAgentID: $hoveredAgentID,
                     isShowingFinished: $isShowingFinished,
                     onSelectMachine: onSelectMachine
@@ -53,6 +58,7 @@ struct AIAgentsView: View {
 struct AIAgentPanelContent: View {
     let layout: AgentPanelLayout
     var workload: HerdWorkloadFinding?
+    var machineName: String?
     @Binding var hoveredAgentID: MachineAgentSession.ID?
     @Binding var isShowingFinished: Bool
     var onSelectMachine: ((MachineID) -> Void)?
@@ -66,8 +72,8 @@ struct AIAgentPanelContent: View {
                 )
             }
 
-            section("Needs you", rows: layout.waiting)
-            section("Running", rows: layout.active)
+            section(runningTitle, rows: layout.active)
+            section("Waiting", rows: layout.waiting)
 
             if !layout.finished.isEmpty {
                 FinishedSessionsDisclosure(
@@ -84,6 +90,13 @@ struct AIAgentPanelContent: View {
         // The last row used to sit flush against the bottom edge, so a clipped
         // row read as the end of the list.
         .padding(.bottom, 8)
+    }
+
+    /// The machine is named in the first header rather than in a row of its
+    /// own, which would cost a line to say one word.
+    private var runningTitle: LocalizedStringKey {
+        guard let machineName else { return "Running" }
+        return "Running on \(machineName)"
     }
 
     @ViewBuilder
@@ -203,66 +216,68 @@ struct AIAgentRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            ApplicationIcon(
-                bundlePath: ApplicationIconCache.bundlePath(
-                    forAnyOf: machineSession.session.provider.bundleIdentifiers
-                ),
-                fallbackSymbol: "sparkles",
-                tint: machineSession.session.provider == .codex ? .green : .orange,
-                size: 20
-            )
+            ZStack(alignment: .bottomTrailing) {
+                ApplicationIcon(
+                    bundlePath: ApplicationIconCache.bundlePath(
+                        forAnyOf: machineSession.session.provider.bundleIdentifiers
+                    ),
+                    fallbackSymbol: "sparkles",
+                    tint: machineSession.session.provider == .codex ? .green : .orange,
+                    size: 20
+                )
+
+                // A running session gets a live dot on its icon and the others
+                // get nothing. Sections already name the state in words, so a
+                // badge on every row repeated the header and spent width the
+                // title wanted — the rail is quiet everywhere except where
+                // something is happening.
+                if machineSession.session.state == .active {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 6, height: 6)
+                        .overlay(
+                            Circle().strokeBorder(
+                                Color(nsColor: .windowBackgroundColor),
+                                lineWidth: 1.5
+                            )
+                        )
+                        .offset(x: 2, y: 2)
+                }
+            }
+            .accessibilityLabel(Text(machineSession.session.state.title))
 
             VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 5) {
-                    // State leads the row and is spelled out. It was a
-                    // six-pixel dot in the right gutter, where waiting and
-                    // finished were the same shape in two colours — so the
-                    // most actionable thing the app knows was also the least
-                    // visible thing on the row.
-                    AgentStateBadge(state: machineSession.session.state)
+                // The session's own name, in the agent's own words — the same
+                // string its sidebar shows, so a session is called one thing
+                // wherever you meet it.
+                Text(machineSession.session.displayTitle)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
 
-                    Text(machineSession.session.projectName)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
+                HStack(spacing: 4) {
+                    Text(machineSession.session.statusLine)
+                        .foregroundStyle(.secondary)
 
                     if let disambiguator = row.disambiguator {
                         Text(disambiguator)
-                            .font(.caption2.monospaced())
+                            .monospaced()
                             .foregroundStyle(.tertiary)
                     }
                 }
-
-                // Several sessions can share a project and a machine, so the
-                // row has to say which one it is: what it is doing, or when it
-                // last did anything.
-                Text(sessionDetail)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                .font(.caption2)
+                .lineLimit(1)
+                .truncationMode(.tail)
             }
 
             Spacer(minLength: 4)
 
-            VStack(alignment: .trailing, spacing: 1) {
-                // How much conversation the model is carrying. Not a bar and
-                // not a percentage — see `AgentSession.contextTokens` for why
-                // there is no honest denominator to divide by.
-                if let context = machineSession.session.contextLabel {
-                    Text(context)
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .help("\(context) tokens in this session’s context")
-                }
-
-                if let progress = machineSession.session.progress {
-                    Text("\(progress.currentStepIndex)/\(progress.totalStepCount)")
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .fixedSize()
+            // Age at the far right, on the title's line.
+            Text(Self.compactAge(of: machineSession.session.updatedAt))
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.tertiary)
+                .fixedSize()
         }
         .frame(minHeight: 33)
         .contentShape(Rectangle())
@@ -272,12 +287,27 @@ struct AIAgentRow: View {
         .accessibilityValue(Text(machineSession.session.state.title))
     }
 
-    /// The step it is on when it publishes one, otherwise how long since it
-    /// last moved — either way, something that differs between sessions.
-    private var sessionDetail: String {
+    /// What this row is, in one line.
+    ///
+    /// A session that publishes a step is titled by that step: it is the only
+    /// thing on the row that differs from its neighbours, and it is the answer
+    /// to the question the panel exists for — what is running right now.
+    /// Everything else falls back to the project, which is at least stable.
+    private var title: String {
+        if let step = machineSession.session.progress?.currentStep,
+           !step.isEmpty,
+           machineSession.session.state == .active
+        {
+            return step
+        }
+        return machineSession.session.projectName
+    }
+
+    /// Where it is running and, for a titled row, what project it belongs to.
+    private var subtitle: String {
         let machine = machineSession.machineName
-        if let step = machineSession.session.progress?.currentStep, !step.isEmpty {
-            return "\(machine) · \(step)"
+        if title != machineSession.session.projectName {
+            return "\(machineSession.session.projectName) · \(machine)"
         }
         return "\(machine) · \(Self.relativeAge(of: machineSession.session.updatedAt))"
     }
@@ -298,10 +328,30 @@ struct AIAgentRow: View {
             .formatted(.units(allowed: allowed, width: .narrow)) + " ago"
     }
 
+    /// Just the number and a unit — "2m", "3h", "4d". The rail's own rail is
+    /// the title; this is a glance, not a sentence.
+    static func compactAge(of date: Date, now: Date = .now) -> String {
+        let elapsed = max(now.timeIntervalSince(date), 0)
+        if elapsed < 60 { return "now" }
+        if elapsed < 3_600 { return "\(Int(elapsed / 60))m" }
+        if elapsed < 86_400 { return "\(Int(elapsed / 3_600))h" }
+        return "\(Int(elapsed / 86_400))d"
+    }
+
     private var helpText: Text {
-        Text(
-            "\(machineSession.session.provider.displayName), \(machineSession.session.projectName), \(machineSession.machineName), \(machineSession.session.state.title)"
-        )
+        var parts = [
+            String(localized: machineSession.session.provider.displayName),
+            machineSession.session.projectName,
+            machineSession.machineName,
+            String(localized: machineSession.session.state.title),
+        ]
+        // Still measured, no longer given a column. It answers "which of these
+        // is the heavy one", which is worth a hover and not worth the width
+        // the title wants.
+        if let context = machineSession.session.contextLabel {
+            parts.append("\(context) in context")
+        }
+        return Text(parts.joined(separator: ", "))
     }
 
     private var accessibilityLabel: Text {

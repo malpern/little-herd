@@ -977,7 +977,7 @@ struct MetricsSamplerTests {
         let step = Data("Verify the compact AI view".utf8).base64EncodedString()
         // Codex rollouts carry no context figure, so the field is present and
         // empty rather than absent — the two providers keep one wire format.
-        let output = "agent_session=codex\t\(id)\tactive\t1700000000000\t\(path)\t3\t4\t4\t\(step)\t"
+        let output = "agent_session=codex\t\(id)\tactive\t1700000000000\t\(path)\t3\t4\t4\t\(step)\t\t\t\t"
 
         let session = try #require(AgentSessionOutputParser.parse(output).first)
 
@@ -1001,11 +1001,65 @@ struct MetricsSamplerTests {
         let id = Data("session-2".utf8).base64EncodedString()
         let path = Data("/Users/example/local-code/little-herd".utf8)
             .base64EncodedString()
-        let output = "agent_session=claude\t\(id)\tactive\t1700000000000\t\(path)\t0\t0\t0\t\t432041"
+        let title = Data("Little Herd Synology TLS sign-in".utf8)
+            .base64EncodedString()
+        let detail = Data("AIAgentsView.swift".utf8).base64EncodedString()
+        let output = "agent_session=claude\t\(id)\tactive\t1700000000000\t\(path)\t0\t0\t0\t\t432041\t\(title)\tEdit\t\(detail)"
 
         let session = try #require(AgentSessionOutputParser.parse(output).first)
         #expect(session.contextTokens == 432_041)
         #expect(session.contextLabel == "432k")
+        // The session's own name is what the row is titled by, so it has to
+        // survive the wire intact.
+        #expect(session.title == "Little Herd Synology TLS sign-in")
+        #expect(session.displayTitle == "Little Herd Synology TLS sign-in")
+        #expect(session.activity?.tool == "Edit")
+        #expect(session.statusLine == "Editing AIAgentsView.swift")
+    }
+
+    /// Every state says something. A session blocked on a person is a status
+    /// too, and it is the commonest one on the screen.
+    @Test
+    func everySessionHasSomethingToSayAboutItself() {
+        func session(
+            _ state: AgentSessionState,
+            title: String? = nil,
+            activity: AgentActivity? = nil
+        ) -> AgentSession {
+            AgentSession(
+                id: "x",
+                provider: .claude,
+                projectName: "Little Herd",
+                state: state,
+                updatedAt: .now,
+                progress: nil,
+                title: title,
+                activity: activity
+            )
+        }
+        #expect(session(.waiting).statusLine == "Waiting for you")
+        #expect(session(.completed).statusLine == "Finished")
+        #expect(session(.active).statusLine == "Working")
+
+        // A tool that already carries a written description is not dressed in
+        // a verb on top of it.
+        #expect(
+            session(.active, activity: AgentActivity(tool: "Bash", detail: "Running the tests"))
+                .statusLine == "Running the tests"
+        )
+        #expect(
+            session(.active, activity: AgentActivity(tool: "Read", detail: "Machine.swift"))
+                .statusLine == "Reading Machine.swift"
+        )
+        // A tool with nothing to say still names itself rather than going blank.
+        #expect(
+            session(.active, activity: AgentActivity(tool: "Glob", detail: ""))
+                .statusLine == "Running Glob"
+        )
+
+        // Without a title, the project has to stand in — it is all there is.
+        #expect(session(.active).displayTitle == "Little Herd")
+        #expect(session(.active, title: "A named session").displayTitle == "A named session")
     }
 
     /// A row is 300 points wide, so the figure is rounded rather than exact —
@@ -1082,14 +1136,12 @@ struct MetricsSamplerTests {
         #expect(expanded.finished.first?.disambiguator != nil)
     }
 
-    /// The panel is ordered by what needs you, not by what happened last.
-    ///
-    /// The previous version of this test asserted the opposite — active first,
-    /// waiting after — which is the ordering the redesign exists to undo: a
-    /// session that is working needs nothing from anyone, and a waiting one is
-    /// blocked on a person.
+    /// Running first, waiting below it, finished collapsed under both. This
+    /// assertion has been written in both directions now; the panel is for
+    /// watching what is happening, and a queue of things to attend to is a
+    /// different screen.
     @Test
-    func thePanelPutsWaitingSessionsAboveEverythingElse() {
+    func thePanelPutsRunningSessionsFirstAndNeverTruncatesWaiting() {
         let now = Date(timeIntervalSinceReferenceDate: 10_000)
         let active = (0 ..< 3).map { index in
             session(
@@ -1124,7 +1176,7 @@ struct MetricsSamplerTests {
             from: active + recent,
             maximumRecentCount: 2
         )
-        #expect(flat.first?.session.state == .waiting)
+        #expect(flat.first?.session.state == .active)
     }
 
     /// The cap exists to stop finished work filling the panel. Applying it to

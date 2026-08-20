@@ -29,6 +29,45 @@ nonisolated struct AgentSessionProgress: Equatable, Sendable {
     }
 }
 
+/// The last thing a session did, as its own transcript recorded it.
+///
+/// Carries the tool's *description* rather than its arguments. A raw shell
+/// command is unreadable in a 300-point window, and it can carry paths and
+/// contents that have no business on a screen someone else can see over your
+/// shoulder — the description is a sentence the agent already wrote for a
+/// person to read.
+nonisolated struct AgentActivity: Equatable, Sendable {
+    let tool: String
+    let detail: String
+
+    /// One line, in the present tense, for a panel refreshed on every sample.
+    var phrase: String {
+        let detail = detail.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !detail.isEmpty else { return fallbackPhrase }
+        switch tool {
+        // Bash and the agent tools already carry a written description, so
+        // dressing them in a verb would say it twice.
+        case "Bash", "Task", "Agent", "Skill": return detail
+        case "Read", "NotebookRead": return "Reading \(detail)"
+        case "Edit", "Write", "NotebookEdit": return "Editing \(detail)"
+        case "Grep": return "Searching for \(detail)"
+        case "Glob": return "Looking for \(detail)"
+        case "WebFetch": return "Reading \(detail)"
+        case "WebSearch": return "Searching the web for \(detail)"
+        default: return detail
+        }
+    }
+
+    private var fallbackPhrase: String {
+        switch tool {
+        case "": "Working"
+        case "WebSearch": "Searching the web"
+        case "AskUserQuestion": "Asking you a question"
+        default: "Running \(tool)"
+        }
+    }
+}
+
 nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
     let id: String
     let provider: AgentTaskProvider
@@ -48,6 +87,12 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
     /// the limit 200,000. A number that is real beats a percentage that is
     /// invented, and the number still tells you which session is the heavy one.
     let contextTokens: Int?
+    /// The session's own name — the one its agent's sidebar shows, set by the
+    /// user or written by the model. Nil for a provider that records none, and
+    /// then the project name has to stand in.
+    let title: String?
+    /// What it was last seen doing.
+    let activity: AgentActivity?
 
     init(
         id: String,
@@ -56,7 +101,9 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
         state: AgentSessionState,
         updatedAt: Date,
         progress: AgentSessionProgress?,
-        contextTokens: Int? = nil
+        contextTokens: Int? = nil,
+        title: String? = nil,
+        activity: AgentActivity? = nil
     ) {
         self.id = id
         self.provider = provider
@@ -65,6 +112,29 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
         self.updatedAt = updatedAt
         self.progress = progress
         self.contextTokens = contextTokens
+        self.title = title
+        self.activity = activity
+    }
+
+    /// What the row calls this session. The title if it has one, because that
+    /// is what identifies it everywhere else the user sees it; the project only
+    /// when there is nothing better, and it repeats down the column.
+    var displayTitle: String {
+        guard let title, !title.isEmpty else { return projectName }
+        return title
+    }
+
+    /// The line under the title. Always says something: a session that is
+    /// blocked on a person is a status too, and the commonest one.
+    var statusLine: String {
+        switch state {
+        case .waiting: "Waiting for you"
+        case .completed: "Finished"
+        case .active:
+            activity?.phrase
+                ?? progress?.currentStep
+                ?? "Working"
+        }
     }
 
     func waitingIfActive() -> AgentSession {
@@ -76,7 +146,9 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
             state: .waiting,
             updatedAt: updatedAt,
             progress: progress,
-            contextTokens: contextTokens
+            contextTokens: contextTokens,
+            title: title,
+            activity: activity
         )
     }
 
@@ -123,12 +195,14 @@ nonisolated struct MachineAgentSession: Equatable, Identifiable, Sendable {
 /// One row of the AI panel, with what it takes to tell it from its neighbours.
 nonisolated struct AgentPanelRow: Equatable, Identifiable, Sendable {
     let session: MachineAgentSession
-    /// Set only when another visible row has the same project on the same
-    /// machine, which is the common case rather than the exotic one: a panel
-    /// read on 18 August said "Clawd" three times and "Little Herd" twice, and
-    /// no row could be told from any other. A few characters of the session's
-    /// own id is the only thing that actually differs, and it is the same
-    /// handle `--resume` takes.
+    /// Set only when another visible row shows the same title.
+    ///
+    /// Judged on what the row actually displays, which is the point: this began
+    /// as a fix for a panel titled by project, where "Clawd" appeared three
+    /// times and no row could be told from its neighbour. Rows are titled by
+    /// the session's own name now, so nearly all of them are already distinct —
+    /// and a mark on a row that is plainly unique is noise pretending to be
+    /// information. Seen doing exactly that in a render, on every row at once.
     let disambiguator: String?
 
     var id: MachineAgentSession.ID { session.id }
@@ -136,12 +210,17 @@ nonisolated struct AgentPanelRow: Equatable, Identifiable, Sendable {
 
 /// What the AI panel shows, grouped the way it shows it.
 ///
-/// Ordered by what needs you rather than by when it last moved. `waiting` is
-/// the single most actionable fact this app holds — it is the state a session
-/// can be moved from, and the state where a person is the blocker — and it used
-/// to be a ten-pixel dot in the right gutter, indistinguishable from finished.
-/// Finished work is real but it is over, so it collapses to a count instead of
-/// spending a row each and outnumbering the one session that is live.
+/// Running first, then waiting, then a count of what finished.
+///
+/// An earlier version put waiting at the top, on the reasoning that a blocked
+/// session is the one needing a person. That was reversed deliberately: this
+/// panel is for watching work that is happening, and a queue of things to
+/// attend to is a different screen with a different job. Waiting is still
+/// grouped, labelled and never truncated — it is below, not hidden.
+///
+/// Finished work collapses to a count. It is most of what a probe returns and
+/// the least useful thing on screen, and it used to outnumber the one session
+/// that was live.
 nonisolated struct AgentPanelLayout: Equatable, Sendable {
     let waiting: [AgentPanelRow]
     let active: [AgentPanelRow]
@@ -205,7 +284,7 @@ nonisolated struct AgentPanelLayout: Equatable, Sendable {
     }
 
     private static func identity(of row: MachineAgentSession) -> String {
-        "\(row.machine.rawValue)\u{1F}\(row.session.projectName)"
+        "\(row.machine.rawValue)\u{1F}\(row.session.displayTitle)"
     }
 
     /// The tail of the session's own id, with the provider prefix dropped —
@@ -214,6 +293,55 @@ nonisolated struct AgentPanelLayout: Equatable, Sendable {
         let raw = session.id.split(separator: ":", maxSplits: 1).last
             .map(String.init) ?? session.id
         return String(raw.suffix(4))
+    }
+}
+
+nonisolated enum AgentPanelFocus {
+    /// Which machine's sessions the panel shows.
+    ///
+    /// One machine at a time, the way the metric detail screens work: a herd
+    /// view answers "where is the work", and this screen answers "what is that
+    /// machine doing", which are different questions and were being asked in
+    /// one list. The dashboard's selection decides it whenever there is one.
+    ///
+    /// On the overview there is no selection, so the panel falls back to the
+    /// machine with the most sessions actually running — the one you would have
+    /// picked. Ties go to the machine with the most sessions of any kind, and
+    /// then to the order the herd is configured in, so the choice does not
+    /// flicker between two equal machines on every sample.
+    static func machine(
+        for sessions: [MachineAgentSession],
+        selected: MachineID?,
+        order: [MachineID] = []
+    ) -> MachineID? {
+        if let selected { return selected }
+
+        var running: [MachineID: Int] = [:]
+        var total: [MachineID: Int] = [:]
+        for session in sessions {
+            total[session.machine, default: 0] += 1
+            if session.session.state == .active {
+                running[session.machine, default: 0] += 1
+            }
+        }
+        guard !total.isEmpty else { return nil }
+
+        func rank(_ machine: MachineID) -> Int {
+            order.firstIndex(of: machine) ?? order.count
+        }
+        return total.keys.max { lhs, rhs in
+            let lhsKey = (running[lhs] ?? 0, total[lhs] ?? 0, -rank(lhs))
+            let rhsKey = (running[rhs] ?? 0, total[rhs] ?? 0, -rank(rhs))
+            return lhsKey < rhsKey
+        }
+    }
+
+    static func sessions(
+        _ sessions: [MachineAgentSession],
+        on machine: MachineID?
+    ) -> [MachineAgentSession] {
+        guard let machine else { return [] }
+        return sessions.filter { $0.machine == machine }
     }
 }
 
@@ -228,7 +356,7 @@ nonisolated enum MachineAgentSessionBuilder {
             from: sessions,
             maximumFinishedCount: maximumRecentCount
         )
-        return (layout.waiting + layout.active + layout.finished)
+        return (layout.active + layout.waiting + layout.finished)
             .map(\.session)
     }
 }
@@ -251,10 +379,10 @@ nonisolated enum AgentSessionOutputParser {
     private static func parseLine(_ line: Substring) -> AgentSession? {
         let fields = line.split(
             separator: "\t",
-            maxSplits: 9,
+            maxSplits: 12,
             omittingEmptySubsequences: false
         )
-        guard fields.count == 10,
+        guard fields.count == 13,
               fields[0].hasPrefix("agent_session="),
               let provider = AgentTaskProvider(
                   rawValue: String(fields[0].dropFirst("agent_session=".count))
@@ -304,7 +432,14 @@ nonisolated enum AgentSessionOutputParser {
             progress: progress,
             // Empty for a provider that does not report it, and empty is not
             // zero: zero would claim an empty context.
-            contextTokens: Int(fields[9])
+            contextTokens: Int(fields[9]),
+            title: decodeBase64(fields[10]),
+            activity: fields[11].isEmpty
+                ? nil
+                : AgentActivity(
+                    tool: String(fields[11]),
+                    detail: decodeBase64(fields[12]) ?? ""
+                )
         )
     }
 
@@ -330,12 +465,13 @@ nonisolated enum AgentSessionOutputParser {
         return lhs.updatedAt > rhs.updatedAt
     }
 
-    /// Waiting outranks active, here as in the panel: a session that is working
-    /// needs nothing from anyone, and one that is waiting needs you.
+    /// Active outranks waiting, here as in the panel. The panel's job is to
+    /// show what is running now; what is blocked on a person is real but it is
+    /// not moving, and it sits below.
     private static func priority(for state: AgentSessionState) -> Int {
         switch state {
-        case .waiting: 0
-        case .active: 1
+        case .active: 0
+        case .waiting: 1
         case .completed: 2
         }
     }

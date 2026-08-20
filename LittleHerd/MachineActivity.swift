@@ -817,9 +817,9 @@ nonisolated enum AgentTaskProbe {
           fi
           codex_id64=$(printf '%s' "$codex_id" | base64 | tr -d '\n')
           codex_cwd64=$(printf "%s" "$codex_cwd" | base64 | tr -d '\n')
-          printf "agent_session=codex\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+          printf "agent_session=codex\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
             "$codex_id64" "$codex_status" "$codex_updated_ms" "$codex_cwd64" \
-            "$codex_completed" "$codex_total" "$codex_current" "$codex_step64" ""
+            "$codex_completed" "$codex_total" "$codex_current" "$codex_step64" "" "" "" ""
         fi
       done
     fi
@@ -918,11 +918,38 @@ nonisolated enum AgentTaskProbe {
                 + (.cache_creation_input_tokens // 0))
             ' 2>/dev/null | tail -n 1)
 
+            # The session's own name, which is what the agent's own sidebar
+            # shows: a title the user set, else the one the model wrote. Whole
+            # file rather than the tail, because a title set early must not
+            # expire out of view.
+            claude_title=$(grep -o '"customTitle":"[^"]*"' "$claude_file" 2>/dev/null \
+              | tail -n 1 | sed 's/^"customTitle":"//; s/"$//')
+            if [ -z "$claude_title" ]; then
+              claude_title=$(grep -o '"aiTitle":"[^"]*"' "$claude_file" 2>/dev/null \
+                | tail -n 1 | sed 's/^"aiTitle":"//; s/"$//')
+            fi
+            claude_title64=$(printf '%s' "$claude_title" | base64 | tr -d '\n')
+
+            # What it is doing, from the most recent tool call. Deliberately the
+            # human description a tool call carries rather than its arguments:
+            # a raw shell command in a menu-bar window is unreadable at this
+            # width and can carry things that should not be on screen at all.
+            claude_activity=$(tail -n 200 "$claude_file" 2>/dev/null | jq -r '
+              select(.type == "assistant") | .message.content[]? |
+              select(.type? == "tool_use") |
+              [.name,
+               ((.input.description
+                 // (.input.file_path | if . then split("/") | last else null end)
+                 // .input.pattern // .input.url // "") | tostring)] | @tsv
+            ' 2>/dev/null | tail -n 1)
+            claude_tool=$(printf '%s' "$claude_activity" | cut -f1)
+            claude_detail64=$(printf '%s' "$claude_activity" | cut -f2- | base64 | tr -d '\n')
+
             claude_id64=$(printf '%s' "$claude_id" | base64 | tr -d '\n')
-            printf "agent_session=claude\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+            printf "agent_session=claude\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
               "$claude_id64" "$claude_status" "$((claude_mtime * 1000))" "$claude_cwd64" \
               "$claude_completed" "$claude_total" "$claude_current" "$claude_step64" \
-              "$claude_context"
+              "$claude_context" "$claude_title64" "$claude_tool" "$claude_detail64"
           fi
         fi
       done

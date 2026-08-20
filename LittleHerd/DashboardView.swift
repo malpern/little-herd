@@ -543,6 +543,7 @@ private struct OverviewMetricStatusLine: View {
 private struct OverviewMetricContent: View {
     let machines: [MachineMonitorModel]
     let agentSessions: [MachineAgentSession]
+    var selectedMachine: MachineID?
     @Binding var hoveredAgentID: MachineAgentSession.ID?
     let metric: OverviewMetric
     var namespace: Namespace.ID?
@@ -551,11 +552,18 @@ private struct OverviewMetricContent: View {
 
     var body: some View {
         if metric == .ai {
+            // One machine at a time, like the metric detail screens.
+            let focused = AgentPanelFocus.machine(
+                for: agentSessions,
+                selected: selectedMachine,
+                order: machines.map(\.machine)
+            )
             AIAgentsView(
-                sessions: agentSessions,
+                sessions: AgentPanelFocus.sessions(agentSessions, on: focused),
                 hoveredAgentID: $hoveredAgentID,
                 onSelectMachine: onSelectMetric,
-                workload: HerdWorkloadReader.finding(for: workloadInputs)
+                workload: HerdWorkloadReader.finding(for: workloadInputs),
+                machineName: machines.first { $0.machine == focused }?.shortName
             )
         } else {
             CPUOverviewView(
@@ -1082,13 +1090,12 @@ private struct MachineAgentPane: View {
                 MetricDetailRow(
                     symbolName: "sparkles",
                     tint: session.provider == .codex ? .green : .orange,
-                    title: Text(session.projectName),
-                    // Several sessions share a project, so each row has to say
-                    // which one: its step, or when it last moved.
-                    subtitle: Text(sessionDetail(for: session)),
-                    value: session.progress.map {
-                        Text("\($0.currentStepIndex)/\($0.totalStepCount)")
-                    }
+                    // The same three things the overview panel shows, so a
+                    // session reads the same on both screens: its own name,
+                    // what it is doing, and how long since it moved.
+                    title: Text(session.displayTitle),
+                    subtitle: Text(session.statusLine),
+                    value: Text(AIAgentRow.compactAge(of: session.updatedAt))
                 )
             }
         }
