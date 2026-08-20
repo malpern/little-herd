@@ -6,40 +6,112 @@ struct AIAgentsView: View {
     @Binding var hoveredAgentID: MachineAgentSession.ID?
     var onSelectMachine: ((MachineID) -> Void)?
 
+    /// Finished work starts collapsed. It is the majority of what a probe
+    /// returns and the least useful thing on screen — six finished sessions
+    /// used to carry the same weight as the one that was live.
+    @State private var isShowingFinished = false
+
+    private var layout: AgentPanelLayout {
+        AgentPanelLayout.make(from: sessions)
+    }
+
     var body: some View {
-        if sessions.isEmpty {
+        let layout = layout
+        if layout.isEmpty {
             AIAgentsEmptyState()
         } else {
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(sessions) { machineSession in
-                        Button {
-                            onSelectMachine?(machineSession.machine)
-                        } label: {
-                            AIAgentRow(machineSession: machineSession)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                            .onHover { isHovered in
-                                if isHovered {
-                                    hoveredAgentID = machineSession.id
-                                } else if hoveredAgentID == machineSession.id {
-                                    hoveredAgentID = nil
-                                }
-                            }
+                    section("Needs you", rows: layout.waiting)
+                    section("Running", rows: layout.active)
 
-                        Divider()
-                            .padding(.leading, 38)
+                    if !layout.finished.isEmpty {
+                        FinishedSessionsDisclosure(
+                            count: layout.finished.count,
+                            isExpanded: $isShowingFinished
+                        )
+                        if isShowingFinished {
+                            rows(layout.finished)
+                        }
                     }
                 }
                 .padding(.horizontal, 14)
-                .padding(.vertical, 3)
+                .padding(.top, 3)
+                // The last row used to sit flush against the bottom edge, so a
+                // clipped row read as the end of the list.
+                .padding(.bottom, 8)
             }
-            .scrollIndicators(.hidden)
+            // Was `.hidden`, which is why a list taller than the panel gave no
+            // sign that it continued.
+            .scrollIndicators(.automatic)
             .onDisappear {
                 hoveredAgentID = nil
             }
         }
+    }
+
+    @ViewBuilder
+    private func section(
+        _ title: LocalizedStringKey,
+        rows sectionRows: [AgentPanelRow]
+    ) -> some View {
+        if !sectionRows.isEmpty {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 6)
+                .padding(.bottom, 2)
+            rows(sectionRows)
+        }
+    }
+
+    @ViewBuilder
+    private func rows(_ panelRows: [AgentPanelRow]) -> some View {
+        ForEach(panelRows) { row in
+            Button {
+                onSelectMachine?(row.session.machine)
+            } label: {
+                AIAgentRow(row: row)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .onHover { isHovered in
+                if isHovered {
+                    hoveredAgentID = row.id
+                } else if hoveredAgentID == row.id {
+                    hoveredAgentID = nil
+                }
+            }
+
+            Divider()
+                .padding(.leading, 38)
+        }
+    }
+}
+
+private struct FinishedSessionsDisclosure: View {
+    let count: Int
+    @Binding var isExpanded: Bool
+
+    var body: some View {
+        Button {
+            isExpanded.toggle()
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                Text("\(count) finished")
+                    .font(.caption2.weight(.semibold))
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(.secondary)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text("\(count) finished sessions"))
+        .accessibilityHint(Text(isExpanded ? "Collapse" : "Expand"))
     }
 }
 
@@ -55,7 +127,9 @@ private struct AIAgentsEmptyState: View {
 }
 
 private struct AIAgentRow: View {
-    let machineSession: MachineAgentSession
+    let row: AgentPanelRow
+
+    private var machineSession: MachineAgentSession { row.session }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -69,10 +143,25 @@ private struct AIAgentRow: View {
             )
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(machineSession.session.projectName)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    // State leads the row and is spelled out. It was a
+                    // six-pixel dot in the right gutter, where waiting and
+                    // finished were the same shape in two colours — so the
+                    // most actionable thing the app knows was also the least
+                    // visible thing on the row.
+                    AgentStateBadge(state: machineSession.session.state)
+
+                    Text(machineSession.session.projectName)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    if let disambiguator = row.disambiguator {
+                        Text(disambiguator)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.tertiary)
+                    }
+                }
 
                 // Several sessions can share a project and a machine, so the
                 // row has to say which one it is: what it is doing, or when it
@@ -91,8 +180,6 @@ private struct AIAgentRow: View {
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
-
-            AgentSessionStatusIndicator(state: machineSession.session.state)
         }
         .frame(minHeight: 33)
         .contentShape(Rectangle())
@@ -273,6 +360,45 @@ private struct AgentProgressRing: View {
         case .active: .green
         case .completed: .blue
         case .waiting: .orange
+        }
+    }
+}
+
+/// State, at the leading edge, with a shape of its own.
+///
+/// Deliberately a glyph and not a word. The section header above the row
+/// already says "Needs you" or "Running", so a text badge on every row would
+/// repeat it — and this panel is 300 points wide, where the width a badge costs
+/// comes straight out of the project name, which is the part that identifies
+/// the row. What the old indicator got wrong was not its size but its position
+/// and its vocabulary: a dot in the right gutter, the same shape for waiting
+/// and for finished, differing only in colour. These differ in shape.
+private struct AgentStateBadge: View {
+    let state: AgentSessionState
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(tint)
+            .frame(width: 15, height: 15)
+            .background(tint.opacity(0.15), in: Circle())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(state.title))
+    }
+
+    private var symbol: String {
+        switch state {
+        case .waiting: "hand.raised.fill"
+        case .active: "waveform"
+        case .completed: "checkmark"
+        }
+    }
+
+    private var tint: Color {
+        switch state {
+        case .waiting: .orange
+        case .active: .green
+        case .completed: .secondary
         }
     }
 }

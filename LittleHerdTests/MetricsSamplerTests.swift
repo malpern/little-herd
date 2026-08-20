@@ -989,44 +989,132 @@ struct MetricsSamplerTests {
         #expect(session.progress?.fractionCompleted == 0.75)
     }
 
+    /// The panel is ordered by what needs you, not by what happened last.
+    ///
+    /// The previous version of this test asserted the opposite — active first,
+    /// waiting after — which is the ordering the redesign exists to undo: a
+    /// session that is working needs nothing from anyone, and a waiting one is
+    /// blocked on a person.
     @Test
-    func visibleAgentSessionsKeepAllActiveAndBoundRecentRows() {
+    func thePanelPutsWaitingSessionsAboveEverythingElse() {
         let now = Date(timeIntervalSinceReferenceDate: 10_000)
         let active = (0 ..< 3).map { index in
-            MachineAgentSession(
+            session(
+                id: "active-\(index)",
+                project: "Active \(index)",
+                state: .active,
                 machine: .macBookAir,
-                session: AgentSession(
-                    id: "active-\(index)",
-                    provider: .codex,
-                    projectName: "Active \(index)",
-                    state: .active,
-                    updatedAt: now.addingTimeInterval(Double(index)),
-                    progress: nil
-                )
+                updatedAt: now.addingTimeInterval(Double(index))
             )
         }
         let recent = (0 ..< 5).map { index in
-            MachineAgentSession(
+            session(
+                id: "recent-\(index)",
+                project: "Recent \(index)",
+                state: index == 0 ? .waiting : .completed,
                 machine: .macMini,
-                session: AgentSession(
-                    id: "recent-\(index)",
-                    provider: .claude,
-                    projectName: "Recent \(index)",
-                    state: index == 0 ? .waiting : .completed,
-                    updatedAt: now.addingTimeInterval(Double(-index)),
-                    progress: nil
-                )
+                updatedAt: now.addingTimeInterval(Double(-index))
             )
         }
 
-        let visible = MachineAgentSessionBuilder.visibleSessions(
+        let layout = AgentPanelLayout.make(
+            from: active + recent,
+            maximumFinishedCount: 2
+        )
+
+        #expect(layout.waiting.count == 1)
+        #expect(layout.active.count == 3)
+        #expect(layout.finished.count == 2)
+        #expect(layout.waitingCount == 1)
+
+        let flat = MachineAgentSessionBuilder.visibleSessions(
             from: active + recent,
             maximumRecentCount: 2
         )
+        #expect(flat.first?.session.state == .waiting)
+    }
 
-        #expect(visible.count == 5)
-        #expect(visible.filter { $0.session.state == .active }.count == 3)
-        #expect(visible[3].session.state == .waiting)
+    /// The cap exists to stop finished work filling the panel. Applying it to
+    /// anything else would hide the one row that needed a person, which is the
+    /// failure the whole redesign is about.
+    @Test
+    func theCapNeverHidesASessionThatIsWaiting() {
+        let now = Date(timeIntervalSinceReferenceDate: 20_000)
+        let waiting = (0 ..< 9).map { index in
+            session(
+                id: "waiting-\(index)",
+                project: "Waiting \(index)",
+                state: .waiting,
+                machine: .macMini,
+                updatedAt: now.addingTimeInterval(Double(-index))
+            )
+        }
+
+        let layout = AgentPanelLayout.make(
+            from: waiting,
+            maximumFinishedCount: 1
+        )
+        #expect(layout.waiting.count == 9)
+    }
+
+    /// Reading the real panel, "Clawd" appeared three times and no row could be
+    /// told from any other. Rows that collide gain the only thing that differs.
+    @Test
+    func rowsSharingAProjectAndMachineAreToldApart() throws {
+        let now = Date(timeIntervalSinceReferenceDate: 30_000)
+        let twins = (0 ..< 2).map { index in
+            session(
+                id: "claude:abcdef\(index)23\(index)",
+                project: "Clawd",
+                state: .waiting,
+                machine: .macMini,
+                updatedAt: now.addingTimeInterval(Double(index))
+            )
+        }
+        let lonely = session(
+            id: "claude:zzzz9999",
+            project: "Little Herd",
+            state: .waiting,
+            machine: .macBookAir,
+            updatedAt: now
+        )
+
+        let layout = AgentPanelLayout.make(from: twins + [lonely])
+        let colliding = layout.waiting.filter { $0.session.session.projectName == "Clawd" }
+        #expect(colliding.count == 2)
+        for row in colliding {
+            #expect(row.disambiguator != nil)
+        }
+        // Two rows that collide must not gain the *same* mark, or it explains
+        // nothing.
+        #expect(colliding[0].disambiguator != colliding[1].disambiguator)
+
+        // A row nothing collides with stays clean: the mark is a fix for a
+        // collision, not decoration on every row.
+        let unique = try #require(
+            layout.waiting.first { $0.session.session.projectName == "Little Herd" }
+        )
+        #expect(unique.disambiguator == nil)
+    }
+
+    private func session(
+        id: String,
+        project: String,
+        state: AgentSessionState,
+        machine: MachineID,
+        updatedAt: Date
+    ) -> MachineAgentSession {
+        MachineAgentSession(
+            machine: machine,
+            session: AgentSession(
+                id: id,
+                provider: .claude,
+                projectName: project,
+                state: state,
+                updatedAt: updatedAt,
+                progress: nil
+            )
+        )
     }
 
     @Test

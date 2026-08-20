@@ -73,26 +73,112 @@ nonisolated struct MachineAgentSession: Equatable, Identifiable, Sendable {
     var id: String { "\(machine.rawValue):\(session.id)" }
 }
 
+/// One row of the AI panel, with what it takes to tell it from its neighbours.
+nonisolated struct AgentPanelRow: Equatable, Identifiable, Sendable {
+    let session: MachineAgentSession
+    /// Set only when another visible row has the same project on the same
+    /// machine, which is the common case rather than the exotic one: a panel
+    /// read on 18 August said "Clawd" three times and "Little Herd" twice, and
+    /// no row could be told from any other. A few characters of the session's
+    /// own id is the only thing that actually differs, and it is the same
+    /// handle `--resume` takes.
+    let disambiguator: String?
+
+    var id: MachineAgentSession.ID { session.id }
+}
+
+/// What the AI panel shows, grouped the way it shows it.
+///
+/// Ordered by what needs you rather than by when it last moved. `waiting` is
+/// the single most actionable fact this app holds — it is the state a session
+/// can be moved from, and the state where a person is the blocker — and it used
+/// to be a ten-pixel dot in the right gutter, indistinguishable from finished.
+/// Finished work is real but it is over, so it collapses to a count instead of
+/// spending a row each and outnumbering the one session that is live.
+nonisolated struct AgentPanelLayout: Equatable, Sendable {
+    let waiting: [AgentPanelRow]
+    let active: [AgentPanelRow]
+    let finished: [AgentPanelRow]
+
+    var isEmpty: Bool {
+        waiting.isEmpty && active.isEmpty && finished.isEmpty
+    }
+
+    /// How many sessions are blocked on a person. Drives the one number worth
+    /// putting where it can be seen without opening anything.
+    var waitingCount: Int { waiting.count }
+
+    static func make(
+        from sessions: [MachineAgentSession],
+        maximumFinishedCount: Int = 6
+    ) -> AgentPanelLayout {
+        func rows(
+            in state: AgentSessionState,
+            limit: Int? = nil
+        ) -> [MachineAgentSession] {
+            let matching = sessions
+                .filter { $0.session.state == state }
+                .sorted { $0.session.updatedAt > $1.session.updatedAt }
+            guard let limit else { return matching }
+            return Array(matching.prefix(max(limit, 0)))
+        }
+
+        let waiting = rows(in: .waiting)
+        let active = rows(in: .active)
+        let finished = rows(in: .completed, limit: maximumFinishedCount)
+
+        // Ambiguity is judged across everything on screen, not within a group:
+        // the same project waiting on one machine and running on another is
+        // exactly when you need to know which row is which.
+        let visible = waiting + active + finished
+        var counts: [String: Int] = [:]
+        for row in visible {
+            counts[Self.identity(of: row), default: 0] += 1
+        }
+        func decorate(_ rows: [MachineAgentSession]) -> [AgentPanelRow] {
+            rows.map { row in
+                AgentPanelRow(
+                    session: row,
+                    disambiguator: (counts[Self.identity(of: row)] ?? 0) > 1
+                        ? Self.shortIdentifier(of: row.session)
+                        : nil
+                )
+            }
+        }
+
+        return AgentPanelLayout(
+            waiting: decorate(waiting),
+            active: decorate(active),
+            finished: decorate(finished)
+        )
+    }
+
+    private static func identity(of row: MachineAgentSession) -> String {
+        "\(row.machine.rawValue)\u{1F}\(row.session.projectName)"
+    }
+
+    /// The tail of the session's own id, with the provider prefix dropped —
+    /// short enough to read, long enough to differ.
+    static func shortIdentifier(of session: AgentSession) -> String {
+        let raw = session.id.split(separator: ":", maxSplits: 1).last
+            .map(String.init) ?? session.id
+        return String(raw.suffix(4))
+    }
+}
+
 nonisolated enum MachineAgentSessionBuilder {
+    /// The flat list, in panel order. The header looks rows up by id and does
+    /// not care about grouping, so it keeps taking this.
     static func visibleSessions(
         from sessions: [MachineAgentSession],
         maximumRecentCount: Int = 6
     ) -> [MachineAgentSession] {
-        let active = sessions
-            .filter { $0.session.state == .active }
-            .sorted { $0.session.updatedAt > $1.session.updatedAt }
-        let recent = sessions
-            .filter { $0.session.state != .active }
-            .sorted { lhs, rhs in
-                let lhsPriority = lhs.session.state == .waiting ? 0 : 1
-                let rhsPriority = rhs.session.state == .waiting ? 0 : 1
-                if lhsPriority != rhsPriority {
-                    return lhsPriority < rhsPriority
-                }
-                return lhs.session.updatedAt > rhs.session.updatedAt
-            }
-            .prefix(max(maximumRecentCount, 0))
-        return active + recent
+        let layout = AgentPanelLayout.make(
+            from: sessions,
+            maximumFinishedCount: maximumRecentCount
+        )
+        return (layout.waiting + layout.active + layout.finished)
+            .map(\.session)
     }
 }
 
@@ -190,10 +276,12 @@ nonisolated enum AgentSessionOutputParser {
         return lhs.updatedAt > rhs.updatedAt
     }
 
+    /// Waiting outranks active, here as in the panel: a session that is working
+    /// needs nothing from anyone, and one that is waiting needs you.
     private static func priority(for state: AgentSessionState) -> Int {
         switch state {
-        case .active: 0
-        case .waiting: 1
+        case .waiting: 0
+        case .active: 1
         case .completed: 2
         }
     }
