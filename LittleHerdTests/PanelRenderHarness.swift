@@ -161,7 +161,7 @@ struct PanelRenderHarness {
             contextLimits: AgentContextLimits(observed: ["claude-opus-5": 1_000_000]),
             agentCPU: ["claude:aa11bb22": 96, "claude:1234abcd": 31],
             hoveredAgentID: .constant(nil),
-            isShowingFinished: .constant(showingFinished),
+            collapsed: .constant(showingFinished ? [] : [.finished]),
             onSelectMachine: nil
         )
         .frame(maxHeight: .infinity, alignment: .top)

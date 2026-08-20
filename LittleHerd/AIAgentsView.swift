@@ -18,13 +18,20 @@ struct AIAgentsView: View {
     /// panel you cannot trust.
     var machineName: String?
 
-    /// Finished work starts collapsed. It is the majority of what a probe
-    /// returns and the least useful thing on screen — six finished sessions
-    /// used to carry the same weight as the one that was live.
-    @State private var isShowingFinished = false
+    /// Which groups are folded. Every section folds, not only the finished
+    /// one — a panel where one header behaves differently from its neighbours
+    /// teaches people that headers are decoration.
+    ///
+    /// Finished starts folded: it is the majority of what a probe returns and
+    /// the least useful thing on screen, and six finished sessions used to
+    /// carry the same weight as the one that was live.
+    @State private var collapsed: Set<AgentPanelSection> = [.finished]
 
     private var layout: AgentPanelLayout {
-        AgentPanelLayout.make(from: sessions, showingFinished: isShowingFinished)
+        AgentPanelLayout.make(
+            from: sessions,
+            showingFinished: !collapsed.contains(.finished)
+        )
     }
 
     var body: some View {
@@ -39,7 +46,7 @@ struct AIAgentsView: View {
                     contextLimits: contextLimits,
                     agentCPU: agentCPU,
                     hoveredAgentID: $hoveredAgentID,
-                    isShowingFinished: $isShowingFinished,
+                    collapsed: $collapsed,
                     onSelectMachine: onSelectMachine
                 )
             }
@@ -69,7 +76,7 @@ struct AIAgentPanelContent: View {
     var contextLimits = AgentContextLimits()
     var agentCPU: [String: Double] = [:]
     @Binding var hoveredAgentID: MachineAgentSession.ID?
-    @Binding var isShowingFinished: Bool
+    @Binding var collapsed: Set<AgentPanelSection>
     var onSelectMachine: ((MachineID) -> Void)?
 
     var body: some View {
@@ -81,19 +88,9 @@ struct AIAgentPanelContent: View {
                 )
             }
 
-            runningHeader
-            rows(layout.active)
-            section("Waiting", rows: layout.waiting)
-
-            if !layout.finished.isEmpty {
-                FinishedSessionsDisclosure(
-                    count: layout.finished.count,
-                    isExpanded: $isShowingFinished
-                )
-                if isShowingFinished {
-                    rows(layout.finished)
-                }
-            }
+            section(.running, runningTitle, rows: layout.active)
+            section(.waiting, "Waiting", rows: layout.waiting)
+            section(.finished, "Finished", rows: layout.finished)
         }
         .padding(.horizontal, 14)
         .padding(.top, 3)
@@ -109,44 +106,30 @@ struct AIAgentPanelContent: View {
         return "Running on \(machineName)"
     }
 
-    /// The running list's header.
-    ///
-    /// The machine's own meter and percentage used to sit here. They were the
-    /// same reading the CPU screen already gives, restated at the top of a
-    /// panel whose subject is sessions — and beside the rows' own meters they
-    /// invited a comparison between a machine's total and one session's share
-    /// that neither number was making.
-    @ViewBuilder
-    private var runningHeader: some View {
-        if !layout.active.isEmpty {
-            Text(runningTitle)
-                .font(.caption2.weight(.semibold))
-                .tracking(0.3)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, AIAgentRow.titleInset)
-                .padding(.top, 12)
-                .padding(.bottom, 4)
-        }
-    }
-
     @ViewBuilder
     private func section(
+        _ section: AgentPanelSection,
         _ title: LocalizedStringKey,
         rows sectionRows: [AgentPanelRow]
     ) -> some View {
         if !sectionRows.isEmpty {
-            Text(title)
-                .font(.caption2.weight(.semibold))
-                // Positive tracking at this size, per the same rule that
-                // tightens large text: small type reads as cramped without it.
-                .tracking(0.3)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, AIAgentRow.titleInset)
-                .padding(.top, 12)
-                .padding(.bottom, 4)
-            rows(sectionRows)
+            AgentSectionHeader(
+                title: title,
+                hiddenCount: sectionRows.count,
+                isExpanded: Binding(
+                    get: { !collapsed.contains(section) },
+                    set: { expanded in
+                        if expanded {
+                            collapsed.remove(section)
+                        } else {
+                            collapsed.insert(section)
+                        }
+                    }
+                )
+            )
+            if !collapsed.contains(section) {
+                rows(sectionRows)
+            }
         }
     }
 
@@ -211,34 +194,6 @@ private struct HerdWorkloadRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(finding.sentence))
-    }
-}
-
-private struct FinishedSessionsDisclosure: View {
-    let count: Int
-    @Binding var isExpanded: Bool
-
-    var body: some View {
-        Button {
-            isExpanded.toggle()
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                    .font(.caption2.weight(.semibold))
-                    .frame(width: 9)
-                Text("\(count) finished")
-                    .font(.caption2.weight(.semibold))
-                    .tracking(0.3)
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(.secondary)
-            .padding(.top, 12)
-            .padding(.bottom, 6)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text("\(count) finished sessions"))
-        .accessibilityHint(Text(isExpanded ? "Collapse" : "Expand"))
     }
 }
 
@@ -575,6 +530,72 @@ private struct AgentProgressRing: View {
     }
 }
 
+/// The panel's three groups, so collapse state has something to key on.
+nonisolated enum AgentPanelSection: String, CaseIterable, Sendable {
+    case running
+    case waiting
+    case finished
+}
+
+/// A section header you can fold, with the control kept out of sight until it
+/// is wanted.
+///
+/// The chevron appears on hover and fades when the pointer leaves. A row of
+/// permanent disclosure triangles is a row of things to look at on a panel
+/// whose subject is elsewhere, and the affordance is only ever needed by a
+/// pointer that is already there. It sits at the trailing edge: at the leading
+/// edge it pushed the titles out of the one vertical line the panel is built
+/// on, and a control is a better citizen at the end of a row than at the start
+/// of one it does not belong to.
+private struct AgentSectionHeader: View {
+    let title: LocalizedStringKey
+    /// Shown only when folded, because a count you cannot see the items behind
+    /// is the one time the number does any work.
+    let hiddenCount: Int
+    @Binding var isExpanded: Bool
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button {
+            isExpanded.toggle()
+        } label: {
+            HStack(spacing: 5) {
+                Text(title)
+                    .font(.caption2.weight(.semibold))
+                    // Positive tracking at this size, per the same rule that
+                    // tightens large text: small type reads as cramped
+                    // without it.
+                    .tracking(0.3)
+
+                if !isExpanded, hiddenCount > 0 {
+                    Text("\(hiddenCount)")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.tertiary)
+                }
+
+                Spacer(minLength: 4)
+
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.semibold))
+                    .rotationEffect(.degrees(isExpanded ? 0 : -90))
+                    .opacity(isHovered ? 1 : 0)
+            }
+            .foregroundStyle(.secondary)
+            .padding(.leading, AIAgentRow.titleInset)
+            .padding(.top, 12)
+            .padding(.bottom, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .animation(.easeOut(duration: 0.16), value: isHovered)
+        .animation(.easeInOut(duration: 0.2), value: isExpanded)
+        .accessibilityLabel(Text(title))
+        .accessibilityHint(isExpanded ? "Collapse" : "Expand")
+    }
+}
+
 /// State as a single dot at the leading edge — and the context warning.
 ///
 /// Small, and the only coloured thing on a row that is otherwise text. Running
@@ -610,12 +631,16 @@ private struct AgentStateDot: View {
     private var isBlinking: Bool { isAlmostFull && !reduceMotion }
 
     var body: some View {
-        shape
+        Circle()
+            .fill(tint)
             .frame(width: 7, height: 7)
-            // The dim end of the pulse still has to be clearly there. A dot
-            // that fades to nothing on a light background reads as a rendering
-            // fault rather than as a warning, and the point is to be noticed.
-            .scaleEffect(isBlinking && isDimmed ? 0.85 : 1)
+            // Opacity only, never scale. Pulsing the size made the warning
+            // dot a different size from every other dot for half of every
+            // cycle, and a column of markers that are not the same size is the
+            // first thing the eye picks up — it read as a mistake rather than
+            // as a warning. The dim end sits at half rather than a third: a
+            // dot that fades to nothing on a light background reads as a
+            // rendering fault, and the point is to be noticed.
             .opacity(isBlinking && isDimmed ? 0.5 : 1)
             .animation(
                 isBlinking
@@ -638,19 +663,19 @@ private struct AgentStateDot: View {
             )
     }
 
-    @ViewBuilder
-    private var shape: some View {
-        if isAlmostFull {
-            Circle().fill(Color.yellow)
-        } else {
-            switch state {
-            case .active:
-                Circle().fill(Color.green)
-            case .waiting:
-                Circle().strokeBorder(Color.orange, lineWidth: 1.5)
-            case .completed:
-                Circle().fill(Color.secondary.opacity(0.35))
-            }
+    /// One filled circle at one size, and colour carries the rest.
+    ///
+    /// Waiting used to be an open ring. It was meant to read as unfinished, and
+    /// what it actually read as was a dot with a hole in it — a different kind
+    /// of object sitting in a column of dots, which invites the question "what
+    /// does that one mean?" every time. The section header above already says
+    /// the state in words, so the colour has only to distinguish, not explain.
+    private var tint: Color {
+        if isAlmostFull { return .yellow }
+        switch state {
+        case .active: return .green
+        case .waiting: return .orange
+        case .completed: return Color.secondary.opacity(0.35)
         }
     }
 }
