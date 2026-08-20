@@ -75,6 +75,173 @@ nonisolated enum SynologyDSMError: Error, Equatable, Sendable {
             "The NAS presented a different TLS certificate than the one Little Herd recorded. Little Herd stopped rather than send credentials to it."
         }
     }
+
+    /// What the sign-in sheet says, and which of its own branches refused.
+    ///
+    /// The sheet used to report `detail` alone, which for a transport failure
+    /// is whatever string URLSession handed up — "A TLS error caused the secure
+    /// connection to fail." That sentence is true, unactionable, and identical
+    /// whether the NAS is unplugged, the certificate was swapped, or the app
+    /// itself is misconfigured. An evening went into a bug the sheet already
+    /// knew enough to describe.
+    ///
+    /// So every refusal names its stage. There are only four, and they have
+    /// nothing to do with each other: Little Herd declining to ask, the network
+    /// never getting there, the certificate check refusing, and DSM itself
+    /// saying no. Which one it was is most of the diagnosis, and it is the one
+    /// thing the raw error never says.
+    func explanation(host: String) -> SynologySignInExplanation {
+        switch self {
+        case .invalidHost(let host):
+            .init(
+                stage: .beforeAsking,
+                headline: "“\(host)” is not a usable address.",
+                evidence: nil
+            )
+        case .notAuthenticated:
+            .init(
+                stage: .beforeAsking,
+                headline: "Little Herd has no password to send.",
+                evidence: nil
+            )
+        case .certificateChanged(let expected, let received):
+            .init(
+                stage: .certificate,
+                headline: "“\(host)” presented a different certificate than the one Little Herd recorded, so nothing was sent to it.",
+                // One line rather than two: the sheet has a fixed height that
+                // was set after it once clipped the password field, so evidence
+                // that grows without bound is a layout bug waiting to happen.
+                // The full pair is here to be copied and hovered, not read.
+                evidence: "Expected \(expected) · Received \(received)"
+            )
+        case .api(let code, let detail):
+            .init(stage: .dsm, headline: detail, evidence: "DSM error \(code)")
+        case .malformedResponse(let what):
+            .init(
+                stage: .dsm,
+                headline: "“\(host)” answered with something Little Herd could not read.",
+                evidence: what
+            )
+        case .transport(let message):
+            SynologyTransportProblem.classify(message)
+                .explanation(host: host, underlying: message)
+        }
+    }
+}
+
+/// A refusal, said in the sheet's own voice rather than the layer below's.
+nonisolated struct SynologySignInExplanation: Equatable, Sendable {
+    /// Which branch refused. Four unrelated situations that used to look the
+    /// same; the interface tints and captions them differently so the shape of
+    /// the problem is legible before the sentence is read.
+    enum Stage: Equatable, Sendable {
+        /// Little Herd never asked — the address or the password is missing.
+        case beforeAsking
+        /// Nothing got as far as the NAS.
+        case network
+        /// The NAS answered and its certificate was refused.
+        case certificate
+        /// DSM answered and said no.
+        case dsm
+
+        var caption: String {
+            switch self {
+            case .beforeAsking: "Nothing was sent"
+            case .network: "Could not reach the NAS"
+            case .certificate: "Certificate refused"
+            case .dsm: "DSM refused"
+            }
+        }
+    }
+
+    let stage: Stage
+    let headline: String
+    /// The specifics — fingerprints, a DSM code, the original message. Kept
+    /// because a sentence a person can act on and the string an engineer needs
+    /// are rarely the same one, and discarding the second to get the first is
+    /// how the certificate fingerprints went missing in the first place.
+    let evidence: String?
+}
+
+/// Why a DSM request never got an answer, classified once.
+///
+/// This used to live privately inside `RemoteUnavailability` for the tooltip,
+/// so the sign-in sheet — the surface with a person actually watching — had no
+/// access to it and printed the raw string instead. One home, two readers.
+nonisolated enum SynologyTransportProblem: Equatable, Sendable {
+    case nameNotFound
+    case noAnswer
+    case refused
+    /// macOS wording for a denied Local Network permission, which is actively
+    /// misleading about a NAS on the same desk and points at the wrong fix.
+    case localNetworkBlocked
+    case tlsRefused
+    case unknown(String)
+
+    static func classify(_ message: String) -> Self {
+        let text = message.lowercased()
+        if text.contains("internet connection appears to be offline") {
+            return .localNetworkBlocked
+        }
+        if text.contains("hostname could not be found")
+            || text.contains("could not be found")
+            || text.contains("nodename")
+        {
+            return .nameNotFound
+        }
+        if text.contains("tls") || text.contains("ssl")
+            || text.contains("secure connection")
+        {
+            return .tlsRefused
+        }
+        if text.contains("timed out") || text.contains("not connect") {
+            return .noAnswer
+        }
+        if text.contains("refused") { return .refused }
+        return .unknown(message)
+    }
+
+    func explanation(
+        host: String,
+        underlying: String
+    ) -> SynologySignInExplanation {
+        switch self {
+        case .nameNotFound:
+            .init(
+                stage: .network,
+                headline: "“\(host)” did not resolve. Check whether Tailscale is connected.",
+                evidence: underlying
+            )
+        case .noAnswer:
+            .init(
+                stage: .network,
+                headline: "“\(host)” did not answer. It may be asleep, or on a network this Mac cannot see.",
+                evidence: underlying
+            )
+        case .refused:
+            .init(
+                stage: .network,
+                headline: "“\(host)” refused the connection. Check that DSM is listening on this port.",
+                evidence: underlying
+            )
+        case .localNetworkBlocked:
+            .init(
+                stage: .network,
+                headline: "macOS is blocking Little Herd from reaching your local network. Allow it under System Settings → Privacy & Security → Local Network.",
+                evidence: underlying
+            )
+        case .tlsRefused:
+            // Named as its own thing because it is not a password problem and
+            // not the NAS being down, and it was mistaken for both.
+            .init(
+                stage: .certificate,
+                headline: "The secure connection to “\(host)” failed before Little Herd could check its certificate.",
+                evidence: underlying
+            )
+        case .unknown(let message):
+            .init(stage: .network, headline: message, evidence: nil)
+        }
+    }
 }
 
 // MARK: - Endpoint

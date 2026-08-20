@@ -19,7 +19,7 @@ struct SynologyCredentialsView: View {
     private enum Status: Equatable {
         case idle
         case testing
-        case failed(String)
+        case failed(SynologySignInExplanation)
         case succeeded(volumes: Int, drives: Int)
     }
 
@@ -102,11 +102,41 @@ struct SynologyCredentialsView: View {
                 ProgressView().controlSize(.small)
             }
             .font(.caption)
-        case .failed(let message):
-            Label(message, systemImage: "exclamationmark.triangle.fill")
+        case .failed(let explanation):
+            VStack(alignment: .leading, spacing: 4) {
+                Label {
+                    Text(explanation.headline)
+                } icon: {
+                    Image(systemName: symbol(for: explanation.stage))
+                }
                 .font(.caption)
-                .foregroundStyle(.orange)
+                .foregroundStyle(tint(for: explanation.stage))
                 .fixedSize(horizontal: false, vertical: true)
+
+                // The caption names the branch that refused, and the evidence
+                // is the part a person can paste somewhere. Selectable because
+                // a fingerprint you cannot copy is a fingerprint you retype
+                // wrongly.
+                if let evidence = explanation.evidence {
+                    // Deliberately one line. The headline wraps as it always
+                    // did; evidence is a fingerprint or a framework string and
+                    // must not be able to push the buttons off a sheet whose
+                    // height is fixed. Hover for the whole of it, select to
+                    // copy it.
+                    Text("\(explanation.stage.caption) · \(evidence)")
+                        .font(.caption2)
+                        .monospaced()
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .help(evidence)
+                } else {
+                    Text(explanation.stage.caption)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
         case .succeeded(let volumes, let drives):
             Label(
                 "Connected. \(volumes) \(volumes == 1 ? "volume" : "volumes"), \(drives) \(drives == 1 ? "drive" : "drives").",
@@ -115,6 +145,21 @@ struct SynologyCredentialsView: View {
             .font(.caption)
             .foregroundStyle(.green)
         }
+    }
+
+    /// A refused certificate is not the same kind of news as a wrong password:
+    /// one is a security event and the other is a typo, and they should not
+    /// look alike at a glance.
+    private func symbol(for stage: SynologySignInExplanation.Stage) -> String {
+        switch stage {
+        case .certificate: "lock.trianglebadge.exclamationmark.fill"
+        case .network: "wifi.exclamationmark"
+        case .dsm, .beforeAsking: "exclamationmark.triangle.fill"
+        }
+    }
+
+    private func tint(for stage: SynologySignInExplanation.Stage) -> Color {
+        stage == .certificate ? .red : .orange
     }
 
     private var saveButtonTitle: String {
@@ -137,7 +182,13 @@ struct SynologyCredentialsView: View {
             username: account
         )
         guard endpoint.isValid else {
-            status = .failed("\(machine.hostname) is not a usable address.")
+            status = .failed(
+                SynologySignInExplanation(
+                    stage: .beforeAsking,
+                    headline: "“\(machine.hostname)” is not a usable address.",
+                    evidence: nil
+                )
+            )
             return
         }
 
@@ -160,8 +211,14 @@ struct SynologyCredentialsView: View {
                 typed,
                 account: KeychainSecret.account(for: endpoint)
             ) else {
+                // The NAS accepted it; the Mac would not keep it. Saying so
+                // matters, because everything the user just did was correct.
                 status = .failed(
-                    "Could not save the password to your keychain."
+                    SynologySignInExplanation(
+                        stage: .beforeAsking,
+                        headline: "“\(machine.hostname)” accepted the password, but it could not be saved to your login keychain.",
+                        evidence: nil
+                    )
                 )
                 return
             }
@@ -180,9 +237,13 @@ struct SynologyCredentialsView: View {
             onSave(updated)
             dismiss()
         } catch let error as SynologyDSMError {
-            status = .failed(error.detail)
+            status = .failed(error.explanation(host: machine.hostname))
         } catch {
-            status = .failed(error.localizedDescription)
+            status = .failed(
+                SynologyDSMError
+                    .transport(error.localizedDescription)
+                    .explanation(host: machine.hostname)
+            )
         }
     }
 }

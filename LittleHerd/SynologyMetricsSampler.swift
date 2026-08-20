@@ -134,28 +134,26 @@ extension RemoteUnavailability {
         }
     }
 
+    /// The tooltip's vocabulary, from the same classification the sign-in sheet
+    /// uses. It was a private copy here until the sheet needed it too, and a
+    /// second copy of a rule is how the two surfaces start disagreeing.
     private static func classifyTransport(
         _ message: String
     ) -> RemoteUnavailability {
-        let lowered = message.lowercased()
-        // macOS reports a blocked local network as "The Internet connection
-        // appears to be offline", which is actively misleading about a NAS on
-        // the same desk — and points at the wrong fix. Observed with the real
-        // unit reachable and answering.
-        if lowered.contains("internet connection appears to be offline") {
-            return .other(
-                "macOS is blocking Little Herd from reaching your local network. Allow it under System Settings → Privacy & Security → Local Network."
+        switch SynologyTransportProblem.classify(message) {
+        case .nameNotFound: .nameNotFound
+        case .noAnswer: .noAnswer
+        case .refused: .refused
+        case .localNetworkBlocked, .tlsRefused:
+            // Both are spelled out rather than reduced to a status word: one
+            // sends you to a System Settings pane you would never guess, and
+            // the other is not the NAS being down however much it looks it.
+            .other(
+                SynologyTransportProblem.classify(message)
+                    .explanation(host: "this NAS", underlying: message)
+                    .headline
             )
+        case .unknown(let message): .other(message)
         }
-        if lowered.contains("hostname could not be found")
-            || lowered.contains("could not be found")
-            || lowered.contains("nodename") {
-            return .nameNotFound
-        }
-        if lowered.contains("timed out") || lowered.contains("not connect") {
-            return .noAnswer
-        }
-        if lowered.contains("refused") { return .refused }
-        return .other(message)
     }
 }

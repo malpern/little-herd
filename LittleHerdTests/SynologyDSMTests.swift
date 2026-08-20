@@ -458,4 +458,95 @@ struct SynologyDSMTests {
                 == "https://AlpernServer.local:5001/webapi/entry.cgi?api=SYNO.API.Auth"
         )
     }
+
+    // MARK: - What the sign-in sheet says
+
+    /// The defect this covers: the sheet reported whatever string URLSession
+    /// handed up, so four unrelated situations produced one unactionable
+    /// sentence. Each must now name its own stage — that is the whole point,
+    /// and it is what would have shortened the ATS hunt.
+    @Test
+    func everyRefusalNamesTheStageThatRefused() {
+        let host = "nas.example"
+        #expect(
+            SynologyDSMError.transport("A TLS error caused the secure connection to fail.")
+                .explanation(host: host).stage == .certificate
+        )
+        #expect(
+            SynologyDSMError.transport("The request timed out.")
+                .explanation(host: host).stage == .network
+        )
+        #expect(
+            SynologyDSMError.fromAPICode(400).explanation(host: host).stage == .dsm
+        )
+        #expect(
+            SynologyDSMError.notAuthenticated.explanation(host: host).stage
+                == .beforeAsking
+        )
+        #expect(
+            SynologyDSMError.certificateChanged(expected: "a", received: "b")
+                .explanation(host: host).stage == .certificate
+        )
+    }
+
+    /// A TLS failure is not the NAS being down, and it was read as that for an
+    /// evening. It must not classify as a network problem.
+    @Test
+    func aTLSFailureIsNotMistakenForAnUnreachableNAS() {
+        let explanation = SynologyDSMError
+            .transport("A TLS error caused the secure connection to fail.")
+            .explanation(host: "nas.example")
+        #expect(explanation.stage != .network)
+        // And the original string survives, because the sentence a person can
+        // act on and the string an engineer needs are not the same one.
+        #expect(explanation.evidence?.contains("TLS") == true)
+    }
+
+    /// The fingerprints existed all along and the sheet threw them away. A
+    /// certificate that changed is the one failure worth reading carefully.
+    @Test
+    func aChangedCertificateShowsBothFingerprints() throws {
+        let explanation = SynologyDSMError
+            .certificateChanged(expected: "aaa111", received: "bbb222")
+            .explanation(host: "nas.example")
+        let evidence = try #require(explanation.evidence)
+        #expect(evidence.contains("aaa111"))
+        #expect(evidence.contains("bbb222"))
+        #expect(explanation.stage.caption == "Certificate refused")
+    }
+
+    /// DSM's own code is kept beside the sentence: the sentence is for the
+    /// person, the code is for anyone searching Synology's documentation.
+    @Test
+    func aDSMRefusalCarriesItsCode() throws {
+        let explanation = SynologyDSMError.fromAPICode(403)
+            .explanation(host: "nas.example")
+        #expect(explanation.headline.contains("two-factor"))
+        #expect(try #require(explanation.evidence).contains("403"))
+    }
+
+    /// macOS words a denied Local Network permission as an offline internet
+    /// connection, which points at the wrong fix entirely.
+    @Test
+    func aBlockedLocalNetworkIsNamedInTheSheetToo() {
+        let explanation = SynologyDSMError
+            .transport("The Internet connection appears to be offline.")
+            .explanation(host: "nas.example")
+        #expect(explanation.headline.contains("Local Network"))
+    }
+
+    /// Sheet and tooltip read the same classifier, so they cannot drift into
+    /// disagreeing about what happened.
+    @Test
+    func theSheetAndTheTooltipAgreeAboutWhatFailed() {
+        #expect(SynologyTransportProblem.classify("The request timed out.") == .noAnswer)
+        #expect(
+            SynologyTransportProblem.classify("A server with the specified hostname could not be found.")
+                == .nameNotFound
+        )
+        #expect(SynologyTransportProblem.classify("Connection refused") == .refused)
+        #expect(
+            SynologyTransportProblem.classify("An SSL error has occurred.") == .tlsRefused
+        )
+    }
 }
