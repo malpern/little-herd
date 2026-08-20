@@ -1,22 +1,25 @@
 # Little Herd — handoff
 
-**State:** `v0.1.25` is released, notarized, and live — it carries the Synology
-sign-in fix, and its feed was verified rather than assumed. Ahead of that tag
-and unreleased: the sign-in sheet's explanations, the AI panel reordering, and
-the workload join, all three of which are **untested by eye**. 289 tests pass;
-none of them can see a layout. 0.1.23 added the four-state usage display, 0.1.24
-the splash timing, size and corner, and a sign-in message that signs you in.
-Sparkle's own path from 0.1.21 to 0.1.22 was watched end to end — see below.
+**State:** `v0.1.25` carried the Synology sign-in fix; `v0.1.26` carries the
+sign-in sheet's explanations, the AI panel reordering, and the workload join.
+289 tests pass, and both feeds were verified rather than assumed. 0.1.23 added
+the four-state usage display, 0.1.24 the splash timing, size and corner, and a
+sign-in message that signs you in. Sparkle's own path from 0.1.21 to 0.1.22 was
+watched end to end — see below.
 
-**Look at the AI panel before releasing it.** The redesign changed row layout,
-added section headers, a collapsed disclosure, and a wrapping sentence at the
-top, in a window that is 300 points wide — and every visual defect this project
-has ever had was invisible to a green suite. What to check: whether the project
-name still has room beside the state glyph, whether "Needs you" and "Running"
-read as headers rather than as rows, and whether the workload sentence wraps
-sensibly at that width. The sign-in sheet needs the same look: it has a fixed
-360-point height with a comment recording that it once clipped the password
-field, and the failure area gained a second line.
+**0.1.26 shipped without anyone looking at it, knowingly.** The concern was
+raised and the call was to ship; this is written down so the next session does
+not assume it was checked. The redesign changed row layout, added section
+headers, a collapsed disclosure, and a wrapping sentence at the top, in a window
+that is 300 points wide — and every visual defect this project has ever had was
+invisible to a green suite. **Look at it, and expect to find something.** Three
+specific risks: whether the project name still has room beside the state glyph,
+whether "Needs you" and "Running" read as headers rather than as rows, and
+whether the workload sentence wraps sensibly at that width. The sign-in sheet
+needs the same look — it has a fixed 360-point height with a comment recording
+that it once clipped the password field, and the failure area gained a second
+line. There is no preview harness in this project, which is why none of this was
+checked; building one may be worth more than the next feature.
 
 Deliberately no commit hash in this paragraph. The previous two sessions each
 left one that was stale within the hour, including the one written to correct
