@@ -5,6 +5,9 @@ struct AIAgentsView: View {
     let sessions: [MachineAgentSession]
     @Binding var hoveredAgentID: MachineAgentSession.ID?
     var onSelectMachine: ((MachineID) -> Void)?
+    /// Where the load is, set against where the sessions are. Nil most of the
+    /// time, and deliberately so — see `HerdWorkloadReader`.
+    var workload: HerdWorkloadFinding?
 
     /// Finished work starts collapsed. It is the majority of what a probe
     /// returns and the least useful thing on screen — six finished sessions
@@ -22,6 +25,13 @@ struct AIAgentsView: View {
         } else {
             ScrollView {
                 LazyVStack(spacing: 0) {
+                    if let workload {
+                        HerdWorkloadRow(
+                            finding: workload,
+                            onSelectMachine: onSelectMachine
+                        )
+                    }
+
                     section("Needs you", rows: layout.waiting)
                     section("Running", rows: layout.active)
 
@@ -87,6 +97,40 @@ struct AIAgentsView: View {
             Divider()
                 .padding(.leading, 38)
         }
+    }
+}
+
+/// The two halves of the app, said in one sentence.
+///
+/// Tapping it goes to the busy machine, because "which machine" is the next
+/// question anyone reading this asks.
+private struct HerdWorkloadRow: View {
+    let finding: HerdWorkloadFinding
+    var onSelectMachine: ((MachineID) -> Void)?
+
+    var body: some View {
+        Button {
+            onSelectMachine?(finding.busyMachine)
+        } label: {
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "scalemass")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .frame(width: 15, height: 15)
+
+                Text(finding.sentence)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(finding.sentence))
     }
 }
 

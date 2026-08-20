@@ -554,7 +554,8 @@ private struct OverviewMetricContent: View {
             AIAgentsView(
                 sessions: agentSessions,
                 hoveredAgentID: $hoveredAgentID,
-                onSelectMachine: onSelectMetric
+                onSelectMachine: onSelectMetric,
+                workload: HerdWorkloadReader.finding(for: workloadInputs)
             )
         } else {
             CPUOverviewView(
@@ -563,6 +564,28 @@ private struct OverviewMetricContent: View {
                 namespace: namespace,
                 onSelectMetric: onSelectMetric,
                 onSelectMachine: onSelectMachine
+            )
+        }
+    }
+
+    /// Both halves of the join, read from the models that already hold them.
+    /// The sustained average is computed the same way the menu bar computes
+    /// it, so the panel and the menu bar cannot disagree about which machine
+    /// is busy.
+    private var workloadInputs: [HerdWorkloadInput] {
+        machines.map { machine in
+            HerdWorkloadInput(
+                machine: machine.machine,
+                name: machine.shortName,
+                isLive: machine.state == .live,
+                sustainedCPUPercent: SustainedLoad.average(
+                    of: machine.cpu.history,
+                    endingAt: machine.lastUpdated ?? .now
+                ),
+                activeSessionCount: agentSessions.count {
+                    $0.machine == machine.machine
+                        && $0.session.state == .active
+                }
             )
         }
     }
