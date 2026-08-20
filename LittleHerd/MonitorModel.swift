@@ -36,6 +36,40 @@ final class MonitorModel {
     /// When each session last compacted, by session id.
     private(set) var agentCompactedAt: [String: Date] = [:]
 
+    /// Reads thresholds out of transcripts already on disk, once.
+    ///
+    /// Without this the warning is dormant on a fresh install: nothing has a
+    /// threshold until a session has been *watched* compacting, which on a
+    /// model holding a million tokens is days away. Merged rather than
+    /// assigned, and only upward, so a threshold already measured by watching
+    /// is never lowered by a hand-run compaction found in an old transcript.
+    func seedCompactionThresholdsIfNeeded() async {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(
+            forKey: LittleHerdPreferences.hasSeededCompactionThresholdsKey
+        ) else {
+            return
+        }
+
+        let seeded = await CompactionThresholdSeeder.scan()
+        defaults.set(
+            true,
+            forKey: LittleHerdPreferences.hasSeededCompactionThresholdsKey
+        )
+        guard !seeded.isEmpty else { return }
+
+        var merged = compactionThresholds.observed
+        for (model, threshold) in seeded {
+            merged[model] = max(merged[model] ?? 0, threshold)
+        }
+        compactionThresholds = AgentCompactionThresholds(observed: merged)
+        compactionLearner = AgentCompactionLearner(limits: compactionThresholds)
+        defaults.set(
+            merged,
+            forKey: LittleHerdPreferences.observedCompactionThresholdsKey
+        )
+    }
+
     /// Feeds a machine's sessions to the learner and keeps what it works out.
     func observeContext(of sessions: [AgentSession]) {
         for session in cpuTracker.rating(sessions, now: .now) {

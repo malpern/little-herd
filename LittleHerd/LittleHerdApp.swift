@@ -126,6 +126,9 @@ enum LittleHerdPreferences {
     /// threshold already measured on this Mac and leave the panel silent again
     /// until each model was watched compacting a second time.
     static let observedCompactionThresholdsKey = "observedContextLimitsV1"
+    /// Whether transcripts already on disk have been read for thresholds. Once,
+    /// because the watching path keeps them current afterwards.
+    static let hasSeededCompactionThresholdsKey = "hasSeededCompactionThresholdsV1"
     static let networkVolumeAccessOnboardingCompletedKey =
         "networkVolumeAccessOnboardingCompleted"
 
