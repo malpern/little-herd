@@ -1,12 +1,22 @@
 # Little Herd — handoff
 
-**State:** the last release is `v0.1.24`; the Synology sign-in fix below is
-committed and unreleased, so there is code ahead of the tag for the first time
-in a while. 271 tests, all passing. The feed is live and was checked rather than assumed:
-the appcast at the `releases/latest` URL names `LittleHerd-0.1.24.zip`, carries
-a signature, and the asset returns 200. 0.1.23 added the four-state usage display, 0.1.24 the splash timing, size and
-corner, and a sign-in message that signs you in. Sparkle's own path from 0.1.21
-to 0.1.22 was watched end to end — see below.
+**State:** `v0.1.25` is released, notarized, and live — it carries the Synology
+sign-in fix, and its feed was verified rather than assumed. Ahead of that tag
+and unreleased: the sign-in sheet's explanations, the AI panel reordering, and
+the workload join, all three of which are **untested by eye**. 289 tests pass;
+none of them can see a layout. 0.1.23 added the four-state usage display, 0.1.24
+the splash timing, size and corner, and a sign-in message that signs you in.
+Sparkle's own path from 0.1.21 to 0.1.22 was watched end to end — see below.
+
+**Look at the AI panel before releasing it.** The redesign changed row layout,
+added section headers, a collapsed disclosure, and a wrapping sentence at the
+top, in a window that is 300 points wide — and every visual defect this project
+has ever had was invisible to a green suite. What to check: whether the project
+name still has room beside the state glyph, whether "Needs you" and "Running"
+read as headers rather than as rows, and whether the workload sentence wraps
+sensibly at that width. The sign-in sheet needs the same look: it has a fixed
+360-point height with a comment recording that it once clipped the password
+field, and the failure area gained a second line.
 
 Deliberately no commit hash in this paragraph. The previous two sessions each
 left one that was stale within the hour, including the one written to correct
@@ -246,9 +256,10 @@ this is a smaller gap than it looks. On 18 August the mini's Codex hit its limit
 until the following evening with three `emailtriage` slots due — and the app was
 not silent, which is the more useful finding: it had been showing an urgent red
 LED on the Codex mark the whole time. A six-pixel unlabelled dot in the corner of
-a header is the same as silence to the person it is for. That is the case for
-item 4 in one image, and the reason item 5 checks budget once rather than per
-machine.
+a header is the same as silence to the person it is for. That is why the AI
+panel's state moved to the leading edge and gained a glyph per state rather than
+a colour per state, and it is the reason item 3 checks budget once rather than
+per machine.
 
 **CodexBar is read, not bundled and not recommended, and that is deliberate.**
 Two decisions taken 18 August 2026 so they are not re-litigated. **Do not bundle
@@ -375,6 +386,23 @@ proving anything were caught this way: one watched a side effect a killed shell
 would not perform, another counted processes with a command containing the
 pattern it grepped for.
 
+A third joined them on 19 August, and it is the subtlest of the three. A test
+named "an unmeasured machine is not called idle" **passed with that rule
+deleted**, because an optional unwrap a few lines further down produced the same
+answer by accident — two machines were not enough to tell the implementations
+apart, and it took a third to separate them. Note what the real rule was
+preventing: not a false claim but a *false silence*, a true and useful sentence
+withheld because an unmeasured machine sorted below a real one. Absence of
+output is the hardest failure to write a test against, and the easiest to
+mistake for correctness.
+
+**A guard that cannot bind is not a safeguard.** The same hour produced a
+"is the gap wide enough" rule that could never fire: the two thresholds it sat
+behind already guaranteed a gap half again as large. It read like caution and
+was dead code, and only writing a test for it made that visible. Deleted rather
+than kept, because a condition nobody can trigger still has to be understood by
+everyone who reads it.
+
 **A test that measures the machine is not testing your code.** The cancellation
 test above counted every `sleep` on this Mac and compared the total before and
 after, so its result depended on whatever else happened to be running, and it
@@ -416,37 +444,7 @@ it; the files survived only because the directory had not been reaped yet.
    rule would collapse to "Linux failed to resolve", which is what the tooltip
    already says. Build it when a second machine becomes reachable only over the
    tailnet, and not before.
-3. **The sign-in sheet hides the reason it failed.**
-   `SynologyTrustEvaluator` records a precise `certificateMismatch` — with the
-   expected and received fingerprints — and `SynologyDSMError.detailForAPICode`
-   maps every DSM code to a sentence a person can act on. The credentials sheet
-   surfaces neither, reporting the generic URLSession error instead. The ATS bug
-   above is what that costs: the sheet said "A TLS error caused the secure
-   connection to fail" for an evening while the app's own log had already named
-   ATS, and a sheet that reported which of its own branches refused would have
-   pointed at the certificate rather than at the code that never got asked.
-   Third instance of the same defect this week, after the usage row and the
-   empty state — so the thing to write is the rule, not the third one-off:
-   **a surface that refuses something must say which of its own branches
-   refused, and never hand the user a lower layer's error verbatim.**
-
-4. **The AI panel is the next thing to build.** It is the weakest surface in the
-   app. Looked at on 18 August with seven sessions in it: every row carries the
-   same orange glyph, so the loudest element says nothing; the primary label is
-   the project name, which repeated "Clawd" three times and "Little Herd" twice
-   and cannot identify a session; only one row showed what it was *doing* while
-   the rest fell back to "Mini · 43m ago"; and the list is sorted by recency, so
-   six finished sessions carry the same weight as the one that is live. State —
-   the most useful thing the app knows — is a ten-pixel glyph in the right
-   gutter where waiting and finished look alike. Two defects are visible in the
-   same screenshot: a "Choose metric" tooltip stuck over the header, and the
-   last row clipped with no scroll affordance.
-
-   Sort by what needs you rather than by when it happened: waiting first, then
-   active, then a collapsed count of what finished. `waiting` is the single most
-   actionable fact in the model and is currently indistinguishable from done.
-
-5. **Probe destination eligibility, and let the user express intent separately.**
+3. **Probe destination eligibility, and let the user express intent separately.**
    Capability is measured — an agent binary resolvable over a non-interactive
    ssh shell, git, and a checkout of the repo. Intent is a setting: some
    machines can host a session and still should not.
@@ -482,14 +480,7 @@ it; the files survived only because the directory had not been reaped yet.
 
    This rung is useful on its own and everything below depends on it.
 
-6. **Join activity to metrics — the highest-leverage thing not yet built.** The
-   app samples both and correlates neither, so "the Air is at 90% sustained" and
-   "three Claude sessions are on the Air" sit on two screens as unrelated facts.
-   Saying it once — you are saturating the Air, the mini is idle — is what turns
-   a monitor into something that answers "what should I do?", and it is the
-   input any placement decision needs. It needs no new architecture.
-
-7. **Transfer a session between machines, at the session level.** Not process
+4. **Transfer a session between machines, at the session level.** Not process
    migration, which is not possible and not wanted: stop the session, have it
    write full context, start a successor on the target that has the repo. It is
    the same thing this file does by hand between sessions, which is the reason
@@ -506,7 +497,8 @@ it; the files survived only because the directory had not been reaped yet.
    artifact, start the successor, verify it behaviourally, and **only then**
    retire the source. A half-finished transfer must leave you where you started.
    Only a quiescent session can move safely, which is to say a `waiting` one —
-   the same state item 4 is about surfacing.
+   which the AI panel now sorts to the top and labels, so the sessions that
+   could move are the ones you see first.
 
    Expect the summary to omit what matters least to a model and most to you:
    uncommitted work, background processes (documented as *not* restored on
@@ -538,22 +530,22 @@ it; the files survived only because the directory had not been reaped yet.
    CodexBar's scrape, and eligibility gains one probe: capability parity, since
    the tools a session leaned on may not exist on the other vendor.
 
-8. **iOS, scoped to the herd rather than to sessions.** Do not rebuild session
+5. **iOS, scoped to the herd rather than to sessions.** Do not rebuild session
    steering; Remote Control and the Claude app already do it, with the local
    filesystem and MCP servers attached. What has no answer today is the herd:
    which machine is hot, what is waiting on you, what the budget looks like,
    and starting a transfer. Do not sample from the phone either — iOS will not
    ssh-poll in the background. It wants a resident collector on the mini, which
-   is the same helper item 5 needs for the Keychain problem and the same one a
+   is the same helper item 3 needs for the Keychain problem and the same one a
    durable successor session needs. Build it once. The model layer is already
    portable — 29 of 48 source files import neither SwiftUI nor AppKit, and
    `MachinePresentation` exists precisely because display decisions were pulled
    out of the view bodies.
 
-9. **Show each machine's agent versions.** Cheap, and skew is invisible today
+6. **Show each machine's agent versions.** Cheap, and skew is invisible today
    while being the standing condition; see the facts above.
 
-10. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
+7. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
    18 August. Show cloud work beside the machines (the Herdware set already
    holds an unused `owl-cloud.png`) and move it down with the vendors' own
    commands, never our protocol: `codex cloud apply` and `claude --teleport`.
@@ -567,7 +559,7 @@ it; the files survived only because the directory had not been reaped yet.
    it from here. Say so in the interface rather than pretending parity.
    Local→cloud stays out entirely — that is the vendors' own button.
 
-11. **Local models are blocked, not pending.** Considered and deferred
+8. **Local models are blocked, not pending.** Considered and deferred
     18 August. No herd machine runs a model server; the linux box is an AMD
     APU with integrated graphics; the best local-model host owned is the M5
     Air — the machine transfers exist to unload. A briefing written for a
