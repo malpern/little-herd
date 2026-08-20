@@ -25,10 +25,14 @@ it. Proved from inside the app with the real DSM account: sign-in succeeds, and
 recorded pin of `5a9996474975067b06779b8694dea6d744236612f7810f9f213705d38c42a099`.
 The credential is `SYNOLOGY_PASSWORD_HOME` in sops; a test can decrypt it in
 process, but sops needs `SOPS_AGE_KEY_FILE` set explicitly or it cannot find the
-age key from inside a GUI app. **What remains is one click, not a question:**
-the credentials sheet has to be filled in once by hand so the keychain gains
-`malpern@nas.tail9d0bb8.ts.net:5001` and routine sampling has a password to
-read.
+age key from inside a GUI app.
+
+**And then it was done by hand, in the interface, which is the only version of
+this that counts.** The credentials sheet reported "Connected", the keychain
+gained `malpern@nas.tail9d0bb8.ts.net:5001`, the configuration recorded that
+pin, and the app has been sampling DSM on its own schedule since — 24 completed
+requests and no ATS line at all in 12,463 log lines. The feature has never
+worked before this.
 
 **The Synology hardware is fixed.** Drive 2 was replaced on 17 August 2026 — a WD40EFZZ
 (4 TB, CMR) for the WD30EFRX that had shed 231 uncorrectable sectors. Pool
@@ -347,6 +351,15 @@ the credential is orphaned, not wrong, and the fix is to sign in again.
 was wrong when run — and every UI defect (a folder named `Library` rendered as
 `L`, no disclosure triangle, a spinner that never moved) was invisible to 263
 passing tests.
+
+**Two menu-bar icons are indistinguishable, so "kill stray instances first" is
+not tidiness.** A fixed build was launched beside the installed one and the
+report came back that the bug was still there — with a real TLS error, from a
+real app, in the log. It took attributing the failure to a PID to see that
+every one of them came from the *other* copy, which had no fix in it and looked
+exactly the same in the menu bar. Testing a build that is not the only one
+running is testing nothing, and the person clicking cannot be expected to tell
+them apart. Quit everything, launch one, and say which one is up.
 
 **Validate the instrument before believing what it says.** Silence from an
 `NSLog` added to a delegate read as proof the delegate was never called; the
