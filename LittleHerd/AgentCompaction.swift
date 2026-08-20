@@ -1,6 +1,15 @@
 import Foundation
 
-/// How much context a model will hold, learned rather than assumed.
+/// Where a model compacts, learned rather than assumed.
+///
+/// Named for what it measures. This is **not** the model's context window: it
+/// is the point at which sessions on that model have actually been seen to
+/// compact, which is lower — sonnet-4-6 compacts around 165,000 against a
+/// 200,000 window, about 82% of it. For deciding when to start a successor
+/// session that is the better number anyway, since what you are racing is the
+/// compaction and not the API's refusal. It was called a "limit" first, and a
+/// design that only works by saying what it measured cannot afford the looser
+/// word.
 ///
 /// A transcript records what a turn used and never what the model allows, so
 /// the obvious way to show "83% full" is a table of model names and limits.
@@ -20,7 +29,7 @@ import Foundation
 /// shows the count and no proportion, which is the same rule `SustainedLoad`
 /// applies to a machine whose history does not yet cover its window: a number
 /// that is real, and silence where a guess would go.
-nonisolated struct AgentContextLimits: Equatable, Sendable {
+nonisolated struct AgentCompactionThresholds: Equatable, Sendable {
     /// The largest pre-compaction size seen for each model.
     ///
     /// The largest rather than the latest, because a compaction can be asked
@@ -39,7 +48,7 @@ nonisolated struct AgentContextLimits: Equatable, Sendable {
     static let fallFraction = 0.55
     /// Below this, a fall says more about a short conversation than about any
     /// limit — and no model worth measuring compacts at thirty thousand.
-    static let smallestCredibleLimit = 30_000
+    static let smallestCredibleThreshold = 30_000
 
     /// Records a fall if it looks like a compaction. Returns whether it did.
     @discardableResult
@@ -51,7 +60,7 @@ nonisolated struct AgentContextLimits: Equatable, Sendable {
         guard let model, !model.isEmpty,
               let previousTokens,
               let currentTokens,
-              previousTokens >= Self.smallestCredibleLimit,
+              previousTokens >= Self.smallestCredibleThreshold,
               Double(currentTokens) < Double(previousTokens) * Self.fallFraction
         else {
             return false
@@ -61,20 +70,22 @@ nonisolated struct AgentContextLimits: Equatable, Sendable {
         return true
     }
 
-    func limit(for model: String?) -> Int? {
+    func threshold(for model: String?) -> Int? {
         guard let model else { return nil }
         return observed[model]
     }
 
-    /// How full this session's context is, when the model's limit has been
-    /// measured. Nil is not "empty" — it is "not yet known", and the interface
+    /// How close this session is to compacting, when the model's threshold has
+    /// been measured. Nil is not "empty" — it is "not yet known", and the interface
     /// has to say the two differently.
     func fraction(tokens: Int?, model: String?) -> Double? {
-        guard let tokens, tokens > 0, let limit = limit(for: model), limit > 0
+        guard let tokens, tokens > 0,
+              let threshold = threshold(for: model),
+              threshold > 0
         else {
             return nil
         }
-        return min(Double(tokens) / Double(limit), 1)
+        return min(Double(tokens) / Double(threshold), 1)
     }
 }
 
@@ -82,18 +93,29 @@ nonisolated struct AgentContextLimits: Equatable, Sendable {
 ///
 /// Keyed by session, because two sessions on one model fall independently and
 /// a fall is only meaningful against that session's own previous reading.
-nonisolated struct AgentContextLimitLearner: Sendable {
-    private(set) var limits: AgentContextLimits
+nonisolated struct AgentCompactionLearner: Sendable {
+    private(set) var limits: AgentCompactionThresholds
+    /// When each session was last seen to compact.
+    ///
+    /// The fall was already being detected in order to learn from it, and then
+    /// thrown away. It is worth keeping: a session that compacted a minute ago
+    /// has just lost the history it was working from, which is the moment a
+    /// person most wants to know — and the moment to start a successor rather
+    /// than let the next one chew through it too.
+    private(set) var compactedAt: [String: Date] = [:]
     private var lastSeen: [String: Int] = [:]
 
-    init(limits: AgentContextLimits = AgentContextLimits()) {
+    init(limits: AgentCompactionThresholds = AgentCompactionThresholds()) {
         self.limits = limits
     }
 
     /// Feeds a round of sessions in. Returns true when something was learned,
     /// so the caller can persist only when there is a reason to.
     @discardableResult
-    mutating func observe(_ sessions: [AgentSession]) -> Bool {
+    mutating func observe(
+        _ sessions: [AgentSession],
+        at now: Date = .now
+    ) -> Bool {
         var learned = false
         var seen: Set<String> = []
 
@@ -106,6 +128,7 @@ nonisolated struct AgentContextLimitLearner: Sendable {
                 currentTokens: session.contextTokens
             ) {
                 learned = true
+                compactedAt[session.id] = now
             }
             if let tokens = session.contextTokens {
                 lastSeen[session.id] = tokens
@@ -116,6 +139,7 @@ nonisolated struct AgentContextLimitLearner: Sendable {
         // after a restart is not compared against a reading from hours ago —
         // which would read as a fall and teach a limit that never happened.
         lastSeen = lastSeen.filter { seen.contains($0.key) }
+        compactedAt = compactedAt.filter { seen.contains($0.key) }
         return learned
     }
 }

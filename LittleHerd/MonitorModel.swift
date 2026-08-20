@@ -16,15 +16,15 @@ final class MonitorModel {
     /// What each model has been seen to hold before compacting. Observed as
     /// samples arrive rather than by reading transcripts, and persisted so a
     /// limit learned once survives a restart.
-    private(set) var contextLimits = AgentContextLimits(
+    private(set) var compactionThresholds = AgentCompactionThresholds(
         observed: UserDefaults.standard.dictionary(
-            forKey: LittleHerdPreferences.observedContextLimitsKey
+            forKey: LittleHerdPreferences.observedCompactionThresholdsKey
         ) as? [String: Int] ?? [:]
     )
 
     @ObservationIgnored
-    private lazy var contextLearner = AgentContextLimitLearner(
-        limits: contextLimits
+    private lazy var compactionLearner = AgentCompactionLearner(
+        limits: compactionThresholds
     )
 
     @ObservationIgnored
@@ -33,17 +33,22 @@ final class MonitorModel {
     /// What each session is costing, by session id, once two readings exist.
     private(set) var agentCPU: [String: Double] = [:]
 
+    /// When each session last compacted, by session id.
+    private(set) var agentCompactedAt: [String: Date] = [:]
+
     /// Feeds a machine's sessions to the learner and keeps what it works out.
     func observeContext(of sessions: [AgentSession]) {
         for session in cpuTracker.rating(sessions, now: .now) {
             guard let percent = session.resource?.cpuPercent else { continue }
             agentCPU[session.id] = percent
         }
-        guard contextLearner.observe(sessions) else { return }
-        contextLimits = contextLearner.limits
+        let learned = compactionLearner.observe(sessions)
+        agentCompactedAt = compactionLearner.compactedAt
+        guard learned else { return }
+        compactionThresholds = compactionLearner.limits
         UserDefaults.standard.set(
-            contextLimits.observed,
-            forKey: LittleHerdPreferences.observedContextLimitsKey
+            compactionThresholds.observed,
+            forKey: LittleHerdPreferences.observedCompactionThresholdsKey
         )
     }
     let taskTransfers = TaskTransferMonitorModel()

@@ -10,9 +10,11 @@ struct AIAgentsView: View {
     var workload: HerdWorkloadFinding?
     /// What each model has been measured to hold. Empty until a compaction has
     /// been watched, and then the rows can say how full they are.
-    var contextLimits = AgentContextLimits()
+    var compactionThresholds = AgentCompactionThresholds()
     /// What each session is costing its machine, by session id.
     var agentCPU: [String: Double] = [:]
+    /// When each session last compacted, by session id.
+    var agentCompactedAt: [String: Date] = [:]
     /// Which machine these sessions are on. Named once, in the first header,
     /// because a panel scoped to one machine that never says which one is a
     /// panel you cannot trust.
@@ -43,8 +45,9 @@ struct AIAgentsView: View {
                     layout: layout,
                     workload: workload,
                     machineName: machineName,
-                    contextLimits: contextLimits,
+                    compactionThresholds: compactionThresholds,
                     agentCPU: agentCPU,
+                    agentCompactedAt: agentCompactedAt,
                     hoveredAgentID: $hoveredAgentID,
                     collapsed: $collapsed,
                     onSelectMachine: onSelectMachine
@@ -73,8 +76,9 @@ struct AIAgentPanelContent: View {
     let layout: AgentPanelLayout
     var workload: HerdWorkloadFinding?
     var machineName: String?
-    var contextLimits = AgentContextLimits()
+    var compactionThresholds = AgentCompactionThresholds()
     var agentCPU: [String: Double] = [:]
+    var agentCompactedAt: [String: Date] = [:]
     @Binding var hoveredAgentID: MachineAgentSession.ID?
     @Binding var collapsed: Set<AgentPanelSection>
     var onSelectMachine: ((MachineID) -> Void)?
@@ -135,8 +139,9 @@ struct AIAgentPanelContent: View {
             } label: {
                 AIAgentRow(
                     row: row,
-                    contextLimits: contextLimits,
-                    cpuPercent: agentCPU[row.session.session.id]
+                    compactionThresholds: compactionThresholds,
+                    cpuPercent: agentCPU[row.session.session.id],
+                    compactedAt: agentCompactedAt[row.session.session.id]
                 )
                     .contentShape(Rectangle())
             }
@@ -223,9 +228,18 @@ private struct AIAgentsEmptyState: View {
 /// that changes.
 struct AIAgentRow: View {
     let row: AgentPanelRow
-    var contextLimits = AgentContextLimits()
+    var compactionThresholds = AgentCompactionThresholds()
     /// Share of a core since the last sample, when two readings exist.
     var cpuPercent: Double?
+    /// When this session last compacted, if it has while the app was watching.
+    var compactedAt: Date?
+
+    /// How long a compaction stays worth announcing.
+    ///
+    /// It is news, not a state: a session that compacted an hour ago has moved
+    /// on, and a row still saying so would be one more permanent label to stop
+    /// reading. Long enough to be seen on a panel nobody watches continuously.
+    static let compactionNoticeWindow: TimeInterval = 600
 
     /// One width for every measured thing in the panel, header included.
     static let measureColumnWidth: CGFloat = 48
@@ -246,7 +260,7 @@ struct AIAgentRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             AgentStateDot(
                 state: machineSession.session.state,
-                contextFraction: contextLimits.fraction(
+                contextFraction: compactionThresholds.fraction(
                     tokens: machineSession.session.contextTokens,
                     model: machineSession.session.model
                 )
@@ -276,7 +290,15 @@ struct AIAgentRow: View {
 
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     HStack(spacing: 4) {
-                        if let statusLine = machineSession.session.statusLine {
+                        // A compaction outranks whatever the session is doing
+                        // now. It has just lost the history it was working
+                        // from, which is the one moment a person would choose
+                        // to start a successor instead of letting the next
+                        // compaction chew through it as well.
+                        if let compactionNotice {
+                            Text(compactionNotice)
+                                .foregroundStyle(.orange)
+                        } else if let statusLine = machineSession.session.statusLine {
                             Text(statusLine)
                                 .foregroundStyle(.secondary)
                         }
@@ -321,6 +343,15 @@ struct AIAgentRow: View {
         .accessibilityValue(Text(machineSession.session.state.title))
     }
 
+    private var compactionNotice: String? {
+        guard let compactedAt else { return nil }
+        let elapsed = Date.now.timeIntervalSince(compactedAt)
+        guard elapsed >= 0, elapsed <= Self.compactionNoticeWindow else {
+            return nil
+        }
+        return "Compacted \(Self.compactAge(of: compactedAt)) ago"
+    }
+
     /// Quiet until it matters. A context two-thirds full is not news; one that
     /// is about to compact is the moment to start a successor session, which is
     /// the whole reason this figure is on screen.
@@ -358,7 +389,7 @@ struct AIAgentRow: View {
         // Still measured, no longer given a column. It answers "which of these
         // is the heavy one", which is worth a hover and not worth the width
         // the title wants.
-        if let fraction = contextLimits.fraction(
+        if let fraction = compactionThresholds.fraction(
             tokens: machineSession.session.contextTokens,
             model: machineSession.session.model
         ) {

@@ -119,8 +119,13 @@ enum LittleHerdPreferences {
     /// starts another developer's application on someone's Mac.
     static let startsUsageSourceKey = "startsUsageSource"
     /// Context sizes seen just before a compaction, by model. Learned from
-    /// this Mac rather than shipped as a table — see `AgentContextLimits`.
-    static let observedContextLimitsKey = "observedContextLimitsV1"
+    /// this Mac rather than shipped as a table — see `AgentCompactionThresholds`.
+    ///
+    /// The stored string keeps its old spelling deliberately. Renaming the
+    /// Swift constant costs nothing; renaming the key would throw away every
+    /// threshold already measured on this Mac and leave the panel silent again
+    /// until each model was watched compacting a second time.
+    static let observedCompactionThresholdsKey = "observedContextLimitsV1"
     static let networkVolumeAccessOnboardingCompletedKey =
         "networkVolumeAccessOnboardingCompleted"
 

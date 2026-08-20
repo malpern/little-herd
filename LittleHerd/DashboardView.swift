@@ -99,8 +99,9 @@ struct DashboardView: View {
                             agentSessions: agentSessions,
                             hoveredAgentID: $hoveredAgentID,
                             metric: model.overviewMetric,
-                            contextLimits: model.contextLimits,
+                            compactionThresholds: model.compactionThresholds,
                             agentCPU: model.agentCPU,
+                            agentCompactedAt: model.agentCompactedAt,
                             namespace: machineTransition,
                             onSelectMetric: { model.selection = .machineMetric($0) },
                             onSelectMachine: { model.selection = .machine($0) }
@@ -565,8 +566,9 @@ private struct OverviewMetricContent: View {
     var selectedMachine: MachineID?
     @Binding var hoveredAgentID: MachineAgentSession.ID?
     let metric: OverviewMetric
-    var contextLimits = AgentContextLimits()
+    var compactionThresholds = AgentCompactionThresholds()
     var agentCPU: [String: Double] = [:]
+    var agentCompactedAt: [String: Date] = [:]
     var namespace: Namespace.ID?
     var onSelectMetric: ((MachineID) -> Void)?
     var onSelectMachine: ((MachineID) -> Void)?
@@ -584,8 +586,9 @@ private struct OverviewMetricContent: View {
                 hoveredAgentID: $hoveredAgentID,
                 onSelectMachine: onSelectMetric,
                 workload: HerdWorkloadReader.finding(for: workloadInputs),
-                contextLimits: contextLimits,
+                compactionThresholds: compactionThresholds,
                 agentCPU: agentCPU,
+                agentCompactedAt: agentCompactedAt,
                 machineName: machines.first { $0.machine == focused }?.shortName
             )
         } else {
