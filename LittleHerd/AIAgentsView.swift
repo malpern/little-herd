@@ -88,9 +88,9 @@ struct AIAgentPanelContent: View {
                 )
             }
 
-            section(.running, runningTitle, rows: layout.active)
-            section(.waiting, "Waiting", rows: layout.waiting)
-            section(.finished, "Finished", rows: layout.finished)
+            section(.running, label: machineName, rows: layout.active)
+            section(.waiting, rows: layout.waiting)
+            section(.finished, rows: layout.finished)
         }
         .padding(.horizontal, 14)
         .padding(.top, 3)
@@ -99,22 +99,16 @@ struct AIAgentPanelContent: View {
         .padding(.bottom, 8)
     }
 
-    /// The machine is named in the first header rather than in a row of its
-    /// own, which would cost a line to say one word.
-    private var runningTitle: LocalizedStringKey {
-        guard let machineName else { return "Running" }
-        return "Running on \(machineName)"
-    }
-
     @ViewBuilder
     private func section(
         _ section: AgentPanelSection,
-        _ title: LocalizedStringKey,
+        label: String? = nil,
         rows sectionRows: [AgentPanelRow]
     ) -> some View {
         if !sectionRows.isEmpty {
             AgentSectionHeader(
-                title: title,
+                section: section,
+                label: label,
                 hiddenCount: sectionRows.count,
                 isExpanded: Binding(
                     get: { !collapsed.contains(section) },
@@ -282,8 +276,10 @@ struct AIAgentRow: View {
 
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     HStack(spacing: 4) {
-                        Text(machineSession.session.statusLine)
-                            .foregroundStyle(.secondary)
+                        if let statusLine = machineSession.session.statusLine {
+                            Text(statusLine)
+                                .foregroundStyle(.secondary)
+                        }
 
                         if let disambiguator = row.disambiguator {
                             Text(disambiguator)
@@ -535,6 +531,29 @@ nonisolated enum AgentPanelSection: String, CaseIterable, Sendable {
     case running
     case waiting
     case finished
+
+    /// A glyph does the naming. "Waiting" as a word was being said twice — once
+    /// in the header and again under every row beneath it — and once the rows
+    /// stopped repeating it, the header did not need to spell it either. The
+    /// symbols are the ones these states are drawn with everywhere else: a
+    /// waveform for work in progress, a clock for something parked, a check for
+    /// something done.
+    var symbolName: String {
+        switch self {
+        case .running: "waveform"
+        case .waiting: "clock"
+        case .finished: "checkmark"
+        }
+    }
+
+    /// Said in full for anyone who cannot see the glyph.
+    var accessibleName: LocalizedStringResource {
+        switch self {
+        case .running: "Running"
+        case .waiting: "Waiting"
+        case .finished: "Finished"
+        }
+    }
 }
 
 /// A section header you can fold, with the control kept out of sight until it
@@ -548,7 +567,11 @@ nonisolated enum AgentPanelSection: String, CaseIterable, Sendable {
 /// on, and a control is a better citizen at the end of a row than at the start
 /// of one it does not belong to.
 private struct AgentSectionHeader: View {
-    let title: LocalizedStringKey
+    let section: AgentPanelSection
+    /// Only the running group names anything: which machine these are on. The
+    /// other two are their glyph, because a word restating the glyph is the
+    /// repetition this panel keeps being trimmed of.
+    var label: String?
     /// Shown only when folded, because a count you cannot see the items behind
     /// is the one time the number does any work.
     let hiddenCount: Int
@@ -561,12 +584,18 @@ private struct AgentSectionHeader: View {
             isExpanded.toggle()
         } label: {
             HStack(spacing: 5) {
-                Text(title)
+                Image(systemName: section.symbolName)
                     .font(.caption2.weight(.semibold))
-                    // Positive tracking at this size, per the same rule that
-                    // tightens large text: small type reads as cramped
-                    // without it.
-                    .tracking(0.3)
+                    .frame(width: 11)
+
+                if let label {
+                    Text(label)
+                        .font(.caption2.weight(.semibold))
+                        // Positive tracking at this size, per the same rule
+                        // that tightens large text: small type reads as
+                        // cramped without it.
+                        .tracking(0.3)
+                }
 
                 if !isExpanded, hiddenCount > 0 {
                     Text("\(hiddenCount)")
@@ -591,7 +620,11 @@ private struct AgentSectionHeader: View {
         .onHover { isHovered = $0 }
         .animation(.easeOut(duration: 0.16), value: isHovered)
         .animation(.easeInOut(duration: 0.2), value: isExpanded)
-        .accessibilityLabel(Text(title))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            label.map { Text("\(String(localized: section.accessibleName)), \($0)") }
+                ?? Text(section.accessibleName)
+        )
         .accessibilityHint(isExpanded ? "Collapse" : "Expand")
     }
 }

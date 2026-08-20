@@ -271,17 +271,20 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
         return title
     }
 
-    /// The line under the title. Always says something: a session that is
-    /// blocked on a person is a status too, and the commonest one.
-    var statusLine: String {
-        switch state {
-        case .waiting: "Waiting for you"
-        case .completed: "Finished"
-        case .active:
-            activity?.phrase
-                ?? progress?.currentStep
-                ?? "Working"
-        }
+    /// The line under the title, when there is something specific to put there.
+    ///
+    /// Nil rather than a restatement of the state. It used to say "Waiting for
+    /// you" under every waiting session and "Finished" under every finished
+    /// one — the same words repeating down a column, directly beneath a section
+    /// header that had just said them once. A line that says what the group it
+    /// sits in already says is a line that trains people to stop reading the
+    /// column.
+    ///
+    /// A waiting session still gets its last activity here, and that is worth
+    /// the row: what it was doing when it stopped is the fastest way to
+    /// remember what it wants from you.
+    var statusLine: String? {
+        activity?.phrase ?? progress?.currentStep
     }
 
     func waitingIfActive() -> AgentSession {

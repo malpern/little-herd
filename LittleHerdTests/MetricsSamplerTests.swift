@@ -1018,14 +1018,18 @@ struct MetricsSamplerTests {
         #expect(session.model == "claude-opus-5")
     }
 
-    /// Every state says something. A session blocked on a person is a status
-    /// too, and it is the commonest one on the screen.
+    /// The line under a title says something specific or says nothing.
+    ///
+    /// It used to restate the state — "Waiting for you" under every waiting
+    /// session, directly beneath a header that had just said it once. The
+    /// section carries the state now, so this carries only what the section
+    /// cannot: what this particular session was last seen doing.
     @Test
-    func everySessionHasSomethingToSayAboutItself() {
+    func theStatusLineNeverRestatesTheSection() {
         func session(
             _ state: AgentSessionState,
-            title: String? = nil,
-            activity: AgentActivity? = nil
+            activity: AgentActivity? = nil,
+            progress: AgentSessionProgress? = nil
         ) -> AgentSession {
             AgentSession(
                 id: "x",
@@ -1033,83 +1037,57 @@ struct MetricsSamplerTests {
                 projectName: "Little Herd",
                 state: state,
                 updatedAt: .now,
-                progress: nil,
-                title: title,
+                progress: progress,
                 activity: activity
             )
         }
-        #expect(session(.waiting).statusLine == "Waiting for you")
-        #expect(session(.completed).statusLine == "Finished")
-        #expect(session(.active).statusLine == "Working")
+        #expect(session(.waiting).statusLine == nil)
+        #expect(session(.completed).statusLine == nil)
+        #expect(session(.active).statusLine == nil)
 
+        // A waiting session keeps its last activity: what it was doing when it
+        // stopped is the fastest way to remember what it wants from you.
+        #expect(
+            session(.waiting, activity: AgentActivity(tool: "Edit", detail: "Machine.swift"))
+                .statusLine == "Editing Machine.swift"
+        )
         // A tool that already carries a written description is not dressed in
         // a verb on top of it.
         #expect(
             session(.active, activity: AgentActivity(tool: "Bash", detail: "Running the tests"))
                 .statusLine == "Running the tests"
         )
-        #expect(
-            session(.active, activity: AgentActivity(tool: "Read", detail: "Machine.swift"))
-                .statusLine == "Reading Machine.swift"
-        )
         // A tool with nothing to say still names itself rather than going blank.
         #expect(
             session(.active, activity: AgentActivity(tool: "Glob", detail: ""))
                 .statusLine == "Running Glob"
         )
-
-        // Without a title, the project has to stand in — it is all there is.
-        #expect(session(.active).displayTitle == "Little Herd")
-        #expect(session(.active, title: "A named session").displayTitle == "A named session")
+        // With no activity, a published plan step is the next best thing.
+        #expect(
+            session(
+                .active,
+                progress: AgentSessionProgress(
+                    completedStepCount: 1,
+                    totalStepCount: 3,
+                    currentStepIndex: 2,
+                    currentStep: "Rendering the panel"
+                )
+            ).statusLine == "Rendering the panel"
+        )
     }
 
-    /// A row is 300 points wide, so the figure is rounded rather than exact —
-    /// and the last three digits of a context size are noise anyway.
+    /// Without a title, the project has to stand in — it is all there is.
     @Test
-    func theContextLabelFitsInARow() {
-        func label(_ tokens: Int?) -> String? {
-            AgentSession(
-                id: "x",
-                provider: .claude,
-                projectName: "p",
-                state: .active,
-                updatedAt: .now,
-                progress: nil,
-                contextTokens: tokens
-            ).contextLabel
-        }
-        #expect(label(432_041) == "432k")
-        #expect(label(24_800) == "24k")
-        #expect(label(1_400_000) == "1.4M")
-        #expect(label(1_000_000) == "1.0M")
-        #expect(label(940) == "940")
-        // Nothing measured and nothing in context are different situations, and
-        // neither should print a misleading zero.
-        #expect(label(nil) == nil)
-        #expect(label(0) == nil)
-    }
-
-    /// Hours alone turn a session from last week into "213h ago", which nobody
-    /// converts in their head. Caught by looking at a rendered panel, and the
-    /// figure is now a glance rather than a sentence — the row has a column
-    /// fifty-eight points wide to say it in.
-    @Test
-    func ageIsReadableAtAGlanceAtEveryScale() {
-        let now = Date(timeIntervalSinceReferenceDate: 900_000)
-        func age(_ secondsAgo: Double) -> String {
-            AIAgentRow.compactAge(
-                of: now.addingTimeInterval(-secondsAgo),
-                now: now
-            )
-        }
-        #expect(age(30) == "now")
-        #expect(age(120) == "2m")
-        #expect(age(3 * 3_600) == "3h")
-        #expect(age(3 * 86_400) == "3d")
-        // A session from last week is days, never hundreds of hours.
-        #expect(age(7 * 86_400) == "7d")
-        // Never negative, whatever the clock does.
-        #expect(age(-60) == "now")
+    func aSessionWithoutATitleIsCalledByItsProject() {
+        let session = AgentSession(
+            id: "x",
+            provider: .claude,
+            projectName: "Little Herd",
+            state: .active,
+            updatedAt: .now,
+            progress: nil
+        )
+        #expect(session.displayTitle == "Little Herd")
     }
 
     /// A row must not be marked as ambiguous against something you cannot see.

@@ -1117,7 +1117,7 @@ private struct MachineAgentPane: View {
                     // session reads the same on both screens: its own name,
                     // what it is doing, and how long since it moved.
                     title: Text(session.displayTitle),
-                    subtitle: Text(session.statusLine),
+                    subtitle: session.statusLine.map(Text.init),
                     value: Text(AIAgentRow.compactAge(of: session.updatedAt))
                 )
             }

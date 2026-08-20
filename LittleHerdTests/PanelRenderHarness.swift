@@ -120,12 +120,14 @@ struct PanelRenderHarness {
                 "claude:cc33dd44", "Clawd", .waiting, .macBookAir, "Air",
                 minutesAgo: 14,
                 context: 187_400,
-                title: "iOS secrets manager private app"
+                title: "iOS secrets manager private app",
+                activity: AgentActivity(tool: "AskUserQuestion", detail: "")
             ),
             make(
                 "claude:ee55ff66", "Clawd", .waiting, .macBookAir, "Air",
                 minutesAgo: 68,
-                title: "Tailscale mobile app testing"
+                title: "Tailscale mobile app testing",
+                activity: AgentActivity(tool: "Read", detail: "NetworkExtension.swift")
             ),
             make(
                 "claude:99887766", "Clawd", .completed, .macBookAir, "Air",
