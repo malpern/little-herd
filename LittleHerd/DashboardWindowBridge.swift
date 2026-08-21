@@ -22,20 +22,52 @@ enum DashboardWindowPresentation: Equatable {
 /// Pure, and separated from AppKit, so the arithmetic can be tested without a
 /// window or a screen.
 nonisolated enum WindowPlacement {
-    /// - Parameter visible: the screen's `visibleFrame` — what is left after
-    ///   the menu bar and the Dock, which is the area a window may occupy.
-    static func onScreen(_ frame: NSRect, within visible: NSRect) -> NSRect {
+    /// How far a rescued window is kept from the edge it was hanging over.
+    ///
+    /// A pure clamp moves the window the least distance that makes it visible,
+    /// which lands it flush against the edge — technically on screen and
+    /// still reading as though it had been cut off, which is how the first
+    /// version of this was reported. Far enough to look deliberate, near
+    /// enough that a window is not dragged into the middle of the display.
+    static let edgeMargin: CGFloat = 16
+
+    /// - Parameters:
+    ///   - visible: the screen's `visibleFrame` — what is left after the menu
+    ///     bar and the Dock, which is the area a window may occupy.
+    ///   - margin: the gap to keep from every edge. Applied whether or not the
+    ///     window was hanging over one: a window resting exactly on the edge
+    ///     of the visible area reads as cut off just as a window over it does,
+    ///     which is how the first version of this was reported — the right
+    ///     edge was rescued and the splash then sat flush on the bottom.
+    ///     Ignored on an axis where the window is too big for it, since a
+    ///     margin that cannot be honoured must not push the window back off
+    ///     the far side.
+    static func onScreen(
+        _ frame: NSRect,
+        within visible: NSRect,
+        margin: CGFloat = edgeMargin
+    ) -> NSRect {
+        let room = visible.insetBy(dx: margin, dy: margin)
+        let horizontal = frame.width <= room.width ? room : visible
+        let vertical = frame.height <= room.height ? room : visible
+
         var placed = frame
 
         // A window larger than the screen cannot be contained. Pin its
         // top-left: that is where a title and the first row of content are,
         // and losing the bottom of a too-tall window beats losing the top.
-        placed.origin.x = frame.width >= visible.width
-            ? visible.minX
-            : min(max(frame.minX, visible.minX), visible.maxX - frame.width)
-        placed.origin.y = frame.height >= visible.height
-            ? visible.maxY - frame.height
-            : min(max(frame.minY, visible.minY), visible.maxY - frame.height)
+        placed.origin.x = frame.width >= horizontal.width
+            ? horizontal.minX
+            : min(
+                max(frame.minX, horizontal.minX),
+                horizontal.maxX - frame.width
+            )
+        placed.origin.y = frame.height >= vertical.height
+            ? vertical.maxY - frame.height
+            : min(
+                max(frame.minY, vertical.minY),
+                vertical.maxY - frame.height
+            )
 
         return placed
     }
@@ -270,6 +302,19 @@ final class DashboardWindowObserverView: NSView {
             y: currentCenter.y - splashFrame.height / 2
         )
         window.setFrame(placed(splashFrame), display: true)
+
+        // And again once the window has settled. SwiftUI sizes the window from
+        // its content under `.windowResizability(.contentSize)`, and that
+        // happens after this runs: it keeps the top-left and grows downward,
+        // which put the splash back flush on the bottom edge every time no
+        // matter what was set here. Measured — the frame set above was correct
+        // and the frame on screen was not.
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let self, let window else { return }
+            let settled = self.placed(window.frame)
+            guard settled != window.frame else { return }
+            window.setFrame(settled, display: true)
+        }
 
         guard let contentView = window.contentView else { return }
         contentView.wantsLayer = true

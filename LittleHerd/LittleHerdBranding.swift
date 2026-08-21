@@ -160,7 +160,7 @@ enum AboutLittleHerdPresenter {
             NSAttributedString(
                 string: "@malpern",
                 attributes: linkAttributes.merging([
-                    .link: URL(string: "https://twitter.com/malpern")!,
+                    .link: URL(string: "https://x.com/malpern")!,
                 ]) { _, new in new }
             )
         )

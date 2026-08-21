@@ -25,15 +25,59 @@ struct WindowPlacementTests {
         #expect(splash.minY < visible.minY, "the fixture must reproduce the bug")
 
         let placed = WindowPlacement.onScreen(splash, within: visible)
-        #expect(placed.minY == visible.minY)
+        #expect(placed.minY - visible.minY == WindowPlacement.edgeMargin)
         #expect(placed.maxY <= visible.maxY)
         // Moved the least distance needed: it was never off horizontally.
         #expect(placed.minX == splash.minX)
         #expect(placed.size == splash.size)
     }
 
+    /// **What was actually reported.** The splash, 450 wide, was launching at
+    /// x=1112 on a 1470-point display — 92 points beyond the right edge.
+    /// Measured on the installed build before this existed.
     @Test
-    func aframeAlreadyOnScreenIsNotMoved() {
+    func thesplashHangingOffTheRightIsBroughtBackWithRoomToSpare() {
+        let splash = NSRect(x: 1112, y: 572, width: 450, height: 359)
+        #expect(splash.maxX > visible.maxX, "the fixture must reproduce the bug")
+
+        let placed = WindowPlacement.onScreen(splash, within: visible)
+        #expect(placed.maxX <= visible.maxX)
+        // Not merely rescued: rescued with a gap, because flush against the
+        // edge still reads as cut off.
+        #expect(visible.maxX - placed.maxX == WindowPlacement.edgeMargin)
+        #expect(placed.size == splash.size)
+    }
+
+    /// **The second report, from the first fix.** Rescuing the right edge left
+    /// the splash sitting exactly on the bottom of the visible area — on
+    /// screen by the arithmetic and still reading as cut off. A window resting
+    /// on an edge gets the margin too, not only one hanging over it.
+    @Test
+    func awindowRestingOnAnEdgeIsNudgedOffIt() {
+        let onTheEdge = NSRect(
+            x: 700,
+            y: visible.minY,
+            width: 450,
+            height: 359
+        )
+        let placed = WindowPlacement.onScreen(onTheEdge, within: visible)
+        #expect(placed.minY - visible.minY == WindowPlacement.edgeMargin)
+    }
+
+    /// A margin that cannot be honoured must not shove the window off the far
+    /// side to make room for it.
+    @Test
+    func amarginTooLargeForTheWindowIsAbandonedRatherThanForced() {
+        let wide = NSRect(x: -40, y: 300, width: 1470, height: 359)
+        let placed = WindowPlacement.onScreen(wide, within: visible)
+        #expect(placed.minX == visible.minX)
+        #expect(placed.maxX == visible.maxX)
+    }
+
+    /// A window with room on every side is left exactly where it is. Only the
+    /// edges are enforced; nothing is centred or tidied.
+    @Test
+    func aframeWellInsideTheScreenIsNotMoved() {
         let frame = NSRect(x: 400, y: 300, width: 450, height: 355)
         #expect(WindowPlacement.onScreen(frame, within: visible) == frame)
     }
@@ -47,10 +91,11 @@ struct WindowPlacementTests {
                 within: visible
             )
         }
-        #expect(placed(-200, 300).minX == visible.minX)
-        #expect(placed(1400, 300).maxX == visible.maxX)
-        #expect(placed(400, -200).minY == visible.minY)
-        #expect(placed(400, 900).maxY == visible.maxY)
+        let margin = WindowPlacement.edgeMargin
+        #expect(placed(-200, 300).minX - visible.minX == margin)
+        #expect(visible.maxX - placed(1400, 300).maxX == margin)
+        #expect(placed(400, -200).minY - visible.minY == margin)
+        #expect(visible.maxY - placed(400, 900).maxY == margin)
     }
 
     /// A window taller than the screen cannot be contained, and losing its
