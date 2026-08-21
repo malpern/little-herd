@@ -6,6 +6,65 @@ enum DashboardWindowPresentation: Equatable {
     case dashboard
 }
 
+/// Keeping a computed window frame wholly on screen.
+///
+/// Every frame this bridge works out is derived from where the window already
+/// is: the splash centres itself on the dashboard, the dashboard centres back
+/// on the splash, and a resize grows from the top-left. None of that asks
+/// whether the result is somewhere a person can see. A saved position near an
+/// edge therefore grows off it, and the splash is the worst case because it is
+/// the largest of the three — 450 points wide against a 300-point dashboard.
+///
+/// Measured on this Mac, whose saved dashboard frame sits 32 points below the
+/// bottom of the screen: the splash centred on it started 45 points below the
+/// bottom edge and launched with its lower band cut off.
+///
+/// Pure, and separated from AppKit, so the arithmetic can be tested without a
+/// window or a screen.
+nonisolated enum WindowPlacement {
+    /// - Parameter visible: the screen's `visibleFrame` — what is left after
+    ///   the menu bar and the Dock, which is the area a window may occupy.
+    static func onScreen(_ frame: NSRect, within visible: NSRect) -> NSRect {
+        var placed = frame
+
+        // A window larger than the screen cannot be contained. Pin its
+        // top-left: that is where a title and the first row of content are,
+        // and losing the bottom of a too-tall window beats losing the top.
+        placed.origin.x = frame.width >= visible.width
+            ? visible.minX
+            : min(max(frame.minX, visible.minX), visible.maxX - frame.width)
+        placed.origin.y = frame.height >= visible.height
+            ? visible.maxY - frame.height
+            : min(max(frame.minY, visible.minY), visible.maxY - frame.height)
+
+        return placed
+    }
+
+    /// The display a frame belongs to, for a frame that may be largely or
+    /// entirely off any of them.
+    ///
+    /// `NSWindow.screen` is nil once a window is fully off-screen, which is
+    /// exactly the case that needs rescuing, so it cannot be used here.
+    @MainActor
+    static func screen(for frame: NSRect) -> NSScreen? {
+        let centre = NSPoint(x: frame.midX, y: frame.midY)
+        if let containing = NSScreen.screens.first(
+            where: { $0.frame.contains(centre) }
+        ) {
+            return containing
+        }
+        // Otherwise the display it overlaps most, so a window hanging off the
+        // edge of a second monitor is pulled back onto that monitor rather
+        // than being teleported to the main one.
+        let overlapping = NSScreen.screens.max { lhs, rhs in
+            let left = lhs.frame.intersection(frame)
+            let right = rhs.frame.intersection(frame)
+            return left.width * left.height < right.width * right.height
+        }
+        return overlapping ?? NSScreen.main
+    }
+}
+
 struct DashboardWindowBridge: NSViewRepresentable {
     let presentation: DashboardWindowPresentation
     let reduceMotion: Bool
@@ -96,6 +155,13 @@ final class DashboardWindowObserverView: NSView {
                 )?.isHidden
             )
             appliedPresentation = nil
+
+            // The frame macOS restores from the autosave is not guaranteed to
+            // be wholly visible: AppKit's own constraint keeps a window's
+            // title bar reachable and lets the rest hang off. This herd's
+            // saved dashboard frame sits 32 points below the bottom of the
+            // screen, which is how it was saved and how it comes back.
+            window.setFrame(placed(window.frame), display: false)
         }
 
         applyPresentationIfNeeded()
@@ -144,15 +210,18 @@ final class DashboardWindowObserverView: NSView {
             height: target.height
         )
 
+        // Growing from the top-left pushes the bottom edge down, so a window
+        // already sitting low ends up partly under the Dock or off the screen.
+        let placedFrame = placed(frame)
         guard !reduceMotion else {
-            window.setFrame(frame, display: true)
+            window.setFrame(placedFrame, display: true)
             return
         }
 
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.34
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            window.animator().setFrame(frame, display: true)
+            window.animator().setFrame(placedFrame, display: true)
         }
     }
 
@@ -200,7 +269,7 @@ final class DashboardWindowObserverView: NSView {
             x: currentCenter.x - splashFrame.width / 2,
             y: currentCenter.y - splashFrame.height / 2
         )
-        window.setFrame(splashFrame, display: true)
+        window.setFrame(placed(splashFrame), display: true)
 
         guard let contentView = window.contentView else { return }
         contentView.wantsLayer = true
@@ -251,11 +320,12 @@ final class DashboardWindowObserverView: NSView {
             y: splashFrame.midY - dashboardFrame.height / 2
         )
 
-        window.setFrame(splashFrame, display: true)
+        window.setFrame(placed(splashFrame), display: true)
         window.invalidateShadow()
 
+        let target = placed(dashboardFrame)
         guard !reduceMotion else {
-            window.setFrame(dashboardFrame, display: true)
+            window.setFrame(target, display: true)
             return
         }
 
@@ -264,7 +334,16 @@ final class DashboardWindowObserverView: NSView {
             context.timingFunction = CAMediaTimingFunction(
                 name: .easeInEaseOut
             )
-            window.animator().setFrame(dashboardFrame, display: true)
+            window.animator().setFrame(target, display: true)
         }
+    }
+
+    /// The same frame, moved the least distance needed to be wholly visible.
+    private func placed(_ frame: NSRect) -> NSRect {
+        guard let visible = WindowPlacement.screen(for: frame)?.visibleFrame
+        else {
+            return frame
+        }
+        return WindowPlacement.onScreen(frame, within: visible)
     }
 }
