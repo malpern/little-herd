@@ -721,6 +721,17 @@ nonisolated enum AgentPanelSection: String, CaseIterable, Sendable {
         }
     }
 
+    /// The word beside the glyph. Nil for the running group, which is named
+    /// after its machine by whoever builds the header.
+    var name: String? {
+        switch self {
+        case .running: nil
+        case .waiting: "Waiting"
+        case .destinations: "Destinations"
+        case .finished: "Finished"
+        }
+    }
+
     /// Said in full for anyone who cannot see the glyph.
     var accessibleName: LocalizedStringResource {
         switch self {
@@ -807,9 +818,17 @@ private struct DestinationNoticeRow: View {
 /// of one it does not belong to.
 private struct AgentSectionHeader: View {
     let section: AgentPanelSection
-    /// Only the running group names anything: which machine these are on. The
-    /// other two are their glyph, because a word restating the glyph is the
-    /// repetition this panel keeps being trimmed of.
+    /// What the section is called, beside its glyph.
+    ///
+    /// For a while only the running group was named — on the argument that a
+    /// word restating a glyph is the repetition this panel kept being trimmed
+    /// of. Reversed on being looked at: folded, the sections collapse to a
+    /// bare symbol and a number, and a column of those is a puzzle rather than
+    /// a summary. The glyph carries the state at a glance and the word says
+    /// which state it is; only one of those survives folding.
+    ///
+    /// Running still names its machine instead, because that is the thing its
+    /// glyph cannot say.
     var label: String?
     /// Shown only when folded, because a count you cannot see the items behind
     /// is the one time the number does any work.
@@ -827,7 +846,7 @@ private struct AgentSectionHeader: View {
                     .font(.caption2.weight(.semibold))
                     .frame(width: 11)
 
-                if let label {
+                if let label = label ?? section.name {
                     Text(label)
                         .font(.caption2.weight(.semibold))
                         // Positive tracking at this size, per the same rule

@@ -165,19 +165,37 @@ nonisolated struct AgentCPUTracker: Sendable {
 
     private var previous: [String: Reading] = [:]
 
+    /// How long a reading is kept before it is assumed to belong to a session
+    /// that has gone. Long enough to survive several probe intervals, short
+    /// enough that a dead session's history does not accumulate.
+    private static let historyLifetime: TimeInterval = 10 * 60
+
     /// Fills in `cpuPercent` where there is enough history to compute one.
     mutating func rating(_ sessions: [AgentSession], now: Date) -> [AgentSession] {
-        var seen: Set<String> = []
         let rated = sessions.map { session -> AgentSession in
-            seen.insert(session.id)
             guard let resource = session.resource else { return session }
-            defer {
+            guard let last = previous[session.id] else {
                 previous[session.id] = Reading(
                     cpuSeconds: resource.cpuSeconds,
                     at: now
                 )
+                return session
             }
-            guard let last = previous[session.id] else { return session }
+
+            // An unchanged counter is not a measurement of idleness, it is the
+            // absence of a new reading — and it is the common case. The probe
+            // refreshes every thirty seconds while the sampler runs every ten,
+            // so two samples in three re-serve the same figure from cache.
+            // Differencing those gave a burn of zero over ten seconds, wrote
+            // 0% over a real measurement, and left the meter empty whatever
+            // its threshold was. That is why this feature never appeared to
+            // work.
+            guard resource.cpuSeconds != last.cpuSeconds else { return session }
+
+            previous[session.id] = Reading(
+                cpuSeconds: resource.cpuSeconds,
+                at: now
+            )
             let elapsed = now.timeIntervalSince(last.at)
             let burned = resource.cpuSeconds - last.cpuSeconds
             // A restarted process reuses nothing and its counter goes
@@ -188,7 +206,17 @@ nonisolated struct AgentCPUTracker: Sendable {
             updated.cpuPercent = min(burned / elapsed * 100, 100 * 64)
             return session.consuming(updated)
         }
-        previous = previous.filter { seen.contains($0.key) }
+
+        // Aged out rather than evicted against the sessions just passed in.
+        // One tracker serves the whole herd and it is handed one machine's
+        // sessions at a time, so filtering on "not in this list" threw away
+        // every other machine's history on every sample — and a reading that
+        // is discarded before its successor arrives can never become a rate.
+        // With more than one machine in the herd, that alone was enough to
+        // stop any figure ever being produced.
+        previous = previous.filter {
+            now.timeIntervalSince($0.value.at) < Self.historyLifetime
+        }
         return rated
     }
 }

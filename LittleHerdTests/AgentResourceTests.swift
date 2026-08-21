@@ -124,6 +124,76 @@ struct AgentResourceTests {
         #expect(try #require(rated.first?.resource?.cpuPercent) == 50)
     }
 
+    /// **The bug that made this feature look removed.** The probe refreshes
+    /// every thirty seconds and the sampler runs every ten, so two samples in
+    /// three carry the same counter re-served from cache. Differencing those
+    /// produced a burn of zero over ten seconds — a confident 0% written over
+    /// a real measurement, on nearly every sample, so the meter was empty
+    /// whatever its threshold was.
+    ///
+    /// An unchanged counter means no new reading, not an idle session.
+    @Test
+    func acachedReadingIsNotAMeasurementOfIdleness() throws {
+        var tracker = AgentCPUTracker()
+        let start = Date(timeIntervalSinceReferenceDate: 4_000)
+        func sample(_ cpu: Double) -> [AgentSession] {
+            AgentResourceJoin.attach(
+                processes: [process(pid: 1, directory: "/a", cpuSeconds: cpu)],
+                to: [session(id: "one", directory: "/a")]
+            )
+        }
+
+        _ = tracker.rating(sample(100), now: start)
+        // Same figure, re-served from cache ten and twenty seconds later.
+        let cached = tracker.rating(sample(100), now: start.addingTimeInterval(10))
+        #expect(
+            cached.first?.resource?.cpuPercent == nil,
+            "a repeated counter was treated as a measured zero"
+        )
+        _ = tracker.rating(sample(100), now: start.addingTimeInterval(20))
+
+        // The probe finally refreshes: fifteen seconds of CPU across the
+        // thirty since the last *real* reading is half a core. Measured from
+        // the reading it actually followed, not from the last cached echo.
+        let refreshed = tracker.rating(
+            sample(115),
+            now: start.addingTimeInterval(30)
+        )
+        #expect(try #require(refreshed.first?.resource?.cpuPercent) == 50)
+    }
+
+    /// One tracker serves the whole herd and is handed one machine's sessions
+    /// at a time. It used to discard every entry absent from the list in front
+    /// of it, so each machine's sample wiped the others' history — and a
+    /// reading discarded before its successor arrives can never become a rate.
+    /// With two machines that was enough to stop any figure ever appearing.
+    @Test
+    func onemachineSampleDoesNotEraseAnothersHistory() throws {
+        var tracker = AgentCPUTracker()
+        let start = Date(timeIntervalSinceReferenceDate: 5_000)
+        func air(_ cpu: Double) -> [AgentSession] {
+            AgentResourceJoin.attach(
+                processes: [process(pid: 1, directory: "/air", cpuSeconds: cpu)],
+                to: [session(id: "air-one", directory: "/air")]
+            )
+        }
+        func mini(_ cpu: Double) -> [AgentSession] {
+            AgentResourceJoin.attach(
+                processes: [process(pid: 2, directory: "/mini", cpuSeconds: cpu)],
+                to: [session(id: "mini-one", directory: "/mini")]
+            )
+        }
+
+        _ = tracker.rating(air(100), now: start)
+        // The mini samples in between, as it does in the running app.
+        _ = tracker.rating(mini(700), now: start.addingTimeInterval(5))
+        let rated = tracker.rating(air(110), now: start.addingTimeInterval(10))
+        #expect(
+            try #require(rated.first?.resource?.cpuPercent) == 100,
+            "the mini's sample threw away the Air's previous reading"
+        )
+    }
+
     /// A restarted process starts its counter again. That is not negative work.
     @Test
     func aCounterGoingBackwardsIsNotAMeasurement() {
