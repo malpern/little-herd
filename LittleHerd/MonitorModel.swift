@@ -81,10 +81,25 @@ final class MonitorModel {
         Task { await aiUsageLimits.report(codexUsage: usage) }
     }
 
-    func observeContext(of sessions: [AgentSession]) {
+    /// - Parameter coreCount: the machine's logical cores, so a session's cost
+    ///   can be stated as a share of *the machine* rather than of one core.
+    ///   The probe measures a process tree, and a tree routinely exceeds a
+    ///   core — a build here reached the equivalent of four of them. On a
+    ///   0–100 meter that pegs solid red and reads as a machine in trouble,
+    ///   when it is one session working normally. Expressed against the
+    ///   machine, the panel's colours mean the same thing as the CPU screen's,
+    ///   which is what they were drawn to do.
+    ///
+    ///   No figure at all when the machine has not said how many cores it has:
+    ///   a share of an unknown whole is not a share.
+    func observeContext(of sessions: [AgentSession], coreCount: Int?) {
         for session in cpuTracker.rating(sessions, now: .now) {
-            guard let percent = session.resource?.cpuPercent else { continue }
-            agentCPU[session.id] = percent
+            guard let percent = session.resource?.cpuPercent,
+                  let coreCount, coreCount > 0
+            else {
+                continue
+            }
+            agentCPU[session.id] = percent / Double(coreCount)
         }
         let learned = compactionLearner.observe(sessions)
         agentCompactedAt = compactionLearner.compactedAt
@@ -320,7 +335,7 @@ final class MonitorModel {
                 do {
                     let snapshot = try await monitor.sampler.sample()
                     monitor.machine.apply(snapshot)
-                    observeContext(of: snapshot.agentSessions)
+                    observeContext(of: snapshot.agentSessions, coreCount: snapshot.coreCount)
                 observeUsage(snapshot)
                     observeUsage(snapshot)
                 }
@@ -589,7 +604,7 @@ final class MonitorModel {
             while !Task.isCancelled {
                 let snapshot = await sampler.sample()
                 machine.apply(snapshot)
-                observeContext(of: snapshot.agentSessions)
+                observeContext(of: snapshot.agentSessions, coreCount: snapshot.coreCount)
                 observeUsage(snapshot)
                 recordHistory(for: machine, from: snapshot)
                 alerts.evaluate(machine, isEnabled: alertsEnabled)
@@ -616,10 +631,10 @@ final class MonitorModel {
                 do {
                     let snapshot = try await sampler.sample()
                     machine.apply(snapshot)
-                    observeContext(of: snapshot.agentSessions)
+                    observeContext(of: snapshot.agentSessions, coreCount: snapshot.coreCount)
                 observeUsage(snapshot)
                     observeUsage(snapshot)
-                observeContext(of: snapshot.agentSessions)
+                observeContext(of: snapshot.agentSessions, coreCount: snapshot.coreCount)
                 observeUsage(snapshot)
                     recordHistory(for: machine, from: snapshot)
                 } catch {
@@ -668,10 +683,10 @@ final class MonitorModel {
                 do {
                     let snapshot = try await sampler.sample()
                     machine.apply(snapshot)
-                    observeContext(of: snapshot.agentSessions)
+                    observeContext(of: snapshot.agentSessions, coreCount: snapshot.coreCount)
                 observeUsage(snapshot)
                     observeUsage(snapshot)
-                observeContext(of: snapshot.agentSessions)
+                observeContext(of: snapshot.agentSessions, coreCount: snapshot.coreCount)
                 observeUsage(snapshot)
                     recordHistory(for: machine, from: snapshot)
                 } catch let error as SynologyDSMError {
@@ -706,10 +721,10 @@ final class MonitorModel {
                 do {
                     let snapshot = try await sampler.sample()
                     machine.apply(snapshot)
-                    observeContext(of: snapshot.agentSessions)
+                    observeContext(of: snapshot.agentSessions, coreCount: snapshot.coreCount)
                 observeUsage(snapshot)
                     observeUsage(snapshot)
-                observeContext(of: snapshot.agentSessions)
+                observeContext(of: snapshot.agentSessions, coreCount: snapshot.coreCount)
                 observeUsage(snapshot)
                     recordHistory(for: machine, from: snapshot)
                 } catch SMBStorageMonitorError.noMountedShares {

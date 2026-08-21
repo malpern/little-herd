@@ -167,12 +167,13 @@ struct PanelRenderHarness {
             machineName: "Air",
             destinationAccounts: destinationAccounts,
             compactionThresholds: AgentCompactionThresholds(observed: ["claude-opus-5": 1_000_000]),
-            // 96% is a session compiling; 8% is what one that is merely
-            // working actually costs — measured on this Mac, where three live
-            // sessions sat between 1.8 and 2.6 percent of a core. The second
-            // figure is here so the low end of the meter gets looked at, since
-            // that is the end almost every real session lives at.
-            agentCPU: ["claude:aa11bb22": 96, "claude:1234abcd": 8],
+            // Shares of the machine, not of a core. 62% is a session with a
+            // parallel build under it — the case the meter exists for — and 4%
+            // is one holding about half a core, which is what "working" looks
+            // like most of the time. The low end is in the fixture on purpose:
+            // it is where nearly every real session lives, and it is the end
+            // that has now been got wrong twice.
+            agentCPU: ["claude:aa11bb22": 62, "claude:1234abcd": 4],
             hoveredAgentID: .constant(nil),
             collapsed: .constant(
                 collapsed ?? (showingFinished ? [] : [.finished])

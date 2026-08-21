@@ -517,6 +517,32 @@ that cannot travel at all. It now says "Not in a checkout" once, rather than
 either lying or vanishing — a section that silently disappears is the false
 silence this project keeps having to write tests against.
 
+**`ps` counts living processes only, so a child's CPU vanishes from the tree
+the moment it exits — and that is most of what an agent does.** Found while
+watching the fixed figure in the running app, which is the only reason it was
+found at all. A shell loop was run inside a session's tree for four minutes; it
+spawned a short-lived `date` per iteration, and the tree total rose by 16.6
+seconds over ninety — 18% of a core, which is the *shell's own* share. Every
+child's work evaporated as it exited.
+
+What this leaves is a figure that is honest about **sustained** children — a
+long compile, a test run, a `du` over a big tree — and close to blind to a
+storm of short ones, which is what ordinary tool use looks like. There is no
+per-process accumulator for reaped children exposed by `ps` on either platform,
+so no amount of care with the walk recovers it.
+
+Two consequences worth knowing before trusting the number. A large child
+exiting between two samples makes the tree counter go *backwards*;
+`AgentCPUTracker` already treats a counter that moves backwards as a restarted
+process and yields no rate, so the failure is a gap rather than a wrong figure
+— the right failure, and another reason the meter can stay empty. And the
+30-second gap between samples is itself part of the problem: the shorter the
+window, the more likely a child is alive for both ends of it. Sampling the tree
+twice a couple of seconds apart *inside* one probe run, and reporting the rate
+rather than the counter, would measure what a session is doing now far better
+than differencing a 30-second counter — one extra `ps` and a `sleep 2` in a
+call that is already being made. Not built; see **Next**.
+
 **A session's CPU figure measures the agent binary and nothing it starts, so
 it is roughly a hundred times too small.** Measured on this Mac with a burner
 child running under the agent process, over one thirty-second window:
@@ -886,16 +912,21 @@ it; the files survived only because the directory had not been reaped yet.
    94% and cannot say which session is doing it, which is the question the
    figure was added to answer.
 
-   The shape is a pid-to-ppid map walked per agent, summing cumulative CPU
-   across each subtree — awk over one `ps` call, on both platforms, and no
-   extra process. Three things to settle first. **Memory cannot be summed the
-   same way**: resident size double-counts shared pages across a tree, so
-   either leave it as the agent's own or say what it means. **Work that leaves
-   the tree will still be missed** — Xcode delegates compilation to
-   `XCBBuildService`, which launchd owns rather than the agent, and this is
-   *unverified*: no build was running when it was looked for. And the meter's
-   floor should be set again from real numbers once the numbers are real,
-   rather than left at the 5% that was chosen against the broken figure.
+   **The walk is built and the figure is now a share of the machine**; the
+   floor is 2% of it, set from measurement. What is *not* solved is that `ps`
+   sees only living processes, so short-lived children contribute nothing —
+   the fact above has the numbers. The remaining work is to sample the tree
+   twice inside one probe run, a couple of seconds apart, and report the rate
+   instead of the counter. That costs one extra `ps` and a `sleep 2` in a call
+   already being made, and it is the only approach that catches a child which
+   lives and dies between two thirty-second samples.
+
+   Two things settled along the way. Memory is deliberately **not** summed
+   across the tree — resident size double-counts every shared page — so it
+   stays the agent's own. And whether Xcode's compilation lands inside the
+   session's tree is **still unverified** after four attempts: one sample
+   caught `swift-frontend` at 97% CPU with a parent that was not `xcodebuild`,
+   and the process was gone before it could be traced to a root.
 
 8. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
    18 August. Show cloud work beside the machines (the Herdware set already

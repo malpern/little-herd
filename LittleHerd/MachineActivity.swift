@@ -976,9 +976,53 @@ nonisolated enum AgentTaskProbe {
     # per session. Matched on the claude-code binary path rather than on the
     # command name, or the desktop application answers to "claude" too and
     # would be reported as a session that does not exist.
+    #
+    # CPU is summed across the agent's whole process tree, not taken from the
+    # agent alone. Measured on this Mac with a burner child under an agent:
+    # the agent process read 1.0% of a core and its tree read 101.2%. An agent
+    # waits on a model; a build, a test run and a grep over a large tree are
+    # what cost the machine, and every one of them is a child. The figure
+    # exists to answer which session is making this machine hot, and before
+    # this it could not.
+    #
+    # One `ps` for the whole herd of processes, then every process walks up to
+    # its nearest agent ancestor. Nearest, so a session that starts a session
+    # is billed for its own work rather than its parent's.
+    #
+    # Resident size stays the agent's own, deliberately: summing it across a
+    # tree double-counts every shared page, and a memory figure that is wrong
+    # upward is worse than one that is narrow.
     if command -v lsof >/dev/null 2>&1; then
-      little_herd_agent_pids=$(ps -Ao pid=,rss=,time=,args= 2>/dev/null \
-        | awk '$0 ~ /claude-code\// && $2 > 20000 {print $1"\t"$2"\t"$3}')
+      little_herd_agent_pids=$(ps -Ao pid=,ppid=,rss=,time=,args= 2>/dev/null \
+        | awk '
+          {
+            little_herd_seconds = 0
+            little_herd_n = split($4, little_herd_parts, ":")
+            for (i = 1; i <= little_herd_n; i++) {
+              little_herd_seconds = little_herd_seconds * 60 + little_herd_parts[i]
+            }
+            parent[$1] = $2
+            resident[$1] = $3
+            own[$1] = little_herd_seconds
+            order[++seen] = $1
+            if ($0 ~ /claude-code\// && $3 > 20000) agent[$1] = 1
+          }
+          END {
+            for (i = 1; i <= seen; i++) {
+              pid = order[i]
+              up = pid
+              hops = 0
+              while (hops < 32) {
+                if (up in agent) { total[up] += own[pid]; break }
+                if (!(up in parent)) break
+                up = parent[up]
+                hops++
+              }
+            }
+            for (pid in agent) {
+              printf "%s\t%s\t%.2f\n", pid, resident[pid], total[pid]
+            }
+          }')
       if [ -n "$little_herd_agent_pids" ]; then
         little_herd_pid_list=$(printf '%s\n' "$little_herd_agent_pids" \
           | cut -f1 | paste -sd, -)

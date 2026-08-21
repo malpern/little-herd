@@ -333,11 +333,20 @@ struct AIAgentRow: View {
     /// reading. Long enough to be seen on a panel nobody watches continuously.
     static let compactionNoticeWindow: TimeInterval = 600
 
-    /// The share of a core below which a session's meter stays empty.
+    /// The share of *the machine* below which a session's meter stays empty.
     ///
-    /// Named rather than inline so the reason above it has somewhere to live
-    /// and so a test can hold it to account.
-    static let meterFloorPercent: Double = 5
+    /// Set from measurement, twice over. Fifteen percent was an estimate and
+    /// nothing ever reached it. Five was a correction made against a figure
+    /// that turned out to be measuring the agent binary rather than the work
+    /// it starts. With the figure fixed and stated against the machine, three
+    /// sessions on this ten-core Mac idled at 0.13–0.20% and a child process
+    /// doing real work reached 0.58%; a whole core is 10%.
+    ///
+    /// Two percent is a fifth of a core here — enough that the session is
+    /// plainly doing something, low enough that it lights up long before the
+    /// machine is in trouble. The rule it enforces has not changed since the
+    /// first guess: a mark that is always lit is a mark nobody reads.
+    static let meterFloorPercent: Double = 2
 
     /// One width for every measured thing in the panel, header included.
     static let measureColumnWidth: CGFloat = 48
@@ -428,20 +437,9 @@ struct AIAgentRow: View {
                     Spacer(minLength: 4)
 
                     Group {
-                        // Above five percent of a core. Fifteen was the
-                        // first guess and it was too high by an order of
-                        // magnitude: three live Claude sessions on this Mac,
-                        // measured across a thirty-second window, ran at 1.8,
-                        // 2.3 and 2.6 percent, so the meter drew for none of
-                        // them and the panel read as though the feature had
-                        // been taken out. An agent spends most of its time
-                        // waiting on a model, not on a core. The rule it is
-                        // still enforcing is the right one — a mark that is
-                        // always lit is a mark nobody reads — but the number
-                        // has to come from what sessions actually do.
                         if let cpuPercent, cpuPercent >= Self.meterFloorPercent {
                             InlineSegmentedThermometer(value: cpuPercent)
-                                .help("\(Int(cpuPercent.rounded()))% of a core")
+                                .help("\(Int(cpuPercent.rounded()))% of this machine")
                                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
                         }
                     }
