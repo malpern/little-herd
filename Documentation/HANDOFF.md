@@ -1,15 +1,25 @@
 # Little Herd — handoff
 
-**State:** `v0.1.35` is released, and `main` carries nothing beyond it. 389
+**State:** `v0.1.37` is released, and `main` carries nothing beyond it. 398
 tests pass. Roadmap items 3 and 6 are done — destination eligibility, and each
 machine's agent versions — leaving one piece of item 3 open, which is that a
 destination is an account and the herd still stores machines; it has its own
 entry below.
 
-Three releases went out on 20 August. **0.1.33 shipped a bug that could take a
-machine off the dashboard entirely** — an empty directory aborting the probe
-under zsh — fixed in 0.1.35, and the whole story is in the facts below. Nothing
-in this herd tripped it, which is exactly why it survived a release.
+Five releases went out on 20 August, and three of them were fixes for things
+the first two shipped:
+
+    0.1.33  destination eligibility
+    0.1.34  agent versions per machine
+    0.1.35  an empty directory no longer takes a machine off the dashboard
+    0.1.36  the per-session CPU meter, working for the first time
+    0.1.37  the window stays on screen, with a margin
+
+**0.1.33 shipped a bug that could take a machine off the dashboard entirely** —
+an empty directory aborting the probe under zsh. Nothing in this herd tripped
+it, which is exactly why it survived a release. **And the session CPU meter had
+been broken since it was written**, in four independent ways; both stories are
+in the facts below.
 
 Watched in the running app on 20 August, not only rendered: the Settings
 checkbox ticks, persists into `machineConfigurationsV1`, survives a relaunch,
@@ -516,6 +526,34 @@ question is not asked of anybody, so every account came back eligible for work
 that cannot travel at all. It now says "Not in a checkout" once, rather than
 either lying or vanishing — a section that silently disappears is the false
 silence this project keeps having to write tests against.
+
+**macOS only promises that a window's *title bar* stays on screen.** The rest
+may hang over the edge, and does: this app's launch splash is its largest
+window and is placed relative to wherever the dashboard was last left, so a
+dashboard saved near an edge put the splash over it — measured at 92 points
+beyond the right of the display. The window is now clamped into the screen's
+`visibleFrame` on restore and whenever the bridge computes a frame.
+
+Three things learnt fixing it, each by measuring rather than looking.
+
+**A clamp that moves the window the least distance lands it flush against the
+edge**, which is on screen by the arithmetic and still reads as cut off — it
+was reported a second time, for the bottom, after the right had been rescued.
+The margin is sixteen points and applies to every edge whether or not the
+window was over one.
+
+**SwiftUI resizes the window after you have positioned it.** Under
+`.windowResizability(.contentSize)` it sizes from the content, keeps the
+top-left and grows downward, so a frame set in `applySplashChrome` was correct
+and the frame on screen was not. The placement is re-applied once on the next
+runloop pass, and that is what actually fixed it.
+
+**Window geometry can be read without screen-recording permission**, which
+matters because screen capture stopped working halfway through this and the
+numbers were needed anyway. `CGWindowListCopyWindowInfo` reports every window's
+bounds; only pixel *contents* are privileged. Comparing those bounds against
+`CGDisplayBounds` gives an exact overhang in points, which beats squinting at a
+screenshot — and it is how both the bug and the fix were confirmed.
 
 **The session meter was broken in four independent ways, and each one alone
 was enough to keep it empty.** Worth listing together, because three releases
