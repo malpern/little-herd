@@ -517,6 +517,41 @@ that cannot travel at all. It now says "Not in a checkout" once, rather than
 either lying or vanishing — a section that silently disappears is the false
 silence this project keeps having to write tests against.
 
+**The session meter was broken in four independent ways, and each one alone
+was enough to keep it empty.** Worth listing together, because three releases
+went out adjusting the *threshold* while the number behind it could not have
+been right:
+
+1. It measured the agent binary rather than the work it starts — about a
+   hundredfold too small. Fixed by summing the process tree.
+2. A cached reading was scored as a measured zero. The probe refreshes every
+   thirty seconds and the sampler runs every ten, so two samples in three
+   re-serve the same counter; differencing those wrote a confident 0% over a
+   real measurement, on most samples. **An unchanged counter is the absence of
+   a reading, not a measurement of idleness.**
+3. One `AgentCPUTracker` serves the whole herd and is handed one machine's
+   sessions at a time. It discarded every entry absent from the list in front
+   of it, so each machine's sample threw away the others' history — and a
+   reading discarded before its successor arrives can never become a rate.
+   With more than one machine configured this alone produced no figure, ever.
+4. The floor was 15% of a core, set by estimate against a broken number.
+
+The lesson is not any one of them. It is that a feature nobody had *watched
+work* accumulated four faults, and the visible symptom of all four was
+identical — an empty column, which reads as a design choice. It was finally
+seen to draw on 20 August, holding a core under a session's tree: one green
+block of five against a ten-core machine.
+
+**Two instruments lied during that hunt, in the same session.** Several rounds
+of "still no meter" were screenshots of an app built **eight hours earlier**
+from a different checkout: this repo has worktrees, each has its own
+`DerivedData`, and a hardcoded path kept launching the stale one while every
+build went to the other. Check `WorkspacePath` in the DerivedData `info.plist`
+if a change appears to have no effect. And a diagnostic reported
+`** TEST SUCCEEDED **` having executed **zero tests**, because the new test
+file was not in the generated project — run `xcodegen generate` after adding
+one, and read the executed count rather than the banner.
+
 **`ps` counts living processes only, so a child's CPU vanishes from the tree
 the moment it exits — and that is most of what an agent does.** Found while
 watching the fixed figure in the running app, which is the only reason it was
