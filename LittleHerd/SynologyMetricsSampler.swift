@@ -121,7 +121,9 @@ extension RemoteUnavailability {
             credentials == .unreadable
                 ? .signInLost
                 : .other("No DSM password saved for this NAS yet.")
-        case .certificateChanged:
+        case .certificateChanged, .certificateUnreadable:
+            // Both are "the certificate is why", which is a fact about the NAS
+            // rather than about reachability, so it travels as its own detail.
             .other(error.detail)
         case .malformedResponse:
             .incompleteOutput

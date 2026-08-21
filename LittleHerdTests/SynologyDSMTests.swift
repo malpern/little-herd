@@ -489,6 +489,44 @@ struct SynologyDSMTests {
         )
     }
 
+    /// The branch that used to cancel without saying why.
+    ///
+    /// A NAS serving a 1024-bit certificate refused every sign-in for an
+    /// evening while the sheet said only "A TLS error caused the secure
+    /// connection to fail" — because the trust evaluator cancelled without
+    /// recording a reason, so the client had nothing but URLSession's words to
+    /// pass on. The reason now has a name, and it has to name the fix.
+    @Test
+    func anUnreadableCertificateSaysSoAndSaysWhatToDo() {
+        let explanation = SynologyDSMError.certificateUnreadable
+            .explanation(host: "nas.example")
+
+        // Blamed on the certificate, not the network — the mistake that cost
+        // the evening was reading it as an unreachable machine.
+        #expect(explanation.stage == .certificate)
+
+        let text = "\(explanation.headline) \(explanation.evidence ?? "")"
+        #expect(text.contains("nas.example"))
+        // The two things a person needs: why it was refused, and where to fix it.
+        #expect(text.contains("2048"))
+        #expect(text.lowercased().contains("certificate"))
+    }
+
+    /// Classification has to agree with the sheet: the certificate is a fact
+    /// about the NAS, not about whether it can be reached.
+    @Test
+    func anUnreadableCertificateIsNotClassifiedAsUnreachable() {
+        let unavailability = RemoteUnavailability
+            .classify(dsm: .certificateUnreadable)
+        #expect(unavailability != RemoteUnavailability.noAnswer)
+        #expect(unavailability != RemoteUnavailability.nameNotFound)
+        if case let .other(detail) = unavailability {
+            #expect(detail.contains("2048"))
+        } else {
+            Issue.record("expected .other carrying the certificate's own detail")
+        }
+    }
+
     /// A TLS failure is not the NAS being down, and it was read as that for an
     /// evening. It must not classify as a network problem.
     @Test

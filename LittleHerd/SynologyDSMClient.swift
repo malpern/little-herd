@@ -197,8 +197,8 @@ actor SynologyDSMClient {
         } catch let error as SynologyDSMError {
             throw error
         } catch {
-            if let mismatch = trust.certificateMismatch {
-                throw mismatch
+            if let refusal = trust.refusal {
+                throw refusal
             }
             throw SynologyDSMError.transport(
                 (error as NSError).localizedDescription
@@ -236,7 +236,10 @@ final class SynologyTrustEvaluator: NSObject, URLSessionDelegate, @unchecked Sen
     private let lock = NSLock()
     private let pinned: String?
     private var observedFingerprint: String?
-    private var mismatch: SynologyDSMError?
+    /// Why this evaluator refused, when it did. Named for the decision
+    /// rather than one of its causes: a certificate can be refused for
+    /// changing *or* for being unreadable, and both need reporting.
+    private var refusalReason: SynologyDSMError?
 
     init(pinned: String?) {
         self.pinned = pinned
@@ -246,8 +249,43 @@ final class SynologyTrustEvaluator: NSObject, URLSessionDelegate, @unchecked Sen
         lock.withLock { observedFingerprint }
     }
 
-    var certificateMismatch: SynologyDSMError? {
-        lock.withLock { mismatch }
+    var refusal: SynologyDSMError? {
+        lock.withLock { refusalReason }
+    }
+
+    /// What to do about a certificate, decided apart from the challenge that
+    /// carries it.
+    ///
+    /// The delegate needs a real `URLAuthenticationChallenge`, which a test
+    /// cannot build — so for years the accept/refuse rules were only ever
+    /// exercised by connecting to something. Splitting the decision out is what
+    /// lets a test prove that an unreadable certificate is refused *and said
+    /// so*, which is the part that silently regressed.
+    enum TrustDecision: Equatable {
+        /// The system trusts it; nothing here needs to weigh in.
+        case acceptSystemTrust
+        /// Nothing recorded yet, so record what arrived.
+        case acceptOnFirstUse
+        /// Matches what was recorded.
+        case accept
+        /// Refused, and this is why.
+        case refuse(SynologyDSMError)
+    }
+
+    static func decide(
+        fingerprint: String?,
+        systemTrusted: Bool,
+        pinned: String?
+    ) -> TrustDecision {
+        // Ordered so an unreadable certificate is refused before anything else
+        // is considered: without a fingerprint there is nothing to compare, and
+        // accepting on that basis would defeat the pin entirely.
+        guard let fingerprint else { return .refuse(.certificateUnreadable) }
+        if systemTrusted { return .acceptSystemTrust }
+        guard let pinned else { return .acceptOnFirstUse }
+        return pinned == fingerprint
+            ? .accept
+            : .refuse(.certificateChanged(expected: pinned, received: fingerprint))
     }
 
     func urlSession(
@@ -265,35 +303,27 @@ final class SynologyTrustEvaluator: NSObject, URLSessionDelegate, @unchecked Sen
             return
         }
 
-        guard let fingerprint = Self.fingerprint(of: serverTrust) else {
-            completionHandler(.cancelAuthenticationChallenge, nil)
-            return
+        let fingerprint = Self.fingerprint(of: serverTrust)
+        if let fingerprint {
+            lock.withLock { observedFingerprint = fingerprint }
         }
 
-        lock.withLock { observedFingerprint = fingerprint }
-
-        // A certificate the system trusts needs no pin, and rotating it should
-        // not require the user to re-approve anything.
-        if SecTrustEvaluateWithError(serverTrust, nil) {
+        switch Self.decide(
+            fingerprint: fingerprint,
+            // A certificate the system trusts needs no pin, and rotating it
+            // should not require the user to re-approve anything.
+            systemTrusted: SecTrustEvaluateWithError(serverTrust, nil),
+            pinned: pinned
+        ) {
+        case .acceptSystemTrust:
             completionHandler(.performDefaultHandling, nil)
-            return
-        }
-
-        guard let pinned else {
-            // Trust on first use: nothing recorded yet, so record what we saw.
+        case .acceptOnFirstUse, .accept:
             completionHandler(.useCredential, URLCredential(trust: serverTrust))
-            return
-        }
-
-        if pinned == fingerprint {
-            completionHandler(.useCredential, URLCredential(trust: serverTrust))
-        } else {
-            lock.withLock {
-                mismatch = .certificateChanged(
-                    expected: pinned,
-                    received: fingerprint
-                )
-            }
+        case let .refuse(reason):
+            // Recorded so the client can report which check refused. Cancelling
+            // silently here is what made a 1024-bit certificate read as a
+            // generic TLS failure for an evening.
+            lock.withLock { refusalReason = reason }
             completionHandler(.cancelAuthenticationChallenge, nil)
         }
     }

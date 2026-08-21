@@ -84,12 +84,73 @@ struct SynologyTrustTests {
 
     /// The accept/refuse decision itself needs a real URLAuthenticationChallenge,
     /// which cannot be constructed here — so this covers only the starting state:
-    /// an evaluator reports nothing seen and no mismatch until a challenge
+    /// an evaluator reports nothing seen and no refusal until a challenge
     /// actually arrives. The decision is exercised for real by connecting.
+    /// The rule that regressed silently: a certificate whose key cannot be read
+    /// is refused, and the refusal carries a reason.
+    ///
+    /// This is the case a 1024-bit certificate produces inside a sandboxed app,
+    /// where `SecCertificateCopyKey` returns nothing while `openssl` reads the
+    /// same key happily. Refusing was always right; refusing *mutely* is what
+    /// cost an evening.
+    @Test
+    func anUnreadableCertificateIsRefusedWithAReason() {
+        #expect(
+            SynologyTrustEvaluator.decide(
+                fingerprint: nil,
+                systemTrusted: false,
+                pinned: "aaa"
+            ) == .refuse(.certificateUnreadable)
+        )
+        // Even when the system would have trusted it: with no fingerprint there
+        // is nothing to pin against, and accepting anyway defeats the pin.
+        #expect(
+            SynologyTrustEvaluator.decide(
+                fingerprint: nil,
+                systemTrusted: true,
+                pinned: nil
+            ) == .refuse(.certificateUnreadable)
+        )
+    }
+
+    @Test
+    func aChangedCertificateIsRefusedAndNamesBothFingerprints() {
+        #expect(
+            SynologyTrustEvaluator.decide(
+                fingerprint: "bbb",
+                systemTrusted: false,
+                pinned: "aaa"
+            ) == .refuse(.certificateChanged(expected: "aaa", received: "bbb"))
+        )
+    }
+
+    @Test
+    func theOrdinaryPathsAccept() {
+        // Recorded and matching.
+        #expect(
+            SynologyTrustEvaluator.decide(
+                fingerprint: "aaa", systemTrusted: false, pinned: "aaa"
+            ) == .accept
+        )
+        // Nothing recorded yet.
+        #expect(
+            SynologyTrustEvaluator.decide(
+                fingerprint: "aaa", systemTrusted: false, pinned: nil
+            ) == .acceptOnFirstUse
+        )
+        // The system vouches for it, so the pin is not consulted — a renewal
+        // that keeps a trusted chain must not need re-approving.
+        #expect(
+            SynologyTrustEvaluator.decide(
+                fingerprint: "zzz", systemTrusted: true, pinned: "aaa"
+            ) == .acceptSystemTrust
+        )
+    }
+
     @Test
     func aNewEvaluatorHasSeenNothingYet() {
         let matching = SynologyTrustEvaluator(pinned: Self.expectedFingerprint)
-        #expect(matching.certificateMismatch == nil)
+        #expect(matching.refusal == nil)
         #expect(matching.observed == nil)
         #expect(SynologyTrustEvaluator(pinned: nil).observed == nil)
     }

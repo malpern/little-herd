@@ -26,6 +26,15 @@ nonisolated enum SynologyDSMError: Error, Equatable, Sendable {
     /// reading of it.
     case api(code: Int, detail: String)
     case certificateChanged(expected: String, received: String)
+    /// The certificate arrived and its public key could not be read, so there
+    /// was nothing to compare a pin against and nothing was sent.
+    ///
+    /// The cause worth naming is a key macOS will not touch: a sandboxed app
+    /// gets a stricter policy than a command-line tool, and an RSA key under
+    /// 2048 bits is refused there while `openssl` reads it happily. A Synology
+    /// serving its 2015 factory certificate is exactly that case, and it cost
+    /// an evening while this branch cancelled the connection without saying so.
+    case certificateUnreadable
 
     /// DSM reports every failure as a bare integer, and the integers that
     /// matter most here are the ones a user can actually fix.
@@ -73,6 +82,8 @@ nonisolated enum SynologyDSMError: Error, Equatable, Sendable {
         case .api(_, let detail): detail
         case .certificateChanged:
             "The NAS presented a different TLS certificate than the one Little Herd recorded. Little Herd stopped rather than send credentials to it."
+        case .certificateUnreadable:
+            "The NAS's TLS certificate could not be read — most often a key macOS refuses, such as RSA under 2048 bits. Little Herd stopped rather than send credentials to it."
         }
     }
 
@@ -110,6 +121,12 @@ nonisolated enum SynologyDSMError: Error, Equatable, Sendable {
                 stage: .beforeAsking,
                 headline: "Little Herd has no password to send.",
                 evidence: nil
+            )
+        case .certificateUnreadable:
+            .init(
+                stage: .certificate,
+                headline: "Little Herd could not read the certificate “\(host)” presented, so nothing was sent to it.",
+                evidence: "This usually means the certificate uses a key macOS will not accept — an RSA key under 2048 bits, for example. Replacing it in DSM under Control Panel → Security → Certificate fixes it."
             )
         case .certificateChanged(let expected, let received):
             .init(
