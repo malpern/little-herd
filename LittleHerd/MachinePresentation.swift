@@ -134,37 +134,148 @@ nonisolated enum MetricValueDisplay: Equatable, Sendable {
 nonisolated enum MemoryPressureExplanation {
     static func text(
         level: MemoryPressureLevel,
-        consumers: [MemoryConsumer]
+        platform: MachinePlatform,
+        consumers: [MemoryConsumer],
+        swap: SwapUsage? = nil,
+        swapGrowth: SwapGrowth? = nil
     ) -> String {
-        [meaning(for: level), advice(for: level, consumers: consumers)]
-            .compactMap(\.self)
-            .joined(separator: "\n\n")
+        [
+            String(localized: "\(String(localized: level.title)) memory pressure"),
+            body(level: level, platform: platform, swap: swap, swapGrowth: swapGrowth),
+            advice(for: level, consumers: consumers),
+        ]
+        .compactMap(\.self)
+        // A blank line under the headline, so it reads as a title rather than
+        // as the first sentence of a paragraph. It did read as one.
+        .joined(separator: "\n\n")
+    }
+
+    private static func body(
+        level: MemoryPressureLevel,
+        platform: MachinePlatform,
+        swap: SwapUsage?,
+        swapGrowth: SwapGrowth?
+    ) -> String? {
+        let sentences = [
+            situation(
+                level: level,
+                platform: platform,
+                swapped: swapped(swapGrowth),
+                hasSwap: swap?.isConfigured
+            ),
+            noSwapNote(level: level, platform: platform, swap: swap),
+        ]
+        .compactMap(\.self)
+        .joined(separator: " ")
+        return sentences.isEmpty ? nil : sentences
+    }
+
+    /// Only the direction of travel earns a mention. The level is a high-water
+    /// mark of every busy hour the machine has had — see `SwapGrowth` — so
+    /// printing it would put a large, permanent, unactionable number in front
+    /// of anyone whose Mac was ever busy.
+    ///
+    /// A fragment rather than a sentence, because it reads better written into
+    /// the situation than bolted on after it. "macOS has swapped 1.4 GB in the
+    /// last 3 minutes to keep everything running" is one fact; the same thing
+    /// appended as its own sentence was three sentences of throat-clearing.
+    private static func swapped(_ growth: SwapGrowth?) -> String? {
+        guard let growth else { return nil }
+        let written = Int64(growth.bytes).formatted(.byteCount(style: .memory))
+        let minutes = max(1, Int((growth.duration / 60).rounded()))
+        return String(localized: "\(written) in the last \(minutes) minutes")
     }
 
     /// Warning and critical are different situations, not one sentence with a
-    /// word swapped. Warning is the system working as designed and worth
-    /// knowing about; critical is the system about to take the decision out of
-    /// your hands.
-    private static func meaning(for level: MemoryPressureLevel) -> String {
-        switch level {
-        case .normal:
-            String(localized: """
-                Normal memory pressure
-                macOS has room to spare.
-                """)
-        case .warning:
-            String(localized: """
-                Warning memory pressure
-                macOS is compressing and swapping memory to keep everything \
-                running. Nothing has failed, but apps may feel slower.
-                """)
-        case .critical:
-            String(localized: """
-                Critical memory pressure
-                macOS is out of room and may start force-quitting apps to \
-                recover it.
-                """)
+    /// word swapped. Warning is the system working as designed; critical is
+    /// the system about to take the decision out of your hands.
+    ///
+    /// A Mac is quoted because a Mac's verdict is the kernel's own. Everything
+    /// else is `MemoryPressureLevel.estimated`, computed here from how much
+    /// memory is free — so it is described as the observation it is, rather
+    /// than put in a kernel's mouth. (A remote Mac whose pressure sysctl fails
+    /// falls back to the estimate too, and is flattered slightly here. It has
+    /// not been seen to happen.)
+    private static func situation(
+        level: MemoryPressureLevel,
+        platform: MachinePlatform,
+        swapped: String?,
+        hasSwap: Bool?
+    ) -> String? {
+        switch (level, platform) {
+        case (.normal, _):
+            String(localized: "There is room to spare.")
+
+        case (.warning, .macOS):
+            if let swapped {
+                String(localized: """
+                    macOS has swapped \(swapped) to keep everything running. \
+                    Nothing has failed, but apps may feel slower.
+                    """)
+            } else {
+                String(localized: """
+                    macOS is compressing and swapping to keep everything \
+                    running. Nothing has failed, but apps may feel slower.
+                    """)
+            }
+
+        case (.critical, .macOS):
+            if let swapped {
+                String(localized: """
+                    macOS has swapped \(swapped) and may start force-quitting \
+                    apps.
+                    """)
+            } else {
+                String(localized:
+                    "macOS is out of room and may start force-quitting apps.")
+            }
+
+        case (.warning, _):
+            if let swapped {
+                String(localized: """
+                    Under a fifth of memory is available, and \(swapped) has \
+                    been swapped. Apps may feel slower.
+                    """)
+            } else {
+                String(localized: """
+                    Under a fifth of memory is available. Nothing has failed, \
+                    but apps may feel slower.
+                    """)
+            }
+
+        // The note below explains what a machine with no swap does instead,
+        // so this must not say it as well. Said twice, it stops being read.
+        case (.critical, _) where hasSwap == false:
+            String(localized: "Under a tenth of memory is available.")
+
+        case (.critical, _):
+            if let swapped {
+                String(localized: """
+                    Under a tenth of memory is available, and \(swapped) has \
+                    been swapped. The kernel may start killing processes.
+                    """)
+            } else {
+                String(localized: """
+                    Under a tenth of memory is available, and the kernel may \
+                    start killing processes.
+                    """)
+            }
         }
+    }
+
+    /// Worth saying only where paging out was an option at all. A Linux box
+    /// with no swap does not get slower under pressure; it kills something.
+    private static func noSwapNote(
+        level: MemoryPressureLevel,
+        platform: MachinePlatform,
+        swap: SwapUsage?
+    ) -> String? {
+        guard level != .normal, platform != .macOS else { return nil }
+        guard let swap, !swap.isConfigured else { return nil }
+        return String(localized: """
+            No swap is configured, so a process is killed rather than paged \
+            out.
+            """)
     }
 
     /// Nothing to suggest when the machine is fine — a tooltip that proposes a
@@ -197,7 +308,7 @@ nonisolated enum MemoryPressureExplanation {
 
         let growth = Int64(evidence.growthBytes)
             .formatted(.byteCount(style: .memory))
-        let minutes = Int(evidence.duration / 60)
+        let minutes = max(1, Int((evidence.duration / 60).rounded()))
         return String(localized: """
             \(largest.name) is the largest at \(size), and has grown \
             \(growth) over \(minutes) minutes. Quitting it should help, \
@@ -218,7 +329,10 @@ extension MachineMonitorModel {
         guard state == .live, let memoryPressure else { return nil }
         return MemoryPressureExplanation.text(
             level: memoryPressure,
-            consumers: memoryConsumers
+            platform: platform,
+            consumers: memoryConsumers,
+            swap: swap,
+            swapGrowth: swapGrowth
         )
     }
 }

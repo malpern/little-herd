@@ -52,6 +52,13 @@ final class MachineMonitorModel: Identifiable {
     /// share of one core as a share of the whole machine.
     private(set) var coreCount: Int?
     private(set) var memoryConsumers: [MemoryConsumer] = []
+    /// What kind of machine this is. Kept because a pressure verdict means a
+    /// different thing on each: a Mac's comes from the kernel, everything
+    /// else's is estimated here from how much memory is free.
+    let platform: MachinePlatform
+    private(set) var swap: SwapUsage?
+    /// Swap written across the watched window, when enough of one exists.
+    private(set) var swapGrowth: SwapGrowth?
     /// Why the machine is unreachable, when it is. Kept beside `state` so the
     /// interface can say more than "Unavailable".
     private(set) var unavailability: RemoteUnavailability?
@@ -66,6 +73,7 @@ final class MachineMonitorModel: Identifiable {
 
     @ObservationIgnored
     private var memoryGrowthDetector = MemoryGrowthDetector()
+    private var swapTrend = SwapTrend()
 
     var id: MachineID { machine }
 
@@ -76,6 +84,7 @@ final class MachineMonitorModel: Identifiable {
         name = configuration.name
         shortName = configuration.shortName
         hostname = configuration.hostname
+        platform = configuration.platform
         symbolName = configuration.platform.symbolName
         avatar = configuration.avatar
         supportsGPU = configuration.supportsGPU
@@ -116,6 +125,8 @@ final class MachineMonitorModel: Identifiable {
             consumers: snapshot.memoryConsumers,
             at: snapshot.timestamp
         )
+        swap = snapshot.swap
+        swapGrowth = swapTrend.record(snapshot.swap, at: snapshot.timestamp)
         lastUpdated = snapshot.timestamp
         state = .live
         unavailability = nil
@@ -268,6 +279,55 @@ nonisolated struct StorageConcern: Equatable, Sendable {
         let days = max(Int((trend.duration / 86_400).rounded()), 1)
         let window = days == 1 ? "today" : "in \(days) days"
         return "\(summary), up \(Int(trend.change)) \(window)"
+    }
+}
+
+/// Watches swap the way `MemoryGrowthDetector` watches a process: for the
+/// direction, not the level.
+///
+/// The level is nearly useless on its own here — macOS never reclaims swap
+/// eagerly, so the figure is a high-water mark of every busy hour the machine
+/// has ever had. Growth across a window is what says the machine is paying for
+/// memory pressure *now*.
+///
+/// Reports nothing far more often than it reports something, and that is
+/// correct: most of the time a machine is not actively swapping, and a line
+/// that is always present is a line nobody reads.
+nonisolated struct SwapTrend: Sendable {
+    private struct Sample: Sendable {
+        let date: Date
+        let usedBytes: Double
+    }
+
+    private var samples: [Sample] = []
+
+    /// Long enough that one sample landing mid-write is not a trend.
+    private let minimumDuration: TimeInterval = 60
+    private let maximumDuration: TimeInterval = 5 * 60
+    /// Below this the machine is trickling rather than thrashing, and saying
+    /// so would put a number in front of someone for no decision.
+    private let minimumGrowth = 64 * 1_024 * 1_024.0
+
+    mutating func record(_ usage: SwapUsage?, at timestamp: Date) -> SwapGrowth? {
+        guard let usage, usage.isConfigured else {
+            samples.removeAll()
+            return nil
+        }
+
+        samples.removeAll {
+            $0.date < timestamp.addingTimeInterval(-maximumDuration)
+        }
+        samples.append(Sample(date: timestamp, usedBytes: usage.usedBytes))
+
+        guard let oldest = samples.first, let newest = samples.last else {
+            return nil
+        }
+        let duration = oldest.date.distance(to: newest.date)
+        guard duration >= minimumDuration else { return nil }
+
+        let growth = newest.usedBytes - oldest.usedBytes
+        guard growth >= minimumGrowth else { return nil }
+        return SwapGrowth(bytes: growth, duration: duration)
     }
 }
 

@@ -40,6 +40,33 @@ nonisolated enum MemoryPressureLevel: Int, Equatable, Sendable {
     }
 }
 
+/// How much of a machine's swap is in use, and how much it has.
+///
+/// The total travels with the figure because zero and zero are two different
+/// machines. A Mac with swap disabled and a Linux box with no swap partition
+/// will both read nothing used — and on the second, the kernel kills a process
+/// rather than paging it out, which is worth saying when it is under pressure.
+nonisolated struct SwapUsage: Equatable, Sendable {
+    let usedBytes: Double
+    let totalBytes: Double
+
+    var isConfigured: Bool { totalBytes > 0 }
+}
+
+/// Swap written during the window a machine has been watched.
+///
+/// The absolute figure cannot carry this on its own. macOS never reclaims swap
+/// eagerly — pages stay in the swap file long after the pressure that wrote
+/// them — so a machine that was hammered last week still reads twelve
+/// gigabytes today. Measured here 2026-08-25: `used` did not move by a single
+/// decimal across a minute in which the pressure verdict changed twice. What
+/// separates "paying for it now" from "paid for it once" is the direction of
+/// travel, not the level.
+nonisolated struct SwapGrowth: Equatable, Sendable {
+    let bytes: Double
+    let duration: TimeInterval
+}
+
 nonisolated struct MemoryConsumer: Identifiable, Equatable, Sendable {
     let name: String
     let residentBytes: Double
@@ -215,6 +242,9 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
     let storageVolumes: [StorageVolume]
     let memoryPressure: MemoryPressureLevel?
     let memoryConsumers: [MemoryConsumer]
+    /// Nil where nothing asked. A remote Mac is sampled by a shell probe that
+    /// does not read swap, and a NAS is not asked at all.
+    let swap: SwapUsage?
     /// Physical drives, when the machine can report them. Only a NAS reached
     /// through DSM does today; a Mac reports volumes but not the health of the
     /// hardware underneath them.
@@ -243,6 +273,7 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
         storageVolumes: [StorageVolume] = [],
         memoryPressure: MemoryPressureLevel? = nil,
         memoryConsumers: [MemoryConsumer] = [],
+        swap: SwapUsage? = nil,
         drives: [SynologyDrive] = [],
         coreCount: Int? = nil,
         codexUsage: AIUsageLimit? = nil,
@@ -255,6 +286,7 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
         self.storageVolumes = storageVolumes
         self.memoryPressure = memoryPressure
         self.memoryConsumers = memoryConsumers
+        self.swap = swap
         self.drives = drives
         self.coreCount = coreCount
         self.codexUsage = codexUsage
@@ -337,6 +369,7 @@ actor MetricsSampler {
             storageVolumes: storageVolumes,
             memoryPressure: memoryPressure,
             memoryConsumers: processHighlights.memoryConsumers,
+            swap: swapUsage(),
             coreCount: ProcessInfo.processInfo.activeProcessorCount,
             codexUsage: processHighlights.codexUsage,
             destination: processHighlights.destination
@@ -576,6 +609,21 @@ actor MetricsSampler {
         )
         guard result == 0 else { return nil }
         return MemoryPressureLevel(systemValue: Int(value))
+    }
+
+    /// The same reading `sysctl vm.swapusage` prints, taken as the struct the
+    /// kernel actually returns rather than the string the command formats —
+    /// so there is no `M`-or-`G` suffix to misread.
+    private func swapUsage() -> SwapUsage? {
+        var usage = xsw_usage()
+        var size = MemoryLayout<xsw_usage>.size
+        guard sysctlbyname("vm.swapusage", &usage, &size, nil, 0) == 0 else {
+            return nil
+        }
+        return SwapUsage(
+            usedBytes: Double(usage.xsu_used),
+            totalBytes: Double(usage.xsu_total)
+        )
     }
 
     private func networkThroughput() -> (receivedPerSecond: Double, sentPerSecond: Double)? {

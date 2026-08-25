@@ -1073,6 +1073,7 @@ struct MemoryPressureExplanationTests {
     func warningSaysWhatIsHappeningAndNamesTheAppToQuit() {
         let text = MemoryPressureExplanation.text(
             level: .warning,
+            platform: .macOS,
             consumers: [consumer("Dia", gigabytes: 1.1), consumer("Cotypist", gigabytes: 3.4)]
         )
 
@@ -1087,8 +1088,8 @@ struct MemoryPressureExplanationTests {
     /// force-quit something. Those are not the same news.
     @Test
     func criticalDoesNotJustSayWarningInADifferentColour() {
-        let warning = MemoryPressureExplanation.text(level: .warning, consumers: [])
-        let critical = MemoryPressureExplanation.text(level: .critical, consumers: [])
+        let warning = MemoryPressureExplanation.text(level: .warning, platform: .macOS, consumers: [])
+        let critical = MemoryPressureExplanation.text(level: .critical, platform: .macOS, consumers: [])
 
         #expect(warning != critical)
         #expect(critical.contains("force-quitting"))
@@ -1101,6 +1102,7 @@ struct MemoryPressureExplanationTests {
     func aHealthyMachineIsNotToldToQuitAnything() {
         let text = MemoryPressureExplanation.text(
             level: .normal,
+            platform: .macOS,
             consumers: [consumer("Cotypist", gigabytes: 3.4)]
         )
 
@@ -1112,7 +1114,7 @@ struct MemoryPressureExplanationTests {
     /// not sample processes on. The verdict is still worth explaining.
     @Test
     func pressureWithNoProcessListStillExplainsItself() {
-        let text = MemoryPressureExplanation.text(level: .warning, consumers: [])
+        let text = MemoryPressureExplanation.text(level: .warning, platform: .macOS, consumers: [])
 
         #expect(text.contains("Warning memory pressure"))
         #expect(!text.contains("Quitting"))
@@ -1123,6 +1125,7 @@ struct MemoryPressureExplanationTests {
     func theLargestConsumerIsNamedWhateverOrderTheyArriveIn() {
         let text = MemoryPressureExplanation.text(
             level: .warning,
+            platform: .macOS,
             consumers: [
                 consumer("Claude Code", gigabytes: 1.3),
                 consumer("Cotypist", gigabytes: 3.4),
@@ -1141,10 +1144,12 @@ struct MemoryPressureExplanationTests {
     func aGrowingConsumerIsPromisedLessThanASteadyOne() {
         let steady = MemoryPressureExplanation.text(
             level: .warning,
+            platform: .macOS,
             consumers: [consumer("Cotypist", gigabytes: 3.4)]
         )
         let growing = MemoryPressureExplanation.text(
             level: .warning,
+            platform: .macOS,
             consumers: [
                 consumer(
                     "Cotypist",
@@ -1172,6 +1177,7 @@ struct MemoryPressureExplanationTests {
     func theHoverSaysMoreThanTheVerdict() {
         let text = MemoryPressureExplanation.text(
             level: .warning,
+            platform: .macOS,
             consumers: [consumer("Cotypist", gigabytes: 3.4)]
         )
 
@@ -1216,5 +1222,145 @@ struct MemoryPressureExplanationTests {
     private func size(gigabytes: Double) -> String {
         Int64(gigabytes * 1_024 * 1_024 * 1_024)
             .formatted(.byteCount(style: .memory))
+    }
+}
+
+/// Swap, which is only worth showing as a direction.
+@MainActor
+struct SwapTrendTests {
+    /// The reading that motivated all of this: swap did not move by a decimal
+    /// across a minute in which the pressure verdict changed twice. A level
+    /// alone therefore says nothing about now.
+    @Test
+    func swapThatIsNotMovingIsNotATrend() {
+        var trend = SwapTrend()
+        let start = Date(timeIntervalSince1970: 0)
+        var growth: SwapGrowth?
+        for offset in stride(from: 0.0, through: 180, by: 30) {
+            growth = trend.record(
+                SwapUsage(usedBytes: 12_365_594_624, totalBytes: 13_958_643_712),
+                at: start.addingTimeInterval(offset)
+            )
+        }
+
+        #expect(growth == nil)
+    }
+
+    /// Swap being written is the machine paying for pressure right now.
+    @Test
+    func swapBeingWrittenIsReported() {
+        var trend = SwapTrend()
+        let start = Date(timeIntervalSince1970: 0)
+        let gigabyte = 1_024 * 1_024 * 1_024.0
+        var growth: SwapGrowth?
+        for step in 0 ... 4 {
+            growth = trend.record(
+                SwapUsage(
+                    usedBytes: gigabyte + Double(step) * gigabyte / 4,
+                    totalBytes: 16 * gigabyte
+                ),
+                at: start.addingTimeInterval(Double(step) * 30)
+            )
+        }
+
+        #expect(growth?.bytes == gigabyte)
+        #expect(growth?.duration == 120)
+    }
+
+    /// One sample, or two seconds apart, is not evidence of anything.
+    @Test
+    func aWindowTooShortToMeanAnythingIsNotATrend() {
+        var trend = SwapTrend()
+        let start = Date(timeIntervalSince1970: 0)
+        let gigabyte = 1_024 * 1_024 * 1_024.0
+        _ = trend.record(SwapUsage(usedBytes: gigabyte, totalBytes: 16 * gigabyte), at: start)
+        let growth = trend.record(
+            SwapUsage(usedBytes: 4 * gigabyte, totalBytes: 16 * gigabyte),
+            at: start.addingTimeInterval(5)
+        )
+
+        #expect(growth == nil)
+    }
+
+    /// A machine with no swap has no trend, and must not look like one that
+    /// simply has not swapped yet.
+    @Test
+    func aMachineWithNoSwapHasNoTrend() {
+        var trend = SwapTrend()
+        let start = Date(timeIntervalSince1970: 0)
+        var growth: SwapGrowth?
+        for step in 0 ... 4 {
+            growth = trend.record(
+                SwapUsage(usedBytes: 0, totalBytes: 0),
+                at: start.addingTimeInterval(Double(step) * 30)
+            )
+        }
+
+        #expect(growth == nil)
+        #expect(SwapUsage(usedBytes: 0, totalBytes: 0).isConfigured == false)
+        #expect(SwapUsage(usedBytes: 0, totalBytes: 1024).isConfigured)
+    }
+
+    /// Swap that is being written replaces the vague verb with a measurement.
+    @Test
+    func activeSwappingIsSaidOutLoud() {
+        let text = MemoryPressureExplanation.text(
+            level: .warning,
+            platform: .macOS,
+            consumers: [],
+            swap: SwapUsage(usedBytes: 4_000_000_000, totalBytes: 16_000_000_000),
+            swapGrowth: SwapGrowth(bytes: 1_500_000_000, duration: 180)
+        )
+
+        #expect(text.contains("macOS has swapped"))
+        #expect(text.contains("3 minutes"))
+    }
+
+    /// The high-water mark never appears on its own. A Mac that was busy last
+    /// Tuesday would otherwise carry a large alarming number for ever.
+    @Test
+    func aStaleHighWaterMarkIsNeverShown() {
+        let text = MemoryPressureExplanation.text(
+            level: .warning,
+            platform: .macOS,
+            consumers: [],
+            swap: SwapUsage(usedBytes: 12_365_594_624, totalBytes: 13_958_643_712),
+            swapGrowth: nil
+        )
+
+        #expect(!text.contains("swapped"))
+        #expect(!text.contains("11.5"))
+    }
+
+    /// A Linux box with no swap does not get slower under pressure. It kills
+    /// something, and that is a different warning.
+    @Test
+    func aLinuxBoxWithNoSwapIsToldSo() {
+        let text = MemoryPressureExplanation.text(
+            level: .critical,
+            platform: .linux,
+            consumers: [],
+            swap: SwapUsage(usedBytes: 0, totalBytes: 0)
+        )
+
+        #expect(text.contains("No swap is configured"))
+        #expect(text.contains("killed rather than"))
+    }
+
+    /// A Mac's verdict is the kernel's own; every other machine's is estimated
+    /// here from free memory. Saying "macOS is compressing and swapping" on a
+    /// Linux box was wrong in both halves.
+    @Test
+    func linuxIsNotDescribedAsAMac() {
+        let mac = MemoryPressureExplanation.text(
+            level: .warning, platform: .macOS, consumers: []
+        )
+        let linux = MemoryPressureExplanation.text(
+            level: .warning, platform: .linux, consumers: []
+        )
+
+        #expect(mac.contains("macOS"))
+        #expect(!linux.contains("macOS"))
+        #expect(linux.contains("Under a fifth of memory is available"))
     }
 }

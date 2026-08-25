@@ -350,6 +350,15 @@ actor RemoteMetricsSampler {
         let memoryTotal = memory[0]
         let memoryAvailable = min(memory[1], memoryTotal)
         let memoryUsed = max(memoryTotal - memoryAvailable, 0)
+        // Absent for a remote Mac, whose probe does not read swap, and for
+        // anything that answered without the line. Nothing is not zero.
+        let swap = raw["swap"].flatMap { values -> SwapUsage? in
+            guard values.count == 2 else { return nil }
+            return SwapUsage(
+                usedBytes: max(values[1], 0),
+                totalBytes: max(values[0], 0)
+            )
+        }
         let memoryPressure = raw["memory_pressure"]?.first
             .flatMap { MemoryPressureLevel(systemValue: Int($0)) }
             ?? MemoryPressureLevel.estimated(
@@ -410,6 +419,7 @@ actor RemoteMetricsSampler {
             storageVolumes: storageVolumes,
             memoryPressure: memoryPressure,
             memoryConsumers: RemoteOutputParser.parseMemoryConsumers(output),
+            swap: swap,
             coreCount: raw["cores"]?.first.map { Int($0) },
             destination: cachedDestination
         )
@@ -543,12 +553,17 @@ actor RemoteMetricsSampler {
     echo "cores=$(/usr/bin/nproc)"
     cpu=$(/usr/bin/awk '/^cpu / {for(i=2;i<=NF;i++) printf "%s%s", $i, i==NF?"":" "; exit}' /proc/stat)
     mem=$(/usr/bin/awk '/^MemTotal:/ {t=$2*1024} /^MemAvailable:/ {a=$2*1024} END {printf "%.0f %.0f", t, a}' /proc/meminfo)
+    # Total first, then used, so "0 0" means no swap configured rather than
+    # swap that happens to be empty. A box with none kills a process instead
+    # of paging it out, which is a different situation and reads differently.
+    swap=$(/usr/bin/awk '/^SwapTotal:/ {t=$2*1024} /^SwapFree:/ {f=$2*1024} END {printf "%.0f %.0f", t, t-f}' /proc/meminfo)
     iface=$(/usr/bin/awk '$2 == "00000000" {print $1; exit}' /proc/net/route)
     rx=$(/usr/bin/cat /sys/class/net/"$iface"/statistics/rx_bytes)
     tx=$(/usr/bin/cat /sys/class/net/"$iface"/statistics/tx_bytes)
     disk=$(/usr/bin/df -Pk / | /usr/bin/awk 'NR==2 {printf "%.0f %.0f", $2*1024, $4*1024}')
     echo "cpu=$cpu"
     echo "mem=$mem"
+    echo "swap=$swap"
     echo "network=$rx $tx"
     echo "disk=$disk"
     root_device=$(/usr/bin/df -Pk / | /usr/bin/awk 'NR==2 {print $1}')
