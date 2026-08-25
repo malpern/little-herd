@@ -183,7 +183,122 @@ struct PanelRenderHarness {
         .frame(maxHeight: .infinity, alignment: .top)
     }
 
+    // MARK: - Hovered header fixtures
+
+    /// A machine under pressure, with the herd's real shape: one browser
+    /// holding most of it, an agent, and a helper.
+    ///
+    /// These headers had never been rendered before they were wired up — they
+    /// were built, left with no call site, and so drawn by nothing. The CPU one
+    /// was still reporting cores when every other surface had moved to a share
+    /// of the machine, which is the kind of drift a render catches and a green
+    /// suite does not.
+    private func hoveredMachine() -> MachineMonitorModel {
+        let machine = MachineMonitorModel(
+            configuration: MachineConfiguration(
+                id: MachineID("air"),
+                name: "MacBook Air",
+                shortName: "Air",
+                hostname: "air.local",
+                hardwareSummary: "MacBook Air",
+                platform: .macOS,
+                connection: .local,
+                avatar: .chickLaptop,
+                identityFile: nil,
+                serverNames: [],
+                supportsGPU: true
+            )
+        )
+        let gigabyte = 1_024 * 1_024 * 1_024.0
+        // Eight samples across 105 seconds, because MemoryGrowthDetector wants
+        // 90 seconds and seven readings before it will call anything a climb —
+        // and `apply` recomputes the evidence from its own history, so a
+        // fixture cannot simply assert one into place.
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        for step in 0 ... 7 {
+            machine.apply(
+                SystemSnapshot(
+                    timestamp: start.addingTimeInterval(Double(step) * 15),
+                    readings: [
+                        .cpu: MetricReading(value: 44),
+                        .memory: MetricReading(value: 78, capacity: 24 * gigabyte),
+                        .disk: MetricReading(value: 62),
+                    ],
+                    activities: [
+                        MachineActivity(processName: "Dia", cpuPercent: 182),
+                        MachineActivity(processName: "swift-frontend", cpuPercent: 97),
+                        MachineActivity(processName: "node", cpuPercent: 41),
+                    ],
+                    storageVolumes: [
+                        StorageVolume(
+                            id: "root",
+                            name: "Macintosh HD",
+                            mountPath: "/",
+                            availableBytes: 378 * gigabyte,
+                            totalBytes: 995 * gigabyte
+                        )
+                    ],
+                    memoryPressure: .warning,
+                    memoryConsumers: [
+                        MemoryConsumer(
+                            name: "Dia",
+                            residentBytes: 5.5 * gigabyte,
+                            growthEvidence: nil,
+                            bundlePath: "/Applications/Dia.app"
+                        ),
+                        MemoryConsumer(
+                            name: "Cotypist",
+                            residentBytes: (2.0 + Double(step) * 0.2) * gigabyte,
+                            growthEvidence: nil,
+                            bundlePath: "/Applications/Cotypist.app"
+                        ),
+                        MemoryConsumer(
+                            name: "Claude Code",
+                            residentBytes: 1.31 * gigabyte,
+                            growthEvidence: nil,
+                            bundlePath: nil
+                        ),
+                    ],
+                    coreCount: 10
+                )
+            )
+        }
+        return machine
+    }
+
+    /// The height the header area actually gives it. Rendering it taller would
+    /// hide exactly the overflow worth seeing.
+    private static let headerSize = CGSize(width: 300, height: 68)
+
     // MARK: - Renders
+
+
+    @Test
+    func renderHoveredMemoryHeader() throws {
+        try render(
+            HoveredMachineMetricHeader(machine: hoveredMachine(), metric: .memory),
+            size: Self.headerSize,
+            named: "hovered-header-memory"
+        )
+    }
+
+    @Test
+    func renderHoveredActivityHeader() throws {
+        try render(
+            HoveredMachineMetricHeader(machine: hoveredMachine(), metric: .cpu),
+            size: Self.headerSize,
+            named: "hovered-header-cpu"
+        )
+    }
+
+    @Test
+    func renderHoveredDiskHeader() throws {
+        try render(
+            HoveredMachineMetricHeader(machine: hoveredMachine(), metric: .disk),
+            size: Self.headerSize,
+            named: "hovered-header-disk"
+        )
+    }
 
     @Test
     func renderAgentPanel() throws {

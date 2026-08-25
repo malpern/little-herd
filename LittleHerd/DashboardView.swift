@@ -14,6 +14,7 @@ struct DashboardView: View {
     private var hasCompletedNetworkVolumeOnboarding = false
     @Namespace private var machineTransition
     @State private var hoveredAgentID: MachineAgentSession.ID?
+    @State private var hoveredMachineID: MachineID?
     @State private var isShowingLaunchSplash =
         LittleHerdLaunchSplashSession.claimPresentation()
     @State private var isShowingNetworkVolumeOnboarding = false
@@ -45,6 +46,7 @@ struct DashboardView: View {
                             machines: model.overviewMachines,
                             agentSessions: agentSessions,
                             hoveredAgentID: hoveredAgentID,
+                            hoveredMachineID: hoveredMachineID,
                             aiUsageLimits: model.aiUsageLimits,
                             metric: model.overviewMetric,
                             onSelect: model.selectOverviewMetric
@@ -60,6 +62,7 @@ struct DashboardView: View {
                             machines: model.overviewMachines,
                             agentSessions: agentSessions,
                             hoveredAgentID: hoveredAgentID,
+                            hoveredMachineID: hoveredMachineID,
                             aiUsageLimits: model.aiUsageLimits,
                             metric: model.overviewMetric,
                             onSelect: model.selectOverviewMetric
@@ -99,6 +102,7 @@ struct DashboardView: View {
                             machines: model.overviewMachines,
                             agentSessions: agentSessions,
                             hoveredAgentID: $hoveredAgentID,
+                            hoveredMachineID: $hoveredMachineID,
                             metric: model.overviewMetric,
                             compactionThresholds: model.compactionThresholds,
                             agentCPU: model.agentCPU,
@@ -314,6 +318,7 @@ private struct CPUOverviewHeaderArea: View {
     let machines: [MachineMonitorModel]
     let agentSessions: [MachineAgentSession]
     let hoveredAgentID: MachineAgentSession.ID?
+    let hoveredMachineID: MachineID?
     let aiUsageLimits: AIUsageLimitsModel
     let metric: OverviewMetric
     let onSelect: (OverviewMetric) -> Void
@@ -326,6 +331,12 @@ private struct CPUOverviewHeaderArea: View {
                })
             {
                 HoveredAgentHeader(machineSession: hoveredAgent)
+            } else if metric != .ai,
+                      let hovered = machines.first(where: {
+                          $0.machine == hoveredMachineID
+                      })
+            {
+                HoveredMachineMetricHeader(machine: hovered, metric: metric)
             } else {
                 CPUOverviewHeader(
                     liveMachineCount: machines.count(where: {
@@ -566,6 +577,7 @@ private struct OverviewMetricContent: View {
     let agentSessions: [MachineAgentSession]
     var selectedMachine: MachineID?
     @Binding var hoveredAgentID: MachineAgentSession.ID?
+    @Binding var hoveredMachineID: MachineID?
     let metric: OverviewMetric
     var compactionThresholds = AgentCompactionThresholds()
     var agentCPU: [String: Double] = [:]
@@ -599,7 +611,18 @@ private struct OverviewMetricContent: View {
                 metric: metric,
                 namespace: namespace,
                 onSelectMetric: onSelectMetric,
-                onSelectMachine: onSelectMachine
+                onSelectMachine: onSelectMachine,
+                onHoverMachine: { machine, isHovered in
+                    // Guarded the way the agent rows are: two columns can
+                    // report in either order as the pointer crosses between
+                    // them, and an unguarded exit blanks the header the
+                    // neighbour has just claimed.
+                    if isHovered {
+                        hoveredMachineID = machine
+                    } else if hoveredMachineID == machine {
+                        hoveredMachineID = nil
+                    }
+                }
             )
         }
     }
@@ -1373,6 +1396,7 @@ struct HoveredMachineActivityHeader: View {
             HoveredMachineActivityRows(
                 state: machine.state,
                 activities: machine.activities,
+                coreCount: machine.coreCount,
                 unavailability: machine.unavailability
             )
         }
@@ -1743,13 +1767,17 @@ private enum AIUsageProviderIcons {
 private struct HoveredMachineActivityRows: View {
     let state: MonitorConnectionState
     let activities: [MachineActivity]
+    var coreCount: Int?
     var unavailability: RemoteUnavailability?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
             if state == .live, !activities.isEmpty {
                 ForEach(activities.prefix(3), id: \.processName) { activity in
-                    HoveredMachineActivityRow(activity: activity)
+                    HoveredMachineActivityRow(
+                        activity: activity,
+                        coreCount: coreCount
+                    )
                 }
             } else {
                 Text(stateLabel)
@@ -1772,6 +1800,7 @@ private struct HoveredMachineActivityRows: View {
 
 private struct HoveredMachineActivityRow: View {
     let activity: MachineActivity
+    var coreCount: Int?
 
     var body: some View {
         HStack(spacing: 4) {
@@ -1792,16 +1821,30 @@ private struct HoveredMachineActivityRow: View {
 
             Spacer(minLength: 3)
 
-            Text(
-                "\(activity.cpuCores, format: .number.precision(.fractionLength(1)))c"
-            )
-            .font(.caption2.monospacedDigit())
-            .foregroundStyle(.secondary)
-            .fixedSize()
+            activityValue
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .fixedSize()
         }
         .font(.caption)
         .help(Text(activity.tooltip))
         .accessibilityElement(children: .combine)
+    }
+
+    /// A share of the whole machine, the way the machine's own CPU page says
+    /// it. Cores remain the fallback for a machine that has not said how many
+    /// it has, because a share needs a denominator.
+    private var activityValue: Text {
+        if let share = ProcessShare.percent(
+            ofOneCore: activity.cpuPercent,
+            coreCount: coreCount
+        ) {
+            Text(share / 100, format: .percent.precision(.fractionLength(0)))
+        } else {
+            Text(
+                "\(activity.cpuCores, format: .number.precision(.fractionLength(1)))c"
+            )
+        }
     }
 
     private var activityDisplayTitle: Text {

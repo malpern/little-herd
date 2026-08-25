@@ -92,6 +92,18 @@ private struct MetricValue: View {
 
 }
 
+extension MemoryPressureLevel {
+    /// Shared with the hovered header, which says the verdict in words beside
+    /// the symbol and has to agree with it.
+    var tint: Color {
+        switch self {
+        case .normal: .green
+        case .warning: .orange
+        case .critical: .red
+        }
+    }
+}
+
 struct MemoryPressureSymbol: View {
     let level: MemoryPressureLevel?
     /// What to say on hover, from `MemoryPressureExplanation`.
@@ -107,7 +119,7 @@ struct MemoryPressureSymbol: View {
             let hover = explanation ?? String(localized: level.title)
             Image(systemName: symbolName(for: level))
                 .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(color(for: level))
+                .foregroundStyle(level.tint)
                 .contentTransition(.symbolEffect(.replace))
                 .help(Text(hover))
                 // The label stays the verdict alone. VoiceOver reads a label
@@ -130,13 +142,7 @@ struct MemoryPressureSymbol: View {
         }
     }
 
-    private func color(for level: MemoryPressureLevel) -> Color {
-        switch level {
-        case .normal: .green
-        case .warning: .orange
-        case .critical: .red
-        }
-    }
+
 }
 
 private struct MetricDetail: View {

@@ -40,6 +40,17 @@ private struct HoveredMachineMemoryHeader: View {
                     explanation: machine.memoryPressureExplanation
                 )
                 .font(.caption.weight(.semibold))
+
+                // The verdict said out loud. A coloured glyph on its own is a
+                // shape with no name, and this is the slot where the CPU
+                // header puts a number you can read.
+                if machine.state == .live, let level = machine.memoryPressure {
+                    Text(level.title)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(level.tint)
+                        .contentTransition(.identity)
+                        .accessibilityHidden(true)
+                }
             }
 
             HoveredMemoryDetails(
@@ -77,29 +88,41 @@ private struct HoveredMemoryConsumer: View {
     let consumer: MemoryConsumer
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 4) {
-                Text(consumer.name)
-                    .font(.caption2.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-
-                if let evidence = consumer.growthEvidence {
-                    SuspectedMemoryLeakIndicator(evidence: evidence)
-                }
-            }
-
-            Text(
-                Int64(consumer.residentBytes),
-                format: .byteCount(
-                    style: .memory,
-                    allowedUnits: .all,
-                    spellsOutZero: false
-                )
+        HStack(spacing: 5) {
+            // The real icon, the way the machine's own memory page shows it.
+            // Nothing resolves for a remote machine — a Linux process carries
+            // no bundle — so those keep the generic glyph rather than a gap.
+            ApplicationIcon(
+                bundlePath: consumer.bundlePath,
+                fallbackSymbol: "square.stack.3d.up",
+                tint: MetricKind.memory.color,
+                size: 15
             )
-            .font(.caption2.monospacedDigit())
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
+
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 4) {
+                    Text(consumer.name)
+                        .font(.caption2.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+
+                    if let evidence = consumer.growthEvidence {
+                        SuspectedMemoryLeakIndicator(evidence: evidence)
+                    }
+                }
+
+                Text(
+                    Int64(consumer.residentBytes),
+                    format: .byteCount(
+                        style: .memory,
+                        allowedUnits: .all,
+                        spellsOutZero: false
+                    )
+                )
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .help("Approximate resident memory. Quitting this app can reduce pressure.")
