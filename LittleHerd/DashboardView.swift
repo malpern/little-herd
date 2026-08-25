@@ -647,6 +647,9 @@ private struct MachineMetricsView: View {
                     isSupported: metric.kind != .gpu || machine.supportsGPU,
                     memoryPressure: metric.kind == .memory
                         ? machine.memoryPressure
+                        : nil,
+                    memoryExplanation: metric.kind == .memory
+                        ? machine.memoryPressureExplanation
                         : nil
                 )
 
@@ -722,7 +725,8 @@ private struct MachineMetricDetail: View {
                     OverviewMetricValue(
                         metric: metric,
                         value: presentation.value,
-                        memoryPressure: presentation.memoryPressure
+                        memoryPressure: presentation.memoryPressure,
+                        memoryExplanation: machine.memoryPressureExplanation
                     )
 
                     SegmentedThermometer(

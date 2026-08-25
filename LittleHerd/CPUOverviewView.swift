@@ -66,7 +66,8 @@ private struct CPUThermometerColumn: View {
                     OverviewMetricValue(
                         metric: metric,
                         value: presentation.value,
-                        memoryPressure: presentation.memoryPressure
+                        memoryPressure: presentation.memoryPressure,
+                        memoryExplanation: machine.memoryPressureExplanation
                     )
 
                     SegmentedThermometer(
@@ -148,16 +149,11 @@ private struct CPUThermometerColumn: View {
         case .connecting:
             return Text("Checking memory pressure…")
         case .live:
-            if let pressure = machine.memoryPressure {
-                let pressureTitle = String(localized: pressure.title)
-                if machine.memoryConsumers.isEmpty {
-                    return Text("\(pressureTitle) memory pressure")
-                } else {
-                    let consumers = machine.memoryConsumers
-                        .map { "\($0.name): \(Int64($0.residentBytes).formatted(.byteCount(style: .memory)))" }
-                        .joined(separator: "\n")
-                    return Text("\(pressureTitle) memory pressure\n\(consumers)")
-                }
+            // The same sentence the symbol inside this column shows, from the
+            // same place. They used to be built separately and say different
+            // things, and only the symbol's was ever read.
+            if let explanation = machine.memoryPressureExplanation {
+                return Text(explanation)
             } else {
                 return Text("Measuring memory pressure…")
             }
@@ -194,6 +190,7 @@ struct OverviewMetricValue: View {
     let metric: OverviewMetric
     let value: Double?
     let memoryPressure: MemoryPressureLevel?
+    var memoryExplanation: String?
 
     var body: some View {
         switch MetricValueDisplay.resolve(
@@ -202,7 +199,7 @@ struct OverviewMetricValue: View {
             memoryPressure: memoryPressure
         ) {
         case .pressure(let level):
-            MemoryPressureSymbol(level: level)
+            MemoryPressureSymbol(level: level, explanation: memoryExplanation)
                 .font(.title3.weight(.semibold))
         case .percent(let percent):
             CPUPercentage(value: percent)

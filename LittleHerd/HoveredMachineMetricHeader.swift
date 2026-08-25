@@ -36,7 +36,8 @@ private struct HoveredMachineMemoryHeader: View {
                     .foregroundStyle(.secondary)
 
                 MemoryPressureSymbol(
-                    level: machine.state == .live ? machine.memoryPressure : nil
+                    level: machine.state == .live ? machine.memoryPressure : nil,
+                    explanation: machine.memoryPressureExplanation
                 )
                 .font(.caption.weight(.semibold))
             }

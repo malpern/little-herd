@@ -1058,3 +1058,163 @@ private func volume(_ name: String, used: Double) -> StorageVolume {
         totalBytes: total
     )
 }
+
+/// What the memory-pressure symbol says when you point at it.
+///
+/// A regression suite before it is a feature suite. The symbol carried
+/// `.help(Text(level.title))` — the one word "Warning" — and, being nested
+/// inside a column that carried a fuller sentence, it won, because the
+/// innermost `.help` owns its region. So the app had measured which app was
+/// holding the memory, written it into a tooltip, and shown it to nobody.
+@MainActor
+struct MemoryPressureExplanationTests {
+    /// The three beats: what the system said, what it means, what to do.
+    @Test
+    func warningSaysWhatIsHappeningAndNamesTheAppToQuit() {
+        let text = MemoryPressureExplanation.text(
+            level: .warning,
+            consumers: [consumer("Dia", gigabytes: 1.1), consumer("Cotypist", gigabytes: 3.4)]
+        )
+
+        #expect(text.contains("Warning memory pressure"))
+        #expect(text.contains("compressing and swapping"))
+        #expect(text.contains("Quitting Cotypist"))
+        #expect(text.contains(size(gigabytes: 3.4)))
+    }
+
+    /// The failure this replaces was one sentence with a word swapped. Warning
+    /// is the system working as designed; critical is the system about to
+    /// force-quit something. Those are not the same news.
+    @Test
+    func criticalDoesNotJustSayWarningInADifferentColour() {
+        let warning = MemoryPressureExplanation.text(level: .warning, consumers: [])
+        let critical = MemoryPressureExplanation.text(level: .critical, consumers: [])
+
+        #expect(warning != critical)
+        #expect(critical.contains("force-quitting"))
+        #expect(!critical.contains("Nothing has failed"))
+    }
+
+    /// A tooltip that proposes a fix for a machine that is fine reads as a
+    /// complaint. Normal gets a sentence and no instructions.
+    @Test
+    func aHealthyMachineIsNotToldToQuitAnything() {
+        let text = MemoryPressureExplanation.text(
+            level: .normal,
+            consumers: [consumer("Cotypist", gigabytes: 3.4)]
+        )
+
+        #expect(text.contains("Normal memory pressure"))
+        #expect(!text.contains("Quitting"))
+    }
+
+    /// Pressure arrives without a process list on any machine Little Herd does
+    /// not sample processes on. The verdict is still worth explaining.
+    @Test
+    func pressureWithNoProcessListStillExplainsItself() {
+        let text = MemoryPressureExplanation.text(level: .warning, consumers: [])
+
+        #expect(text.contains("Warning memory pressure"))
+        #expect(!text.contains("Quitting"))
+    }
+
+    /// The advice names the heaviest process, not whichever one arrived first.
+    @Test
+    func theLargestConsumerIsNamedWhateverOrderTheyArriveIn() {
+        let text = MemoryPressureExplanation.text(
+            level: .warning,
+            consumers: [
+                consumer("Claude Code", gigabytes: 1.3),
+                consumer("Cotypist", gigabytes: 3.4),
+                consumer("Dia", gigabytes: 2.0),
+            ]
+        )
+
+        #expect(text.contains("Quitting Cotypist"))
+        #expect(!text.contains("Quitting Claude Code"))
+    }
+
+    /// A process that is still climbing gets a smaller promise. Quitting it
+    /// frees the memory either way; saying only that invites the reader to
+    /// conclude the problem is now solved.
+    @Test
+    func aGrowingConsumerIsPromisedLessThanASteadyOne() {
+        let steady = MemoryPressureExplanation.text(
+            level: .warning,
+            consumers: [consumer("Cotypist", gigabytes: 3.4)]
+        )
+        let growing = MemoryPressureExplanation.text(
+            level: .warning,
+            consumers: [
+                consumer(
+                    "Cotypist",
+                    gigabytes: 3.4,
+                    growth: MemoryGrowthEvidence(
+                        growthBytes: 1.2 * 1_024 * 1_024 * 1_024,
+                        duration: 40 * 60,
+                        sampleCount: 12,
+                        risingIntervalCount: 9,
+                        observedIntervalCount: 11
+                    )
+                )
+            ]
+        )
+
+        #expect(steady.contains("would free the most"))
+        #expect(!steady.contains("climb again"))
+        #expect(growing.contains("40 minutes"))
+        #expect(growing.contains("climb again"))
+    }
+
+    /// The whole point: the hover says more than the word the symbol used to
+    /// show on its own.
+    @Test
+    func theHoverSaysMoreThanTheVerdict() {
+        let text = MemoryPressureExplanation.text(
+            level: .warning,
+            consumers: [consumer("Cotypist", gigabytes: 3.4)]
+        )
+
+        #expect(text != String(localized: MemoryPressureLevel.warning.title))
+        #expect(text.contains("\n"))
+    }
+
+    /// A remembered verdict is a guess about a machine that is not answering,
+    /// and advice built on one names an app that may have quit hours ago.
+    @Test
+    func anUnreachableMachineExplainsNothing() {
+        let machine = mac()
+        machine.apply(
+            SystemSnapshot(
+                timestamp: .now,
+                readings: [.memory: MetricReading(value: 80)],
+                memoryPressure: .warning,
+                memoryConsumers: [consumer("Cotypist", gigabytes: 3.4)]
+            )
+        )
+        #expect(machine.memoryPressureExplanation?.contains("Cotypist") == true)
+
+        machine.markOffline(.noAnswer)
+        #expect(machine.memoryPressureExplanation == nil)
+    }
+
+    private func consumer(
+        _ name: String,
+        gigabytes: Double,
+        growth: MemoryGrowthEvidence? = nil
+    ) -> MemoryConsumer {
+        MemoryConsumer(
+            name: name,
+            residentBytes: gigabytes * 1_024 * 1_024 * 1_024,
+            growthEvidence: growth,
+            bundlePath: nil
+        )
+    }
+
+    /// Formatted the way the explanation formats it, so the assertion does not
+    /// depend on the machine's locale.
+    private func size(gigabytes: Double) -> String {
+        Int64(gigabytes * 1_024 * 1_024 * 1_024)
+            .formatted(.byteCount(style: .memory))
+    }
+}

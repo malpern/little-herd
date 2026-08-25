@@ -118,6 +118,111 @@ nonisolated enum MetricValueDisplay: Equatable, Sendable {
     }
 }
 
+/// What the pressure symbol says when you point at it.
+///
+/// The symbol used to carry `.help(Text(level.title))` — the single word
+/// "Warning" — while the column around it carried a longer text listing the
+/// heaviest apps. The short one won. The innermost `.help` owns its own
+/// region, so the fuller sentence was unreachable at exactly the place a
+/// person aims: the symbol. Explaining it once, here, is what stops the two
+/// from disagreeing again.
+///
+/// Three beats, because a verdict on its own cannot be acted on: what the
+/// system said, what that means for the machine, and the one thing worth
+/// doing about it. The last is named rather than generic — "close some apps"
+/// is advice anyone could give without measuring, and this app has measured.
+nonisolated enum MemoryPressureExplanation {
+    static func text(
+        level: MemoryPressureLevel,
+        consumers: [MemoryConsumer]
+    ) -> String {
+        [meaning(for: level), advice(for: level, consumers: consumers)]
+            .compactMap(\.self)
+            .joined(separator: "\n\n")
+    }
+
+    /// Warning and critical are different situations, not one sentence with a
+    /// word swapped. Warning is the system working as designed and worth
+    /// knowing about; critical is the system about to take the decision out of
+    /// your hands.
+    private static func meaning(for level: MemoryPressureLevel) -> String {
+        switch level {
+        case .normal:
+            String(localized: """
+                Normal memory pressure
+                macOS has room to spare.
+                """)
+        case .warning:
+            String(localized: """
+                Warning memory pressure
+                macOS is compressing and swapping memory to keep everything \
+                running. Nothing has failed, but apps may feel slower.
+                """)
+        case .critical:
+            String(localized: """
+                Critical memory pressure
+                macOS is out of room and may start force-quitting apps to \
+                recover it.
+                """)
+        }
+    }
+
+    /// Nothing to suggest when the machine is fine — a tooltip that proposes a
+    /// fix for a healthy machine reads as a complaint — and nothing to suggest
+    /// when no process list came back, which is every machine that reports
+    /// pressure without one.
+    ///
+    /// One app, not the whole list. The list already exists on the machine's
+    /// memory page with real icons beside it, and a hover that repeats it is a
+    /// hover people stop reading.
+    private static func advice(
+        for level: MemoryPressureLevel,
+        consumers: [MemoryConsumer]
+    ) -> String? {
+        guard level != .normal else { return nil }
+        guard let largest = consumers.max(by: {
+            $0.residentBytes < $1.residentBytes
+        }) else { return nil }
+
+        let size = Int64(largest.residentBytes)
+            .formatted(.byteCount(style: .memory))
+
+        // A process that is still climbing gets a different promise. Quitting
+        // it frees the memory either way, but saying so without the caveat
+        // invites the conclusion that the problem is now solved.
+        guard let evidence = largest.growthEvidence else {
+            return String(localized:
+                "Quitting \(largest.name) would free the most (\(size)).")
+        }
+
+        let growth = Int64(evidence.growthBytes)
+            .formatted(.byteCount(style: .memory))
+        let minutes = Int(evidence.duration / 60)
+        return String(localized: """
+            \(largest.name) is the largest at \(size), and has grown \
+            \(growth) over \(minutes) minutes. Quitting it should help, \
+            though it may climb again.
+            """)
+    }
+}
+
+extension MachineMonitorModel {
+    /// This machine's pressure verdict, explained — or nothing when there is
+    /// no live verdict to explain.
+    ///
+    /// Gated on `.live` for the same reason `metricPresentation` gates the
+    /// verdict itself: a remembered pressure level is a guess about a machine
+    /// that is not answering, and advice built on one names an app that may
+    /// have quit hours ago.
+    var memoryPressureExplanation: String? {
+        guard state == .live, let memoryPressure else { return nil }
+        return MemoryPressureExplanation.text(
+            level: memoryPressure,
+            consumers: memoryConsumers
+        )
+    }
+}
+
 /// The numbers behind one machine's column: the figure, the bar, and the
 /// pressure verdict when there is one.
 nonisolated struct OverviewMetricPresentation: Equatable, Sendable {

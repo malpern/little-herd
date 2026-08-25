@@ -5,6 +5,7 @@ struct MetricRow: View {
     let metric: MetricModel
     let isSupported: Bool
     let memoryPressure: MemoryPressureLevel?
+    var memoryExplanation: String?
 
     var body: some View {
         HStack(spacing: 8) {
@@ -32,7 +33,8 @@ struct MetricRow: View {
             MetricValue(
                 kind: metric.kind,
                 value: metric.value,
-                memoryPressure: memoryPressure
+                memoryPressure: memoryPressure,
+                memoryExplanation: memoryExplanation
             )
                 .frame(width: 64, alignment: .trailing)
         }
@@ -62,6 +64,7 @@ private struct MetricValue: View {
     let kind: MetricKind
     let value: Double?
     let memoryPressure: MemoryPressureLevel?
+    var memoryExplanation: String?
 
     var body: some View {
         VStack(alignment: .trailing) {
@@ -71,7 +74,7 @@ private struct MetricValue: View {
                 memoryPressure: memoryPressure
             ) {
             case .pressure(let level):
-                MemoryPressureSymbol(level: level)
+                MemoryPressureSymbol(level: level, explanation: memoryExplanation)
             case .percent(let percent):
                 Text(percent / 100, format: .percent.precision(.fractionLength(0)))
             case .bytesPerSecond(let rate):
@@ -91,15 +94,27 @@ private struct MetricValue: View {
 
 struct MemoryPressureSymbol: View {
     let level: MemoryPressureLevel?
+    /// What to say on hover, from `MemoryPressureExplanation`.
+    ///
+    /// It has to arrive here rather than being set on whatever contains the
+    /// symbol: the innermost `.help` owns its own region, so a symbol holding
+    /// terse help of its own silently overrides the fuller text a parent
+    /// supplies — which is what it did, for as long as both existed.
+    var explanation: String?
 
     var body: some View {
         if let level {
+            let hover = explanation ?? String(localized: level.title)
             Image(systemName: symbolName(for: level))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(color(for: level))
                 .contentTransition(.symbolEffect(.replace))
-                .help(Text(level.title))
+                .help(Text(hover))
+                // The label stays the verdict alone. VoiceOver reads a label
+                // every time focus lands on the symbol, and three sentences
+                // there would be read on every pass; a hint is offered once.
                 .accessibilityLabel(Text(level.title))
+                .accessibilityHint(Text(hover))
         } else {
             Text("—")
                 .foregroundStyle(.tertiary)
