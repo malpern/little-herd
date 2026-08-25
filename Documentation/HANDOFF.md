@@ -1,10 +1,22 @@
 # Little Herd — handoff
 
-**State:** `v0.1.37` is released, and `main` carries nothing beyond it. 398
-tests pass. Roadmap items 3 and 6 are done — destination eligibility, and each
-machine's agent versions — leaving one piece of item 3 open, which is that a
-destination is an account and the herd still stores machines; it has its own
-entry below.
+**State:** `v0.1.37` is released. 422 tests pass. Roadmap items 3 and 6 are
+done — destination eligibility, and each machine's agent versions — leaving one
+piece of item 3 open, which is that a destination is an account and the herd
+still stores machines; it has its own entry below.
+
+**Four commits are unreleased, and one of them matters to anybody but us.**
+`main` carries `763b825`, which says *which* check refused a Synology
+certificate; before it, a sub-2048-bit RSA key — a Synology serving its 2015
+factory certificate, which is most of them — surfaced as URLSession's own
+"A TLS error caused the secure connection to fail" and named neither the
+certificate nor the fix. That is the first thing a new user hits, so it should
+go out before anyone is invited to install this. The branch
+`claude/project-status-roadmap-b6b77f` carries three more, on memory pressure:
+the tooltip, swap, and the hovered header.
+
+**A paid release is being considered, and the shape of it is settled** — see
+*Selling it* below. Nothing is built.
 
 Five releases went out on 20 August, and three of them were fixes for things
 the first two shipped:
@@ -43,7 +55,9 @@ invisible on a light background; a header number wrapping to two lines; a
 context ring drawn in `.secondary`, the same tone as its own track; and two
 64-character fingerprints truncating to `Expected aa…bbbbbbbb`, which a passing
 test had asserted the presence of for a release and a half. Not one was visible
-to a green suite. **Render a view before shipping it.**
+to a green suite. **Render a view before shipping it.** It now also draws the
+three hovered headers at the 68 points the header area gives them, which is
+where the CPU one was caught still reporting cores.
 
 Four things it cannot see. It renders neither `ScrollView` nor a lazy stack —
 the first version wrapped both, wrote a blank image and reported success — nor
@@ -53,8 +67,11 @@ placeholder**, so the Settings rows render with one where the remove button is
 and another where the NAS's "Connect…" link is; an ordinary bordered button in
 the same suite draws correctly, which is how that was pinned on the style rather
 than on the row. And it cannot show a hover state, so anything that appears on
-hover has to be checked in the running app: the AI panel's section chevrons and
-every tooltip are unverified by eye.
+hover has to be checked in the running app: the AI panel's section chevrons are
+unverified by eye. Tooltips no longer need the eye — read `AXHelp` off the
+running app's accessibility tree instead, which is the same string macOS shows
+and can be had for every machine in one command. See the method notes; the
+mouse turned out to be the least reliable instrument in the room.
 
 **The Synology hardware is fixed.** Drive 2 was replaced on 17 August 2026 — a WD40EFZZ
 (4 TB, CMR) for the WD30EFRX that had shed 231 uncorrectable sectors. Pool
@@ -774,7 +791,90 @@ password in the keychain as `user@host:port`, deliberately, so two NASes cannot
 collide. Renaming the host therefore *signs it out* rather than breaking it —
 the credential is orphaned, not wrong, and the fix is to sign in again.
 
+**The innermost `.help` owns its region, so a terse tooltip on a small view
+beats the fuller one on its parent.** The memory-pressure symbol carried
+`.help(Text(level.title))` — the single word "Warning" — while the column
+around it carried a sentence and the list of the heaviest apps. The symbol won,
+everywhere they overlapped, which is exactly where a person aims. So the app
+had measured which application was holding the memory, written it into a
+tooltip, and shown it to nobody. Every surface is now handed one string built
+in `MachinePresentation`, which is the only arrangement in which they cannot
+disagree.
+
+**macOS does not reclaim swap when the pressure passes, so `used` is a
+high-water mark and not a reading.** Measured 25 August: `vm.swapusage` did not
+move by a single decimal across a minute in which
+`kern.memorystatus_vm_pressure_level` went 2 → 1 → 2. Eleven gigabytes were in
+swap the whole time, from some earlier busy hour. Shown as-is it would put a
+large permanent unactionable number in front of anyone whose Mac was ever busy,
+so `SwapTrend` reports the *direction* — swap written across a window — and
+says nothing at all the rest of the time, which is most of the time. Confirmed
+in the running app: warning pressure, eleven gigabytes in swap, and the tooltip
+does not mention swap, because none of it was written recently.
+
+**Swap is read as a struct on a Mac and as two fields on Linux, and the units
+are the trap on both.** `sysctlbyname("vm.swapusage")` returns `xsw_usage`
+directly, so there is no `M`-or-`G` suffix to misparse — the string
+`sysctl vm.swapusage` prints is for people. Linux takes `SwapTotal` and
+`SwapFree` from `/proc/meminfo` in the probe already running, emitting **total
+before used** so that `0 0` means no swap configured rather than swap that
+happens to be empty. Those are different machines: a box with no swap does not
+get slower under pressure, it kills something. Verified against the real Linux
+box, which has 41.4 GB configured and none used. A remote Mac is not asked at
+all and reads nothing, which is not zero either.
+
+**A machine's pressure verdict is the kernel's only on a Mac.** Everywhere else
+it is `MemoryPressureLevel.estimated`, computed here from the available
+fraction — under a fifth is a warning, under a tenth is critical. Copy that
+says "macOS is compressing and swapping" was therefore wrong in both halves on
+a Linux box, and shipped that way for one commit. A Mac is quoted; everything
+else is described as the observation it is.
+
+**Little Herd cannot go in the Mac App Store, and this is settled rather than
+untried.** The store requires the sandbox, and the sandbox is not a checkbox
+here: a child process inherits it, so spawning `ssh` with the user's own
+`~/.ssh` config and keys is out, and that is the entire product. So is reading
+`~/.claude`, `~/.codex`, and CodexBar's caches, which is the AI panel and the
+budget gauges. So is probing Full Disk Access through `TCC.db`. And Sparkle
+cannot ship in a store app at all. The temporary-exception entitlements that
+nominally cover home-relative paths are vestigial, and "let me read three other
+vendors' private state directories" is not a request that gets granted. Even
+granted, the result would be a monitor that cannot reach any machine but the
+one it runs on. Developer ID plus notarisation is the mainstream path for
+utilities of this shape, and `scripts/release` already does the whole of it.
+
 ## Method notes
+
+**Verify the instrument before believing it, again — this time the instrument
+was a mouse.** Synthetic hovering produced the tooltip once and then stopped
+producing it at all, through a fresh launch and the identical sequence. Nothing
+was wrong with the app: printing the string showed it correct and non-empty.
+Reading **`AXHelp` off the live accessibility tree** settles it in one command,
+is the same text macOS shows, and can be read for every machine at once —
+`AXUIElementCreateApplication(pid)` and walk the children. Prefer it to
+screenshotting a tooltip. SwiftUI's `.onHover` is a different mechanism and
+does respond to synthetic movement, so the hovered header could be checked the
+ordinary way.
+
+**A fixture can lie about the thing it is fixing.** The first render of the
+hovered memory header came out with no leak dot beside the application that was
+climbing, and the layout looked guilty because an icon had just been added to
+that row. The dot was moved and a justification written for why its new place
+was better. It was the fixture: `MachineMonitorModel.apply` **recomputes**
+growth evidence from `MemoryGrowthDetector`'s own history, so a single snapshot
+cannot carry one however plainly it is written in. Feed it a real climb —
+eight samples across 105 seconds, since the detector wants 90 seconds and seven
+readings — and the dot is there, and always was. A layout was very nearly
+rearranged to fix a bug in a test, with a plausible reason attached.
+
+**Dead code is invisible to every other rule in this file.**
+`HoveredMachineMetricHeader` had no call site from the first public commit
+until 25 August. Nothing rendered it, so nothing checked it, so it quietly kept
+a convention the rest of the app had abandoned: its CPU rows still reported
+cores (`0.5c`) long after every other surface moved to a share of the whole
+machine. Wiring it up is what exposed that. Before adding a surface, check
+whether one was already built and forgotten.
+
 
 **Look at it.** Four times in one session something obviously correct on paper
 was wrong when run — and every UI defect (a folder named `Library` rendered as
@@ -1024,6 +1124,73 @@ it; the files survived only because the directory had not been reaped yet.
     Reopen when a real runner exists on a herd machine *and* there is a
     concrete reason — offline or privacy, not symmetry. Frame it then as a
     degraded park, not a peer destination.
+
+10. **Selling it — the shape is decided, none of it is built.** Discussed
+    25 August. Whether to charge at all is **not** decided and is the one thing
+    a website cannot be written without: a free tool's page is a download
+    button, a paid one needs a price, a trial, and a reason to trust a
+    solo-maintained menu-bar app with SSH access to your machines. The licence
+    is already unusual enough to need explaining — `FSL-1.1-MIT`,
+    source-available, MIT after two years — and a badge will not do it.
+
+    Everything downstream of that question is settled. Distribution is
+    Developer ID and notarisation, because the store is closed to this app for
+    good (see the facts above) and `scripts/release` already does the whole
+    job. Payment goes through a **merchant of record** — Lemon Squeezy or
+    Paddle — which takes a cut and absorbs VAT and sales-tax filing, the
+    genuinely miserable half of selling software alone. The licence key lives
+    in the **Keychain**, reusing `KeychainSecret` *including its lesson*: it
+    deletes and re-adds rather than updating, because updating preserves the
+    first build's access list, and for a licence key that means every paying
+    customer locked out by a Sparkle update. Activation is two REST calls and
+    no SDK; put the host in `NSExceptionDomains` so it keeps a real ATS floor
+    while the NAS does not.
+
+    **Trial: 14 days, calendar, from first launch, stated plainly.** Not 7 — a
+    monitor's value is ambient and someone who installs on a Friday never
+    really tries it. Not 30 — long enough to be forgotten, and the point of a
+    first paid product is to learn whether anyone converts. The clever version,
+    starting the clock on the second machine added, was considered and
+    rejected: it is a rule nobody can reason about, and it leaves a permanent
+    free tier for one-machine users by accident. Keep the start date in the
+    Keychain beside the licence so it survives a reinstall, and stop there —
+    the repo is public and anyone determined can compile the check out.
+
+    **Enforcement: degrade, never disable.** After the trial Little Herd keeps
+    monitoring *this* Mac and stops sampling remote machines. That line is the
+    product's own argument stated as a paywall — local monitoring is a
+    commodity, the herd is what nothing else does — and it leaves a working app
+    in the menu bar, which is permanent quiet marketing. **An unlicensed remote
+    machine must not read as `Unavailable` and must not take the red dot.**
+    Showing a licensing state as an outage would send someone SSH-ing into a
+    machine that is perfectly fine, which is the most expensive false signal
+    this app could emit; it needs its own vocabulary, visibly not an error.
+    Nagging is one quiet permanent signal — days remaining in Settings and the
+    panel footer, colour only in the last three days — and never a modal.
+    **Fail open**: activate once, cache, re-validate weekly, and never let a
+    network failure downgrade anyone. A monitor that locks up when the network
+    is flaky breaks exactly when you wanted to look at it. Licence per person
+    with about three activations, not per monitored machine — charging per
+    watched machine taxes the behaviour the product exists to encourage.
+
+    **Before a website, two things that are not features.** Release the
+    certificate fix (see the state above), and take fresh screenshots: both
+    files in `Documentation/Screenshots` are from 20 August and predate the
+    working session CPU meter, the destinations section, and everything from
+    25 August. For a menu-bar app the screenshots *are* the site. Render the
+    panels with `PanelRenderHarness`, but check the hero shots in the running
+    app — the harness draws no `ScrollView`, no lazy stack, no `Form`, no
+    hover state, and turns a `.borderless` button into a yellow placeholder.
+
+11. **Swap is read on two machines of four.** This Mac and Linux report it;
+    a remote Mac is not asked, and the Synology is not either. The remote-Mac
+    half is a line in `macOSCommandTemplate` plus a parser for the string form
+    of `vm.swapusage`, which unlike the local struct has an `M`-or-`G` suffix
+    and wants a test of its own. DSM already parses `avail_swap` in
+    `SynologyDSM.swift`; whether it also reports a total is unchecked, and
+    available without total is half a reading. Neither is urgent: the tooltip
+    mentions swap only while swap is being written, so a machine that is not
+    asked simply says nothing, which is what it should say.
 
 ## Keeping this file honest
 
