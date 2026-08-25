@@ -93,7 +93,11 @@ skipping anything too small to round to a tenth of a core. Memory overview uses 
 and critical pressure state—shown as check, warning, and critical symbols—instead
 of treating intentionally occupied cache as a problem. Its memory page lists that machine's largest user-app families with their
 approximate resident memory and their own application icons, making likely apps
-to quit immediately visible. App names are the only bold text in these compact
+to quit immediately visible. Hovering a machine in any overview replaces the
+header with that machine's own — what it is running, what is holding its
+memory, or how full its disks are.
+
+![Hovering a machine replaces the header with that machine's memory detail](Documentation/Screenshots/memory-hover.png) App names are the only bold text in these compact
 details; memory amounts use the same small, secondary treatment as the overview
 status line. Little Herd keeps a tiny rolling history of those existing samples. After at least 90 seconds and seven distinct readings, a red dot marks
 an app whose memory has grown substantially and consistently. Hovering the dot
