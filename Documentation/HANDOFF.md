@@ -1,19 +1,20 @@
 # Little Herd — handoff
 
-**State:** `v0.1.37` is released. 422 tests pass. Roadmap items 3 and 6 are
-done — destination eligibility, and each machine's agent versions — leaving one
-piece of item 3 open, which is that a destination is an account and the herd
-still stores machines; it has its own entry below.
+**State:** `v0.1.38` is released and `main` carries nothing beyond it. 422
+tests pass. Roadmap items 3 and 6 are done — destination eligibility, and each
+machine's agent versions — leaving one piece of item 3 open, which is that a
+destination is an account and the herd still stores machines; it has its own
+entry below.
 
-**Four commits are unreleased, and one of them matters to anybody but us.**
-`main` carries `763b825`, which says *which* check refused a Synology
-certificate; before it, a sub-2048-bit RSA key — a Synology serving its 2015
-factory certificate, which is most of them — surfaced as URLSession's own
-"A TLS error caused the secure connection to fail" and named neither the
-certificate nor the fix. That is the first thing a new user hits, so it should
-go out before anyone is invited to install this. The branch
-`claude/project-status-roadmap-b6b77f` carries three more, on memory pressure:
-the tooltip, swap, and the hovered header.
+**0.1.38 is the memory-pressure release**, cut 25 August: the warning explains
+itself and names the application worth quitting, swap is measured on this Mac
+and on Linux and reported only while it is being written, hovering a machine
+puts that machine in the header, and signing in to a Synology says *which*
+check refused the certificate. That last one had been sitting on `main`
+unreleased and is the one that mattered to anybody but us — a sub-2048-bit RSA
+key, which is what a Synology serving its 2015 factory certificate has, reached
+the sign-in sheet as URLSession's own "A TLS error caused the secure connection
+to fail" and named neither the certificate nor the fix.
 
 **A paid release is being considered, and the shape of it is settled** — see
 *Selling it* below. Nothing is built.
@@ -26,6 +27,10 @@ the first two shipped:
     0.1.35  an empty directory no longer takes a machine off the dashboard
     0.1.36  the per-session CPU meter, working for the first time
     0.1.37  the window stays on screen, with a margin
+
+and one on 25 August:
+
+    0.1.38  memory pressure explains itself, and swap is measured
 
 **0.1.33 shipped a bug that could take a machine off the dashboard entirely** —
 an empty directory aborting the probe under zsh. Nothing in this herd tripped
