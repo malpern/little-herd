@@ -947,6 +947,29 @@ every candidate for a real icon before letting any of them answer with a
 generic one. Found by drawing the icon at twenty-six points; at fifteen, behind
 a hover, nobody had noticed in months.
 
+**"The agent finished its turn" is not "the session is over", and the probe
+treated them as the same.** A Claude transcript ending on
+`stop_reason: end_turn` — which is every session between your messages — was
+classified `completed`, regardless of how recently. That was survivable while
+the panel had a Finished group to put it in. 0.1.40 removed the group, and a
+session then vanished the moment it answered you, which is the exact moment
+somebody looks at the panel. Reported from a screenshot showing "0 active"
+beside a session that was visibly working.
+
+A finished turn now reads as **waiting**, which is what it is — waiting for
+your next message — and ages into `completed` after two hours. Two rather than
+six, set by looking: six put ten rows in the waiting group, several of them
+three hours old and one of them the same job twice, refilling a panel that had
+just been made lean on purpose. Note the outer bound while reasoning about any
+of this: `little_herd_recent_window_ms` is twelve hours, and a transcript older
+than that is not reported at all — a first test of the aged case used thirty
+hours, got nothing back, and was measuring the wrong window.
+
+**A related sharp edge, not yet fixed.** The active window is two minutes of
+transcript mtime, so a session running a single long tool call — a full test
+run, a build — stops writing and drops out of `active` while it is working
+hardest. Worth a look before anyone trusts the active count.
+
 ## Method notes
 
 **Four bugs in one afternoon, none of them findable by the suite, all of them

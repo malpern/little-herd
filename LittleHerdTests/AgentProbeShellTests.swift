@@ -37,6 +37,54 @@ struct AgentProbeShellTests {
         #expect(progress.currentStep == "Fixing the parser")
     }
 
+
+    /// The regression 0.1.40 shipped, and the reason it mattered.
+    ///
+    /// `end_turn` means the agent finished its turn, not that the session is
+    /// over — between your messages it is waiting for the next one. The probe
+    /// called that "completed" regardless of age, which was survivable while
+    /// the panel had a Finished group to put it in. Once that group went, a
+    /// session vanished the moment it answered you, which is the exact moment
+    /// somebody looks at the panel.
+    @Test
+    func aturnThatJustEndedIsWaitingRatherThanFinished() async throws {
+        let home = try FixtureHome()
+        try home.writeFinishedTurn(
+            projectPath: "/Users/tester/code/little-herd",
+            sessionID: "session-fresh",
+            endedSecondsAgo: 5 * 60
+        )
+
+        let snapshot = await AgentTaskProbe.readSnapshot(homeDirectory: home.path)
+        let session = try #require(snapshot.sessions.first { $0.provider == .claude })
+
+        #expect(session.state == .waiting)
+    }
+
+    /// And it still becomes history eventually, or the waiting group would
+    /// only ever grow.
+    ///
+    /// Eight hours: past the six the recent-turn window allows, and inside the
+    /// twelve beyond which the probe stops reporting a transcript at all. That
+    /// band is the whole of what "finished" now means — known to the app,
+    /// counted as tracked, and deliberately not listed. A first attempt at
+    /// this test used thirty hours and got no session back at all, which is
+    /// the outer window doing its job and proving nothing about this one.
+    @Test
+    func aturnThatEndedThisMorningIsFinished() async throws {
+        let home = try FixtureHome()
+        try home.writeFinishedTurn(
+            projectPath: "/Users/tester/code/little-herd",
+            sessionID: "session-stale",
+            endedSecondsAgo: 8 * 60 * 60
+        )
+
+        let snapshot = await AgentTaskProbe.readSnapshot(homeDirectory: home.path)
+        let session = try #require(snapshot.sessions.first { $0.provider == .claude })
+
+        #expect(session.state == .completed)
+    }
+
     /// The regression that shipped: the probe used to read only the tail of a
     /// transcript, so on a long session the TaskCreate entries fell outside the
     /// window while their updates survived. Every id then pointed past the end
@@ -243,6 +291,37 @@ private struct FixtureHome {
     /// Writes a transcript shaped like the ones Claude Code produces: a line
     /// carrying `cwd` and `sessionId`, a TaskCreate per task, optional filler,
     /// then the TaskUpdate that sets each task's status.
+
+    /// A transcript whose last entry is a finished turn, optionally aged.
+    ///
+    /// Written through the real shell rather than fed to a parser, because the
+    /// classification being tested lives in the probe script and a fixture-fed
+    /// parser test would agree with whatever the script did.
+    func writeFinishedTurn(
+        projectPath: String,
+        sessionID: String,
+        endedSecondsAgo: TimeInterval
+    ) throws {
+        let directory = "\(path)/.claude/projects/fixture"
+        try FileManager.default.createDirectory(
+            atPath: directory,
+            withIntermediateDirectories: true
+        )
+        let lines = [
+            #"{"type":"user","cwd":"\#(projectPath)","sessionId":"\#(sessionID)","message":{"role":"user","content":"go"}}"#,
+            #"{"type":"assistant","message":{"stop_reason":"end_turn","content":[{"type":"text","text":"done"}]}}"#,
+        ]
+        let file = "\(directory)/\(sessionID).jsonl"
+        try lines.joined(separator: "\n").appending("\n").write(
+            toFile: file, atomically: true, encoding: .utf8
+        )
+        // The probe reads the file's mtime for age, so the fixture sets it.
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date().addingTimeInterval(-endedSecondsAgo)],
+            ofItemAtPath: file
+        )
+    }
+
     func writeClaudeSession(
         projectPath: String,
         sessionID: String,

@@ -716,6 +716,21 @@ nonisolated enum AgentTaskProbe {
     static let shellCommand = #"""
     little_herd_now_ms=$(($(date +%s) * 1000))
     little_herd_active_window_ms=120000
+    # How long a finished turn still counts as waiting for a person.
+    #
+    # "The agent finished its turn" is not "the session is over", and treating
+    # them as the same made a session vanish the moment it answered you — the
+    # exact moment somebody looks at the panel. Between your messages a session
+    # is waiting for your next one, which is what this app has always meant by
+    # waiting.
+    #
+    # Two hours, set by looking rather than by reasoning. Six was tried first
+    # and put ten rows in the waiting group, several of them three hours old
+    # and two of them the same job twice — a panel that had just been made lean
+    # on purpose, refilled. Two hours covers the case this exists for, which is
+    # the session you are talking to right now, and leaves anything you walked
+    # away from where it was: tracked, counted in the header, and not listed.
+    little_herd_recent_turn_ms=7200000
     little_herd_recent_window_ms=43200000
 
     # The Codex account limits, from the files Codex writes them into.
@@ -923,7 +938,11 @@ nonisolated enum AgentTaskProbe {
 
           codex_age_ms=$((little_herd_now_ms - codex_updated_ms))
           if [ "$codex_signal" = "completed" ]; then
-            codex_status=completed
+            if [ "$codex_age_ms" -ge 0 ] && [ "$codex_age_ms" -le "$little_herd_recent_turn_ms" ]; then
+              codex_status=waiting
+            else
+              codex_status=completed
+            fi
           elif [ "$codex_signal" = "waiting" ]; then
             codex_status=waiting
           elif [ "$codex_age_ms" -ge 0 ] && [ "$codex_age_ms" -le "$little_herd_active_window_ms" ]; then
@@ -1095,7 +1114,14 @@ nonisolated enum AgentTaskProbe {
             ' 2>/dev/null | tail -n 1)
             claude_age_ms=$((little_herd_now_ms - claude_mtime * 1000))
             if [ "$claude_signal" = "completed" ]; then
-              claude_status=completed
+              # A turn that ended recently leaves the session waiting on you,
+              # not finished. Only once it has been quiet for hours is it
+              # history.
+              if [ "$claude_age_ms" -ge 0 ] && [ "$claude_age_ms" -le "$little_herd_recent_turn_ms" ]; then
+                claude_status=waiting
+              else
+                claude_status=completed
+              fi
             elif [ "$claude_age_ms" -ge 0 ] && [ "$claude_age_ms" -le "$little_herd_active_window_ms" ]; then
               claude_status=active
             else
