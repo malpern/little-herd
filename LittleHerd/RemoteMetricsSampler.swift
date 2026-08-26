@@ -627,7 +627,8 @@ nonisolated enum SSHCommandRunner {
     static func arguments(
         host: String,
         command: String,
-        identityFile: String?
+        identityFile: String?,
+        allocateTerminal: Bool = false
     ) -> [String] {
         var arguments = [
             "-T",
@@ -642,6 +643,22 @@ nonisolated enum SSHCommandRunner {
         if let identityFile {
             arguments += ["-o", "IdentitiesOnly=yes", "-i", identityFile]
         }
+        // A forced pseudo-terminal, for the probe only.
+        //
+        // Without it the remote command outlives the connection. Measured:
+        // SIGTERM to the local ssh left `for i in $(seq 1 40)` running on the
+        // mini, still writing twenty-one seconds later and alive when checked
+        // — which for the authentication probe means a timed-out check leaves
+        // an agent burning the account's budget while the app reports
+        // "unverified", as though nothing had happened. With `-tt` the remote
+        // process dies with the connection: last write one second *before*
+        // the kill, gone when checked.
+        //
+        // Not given to the sampler. Its commands are long shell scripts whose
+        // output a terminal would mangle, and it has no cancellation problem
+        // to solve.
+        if allocateTerminal { arguments.insert("-tt", at: 0) }
+
         // "--" ends option parsing so the host can never be read as a flag.
         return arguments + ["--", host, command]
     }
@@ -670,7 +687,8 @@ nonisolated enum SSHCommandRunner {
             process.arguments = Self.arguments(
                 host: host,
                 command: command,
-                identityFile: identityFile
+                identityFile: identityFile,
+                allocateTerminal: true
             )
             // One pipe for both streams: two would have to be drained
             // concurrently to avoid the 64 KiB deadlock, and nothing here

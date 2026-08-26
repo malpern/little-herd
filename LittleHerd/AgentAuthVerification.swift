@@ -115,9 +115,19 @@ nonisolated final class ProbeWatchdog: @unchecked Sendable {
             let shouldFire = !isFinished
             if shouldFire { didFire = true }
             lock.unlock()
-            // SIGTERM first. Anything holding the pipe open after that is not
-            // going to be reasoned with, and the caller has already given up.
-            if shouldFire, process.isRunning { process.terminate() }
+            guard shouldFire, process.isRunning else { return }
+            // SIGTERM first, because it lets the agent close down tidily.
+            process.terminate()
+
+            // Then SIGKILL, because "not going to be reasoned with" was the
+            // whole assumption behind stopping at SIGTERM, and a process that
+            // ignores it holds the pipe open — which is exactly the state the
+            // watchdog exists to end. A watchdog that can be ignored is
+            // decoration.
+            let pid = process.processIdentifier
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 3) {
+                if process.isRunning { kill(pid, SIGKILL) }
+            }
         }
     }
 

@@ -774,3 +774,51 @@ struct AgentAuthSilenceTests {
         #expect(state == .unverified)
     }
 }
+
+/// What a pseudo-terminal adds to the answer, and why the probe asks for one.
+///
+/// The probe runs remote commands under `ssh -tt`. Without a terminal the
+/// remote command outlives the connection: measured on the mini, SIGTERM to
+/// the local ssh left the remote loop running and still writing twenty-one
+/// seconds later. For an authentication check that means a timed-out probe
+/// leaves an agent spending the account's budget while the app reports
+/// "unverified". With a terminal the remote process dies with the connection.
+///
+/// The cost is that ssh says goodbye on the way out, and none of it is the
+/// agent speaking.
+@MainActor
+struct AgentAuthTerminalNoiseTests {
+    private let now = Date(timeIntervalSince1970: 1_700_000_000)
+
+    @Test
+    func sshsPartingWordsAreNotAnAnswer() {
+        #expect(
+            AgentAuthProbe.outcome(from: "Connection to openclaw closed.\r\n", at: now)
+                == .unverified
+        )
+        #expect(
+            AgentAuthProbe.outcome(from: "Shared connection to linux closed.\r\n", at: now)
+                == .unverified
+        )
+    }
+
+    /// A terminal ends its lines with CRLF, and a stray carriage return in a
+    /// reason would be shown to somebody.
+    @Test
+    func carriageReturnsDoNotSurviveIntoTheReason() {
+        let state = AgentAuthProbe.outcome(
+            from: "Not logged in · Please run /login\r\nConnection to openclaw closed.\r\n",
+            at: now
+        )
+
+        #expect(state == .refused(reason: "Not signed in on this account."))
+    }
+
+    /// And the answer still gets through all of it.
+    @Test
+    func theanswerSurvivesTheTerminal() {
+        let output = "AUTH_OK\r\nConnection to openclaw closed.\r\n"
+
+        #expect(AgentAuthProbe.outcome(from: output, at: now) == .verified(at: now))
+    }
+}

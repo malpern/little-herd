@@ -167,7 +167,7 @@ nonisolated enum AgentAuthProbe {
 
         let lines = output
             .split(whereSeparator: \.isNewline)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty && !isNoise($0) }
 
         for line in lines {
@@ -190,7 +190,13 @@ nonisolated enum AgentAuthProbe {
     /// parser, which had the same problem — and the announcement is not a
     /// refusal however early it appears.
     private static func isNoise(_ line: String) -> Bool {
-        line.hasPrefix("mise ") || line.hasPrefix("hook:") || line == "tokens used"
+        line.hasPrefix("mise ")
+            || line.hasPrefix("hook:")
+            || line == "tokens used"
+            // ssh's own parting words, which arrive on the pseudo-terminal the
+            // probe asks for and are not the agent speaking.
+            || line.hasPrefix("Connection to ")
+            || line.hasPrefix("Shared connection to ")
     }
 
     private static func refusal(in line: String) -> String? {
