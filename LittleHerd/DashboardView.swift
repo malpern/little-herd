@@ -109,17 +109,7 @@ struct DashboardView: View {
                             agentCompactedAt: model.agentCompactedAt,
                             namespace: machineTransition,
                             onSelectMetric: { model.selection = .machineMetric($0) },
-                            onSelectMachine: { model.selection = .machine($0) },
-                            onVerifyDestination: { machine in
-                                // The one control in the panel that spends
-                                // something, so it happens on a press and
-                                // never on a timer.
-                                Task {
-                                    await model.machines
-                                        .first { $0.machine == machine }?
-                                        .verifyAgentAuthentication()
-                                }
-                            }
+                            onSelectMachine: { model.selection = .machine($0) }
                         )
                         .id(model.overviewMetric)
                         .transition(.opacity)
@@ -595,7 +585,6 @@ private struct OverviewMetricContent: View {
     var namespace: Namespace.ID?
     var onSelectMetric: ((MachineID) -> Void)?
     var onSelectMachine: ((MachineID) -> Void)?
-    var onVerifyDestination: ((MachineID) -> Void)?
 
     var body: some View {
         if metric == .ai {
@@ -613,9 +602,7 @@ private struct OverviewMetricContent: View {
                 compactionThresholds: compactionThresholds,
                 agentCPU: agentCPU,
                 agentCompactedAt: agentCompactedAt,
-                machineName: machines.first { $0.machine == focused }?.shortName,
-                destinationAccounts: machines.map(\.destinationAccount),
-                onVerifyDestination: onVerifyDestination
+                machineName: machines.first { $0.machine == focused }?.shortName
             )
         } else {
             CPUOverviewView(

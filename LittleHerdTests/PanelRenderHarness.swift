@@ -158,16 +158,12 @@ struct PanelRenderHarness {
         sessions: [MachineAgentSession],
         workload: HerdWorkloadFinding? = nil,
         showingFinished: Bool = false,
-        destinationAccounts: [DestinationAccount] = [],
-        onVerifyDestination: ((MachineID) -> Void)? = nil,
         collapsed: Set<AgentPanelSection>? = nil
     ) -> some View {
         AIAgentPanelContent(
             layout: AgentPanelLayout.make(from: sessions, showingFinished: showingFinished),
             workload: workload,
             machineName: "Air",
-            destinationAccounts: destinationAccounts,
-            onVerifyDestination: onVerifyDestination,
             compactionThresholds: AgentCompactionThresholds(observed: ["claude-opus-5": 1_000_000]),
             // Shares of the machine, not of a core. 62% is a session with a
             // parallel build under it — the case the meter exists for — and 4%
@@ -340,192 +336,6 @@ struct PanelRenderHarness {
         try render(
             panel(sessions: busyHerd(), showingFinished: true),
             named: "ai-panel-expanded"
-        )
-    }
-
-    /// The herd as it stands, against the panel's first waiting session — which
-    /// is in `add-secret`. Three rows, three different reasons, so the whole
-    /// vocabulary is on screen at once.
-    private func herdAccounts(everythingOff: Bool = false) -> [DestinationAccount] {
-        let claude = AgentInstallation(
-            provider: .claude,
-            version: "2.1.234",
-            path: "/Users/clawd/.local/bin/claude"
-        )
-        func account(
-            _ id: String,
-            _ name: String,
-            _ symbol: String,
-            allowed: Bool,
-            report: DestinationReport?
-        ) -> DestinationAccount {
-            DestinationAccount(
-                machine: MachineID(id),
-                name: name,
-                symbolName: symbol,
-                report: report,
-                mayHostSessions: everythingOff ? false : allowed
-            )
-        }
-        return [
-            account("macBookAir", "Air", "laptopcomputer", allowed: true, report: nil),
-            account(
-                "macMini", "Mini", "macmini",
-                allowed: true,
-                report: DestinationReport(
-                    installations: [claude],
-                    checkouts: ["add-secret": "/Users/clawd/local-code/add-secret"]
-                )
-            ),
-            account(
-                "linux", "Linux", "server.rack",
-                allowed: true,
-                report: DestinationReport(
-                    installations: [claude],
-                    checkouts: ["dotfiles": "/home/malpern/dotfiles"]
-                )
-            ),
-            account("nas", "NAS", "externaldrive", allowed: false, report: nil),
-        ]
-    }
-
-    /// What the panel looks like by default, which is folded: a question in a
-    /// header rather than a list of machines that cannot take the work.
-    @Test
-    func renderAgentPanelWithDestinationsFolded() throws {
-        try render(
-            panel(
-                sessions: busyHerd(),
-                destinationAccounts: herdAccounts(),
-                // Passed so the check control is drawn. The harness renders a
-                // `.link` button as a yellow placeholder, so this proves it is
-                // placed and offered on the right rows, not what it looks
-                // like — that has to be seen in the running app.
-                onVerifyDestination: { _ in },
-                collapsed: [.finished, .destinations]
-            ),
-            size: Self.reviewSize,
-            named: "ai-panel-destinations-folded"
-        )
-    }
-
-    @Test
-    func renderAgentPanelWithDestinations() throws {
-        try render(
-            panel(
-                sessions: busyHerd(),
-                destinationAccounts: herdAccounts(),
-                // Passed so the check control is drawn at all. Without it the
-                // row offers nothing, which is correct behaviour and looks
-                // exactly like a control that failed to render.
-                onVerifyDestination: { _ in }
-            ),
-            size: Self.reviewSize,
-            named: "ai-panel-destinations"
-        )
-    }
-
-    /// What everyone sees before they have chosen anything: the setting is off
-    /// on every machine, so every row says the same thing and points at the
-    /// one place that changes it.
-    @Test
-    func renderAgentPanelWithNoDestinationChosen() throws {
-        try render(
-            panel(
-                sessions: busyHerd(),
-                destinationAccounts: herdAccounts(everythingOff: true)
-            ),
-            size: Self.reviewSize,
-            named: "ai-panel-destinations-none"
-        )
-    }
-
-    /// The Settings machine list, one row at a time.
-    ///
-    /// The `List` those rows sit in is a lazy container that `ImageRenderer`
-    /// will not lay out, so this renders the rows directly — at 400 points,
-    /// which is the 420-point Settings pane less its row insets.
-    @Test
-    func renderSettingsMachineRows() throws {
-        let claude = AgentInstallation(
-            provider: .claude,
-            version: "2.1.234",
-            path: "/Users/malpern/.local/bin/claude"
-        )
-        func machine(
-            _ id: String,
-            _ name: String,
-            _ host: String,
-            _ platform: MachinePlatform,
-            mayHost: Bool
-        ) -> MachineConfiguration {
-            var configuration = MachineConfiguration(
-                id: MachineID(id),
-                name: name,
-                shortName: name,
-                hostname: host,
-                hardwareSummary: "",
-                platform: platform,
-                connection: platform == .storage ? .dsm : .ssh,
-                avatar: MachineConfiguration.inferredAvatar(
-                    name: name,
-                    platform: platform
-                ),
-                identityFile: nil,
-                serverNames: [],
-                supportsGPU: false
-            )
-            configuration.mayHostSessions = mayHost
-            return configuration
-        }
-
-        let rows: [(MachineConfiguration, DestinationEligibility)] = [
-            (
-                machine("air", "MacBook Air", "air", .macOS, mayHost: true),
-                .eligible(claude, .verified(at: Date(timeIntervalSince1970: 1_700_000_000)))
-            ),
-            (
-                machine("mini", "Mac mini", "openclaw", .macOS, mayHost: true),
-                .eligible(claude, .unverified)
-            ),
-            (
-                machine("studio", "Mac Studio", "studio", .macOS, mayHost: false),
-                .excluded
-            ),
-            // The linux box as it actually stands: both agents installed, both
-            // credentials present at mode 600, and neither able to sign in.
-            // Before this row could exist, it rendered as though it were ready.
-            (
-                machine("linux", "Linux box", "linux", .linux, mayHost: true),
-                .signedOut(claude, reason: "The sign-in here has expired.")
-            ),
-            (
-                machine("nas", "Synology", "nas", .storage, mayHost: true),
-                .unknown
-            ),
-        ]
-
-        try render(
-            VStack(spacing: 0) {
-                ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
-                    SettingsMachineRow(
-                        machine: row.0,
-                        canRemove: index > 0,
-                        isReorderable: true,
-                        position: ListPosition(index: index, count: rows.count),
-                        onRemove: {},
-                        onConnect: {},
-                        onMove: { _ in },
-                        capability: row.1,
-                        onSetHosting: { _ in },
-                        credentialsRevision: 0
-                    )
-                    Divider()
-                }
-                Spacer(minLength: 0)
-            },
-            size: CGSize(width: 400, height: 180),
-            named: "settings-machines"
         )
     }
 
@@ -835,20 +645,13 @@ extension PanelRenderHarness {
         )
     }
 
-    /// The same herd with somewhere for the parked session to go, which is the
-    /// arrangement a person actually meets: something working, something
-    /// waiting, and the question of where it could move.
+    /// The same herd at the taller size, for reading the whole list at once.
     @Test
-    func renderPanelWithSomewhereToGo() throws {
+    func renderPanelOnARealisticHerdInFull() throws {
         try render(
-            panel(
-                sessions: comparisonHerd(),
-                destinationAccounts: herdAccounts(),
-                onVerifyDestination: { _ in },
-                collapsed: []
-            ),
+            panel(sessions: comparisonHerd(), collapsed: []),
             size: Self.reviewSize,
-            named: "ai-panel-realistic-destinations"
+            named: "ai-panel-realistic-full"
         )
     }
 }

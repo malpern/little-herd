@@ -595,8 +595,6 @@ private struct LittleHerdSettingsView: View {
                         onRemove: { remove(machine.id) },
                         onConnect: { configuringNAS = machine },
                         onMove: { move(machine.id, by: $0) },
-                        capability: capability(of: machine.id),
-                        onSetHosting: { setHosting(machine.id, to: $0) },
                         credentialsRevision: credentialsRevision
                     )
                     .listRowInsets(
@@ -632,35 +630,6 @@ private struct LittleHerdSettingsView: View {
         onConfigurationsChanged(machineStore.machines)
     }
 
-    /// What this account could do *if* it were allowed to, which is the
-    /// question a checkbox that is currently off raises. Asking with the
-    /// preference itself would only answer "you have not ticked it", which the
-    /// checkbox already says.
-    private func capability(of machineID: MachineID) -> DestinationEligibility {
-        guard let machine = model.diskMachines
-            .first(where: { $0.machine == machineID })
-        else {
-            return .unknown
-        }
-        return DestinationEligibility.resolve(
-            report: machine.destinationReport,
-            repository: nil,
-            isAllowed: true
-        )
-    }
-
-    private func setHosting(_ machineID: MachineID, to mayHost: Bool) {
-        guard var machine = machineStore.machines
-            .first(where: { $0.id == machineID }),
-            machine.mayHostSessions != mayHost
-        else {
-            return
-        }
-        machine.mayHostSessions = mayHost
-        machineStore.update(machine)
-        onConfigurationsChanged(machineStore.machines)
-    }
-
     private func position(of machineID: MachineID) -> ListPosition {
         guard let index = machineStore.machines
             .firstIndex(where: { $0.id == machineID })
@@ -689,78 +658,6 @@ private struct LittleHerdSettingsView: View {
             toOffset: destination
         )
         onConfigurationsChanged(machineStore.machines)
-    }
-}
-
-/// Whether a session may be moved onto this account, and the caveat when the
-/// answer would not work.
-///
-/// Off by default and for every machine, because the two mistakes are not
-/// equally cheap: a machine wrongly offered invites work to be moved somewhere
-/// it will fail, and a machine wrongly withheld costs one click here.
-///
-/// The caveat appears only when it contradicts the tick. Saying "Can host a
-/// session" beside every ticked machine would be a label nobody reads by the
-/// third row, and the one row that needed reading would look like the rest.
-struct DestinationCheckbox: View {
-    let machineName: String
-    let isOn: Bool
-    let capability: DestinationEligibility
-    let onChange: (Bool) -> Void
-
-    var body: some View {
-        HStack(spacing: 4) {
-            if isOn, let caveat {
-                Text(caveat)
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                    .lineLimit(1)
-            }
-
-            Toggle(
-                "",
-                isOn: Binding(get: { isOn }, set: onChange)
-            )
-            .labelsHidden()
-            .toggleStyle(.checkbox)
-            .frame(width: 16, alignment: .trailing)
-            .help(help)
-            .accessibilityLabel("Let a session be moved onto \(machineName)")
-            .accessibilityValue(Text(capability.detail))
-        }
-    }
-
-    /// The short form, for a row with a name and a hostname already in it.
-    private var caveat: String? {
-        switch capability {
-        case .noAgent: "No agent"
-        case .unknown: "Not measured"
-        case .signedOut: "Cannot run"
-        // A repository is not asked about here — Settings has no session in
-        // front of it — and an account whose provider has answered needs no
-        // remark. One that has not been asked says so: it is the difference
-        // between a checked destination and an assumed one.
-        case .eligible(_, .verified): nil
-        case .eligible: "Sign-in not checked"
-        case .excluded, .noCheckout: nil
-        }
-    }
-
-    private var help: String {
-        switch capability {
-        case .eligible(let install, .verified):
-            "Sessions may be moved onto \(machineName), which has \(install.providerName) \(install.version) at \(install.path), and answered when asked to sign in."
-        case .eligible(let install, _):
-            "\(machineName) has \(install.providerName) \(install.version) at \(install.path). Whether it can sign in has not been checked — the only thing that proves it is a request the provider answers, which costs a model call, so it is asked before a move rather than every thirty seconds."
-        case .signedOut(let install, let reason):
-            "\(machineName) has \(install.providerName) \(install.version), and it did not run when asked: \(reason) A session moved there would arrive and be unable to start."
-        case .noAgent:
-            "\(machineName) has no agent Little Herd can run, so a session moved there would have nothing to run in."
-        case .unknown:
-            "Little Herd has not measured \(machineName) yet — it runs no probe on a NAS, and a machine it cannot reach has not answered."
-        case .excluded, .noCheckout:
-            "Let a session be moved onto \(machineName)."
-        }
     }
 }
 
@@ -877,8 +774,6 @@ struct SettingsMachineRow: View {
     /// carries the choice; this carries what the choice would get you, which
     /// is not the same question and has a different answer on two of this
     /// herd's machines.
-    let capability: DestinationEligibility
-    let onSetHosting: (Bool) -> Void
     /// Read so that saving a password redraws this row. The keychain is not
     /// observable, so without it the label can outlive the thing it describes.
     let credentialsRevision: Int
@@ -981,17 +876,10 @@ struct SettingsMachineRow: View {
                     .help(signInState.help)
             }
 
-            DestinationCheckbox(
-                machineName: machine.name,
-                isOn: machine.mayHostSessions,
-                capability: capability,
-                onChange: onSetHosting
-            )
-
-            // Both trailing controls share one slot, and the checkbox before
-            // them has a fixed one, so the column of ticks runs straight down
-            // the list. Left to size themselves, they drifted with whatever
-            // text happened to sit to their left — four rows, four positions.
+            // Both trailing controls share one slot, so the column runs
+            // straight down the list. Left to size themselves, they drifted
+            // with whatever text happened to sit to their left — four rows,
+            // four positions.
             Group {
                 if canRemove {
                     Button(action: onRemove) {

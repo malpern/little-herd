@@ -1113,31 +1113,41 @@ it; the files survived only because the directory had not been reaped yet.
    rule would collapse to "Linux failed to resolve", which is what the tooltip
    already says. Build it when a second machine becomes reachable only over the
    tailnet, and not before.
-3. **Destination eligibility is done; one thing it exposed is not.**
+3. **Destination eligibility is measured and deliberately has no interface.**
    Every account reports which agents it can run and where, and which
    repositories it has checked out keyed by the origin remote's slug.
-   `MachineConfiguration.mayHostSessions` is the choice, off by default and
-   persisted. `DestinationEligibility` answers with one of five things and
-   reports intent before capability on purpose, and two surfaces show it: a
-   checkbox per machine in Settings, captioned with what turning it on would
-   actually get you; and a **Destinations** section in the AI panel, which
-   appears only when a session is waiting — the transfer design already
-   settled that only a quiescent session can move — and names the repository
-   it is answering for, or says the work is not in a checkout when there is no
-   repository to name.
+   `DestinationEligibility` answers with one of six things, `AgentAuthProbe`
+   and `AgentAuthVerifier` can ask a provider whether it will actually answer,
+   and `MachineConfiguration.mayHostSessions` still records intent.
 
-   **What is left is that a destination is an account and the herd stores
-   machines.** `MachineConfiguration` refuses a second entry with the same
-   hostname, so the mini's `clawd` and `malpern` cannot both be in the herd,
-   and everything that decides whether a session can land is per-user: the home
-   directory and so which repos exist, the agent install, the credentials, and
-   the GUI login session the Keychain fact turns on. That last point may invert
-   the obvious choice — `malpern` is the account logged in graphically, so it,
-   not the automation account, is where a Claude session can authenticate.
-   Fixing it needs an account-qualified `MachineID` and an ssh user in the
-   configuration, which costs the published `transfer.json` contract nothing
-   since `MachineID` wraps a `String`. Until then the setting is per *entry*,
-   which happens to be per account only because each entry reaches exactly one.
+   **The two surfaces that showed all this were removed on 25 August, on
+   purpose.** A checkbox in Settings and a Destinations section in the AI panel
+   were a permission and a placement decision for a move that cannot happen —
+   pre-solving a problem while the thing they serve is unbuilt. The judgement
+   was that the interface was wrong rather than the capability, and that a new
+   one should be drawn when there is a transfer to draw it for.
+
+   **So this is capability with no caller, and that is a state this project has
+   been bitten by before.** `HoveredMachineMetricHeader` sat unwired from the
+   first public commit until somebody noticed, and by then it had quietly
+   drifted out of step with the rest of the app. The difference is that this
+   time it is written down. What is unwired: `verifyAgentAuthentication()` on
+   the model, the whole of `DestinationRoster`, and every `DestinationEligibility`
+   answer. It is all tested, so it cannot rot silently — but nothing draws it,
+   and `mayHostSessions` is now stuck at whatever it was last set to, because
+   the only thing that set it is gone. **Re-adding a setter is part of building
+   the new interface, not an afterthought.**
+
+   **What is left underneath is that a destination is an account and the herd
+   stores machines.** `MachineConfiguration` refuses a second entry with the
+   same hostname, so the mini's `clawd` and `malpern` cannot both be in the
+   herd, and everything that decides whether a session can land is per-user:
+   the home directory and so which repos exist, the agent install, the
+   credentials, and the GUI login session the Keychain fact turns on. That last
+   point may invert the obvious choice — `malpern` is the account logged in
+   graphically. Fixing it needs an account-qualified `MachineID` and an ssh
+   user in the configuration, which costs the published `transfer.json`
+   contract nothing since `MachineID` wraps a `String`.
 
    **Budget is not one of the reasons.** The machines share one account, so an
    exhausted limit cannot be escaped by choosing a different destination —
@@ -1145,8 +1155,7 @@ it; the files survived only because the directory had not been reaped yet.
    destination here**: DSM restricts shell access to administrators, the login
    shell is `/bin/sh`, and there is no package manager. It reads "not measured"
    rather than "no agent", because Little Herd runs no probe on it and never
-   asking is not the same as being told no. The setting exists so someone with
-   a capable NAS can opt in, not as a safety control.
+   asking is not the same as being told no.
 
 4. **Transfer a session between machines, at the session level.** Not process
    migration, which is not possible and not wanted: stop the session, have it

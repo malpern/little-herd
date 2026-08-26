@@ -21,8 +21,6 @@ struct AIAgentsView: View {
     var machineName: String?
     /// The rest of the herd, for the one question a parked session raises.
     /// Empty in a herd of one, and then the section never appears.
-    var destinationAccounts: [DestinationAccount] = []
-    var onVerifyDestination: ((MachineID) -> Void)?
 
     /// Which groups are folded. Every section folds, not only the finished
     /// one — a panel where one header behaves differently from its neighbours
@@ -40,7 +38,7 @@ struct AIAgentsView: View {
     /// something, which is how the first person to see it read it. Where a
     /// session could go is a question you ask, so the header asks it and the
     /// answers are one click away.
-    @State private var collapsed: Set<AgentPanelSection> = [.destinations]
+    @State private var collapsed: Set<AgentPanelSection> = []
 
     private var layout: AgentPanelLayout {
         AgentPanelLayout.make(from: sessions, showingFinished: false)
@@ -55,8 +53,6 @@ struct AIAgentsView: View {
                     layout: layout,
                     workload: workload,
                     machineName: machineName,
-                    destinationAccounts: destinationAccounts,
-                    onVerifyDestination: onVerifyDestination,
                     compactionThresholds: compactionThresholds,
                     agentCPU: agentCPU,
                     agentCompactedAt: agentCompactedAt,
@@ -88,8 +84,6 @@ struct AIAgentPanelContent: View {
     let layout: AgentPanelLayout
     var workload: HerdWorkloadFinding?
     var machineName: String?
-    var destinationAccounts: [DestinationAccount] = []
-    var onVerifyDestination: ((MachineID) -> Void)?
     var compactionThresholds = AgentCompactionThresholds()
     var agentCPU: [String: Double] = [:]
     var agentCompactedAt: [String: Date] = [:]
@@ -108,7 +102,6 @@ struct AIAgentPanelContent: View {
 
             section(.running, label: machineName, rows: layout.active)
             section(.waiting, rows: layout.waiting)
-            destinationSection
         }
         .padding(.horizontal, 14)
         .padding(.top, 3)
@@ -145,89 +138,6 @@ struct AIAgentPanelContent: View {
         }
     }
 
-    /// Where the parked work could go.
-    ///
-    /// Shown only when something is waiting, which is not a way of keeping the
-    /// panel tidy but the rule the transfer design already settled on: only a
-    /// quiescent session can move safely, so a herd of running sessions has
-    /// nothing to ask this about. It also makes the subject unambiguous — the
-    /// list answers for the session named in the header, not for the panel.
-    @ViewBuilder
-    private var destinationSection: some View {
-        if let subject = layout.waiting.first, !destinationAccounts.isEmpty {
-            let repository = subject.session.session.repo?.slug
-            let candidates = DestinationRoster.candidates(
-                among: destinationAccounts,
-                forRepository: repository,
-                excluding: subject.session.machine
-            )
-            if !candidates.isEmpty {
-                AgentSectionHeader(
-                    section: .destinations,
-                    // Named only when there is a name. The project name is not
-                    // a substitute: it comes from the directory, and the first
-                    // time this ran against the real herd it produced "Could
-                    // take Local Code", which reads like a repository and is a
-                    // folder.
-                    // Always labelled. Folded, an unlabelled section is a
-                    // lone glyph and a number, which says nothing about what
-                    // is behind it.
-                    label: repository.map { "Where \($0) could go" }
-                        ?? "Where this work could go",
-                    hiddenCount: candidates.count,
-                    isExpanded: Binding(
-                        get: { !collapsed.contains(.destinations) },
-                        set: { expanded in
-                            if expanded {
-                                collapsed.remove(.destinations)
-                            } else {
-                                collapsed.insert(.destinations)
-                            }
-                        }
-                    )
-                )
-                if !collapsed.contains(.destinations) {
-                    if repository == nil {
-                        // Nothing to fetch, so nowhere is a destination and
-                        // the accounts below would all be answering a question
-                        // that cannot be asked. Said rather than left out: a
-                        // section that silently disappears is the false
-                        // silence this project keeps having to write tests
-                        // against.
-                        DestinationNoticeRow(
-                            symbolName: "arrow.trianglehead.branch",
-                            title: "Not in a checkout",
-                            detail: "This work has no branch another machine could fetch."
-                        )
-
-                        Divider()
-                            .padding(.leading, AIAgentRow.titleInset)
-                    } else if DestinationRoster.isEntirelyUnchosen(candidates) {
-                        DestinationNoticeRow(
-                            symbolName: DestinationEligibility.excluded.symbolName,
-                            title: "No destination chosen",
-                            detail: "Tick a machine in Settings to let a session be moved onto it."
-                        )
-
-                        Divider()
-                            .padding(.leading, AIAgentRow.titleInset)
-                    } else {
-                        ForEach(candidates) { candidate in
-                            DestinationRow(
-                                candidate: candidate,
-                                onVerify: onVerifyDestination.map { verify in
-                                    { verify(candidate.account.machine) }
-                                }
-                            )
-
-                            Divider()
-                                .padding(.leading, AIAgentRow.titleInset)
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     @ViewBuilder
     private func rows(_ panelRows: [AgentPanelRow]) -> some View {
@@ -747,136 +657,6 @@ nonisolated enum AgentPanelSection: String, CaseIterable, Sendable {
     }
 }
 
-/// One account, and whether the parked work could go there.
-///
-/// The reason is spelled out rather than reduced to a mark, because the three
-/// answers have three different fixes and only one of them is a preference —
-/// "excluded here" is a click away in Settings, "no agent" and "no checkout"
-/// are not, and a row that only said "no" would send someone to the wrong one.
-private struct DestinationRow: View {
-    let candidate: DestinationCandidate
-    var onVerify: (() -> Void)?
-
-    var body: some View {
-        DestinationNoticeRow(
-            symbolName: candidate.eligibility.symbolName,
-            title: candidate.name,
-            detail: candidate.eligibility.detail,
-            // Green only for the one that can. Nothing else here is a fault —
-            // a machine you switched off is not broken — so the rest stay in
-            // the panel's own quiet grey rather than borrowing a warning
-            // colour.
-            tint: candidate.eligibility.isEligible ? .green : .secondary
-        ) {
-            if candidate.account.isVerifying {
-                ProgressView()
-                    .controlSize(.mini)
-                    .help("Asking \(candidate.name) to sign in…")
-            } else if showsCheck {
-                Button("Check", action: { onVerify?() })
-                    .buttonStyle(.link)
-                    .font(.caption2)
-                    // Said plainly, because it is the one control in this
-                    // panel that spends something. The alternative — checking
-                    // on a timer — would spend it without asking, and a
-                    // monitor that quietly draws down the budget it reports
-                    // on has stopped being a monitor.
-                    .help("Ask \(candidate.name)'s agent to answer. Costs one small request.")
-            }
-        }
-    }
-
-    /// Offered where an answer would change something. There is nothing to
-    /// ask of a machine with no agent, no checkout, or one you have switched
-    /// off — and re-asking an account that already answered is spending a
-    /// request to be told the same thing.
-    private var showsCheck: Bool {
-        guard onVerify != nil else { return false }
-        switch candidate.eligibility {
-        case .eligible(_, .verified): return false
-        case .eligible, .signedOut: return true
-        case .excluded, .noAgent, .noCheckout, .unknown: return false
-        }
-    }
-}
-
-/// The shape of a destination line: a glyph, a name, and the sentence under
-/// it.
-///
-/// The glyph column is `titleInset` wide including its spacing, so these names
-/// sit on the same vertical line as the session titles above them. Four points
-/// of drift here is the sort of thing that reads as carelessness even when
-/// nobody can say what moved.
-private struct DestinationNoticeRow<Accessory: View>: View {
-    let symbolName: String
-    let title: String
-    let detail: String
-    var tint: Color = .secondary
-    @ViewBuilder var accessory: () -> Accessory
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Image(systemName: symbolName)
-                .font(.caption2)
-                .foregroundStyle(tint)
-                .frame(width: AIAgentRow.titleInset - 4)
-
-            VStack(alignment: .leading, spacing: 1) {
-                // The control sits on the title's line, not after the
-                // sentence. The sentence wraps to two lines and takes the
-                // whole width with it, which squeezed a trailing control to
-                // nothing — present in the view hierarchy and zero points
-                // wide, which is the most annoying way for a button to be
-                // missing. The name is short and always leaves room.
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(title)
-                        .font(.caption.weight(.medium))
-                        .lineLimit(1)
-
-                    Spacer(minLength: 0)
-
-                    accessory()
-                }
-
-                Text(detail)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(.vertical, 5)
-        .accessibilityElement(children: .contain)
-    }
-}
-
-extension DestinationNoticeRow where Accessory == EmptyView {
-    init(
-        symbolName: String,
-        title: String,
-        detail: String,
-        tint: Color = .secondary
-    ) {
-        self.init(
-            symbolName: symbolName,
-            title: title,
-            detail: detail,
-            tint: tint,
-            accessory: { EmptyView() }
-        )
-    }
-}
-
-/// A section header you can fold, with the control kept out of sight until it
-/// is wanted.
-///
-/// The chevron appears on hover and fades when the pointer leaves. A row of
-/// permanent disclosure triangles is a row of things to look at on a panel
-/// whose subject is elsewhere, and the affordance is only ever needed by a
-/// pointer that is already there. It sits at the trailing edge: at the leading
-/// edge it pushed the titles out of the one vertical line the panel is built
-/// on, and a control is a better citizen at the end of a row than at the start
-/// of one it does not belong to.
 private struct AgentSectionHeader: View {
     let section: AgentPanelSection
     /// What the section is called, beside its glyph.
