@@ -1,20 +1,22 @@
 # Little Herd — handoff
 
-**State:** `v0.1.40` is released and `main` carries nothing beyond it. 442
-tests pass. Roadmap items 3 and 6 are done — destination eligibility, and each
-machine's agent versions — leaving one piece of item 3 open, which is that a
-destination is an account and the herd still stores machines; it has its own
-entry below.
+**State:** `v0.1.41` is released and `main` carries nothing beyond it. 440
+tests pass. Roadmap item 6 is done — each machine's agent versions. Item 3 is
+measured and deliberately has no interface; see its entry below, which is the
+one to read before drawing a new one.
 
-**Three releases went out on 25 August.** 0.1.38, memory pressure: the warning
+**Four releases went out on 25 August.** 0.1.38, memory pressure: the warning
 explains itself and names the application worth quitting, swap is measured on
 this Mac and on Linux and reported only while it is being written, hovering a
 machine puts that machine in the header, and signing in to a Synology says
 *which* check refused the certificate. 0.1.39, destinations: a machine no
 longer claims it can sign in, and there is a Check that asks. 0.1.40, the AI
-panel: rows led by the agent's own icon at twenty-six points with the state as
-a badge on its corner, progress shown in the row while the work happens, and
-finished sessions no longer a group.
+panel: rows led by the agent's own icon with the state as a badge on its
+corner, progress shown in the row while the work happens, and finished sessions
+no longer a group. 0.1.41: the fix for what 0.1.40 broke — a session no longer
+vanishes the moment it answers you — and the removal of the destination
+interface, which was a permission and a placement decision for a move that
+cannot happen.
 
 **A paid release is being considered, and the shape of it is settled** — see
 *Selling it* below. Nothing is built.
@@ -33,6 +35,7 @@ and one on 25 August:
     0.1.38  memory pressure explains itself, and swap is measured
     0.1.39  a destination says whether it can actually sign in
     0.1.40  the AI panel is rebuilt around what is running
+    0.1.41  a session stays visible after it answers; destination UI removed
 
 **0.1.33 shipped a bug that could take a machine off the dashboard entirely** —
 an empty directory aborting the probe under zsh. Nothing in this herd tripped
