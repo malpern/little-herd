@@ -39,9 +39,24 @@ struct AIActiveAgentRow: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
 
+                    // Only set when another visible row carries the same
+                    // title, and then it is the difference between them.
+                    // A session with no title of its own falls back to the
+                    // project, the project comes from the working directory,
+                    // and six sessions started in one home directory are six
+                    // rows all called "Clawd" — which is the case this was
+                    // written for, and which came straight back when the row
+                    // was redrawn without it.
+                    if let disambiguator = row.disambiguator {
+                        Text(disambiguator)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.tertiary)
+                            .fixedSize()
+                    }
+
                     Spacer(minLength: 4)
 
-                    Text(AIAgentRow.compactAge(of: session.updatedAt))
+                    Text(AgentRowMetrics.compactAge(of: session.updatedAt))
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.tertiary)
                         .fixedSize()
@@ -92,7 +107,7 @@ struct AIActiveProgressLine: View {
             .accessibilityLabel(
                 "Step \(progress.currentStepIndex) of \(progress.totalStepCount)"
             )
-        } else if let cpuPercent, cpuPercent >= AIAgentRow.meterFloorPercent {
+        } else if let cpuPercent, cpuPercent >= AgentRowMetrics.meterFloorPercent {
             // No plan to report, so this says what can be measured instead of
             // guessing at a fraction. The floor is the panel's existing one: a
             // mark that is always lit is a mark nobody reads.

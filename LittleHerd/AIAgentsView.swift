@@ -163,7 +163,7 @@ struct AIAgentPanelContent: View {
             // Inset to where the titles begin, so the dividers, the section
             // headers and the titles share one vertical line.
             Divider()
-                .padding(.leading, AIAgentRow.titleInset)
+                .padding(.leading, AgentRowMetrics.titleInset)
         }
     }
 }
@@ -232,21 +232,15 @@ private struct AIAgentsEmptyState: View {
 /// on every row of a panel scoped to one machine, saying the same word over and
 /// over. A seven-point dot carries the state, which is the only per-row fact
 /// that changes.
-struct AIAgentRow: View {
-    let row: AgentPanelRow
-    var compactionThresholds = AgentCompactionThresholds()
-    /// Share of a core since the last sample, when two readings exist.
-    var cpuPercent: Double?
-    /// When this session last compacted, if it has while the app was watching.
-    var compactedAt: Date?
-
-    /// How long a compaction stays worth announcing.
-    ///
-    /// It is news, not a state: a session that compacted an hour ago has moved
-    /// on, and a row still saying so would be one more permanent label to stop
-    /// reading. Long enough to be seen on a panel nobody watches continuously.
-    static let compactionNoticeWindow: TimeInterval = 600
-
+/// The measurements every row in this panel shares, and the one piece of
+/// formatting all of them need.
+///
+/// What is left of `AIAgentRow` after the panel was redrawn around
+/// `AIActiveAgentRow`. The row itself went; these three outlived it because
+/// other views were already reaching into it for them, and a two-hundred-line
+/// view kept alive as a namespace for three constants is the dead code this
+/// project keeps rediscovering.
+nonisolated enum AgentRowMetrics {
     /// The share of *the machine* below which a session's meter stays empty.
     ///
     /// Set from measurement, twice over. Fifteen percent was an estimate and
@@ -262,210 +256,18 @@ struct AIAgentRow: View {
     /// first guess: a mark that is always lit is a mark nobody reads.
     static let meterFloorPercent: Double = 2
 
-    /// One width for every measured thing in the panel, header included.
-    static let measureColumnWidth: CGFloat = 48
-    /// The two measures each keep their own slot inside that column, filled or
-    /// not. Right-aligning the pair instead let the ring slide under the meter's
-    /// place whenever a row had no meter, so the rings did not line up with
-    /// each other — the sort of drift that reads as carelessness even when
-    /// nobody can say what moved.
-    static let ringSlotWidth: CGFloat = 13
-    static let meterSlotWidth: CGFloat = 31
-    /// The leading column: the dot plus the space to the title. Dividers and
+    /// The leading column: the mark plus the space to the title. Dividers and
     /// section headers inset to this, so one vertical line runs down the panel.
     static let titleInset: CGFloat = 15
 
-    private var machineSession: MachineAgentSession { row.session }
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            AgentStateDot(
-                state: machineSession.session.state,
-                contextFraction: compactionThresholds.fraction(
-                    tokens: machineSession.session.contextTokens,
-                    model: machineSession.session.model,
-                    declaredWindow: machineSession.session.contextWindow
-                )
-            )
-
-            VStack(alignment: .leading, spacing: 3) {
-                // Line one is identity: what this session is, and how long
-                // since it moved. Line two is work: what it is doing, and what
-                // that is costing and consuming. Sorting the row's contents by
-                // what they are about is what stopped the right-hand side
-                // reading as debris — four rows had produced four different
-                // arrangements of the same slots.
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(machineSession.session.displayTitle)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-
-                    Spacer(minLength: 4)
-
-                    Text(Self.compactAge(of: machineSession.session.updatedAt))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.tertiary)
-                        .fixedSize()
-                }
-
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    HStack(spacing: 4) {
-                        // A compaction outranks whatever the session is doing
-                        // now. It has just lost the history it was working
-                        // from, which is the one moment a person would choose
-                        // to start a successor instead of letting the next
-                        // compaction chew through it as well.
-                        if let compactionNotice {
-                            Text(compactionNotice)
-                                .foregroundStyle(.orange)
-                        } else if let statusLine = machineSession.session.statusLine {
-                            Text(statusLine)
-                                .foregroundStyle(.secondary)
-                        }
-
-                            // Work that exists only on this machine, marked only
-                        // when it does. A session whose branch is pushed needs
-                        // nothing said about it, and a mark on every row would
-                        // be one more thing to stop reading.
-                        if machineSession.session.repo?.carriesUnsharedWork == true {
-                            Image(systemName: "arrow.triangle.branch")
-                                .foregroundStyle(.tertiary)
-                                .help(unsharedWorkDescription)
-                        }
-
-                    if let disambiguator = row.disambiguator {
-                            Text(disambiguator)
-                                .monospaced()
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                    // Small text wants a little air between its letters; large
-                    // text wants less. This is the small end.
-                    .font(.caption)
-                    .tracking(0.1)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-
-                    Spacer(minLength: 4)
-
-                    Group {
-                        if let cpuPercent, cpuPercent >= Self.meterFloorPercent {
-                            InlineSegmentedThermometer(value: cpuPercent)
-                                .help("\(Int(cpuPercent.rounded()))% of this machine")
-                                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
-                        }
-                    }
-                    .frame(
-                        width: Self.meterSlotWidth,
-                        alignment: .trailing
-                    )
-                }
-            }
-        }
-        .padding(.vertical, 5)
-        .contentShape(Rectangle())
-        .help(helpText)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityValue(Text(machineSession.session.state.title))
-    }
-
-    /// Said in full on hover, because the glyph can only say "something".
-    private var unsharedWorkDescription: String {
-        guard let repo = machineSession.session.repo else { return "" }
-        var parts = ["on \(repo.branch)"]
-        if repo.uncommittedFileCount > 0 {
-            parts.append(
-                repo.uncommittedFileCount == 1
-                    ? "1 uncommitted file"
-                    : "\(repo.uncommittedFileCount) uncommitted files"
-            )
-        }
-        if !repo.hasUpstream {
-            parts.append("never pushed anywhere")
-        } else if repo.unpushedCommitCount > 0 {
-            parts.append(
-                repo.unpushedCommitCount == 1
-                    ? "1 unpushed commit"
-                    : "\(repo.unpushedCommitCount) unpushed commits"
-            )
-        }
-        return parts.joined(separator: ", ")
-    }
-
-    private var compactionNotice: String? {
-        guard let compactedAt else { return nil }
-        let elapsed = Date.now.timeIntervalSince(compactedAt)
-        guard elapsed >= 0, elapsed <= Self.compactionNoticeWindow else {
-            return nil
-        }
-        return "Compacted \(Self.compactAge(of: compactedAt)) ago"
-    }
-
-    /// Quiet until it matters. A context two-thirds full is not news; one that
-    /// is about to compact is the moment to start a successor session, which is
-    /// the whole reason this figure is on screen.
-    private func contextTint(for fraction: Double) -> Color {
-        switch fraction {
-        // The system accent, which is blue on most Macs and whatever the user
-        // chose on the rest. Deliberately not a colour from the thermometer's
-        // green-to-red scale: this is a different quantity, and borrowing that
-        // vocabulary is what made the two read as one measurement. It also has
-        // to be a real colour rather than a grey — drawn in `.secondary` it was
-        // the same tone as its own track and effectively invisible.
-        case ..<0.75: Color.accentColor
-        case ..<0.9: Color.orange
-        default: Color.red
-        }
-    }
-
-    /// Just the number and a unit — "2m", "3h", "4d". The rail's own rail is
-    /// the title; this is a glance, not a sentence.
+    /// Just the number and a unit — "2m", "3h", "4d". This is a glance, not a
+    /// sentence.
     static func compactAge(of date: Date, now: Date = .now) -> String {
         let elapsed = max(now.timeIntervalSince(date), 0)
         if elapsed < 60 { return "now" }
         if elapsed < 3_600 { return "\(Int(elapsed / 60))m" }
         if elapsed < 86_400 { return "\(Int(elapsed / 3_600))h" }
         return "\(Int(elapsed / 86_400))d"
-    }
-
-    private var helpText: Text {
-        var parts = [
-            String(localized: machineSession.session.provider.displayName),
-            machineSession.session.projectName,
-            machineSession.machineName,
-            String(localized: machineSession.session.state.title),
-        ]
-        // Still measured, no longer given a column. It answers "which of these
-        // is the heavy one", which is worth a hover and not worth the width
-        // the title wants.
-        if let fraction = compactionThresholds.fraction(
-            tokens: machineSession.session.contextTokens,
-            model: machineSession.session.model
-        ) {
-            parts.append(
-                "context \(Int((fraction * 100).rounded()))% full"
-            )
-        } else if let context = machineSession.session.contextLabel {
-            // No measured limit for this model yet, so the count is all that
-            // can honestly be said.
-            parts.append("\(context) in context")
-        }
-        return Text(parts.joined(separator: ", "))
-    }
-
-    private var accessibilityLabel: Text {
-        let providerName = String(
-            localized: machineSession.session.provider.displayName
-        )
-        let machineName = machineSession.machineName
-        var label = "\(providerName), \(machineSession.session.projectName), \(machineName)"
-        if let progress = machineSession.session.progress {
-            label += ", step \(progress.currentStepIndex) of \(progress.totalStepCount)"
-        }
-        return Text(label)
     }
 }
 
@@ -710,7 +512,7 @@ private struct AgentSectionHeader: View {
                     .opacity(isHovered ? 1 : 0)
             }
             .foregroundStyle(.secondary)
-            .padding(.leading, AIAgentRow.titleInset)
+            .padding(.leading, AgentRowMetrics.titleInset)
             .padding(.top, 12)
             .padding(.bottom, 4)
             .contentShape(Rectangle())
@@ -725,129 +527,6 @@ private struct AgentSectionHeader: View {
                 ?? Text(section.accessibleName)
         )
         .accessibilityHint(isExpanded ? "Collapse" : "Expand")
-    }
-}
-
-/// State as a single dot at the leading edge — and the context warning.
-///
-/// Small, and the only coloured thing on a row that is otherwise text. Running
-/// is filled and green; waiting is an open ring, which reads as unfinished
-/// without shouting; finished is a faint dot that gets out of the way. Shape
-/// carries the difference as well as colour, so the three stay distinct where
-/// colour does not.
-///
-/// A session close to compacting overrides all three and blinks yellow. It is
-/// the one thing on this panel worth interrupting a glance for — a session
-/// about to compact is a session about to lose the history it has been building
-/// — and it is safe to override the state because the section header above the
-/// row already says what the state is. Blinking follows the usage LED's
-/// behaviour, including holding still for anyone who has asked for less motion:
-/// the colour still changes, so nothing is carried by movement alone.
-private struct AgentStateDot: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    let state: AgentSessionState
-    /// How full the session's context is, when its model has been measured.
-    var contextFraction: Double?
-
-    @State private var isDimmed = false
-
-    /// Close enough to compaction to be worth acting on. Measured against the
-    /// point sessions actually compact at, which is what the app learns — not
-    /// against the model's advertised window.
-    static let almostFullFraction = 0.9
-
-    private var isAlmostFull: Bool {
-        (contextFraction ?? 0) >= Self.almostFullFraction
-    }
-
-    private var isBlinking: Bool { isAlmostFull && !reduceMotion }
-
-    var body: some View {
-        Circle()
-            .fill(tint)
-            .frame(width: 7, height: 7)
-            // Opacity only, never scale. Pulsing the size made the warning
-            // dot a different size from every other dot for half of every
-            // cycle, and a column of markers that are not the same size is the
-            // first thing the eye picks up — it read as a mistake rather than
-            // as a warning. The dim end sits at half rather than a third: a
-            // dot that fades to nothing on a light background reads as a
-            // rendering fault, and the point is to be noticed.
-            .opacity(isBlinking && isDimmed ? 0.5 : 1)
-            .animation(
-                isBlinking
-                    ? .easeInOut(duration: 0.56).repeatForever()
-                    : .easeOut(duration: 0.16),
-                value: isDimmed
-            )
-            // Optically on the title's baseline: a marker that floats above or
-            // below the line it belongs to is the sort of thing you feel rather
-            // than notice.
-            .alignmentGuide(.firstTextBaseline) { $0[.bottom] + 1 }
-            .onAppear { isDimmed = isBlinking }
-            .onChange(of: isBlinking) { _, blinking in isDimmed = blinking }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(state.title))
-            .accessibilityValue(
-                isAlmostFull
-                    ? Text("context almost full")
-                    : Text("")
-            )
-    }
-
-    /// One filled circle at one size, and colour carries the rest.
-    ///
-    /// Waiting used to be an open ring. It was meant to read as unfinished, and
-    /// what it actually read as was a dot with a hole in it — a different kind
-    /// of object sitting in a column of dots, which invites the question "what
-    /// does that one mean?" every time. The section header above already says
-    /// the state in words, so the colour has only to distinguish, not explain.
-    private var tint: Color {
-        if isAlmostFull { return .yellow }
-        switch state {
-        case .active: return .green
-        case .waiting: return .orange
-        case .completed: return Color.secondary.opacity(0.35)
-        }
-    }
-}
-
-/// State, at the leading edge, with a shape of its own.
-///
-/// Deliberately a glyph and not a word. The section header above the row
-/// already says "Needs you" or "Running", so a text badge on every row would
-/// repeat it — and this panel is 300 points wide, where the width a badge costs
-/// comes straight out of the project name, which is the part that identifies
-/// the row. What the old indicator got wrong was not its size but its position
-/// and its vocabulary: a dot in the right gutter, the same shape for waiting
-/// and for finished, differing only in colour. These differ in shape.
-private struct AgentStateBadge: View {
-    let state: AgentSessionState
-
-    var body: some View {
-        Image(systemName: symbol)
-            .font(.caption2.weight(.semibold))
-            .foregroundStyle(tint)
-            .frame(width: 15, height: 15)
-            .background(tint.opacity(0.15), in: Circle())
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(state.title))
-    }
-
-    private var symbol: String {
-        switch state {
-        case .waiting: "hand.raised.fill"
-        case .active: "waveform"
-        case .completed: "checkmark"
-        }
-    }
-
-    private var tint: Color {
-        switch state {
-        case .waiting: .orange
-        case .active: .green
-        case .completed: .secondary
-        }
     }
 }
 

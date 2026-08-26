@@ -655,3 +655,62 @@ extension PanelRenderHarness {
         )
     }
 }
+
+// MARK: - Rows that cannot be told apart
+
+extension PanelRenderHarness {
+    /// Six sessions started in one home directory, which is what the herd
+    /// actually produces on the mini.
+    ///
+    /// A session with no title of its own falls back to the project name, the
+    /// project name comes from the working directory, and `/Users/clawd` is
+    /// "Clawd". Every row then reads the same. `AgentPanelRow.disambiguator`
+    /// exists for exactly this and was invented the first time it happened;
+    /// redrawing the row around a larger icon dropped it, and the panel went
+    /// straight back to six identical lines.
+    ///
+    /// Every other fixture here gives its sessions distinct titles, which is
+    /// why nothing caught it.
+    @Test
+    func renderRowsThatShareATitle() throws {
+        let now = Date.now
+        // Spelled out rather than built in one expression. Two ternaries and a
+        // string interpolation inside an initialiser call defeated the type
+        // checker outright — and it does not fail fast, it spent ten minutes
+        // before saying so, which read exactly like a hung test run.
+        func session(_ index: Int) -> MachineAgentSession {
+            let provider: AgentTaskProvider = index == 3 ? .codex : .claude
+            let state: AgentSessionState = index == 0 ? .active : .waiting
+            let updatedAt = now.addingTimeInterval(-Double(index) * 900)
+            let activity = AgentActivity(
+                tool: "Bash",
+                detail: "Running the nightly triage"
+            )
+            let identifier = "claude:aabbcc0" + String(index)
+            let agent = AgentSession(
+                id: identifier,
+                provider: provider,
+                projectName: "Clawd",
+                state: state,
+                updatedAt: updatedAt,
+                progress: nil,
+                title: nil,
+                activity: activity,
+                model: "claude-opus-5"
+            )
+            return MachineAgentSession(
+                machine: .macMini,
+                session: agent,
+                machineName: "Mini",
+                machineSymbolName: "macmini"
+            )
+        }
+        let sessions = (0 ..< 4).map(session)
+
+        try render(
+            panel(sessions: sessions),
+            size: CGSize(width: 300, height: 230),
+            named: "ai-panel-same-title"
+        )
+    }
+}

@@ -1222,7 +1222,7 @@ struct MachineAgentRows: View {
                 // it is doing, and how long since it moved.
                 title: Text(session.displayTitle),
                 subtitle: session.statusLine.map(Text.init),
-                value: Text(AIAgentRow.compactAge(of: session.updatedAt))
+                value: Text(AgentRowMetrics.compactAge(of: session.updatedAt))
             )
         }
     }
