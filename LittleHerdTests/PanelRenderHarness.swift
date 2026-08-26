@@ -154,7 +154,7 @@ struct PanelRenderHarness {
     /// `ImageRenderer` lays out neither a `ScrollView` nor a lazy stack — the
     /// first version of this harness wrapped both, produced a blank image, and
     /// reported success.
-    private func panel(
+    func panel(
         sessions: [MachineAgentSession],
         workload: HerdWorkloadFinding? = nil,
         showingFinished: Bool = false,
@@ -755,98 +755,100 @@ struct CredentialsSheetRenderHarness {
     }
 }
 
-// MARK: - Active-only panel exploration
+// MARK: - The panel on a realistic herd
 
 extension PanelRenderHarness {
-    /// Built explicitly rather than filtered out of `busyHerd`, because the
-    /// thing this design is for — progress while it works — appears only on a
-    /// session that publishes a plan, and the shared fixture's planned session
-    /// is not one of the running ones. A render that cannot show the feature
-    /// is not a render of it.
-    private func activeRows() -> [AgentPanelRow] {
-        // Relative to now, or every row reads "1015d" — which is exactly the
-        // defect this harness caught the first time it was pointed at a panel.
+    /// Deliberately realistic in shape: two sessions working — one publishing
+    /// a plan and one not — one blocked on a person, and two finished.
+    ///
+    /// The finished pair are in the fixture on purpose even though no group
+    /// draws them any more. They are most of what a real probe returns, and a
+    /// fixture without them would stop proving that they stay out of the
+    /// panel.
+    func comparisonHerd() -> [MachineAgentSession] {
         let now = Date.now
-        func session(
+        func make(
             _ id: String,
             _ provider: AgentTaskProvider,
             _ project: String,
             _ title: String,
             _ tool: String,
             _ detail: String,
+            _ state: AgentSessionState,
             minutesAgo: Double,
             progress: AgentSessionProgress? = nil
-        ) -> AgentPanelRow {
-            AgentPanelRow(
-                session: MachineAgentSession(
-                    machine: .macBookAir,
-                    session: AgentSession(
-                        id: id,
-                        provider: provider,
-                        projectName: project,
-                        state: .active,
-                        updatedAt: now.addingTimeInterval(-minutesAgo * 60),
-                        progress: progress,
-                        title: title,
-                        activity: AgentActivity(tool: tool, detail: detail),
-                        model: "claude-opus-5"
-                    ),
-                    machineName: "Air",
-                    machineSymbolName: "laptopcomputer"
+        ) -> MachineAgentSession {
+            MachineAgentSession(
+                machine: .macBookAir,
+                session: AgentSession(
+                    id: id,
+                    provider: provider,
+                    projectName: project,
+                    state: state,
+                    updatedAt: now.addingTimeInterval(-minutesAgo * 60),
+                    progress: progress,
+                    title: title,
+                    activity: AgentActivity(tool: tool, detail: detail),
+                    model: "claude-opus-5"
                 ),
-                disambiguator: nil
+                machineName: "Air",
+                machineSymbolName: "laptopcomputer"
             )
         }
 
         return [
-            session(
-                "claude:aa11bb22", .claude, "little-herd",
-                "Synology TLS sign-in", "Bash", "Running the full test suite",
-                minutesAgo: 0,
+            make(
+                "claude:aa11bb22", .claude, "little-herd", "Synology TLS sign-in",
+                "Bash", "Running the full test suite", .active, minutesAgo: 0,
                 progress: AgentSessionProgress(
-                    completedStepCount: 4,
-                    totalStepCount: 7,
-                    currentStepIndex: 5,
-                    currentStep: "Verify the published feed"
+                    completedStepCount: 4, totalStepCount: 7,
+                    currentStepIndex: 5, currentStep: "Verify the published feed"
                 )
             ),
-            session(
-                "codex:cc33dd44", .codex, "monorepo",
-                "MQ tester query state", "Edit", "AIAgentsView.swift",
-                minutesAgo: 2
+            make(
+                "codex:cc33dd44", .codex, "monorepo", "MQ tester query state",
+                "Edit", "AIAgentsView.swift", .active, minutesAgo: 2
             ),
-            session(
-                "claude:ee55ff66", .claude, "add-secret",
-                "Crosspoint device PDF check", "Read", "AddSecret.swift",
-                minutesAgo: 14,
-                progress: AgentSessionProgress(
-                    completedStepCount: 1,
-                    totalStepCount: 9,
-                    currentStepIndex: 2,
-                    currentStep: "Read the source"
-                )
+            make(
+                "claude:ee55ff66", .claude, "add-secret", "Crosspoint PDF check",
+                "Read", "AddSecret.swift", .waiting, minutesAgo: 14
+            ),
+            make(
+                "claude:1234abcd", .claude, "dotfiles", "Multi-machine update",
+                "Bash", "Committing both fixes", .completed, minutesAgo: 61
+            ),
+            make(
+                "codex:5678efab", .codex, "little-herd", "HANDOFF.md review",
+                "Read", "Documentation/HANDOFF.md", .completed, minutesAgo: 190
             ),
         ]
     }
 
+    private static let comparisonSize = CGSize(width: 300, height: 300)
+
     @Test
-    func renderActivePanel() throws {
+    func renderPanelOnARealisticHerd() throws {
         try render(
-            AIActivePanelView(
-                rows: activeRows(),
-                agentCPU: ["codex:cc33dd44": 34],
-                machineName: "Air"
-            ),
-            named: "active-panel"
+            panel(sessions: comparisonHerd()),
+            size: Self.comparisonSize,
+            named: "ai-panel-realistic"
         )
     }
 
+    /// The same herd with somewhere for the parked session to go, which is the
+    /// arrangement a person actually meets: something working, something
+    /// waiting, and the question of where it could move.
     @Test
-    func renderActivePanelEmpty() throws {
+    func renderPanelWithSomewhereToGo() throws {
         try render(
-            AIActivePanelView(rows: [], machineName: "Air"),
-            size: CGSize(width: 300, height: 110),
-            named: "active-panel-empty"
+            panel(
+                sessions: comparisonHerd(),
+                destinationAccounts: herdAccounts(),
+                onVerifyDestination: { _ in },
+                collapsed: []
+            ),
+            size: Self.reviewSize,
+            named: "ai-panel-realistic-destinations"
         )
     }
 }

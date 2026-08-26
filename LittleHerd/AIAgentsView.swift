@@ -28,9 +28,11 @@ struct AIAgentsView: View {
     /// one — a panel where one header behaves differently from its neighbours
     /// teaches people that headers are decoration.
     ///
-    /// Finished starts folded: it is the majority of what a probe returns and
-    /// the least useful thing on screen, and six finished sessions used to
-    /// carry the same weight as the one that was live.
+    /// Finished is not a group here any more. It was the majority of what a
+    /// probe returns and the least useful thing on screen — folded away by
+    /// default, which is most of the way to admitting it should not be a
+    /// section at all. The header still counts those sessions as tracked, so
+    /// nothing has stopped being watched; the panel has stopped listing them.
     ///
     /// Destinations starts folded too, and for a different reason. Expanded, it
     /// listed every machine that could not take the work — and a list of
@@ -38,13 +40,10 @@ struct AIAgentsView: View {
     /// something, which is how the first person to see it read it. Where a
     /// session could go is a question you ask, so the header asks it and the
     /// answers are one click away.
-    @State private var collapsed: Set<AgentPanelSection> = [.finished, .destinations]
+    @State private var collapsed: Set<AgentPanelSection> = [.destinations]
 
     private var layout: AgentPanelLayout {
-        AgentPanelLayout.make(
-            from: sessions,
-            showingFinished: !collapsed.contains(.finished)
-        )
+        AgentPanelLayout.make(from: sessions, showingFinished: false)
     }
 
     var body: some View {
@@ -110,7 +109,6 @@ struct AIAgentPanelContent: View {
             section(.running, label: machineName, rows: layout.active)
             section(.waiting, rows: layout.waiting)
             destinationSection
-            section(.finished, rows: layout.finished)
         }
         .padding(.horizontal, 14)
         .padding(.top, 3)
@@ -237,11 +235,9 @@ struct AIAgentPanelContent: View {
             Button {
                 onSelectMachine?(row.session.machine)
             } label: {
-                AIAgentRow(
+                AIActiveAgentRow(
                     row: row,
-                    compactionThresholds: compactionThresholds,
-                    cpuPercent: agentCPU[row.session.session.id],
-                    compactedAt: agentCompactedAt[row.session.session.id]
+                    cpuPercent: agentCPU[row.session.session.id]
                 )
                     .contentShape(Rectangle())
             }

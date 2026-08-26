@@ -1,47 +1,13 @@
 import SwiftUI
 
-/// The AI panel, reduced to what is running right now.
+/// The panel's row, rebuilt around what a person actually looks for.
 ///
-/// An exploration, kept beside `AIAgentPanelContent` rather than replacing it,
-/// so the two can be rendered side by side and argued about from pictures.
-///
-/// Three changes from the panel it is testing itself against. It shows only
-/// **active** sessions, where the old one also carried waiting, finished and
-/// destinations. It leads each row with the **provider's own icon at a size
-/// you can recognise across a room**, where the old row led with a four-point
-/// state dot and put the provider's identity behind a hover. And it shows
-/// **progress in the row** rather than on hover, so a session that is working
-/// through a plan says so while it works.
-struct AIActivePanelView: View {
-    let rows: [AgentPanelRow]
-    /// Share of the whole machine, per session, when two samples exist.
-    var agentCPU: [String: Double] = [:]
-    var machineName: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if rows.isEmpty {
-                AIActivePanelEmptyState(machineName: machineName)
-            } else {
-                ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
-                    if index > 0 {
-                        Divider()
-                            .padding(.leading, AIActiveAgentRow.titleInset)
-                    }
-
-                    AIActiveAgentRow(
-                        row: row,
-                        cpuPercent: agentCPU[row.session.session.id]
-                    )
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 6)
-    }
-}
-
+/// Three changes from the row it replaces. The provider's own icon leads it at
+/// twenty-six points, where the old row led with a four-point state dot and
+/// kept the provider's identity behind a hover. Progress is shown **in the
+/// row** while the session works, rather than on hover after it stops. And the
+/// state moved to a badge on the icon's corner, because a row led by a large
+/// mark saying only "Claude" would have lost what that dot was carrying.
 /// One running session.
 struct AIActiveAgentRow: View {
     let row: AgentPanelRow
@@ -60,7 +26,11 @@ struct AIActiveAgentRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            AgentProviderBadge(provider: session.provider, size: Self.iconSize)
+            AgentProviderBadge(
+                provider: session.provider,
+                state: session.state,
+                size: Self.iconSize
+            )
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -170,6 +140,7 @@ private struct SegmentedProgressBar: View {
 /// edge.
 private struct AgentProviderBadge: View {
     let provider: AgentTaskProvider
+    let state: AgentSessionState
     let size: CGFloat
 
     var body: some View {
@@ -180,7 +151,7 @@ private struct AgentProviderBadge: View {
             .clipShape(RoundedRectangle(cornerRadius: size * 0.22))
             .overlay(alignment: .bottomTrailing) {
                 Circle()
-                    .fill(Color.green)
+                    .fill(tint)
                     .frame(width: 8, height: 8)
                     .overlay(
                         Circle()
@@ -190,9 +161,21 @@ private struct AgentProviderBadge: View {
             }
             .accessibilityLabel(Text(provider.displayName))
     }
+
+    /// The same three colours the old state dot used. A waiting session is
+    /// the one that needs a person, and it has to stay tellable from a
+    /// working one at a glance — which is the whole reason the state did not
+    /// simply disappear when the icon took the leading column.
+    private var tint: Color {
+        switch state {
+        case .active: LittleHerdTheme.loadGreen
+        case .waiting: .orange
+        case .completed: .blue
+        }
+    }
 }
 
-private struct AIActivePanelEmptyState: View {
+struct AIActivePanelEmptyState: View {
     var machineName: String?
 
     var body: some View {
