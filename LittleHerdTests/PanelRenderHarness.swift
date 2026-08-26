@@ -159,6 +159,7 @@ struct PanelRenderHarness {
         workload: HerdWorkloadFinding? = nil,
         showingFinished: Bool = false,
         destinationAccounts: [DestinationAccount] = [],
+        onVerifyDestination: ((MachineID) -> Void)? = nil,
         collapsed: Set<AgentPanelSection>? = nil
     ) -> some View {
         AIAgentPanelContent(
@@ -166,6 +167,7 @@ struct PanelRenderHarness {
             workload: workload,
             machineName: "Air",
             destinationAccounts: destinationAccounts,
+            onVerifyDestination: onVerifyDestination,
             compactionThresholds: AgentCompactionThresholds(observed: ["claude-opus-5": 1_000_000]),
             // Shares of the machine, not of a core. 62% is a session with a
             // parallel build under it — the case the meter exists for — and 4%
@@ -395,6 +397,11 @@ struct PanelRenderHarness {
             panel(
                 sessions: busyHerd(),
                 destinationAccounts: herdAccounts(),
+                // Passed so the check control is drawn. The harness renders a
+                // `.link` button as a yellow placeholder, so this proves it is
+                // placed and offered on the right rows, not what it looks
+                // like — that has to be seen in the running app.
+                onVerifyDestination: { _ in },
                 collapsed: [.finished, .destinations]
             ),
             size: Self.reviewSize,
@@ -407,7 +414,11 @@ struct PanelRenderHarness {
         try render(
             panel(
                 sessions: busyHerd(),
-                destinationAccounts: herdAccounts()
+                destinationAccounts: herdAccounts(),
+                // Passed so the check control is drawn at all. Without it the
+                // row offers nothing, which is correct behaviour and looks
+                // exactly like a control that failed to render.
+                onVerifyDestination: { _ in }
             ),
             size: Self.reviewSize,
             named: "ai-panel-destinations"

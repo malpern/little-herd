@@ -392,6 +392,13 @@ nonisolated struct DestinationAccount: Equatable, Identifiable, Sendable {
     let symbolName: String
     let report: DestinationReport?
     let mayHostSessions: Bool
+    /// What the provider last said when asked, if it ever was. Not part of
+    /// the thirty-second sample — asking costs a model call — so this is
+    /// unverified until somebody presses the button.
+    var auth: AgentAuthState = .unverified
+    /// Whether a check is in flight, so the row can say so rather than look
+    /// like it ignored the press.
+    var isVerifying: Bool = false
 
     var id: MachineID { machine }
 }
@@ -427,7 +434,8 @@ nonisolated enum DestinationRoster {
                     eligibility: DestinationEligibility.resolve(
                         report: account.report,
                         repository: repository,
-                        isAllowed: account.mayHostSessions
+                        isAllowed: account.mayHostSessions,
+                        auth: account.auth
                     )
                 )
             }

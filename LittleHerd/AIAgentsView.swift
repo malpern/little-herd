@@ -22,6 +22,7 @@ struct AIAgentsView: View {
     /// The rest of the herd, for the one question a parked session raises.
     /// Empty in a herd of one, and then the section never appears.
     var destinationAccounts: [DestinationAccount] = []
+    var onVerifyDestination: ((MachineID) -> Void)?
 
     /// Which groups are folded. Every section folds, not only the finished
     /// one — a panel where one header behaves differently from its neighbours
@@ -56,6 +57,7 @@ struct AIAgentsView: View {
                     workload: workload,
                     machineName: machineName,
                     destinationAccounts: destinationAccounts,
+                    onVerifyDestination: onVerifyDestination,
                     compactionThresholds: compactionThresholds,
                     agentCPU: agentCPU,
                     agentCompactedAt: agentCompactedAt,
@@ -88,6 +90,7 @@ struct AIAgentPanelContent: View {
     var workload: HerdWorkloadFinding?
     var machineName: String?
     var destinationAccounts: [DestinationAccount] = []
+    var onVerifyDestination: ((MachineID) -> Void)?
     var compactionThresholds = AgentCompactionThresholds()
     var agentCPU: [String: Double] = [:]
     var agentCompactedAt: [String: Date] = [:]
@@ -212,7 +215,12 @@ struct AIAgentPanelContent: View {
                             .padding(.leading, AIAgentRow.titleInset)
                     } else {
                         ForEach(candidates) { candidate in
-                            DestinationRow(candidate: candidate)
+                            DestinationRow(
+                                candidate: candidate,
+                                onVerify: onVerifyDestination.map { verify in
+                                    { verify(candidate.account.machine) }
+                                }
+                            )
 
                             Divider()
                                 .padding(.leading, AIAgentRow.titleInset)
@@ -751,6 +759,7 @@ nonisolated enum AgentPanelSection: String, CaseIterable, Sendable {
 /// are not, and a row that only said "no" would send someone to the wrong one.
 private struct DestinationRow: View {
     let candidate: DestinationCandidate
+    var onVerify: (() -> Void)?
 
     var body: some View {
         DestinationNoticeRow(
@@ -762,7 +771,36 @@ private struct DestinationRow: View {
             // the panel's own quiet grey rather than borrowing a warning
             // colour.
             tint: candidate.eligibility.isEligible ? .green : .secondary
-        )
+        ) {
+            if candidate.account.isVerifying {
+                ProgressView()
+                    .controlSize(.mini)
+                    .help("Asking \(candidate.name) to sign in…")
+            } else if showsCheck {
+                Button("Check", action: { onVerify?() })
+                    .buttonStyle(.link)
+                    .font(.caption2)
+                    // Said plainly, because it is the one control in this
+                    // panel that spends something. The alternative — checking
+                    // on a timer — would spend it without asking, and a
+                    // monitor that quietly draws down the budget it reports
+                    // on has stopped being a monitor.
+                    .help("Ask \(candidate.name)'s agent to answer. Costs one small request.")
+            }
+        }
+    }
+
+    /// Offered where an answer would change something. There is nothing to
+    /// ask of a machine with no agent, no checkout, or one you have switched
+    /// off — and re-asking an account that already answered is spending a
+    /// request to be told the same thing.
+    private var showsCheck: Bool {
+        guard onVerify != nil else { return false }
+        switch candidate.eligibility {
+        case .eligible(_, .verified): return false
+        case .eligible, .signedOut: return true
+        case .excluded, .noAgent, .noCheckout, .unknown: return false
+        }
     }
 }
 
@@ -773,11 +811,12 @@ private struct DestinationRow: View {
 /// sit on the same vertical line as the session titles above them. Four points
 /// of drift here is the sort of thing that reads as carelessness even when
 /// nobody can say what moved.
-private struct DestinationNoticeRow: View {
+private struct DestinationNoticeRow<Accessory: View>: View {
     let symbolName: String
     let title: String
     let detail: String
     var tint: Color = .secondary
+    @ViewBuilder var accessory: () -> Accessory
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -787,9 +826,21 @@ private struct DestinationNoticeRow: View {
                 .frame(width: AIAgentRow.titleInset - 4)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                    .font(.caption.weight(.medium))
-                    .lineLimit(1)
+                // The control sits on the title's line, not after the
+                // sentence. The sentence wraps to two lines and takes the
+                // whole width with it, which squeezed a trailing control to
+                // nothing — present in the view hierarchy and zero points
+                // wide, which is the most annoying way for a button to be
+                // missing. The name is short and always leaves room.
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(title)
+                        .font(.caption.weight(.medium))
+                        .lineLimit(1)
+
+                    Spacer(minLength: 0)
+
+                    accessory()
+                }
 
                 Text(detail)
                     .font(.caption2)
@@ -797,12 +848,26 @@ private struct DestinationNoticeRow: View {
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
-
-            Spacer(minLength: 0)
         }
         .padding(.vertical, 5)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text("\(title). \(detail)"))
+        .accessibilityElement(children: .contain)
+    }
+}
+
+extension DestinationNoticeRow where Accessory == EmptyView {
+    init(
+        symbolName: String,
+        title: String,
+        detail: String,
+        tint: Color = .secondary
+    ) {
+        self.init(
+            symbolName: symbolName,
+            title: title,
+            detail: detail,
+            tint: tint,
+            accessory: { EmptyView() }
+        )
     }
 }
 

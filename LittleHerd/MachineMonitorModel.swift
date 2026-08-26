@@ -56,6 +56,11 @@ final class MachineMonitorModel: Identifiable {
     /// different thing on each: a Mac's comes from the kernel, everything
     /// else's is estimated here from how much memory is free.
     let platform: MachinePlatform
+    /// What this account's agent last said when asked to prove it can sign
+    /// in. Not sampled — see `AgentAuthVerifier` for why a monitor must not
+    /// spend the budget it is reporting on.
+    private(set) var agentAuth: AgentAuthState = .unverified
+    private(set) var isVerifyingAgent = false
     private(set) var swap: SwapUsage?
     /// Swap written across the watched window, when enough of one exists.
     private(set) var swapGrowth: SwapGrowth?
@@ -243,7 +248,30 @@ final class MachineMonitorModel: Identifiable {
             name: shortName,
             symbolName: symbolName,
             report: destinationReport,
-            mayHostSessions: mayHostSessions
+            mayHostSessions: mayHostSessions,
+            auth: agentAuth,
+            isVerifying: isVerifyingAgent
+        )
+    }
+
+    /// Ask this account's agent to answer, and remember what it said.
+    ///
+    /// Deliberately only ever called from a press. It costs a model call, and
+    /// the answer decays — an account that answered an hour ago may not now,
+    /// which was measured on the linux box in the space of that hour.
+    func verifyAgentAuthentication() async {
+        guard !isVerifyingAgent,
+              let install = destinationReport?.bestInstallation
+        else { return }
+
+        isVerifyingAgent = true
+        defer { isVerifyingAgent = false }
+
+        agentAuth = await AgentAuthVerifier.verify(
+            install: install,
+            isLocal: isLocal,
+            host: hostname,
+            identityFile: identityFile
         )
     }
 
