@@ -107,6 +107,106 @@ nonisolated enum AgentInstallOutputParser {
     }
 }
 
+/// Whether an agent can actually reach its provider, as opposed to merely
+/// being installed.
+///
+/// Kept apart from the install because the two were conflated and the herd
+/// showed why. Measured 25 August, one probe per agent per machine: Codex
+/// answered on the Air and on the mini — the mini over plain ssh, which is a
+/// successor started on a remote destination and the step the whole transfer
+/// design rests on. Claude answered on neither Mac. And on the linux box
+/// *both* agents had credentials present at mode 600 and *both* were expired.
+///
+/// A machine with a lapsed token is indistinguishable from a healthy one at
+/// any distance, so an eligibility answer built on installs alone would have
+/// offered linux as a destination and watched it fail at the moment of use.
+nonisolated enum AgentAuthState: Equatable, Sendable {
+    /// The provider answered. Dated, because this decays.
+    case verified(at: Date)
+    /// The provider refused, in its own words.
+    case refused(reason: String)
+    /// Nobody has asked. Not a fault, and not a clean bill of health either.
+    case unverified
+}
+
+/// The challenge that settles it, and the reason there is no cheaper one.
+///
+/// **`codex login status` is not a liveness check and must not be used as
+/// one.** It printed "Logged in using ChatGPT" and exited 0 on the linux box
+/// ten minutes after a real request there had failed with "Your access token
+/// could not be refreshed". It reports that credentials exist, which is the
+/// thing already known, and it reports it in 78 milliseconds, which is what
+/// makes it so tempting. Claude Code offers nothing of the kind at all.
+///
+/// So the only proof is a request the provider answers, and that costs a model
+/// call. **This is therefore not part of the thirty-second sample.** A monitor
+/// that quietly spends the budget it is reporting on has stopped being a
+/// monitor. It is run deliberately — before a move is offered, which is where
+/// the transfer design already puts it — and until it has been run, the answer
+/// says so rather than guessing.
+nonisolated enum AgentAuthProbe {
+    static let expectedReply = "AUTH_OK"
+
+    /// Deliberately the smallest possible request: no repository, no tools, no
+    /// context. It is asking the provider whether it will answer this account
+    /// at all, not asking it to do anything.
+    static func command(for install: AgentInstallation) -> String {
+        let quoted = "'" + install.path.replacingOccurrences(of: "'", with: "'\\''") + "'"
+        switch install.provider {
+        case .codex:
+            return "\(quoted) exec --skip-git-repo-check 'Reply with exactly: \(expectedReply)'"
+        default:
+            return "\(quoted) -p 'Reply with exactly: \(expectedReply)'"
+        }
+    }
+
+    /// - Parameter output: stdout and stderr together, because every refusal
+    ///   seen so far arrived on one or the other and which one varied.
+    static func outcome(from output: String, at date: Date) -> AgentAuthState {
+        if output.contains(expectedReply) { return .verified(at: date) }
+
+        let lines = output
+            .split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !isNoise($0) }
+
+        for line in lines {
+            if let reason = refusal(in: line) { return .refused(reason: reason) }
+        }
+        // Something went wrong and it did not look like any refusal known here.
+        // Reported verbatim rather than translated, because a refusal nobody
+        // has seen before is exactly the one worth reading in full.
+        return .refused(reason: lines.first ?? "No answer")
+    }
+
+    /// A mise shim announces itself before running anything — see the version
+    /// parser, which had the same problem — and the announcement is not a
+    /// refusal however early it appears.
+    private static func isNoise(_ line: String) -> Bool {
+        line.hasPrefix("mise ") || line.hasPrefix("hook:") || line == "tokens used"
+    }
+
+    private static func refusal(in line: String) -> String? {
+        let lowered = line.lowercased()
+        if lowered.contains("not logged in") {
+            return String(localized: "Not signed in on this account.")
+        }
+        if lowered.contains("could not be refreshed")
+            || lowered.contains("session expired")
+            || lowered.contains("log out and sign in")
+        {
+            return String(localized: "The sign-in here has expired.")
+        }
+        if lowered.contains("usage limit") || lowered.contains("rate limit") {
+            // Authenticated, and out of budget. A different problem with a
+            // different fix, and saying "signed out" would send someone to
+            // re-authenticate an account that is perfectly signed in.
+            return String(localized: "Signed in, but out of budget.")
+        }
+        return nil
+    }
+}
+
 /// Whether a machine could host a session, and if not, which reason.
 ///
 /// Capability is measured and intent is chosen, and they are different
@@ -116,7 +216,13 @@ nonisolated enum AgentInstallOutputParser {
 /// preference — the same reason `RemoteUnavailability` distinguishes a name
 /// that will not resolve from a key that was refused.
 nonisolated enum DestinationEligibility: Equatable, Sendable {
-    case eligible(AgentInstallation)
+    /// Installed, and allowed. The auth state travels with it because
+    /// "can host a session" was overclaiming: it was decided by the presence
+    /// of a binary, and a binary that cannot sign in hosts nothing.
+    case eligible(AgentInstallation, AgentAuthState)
+    /// Installed, and the provider refused it. Distinct from `noAgent`, which
+    /// is a machine to install something on; this is a machine to sign in on.
+    case signedOut(AgentInstallation, reason: String)
     /// Capable, perhaps, but not offered. A choice, not a lack.
     case excluded
     /// No agent this account can run, whatever the PATH says.
@@ -129,16 +235,36 @@ nonisolated enum DestinationEligibility: Equatable, Sendable {
     /// Not asked yet, or the machine is not answering.
     case unknown
 
+    /// A destination that has not been checked still counts. The transfer
+    /// design verifies the successor behaviourally before retiring the source,
+    /// so an unverified destination is a risk the sequence already covers — a
+    /// refused one is not, and is excluded here.
     var isEligible: Bool {
         if case .eligible = self { return true }
         return false
     }
 
+    /// Whether the provider has actually answered for this account.
+    var authState: AgentAuthState {
+        switch self {
+        case .eligible(_, let auth): auth
+        case .signedOut(_, let reason): .refused(reason: reason)
+        default: .unverified
+        }
+    }
+
     /// One line, in the vocabulary of the thing that would fix it.
     var detail: String {
         switch self {
-        case .eligible(let install):
-            "Can host a session — \(install.providerName) \(install.version)"
+        case .eligible(let install, .verified):
+            "Can host a session — \(install.providerName) \(install.version), signed in"
+        case .eligible(let install, _):
+            // Says what was measured, not what is hoped. The binary is here;
+            // whether it can sign in has not been asked, and asking costs a
+            // model call.
+            "\(install.providerName) \(install.version) here — sign-in not checked"
+        case .signedOut(let install, let reason):
+            "\(install.providerName) cannot sign in here — \(reason)"
         case .excluded:
             "Excluded here — turn it on in Settings."
         case .noAgent:
@@ -155,7 +281,11 @@ nonisolated enum DestinationEligibility: Equatable, Sendable {
     /// get a fault's symbol.
     var symbolName: String {
         switch self {
-        case .eligible: "checkmark.circle"
+        case .eligible(_, .verified): "checkmark.circle"
+        // Not a fault and not a pass. The same clock the unmeasured case uses,
+        // because that is what it is: a question nobody has asked yet.
+        case .eligible: "checkmark.circle.badge.questionmark"
+        case .signedOut: "person.crop.circle.badge.xmark"
         case .excluded: "minus.circle"
         case .noAgent: "questionmark.circle"
         case .noCheckout: "arrow.trianglehead.branch"
@@ -172,10 +302,14 @@ nonisolated enum DestinationEligibility: Equatable, Sendable {
     ///     origin remote. Nil where the question is about the account alone,
     ///     as it is in Settings.
     ///   - isAllowed: `MachineConfiguration.mayHostSessions`.
+    ///   - auth: what the provider last said when asked, if it ever was.
+    ///     Defaults to unverified, which is what the thirty-second sample
+    ///     knows — it does not run the challenge, and could not afford to.
     static func resolve(
         report: DestinationReport?,
         repository: String?,
-        isAllowed: Bool
+        isAllowed: Bool,
+        auth: AgentAuthState = .unverified
     ) -> DestinationEligibility {
         // Intent is checked first, and deliberately: a machine you have said
         // no to should read as "excluded", not as a list of things it lacks.
@@ -190,7 +324,13 @@ nonisolated enum DestinationEligibility: Equatable, Sendable {
            report.checkouts[repository] == nil {
             return .noCheckout(repository: repository)
         }
-        return .eligible(install)
+        // Last of all, because a refusal is about this account's credentials
+        // rather than about the work being moved, and it is the only one of
+        // these that can change without anybody touching the machine.
+        if case .refused(let reason) = auth {
+            return .signedOut(install, reason: reason)
+        }
+        return .eligible(install, auth)
     }
 }
 

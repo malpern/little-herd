@@ -229,7 +229,7 @@ struct AgentDestinationTests {
                 report: report([claude]),
                 repository: nil,
                 isAllowed: true
-            ) == .eligible(claude)
+            ) == .eligible(claude, .unverified)
         )
     }
 
@@ -241,7 +241,11 @@ struct AgentDestinationTests {
             isAllowed: true
         )
         #expect(eligibility.isEligible)
-        #expect(eligibility.detail == "Can host a session — Claude 2.1.234")
+        // It used to say "Can host a session" on the strength of a binary
+        // being present. That was the overclaim: linux had binaries for both
+        // agents and could sign in with neither. Naming the agent is still
+        // the job of this row; promising it works is not.
+        #expect(eligibility.detail == "Claude 2.1.234 here — sign-in not checked")
     }
 
     /// The newest agent is the one a transfer would start, so it is the one
@@ -321,7 +325,7 @@ struct DestinationRosterTests {
                 MachineID("studio"), MachineID("mini"), MachineID("linux"),
             ]
         )
-        #expect(candidates[0].eligibility == .eligible(claude))
+        #expect(candidates[0].eligibility == .eligible(claude, .unverified))
         #expect(candidates[1].eligibility == .excluded)
         #expect(
             candidates[2].eligibility == .noCheckout(repository: "little-herd")
@@ -544,5 +548,188 @@ struct AgentVersionReaderTests {
             report.shortPath(home: "/Users/someone-else")
                 == "/Users/clawd/.local/bin/claude"
         )
+    }
+}
+
+/// Whether an agent can actually sign in, which the install probe cannot say.
+///
+/// Every fixture below is a real output captured on 25 August from this herd,
+/// one probe per agent per machine. They are quoted rather than invented
+/// because the wording is the whole of what the parser has to work with, and
+/// three of the four refusals say different things about different problems.
+@MainActor
+struct AgentAuthProbeTests {
+    private let now = Date(timeIntervalSince1970: 1_700_000_000)
+
+    /// The Air and the mini, Codex, the second of those over plain ssh.
+    @Test
+    func aProviderThatAnswersIsVerified() {
+        let output = """
+            hook: Stop Failed
+            tokens used
+            34,333
+            AUTH_OK
+            """
+
+        #expect(AgentAuthProbe.outcome(from: output, at: now) == .verified(at: now))
+    }
+
+    /// Both Macs, Claude. The Air's ran from a shell inside the GUI login
+    /// session and still got this, which is why being in that session is not
+    /// on its own the fix.
+    @Test
+    func aMacThatCannotReachItsKeychainSaysNotSignedIn() {
+        let state = AgentAuthProbe.outcome(
+            from: "Not logged in · Please run /login",
+            at: now
+        )
+
+        #expect(state == .refused(reason: "Not signed in on this account."))
+    }
+
+    /// The linux box, both agents, worded differently by each. Credentials
+    /// present at mode 600 in both cases — the file existing proves nothing.
+    @Test
+    func anExpiredTokenIsToldApartFromNeverHavingSignedIn() {
+        let claude = AgentAuthProbe.outcome(
+            from: "Failed to authenticate: OAuth session expired and could not be refreshed",
+            at: now
+        )
+        let codex = AgentAuthProbe.outcome(
+            from: "ERROR: Your access token could not be refreshed. Please log out and sign in again.",
+            at: now
+        )
+
+        #expect(claude == .refused(reason: "The sign-in here has expired."))
+        #expect(codex == claude)
+    }
+
+    /// A mise shim announces itself before running anything. It is the first
+    /// line of the linux output and it is not a refusal.
+    @Test
+    func amiseBannerIsNotMistakenForARefusal() {
+        let output = """
+            mise ~/.config/mise/config.toml tools: codex@0.149.1
+            AUTH_OK
+            """
+
+        #expect(AgentAuthProbe.outcome(from: output, at: now) == .verified(at: now))
+    }
+
+    /// Being out of budget is not being signed out, and the fixes are
+    /// opposite: one is to wait, the other is to re-authenticate.
+    @Test
+    func runningOutOfBudgetIsNotBeingSignedOut() {
+        let state = AgentAuthProbe.outcome(
+            from: "You've hit your usage limit. Try again later.",
+            at: now
+        )
+
+        #expect(state == .refused(reason: "Signed in, but out of budget."))
+    }
+
+    /// A refusal nobody has seen before is the one most worth reading, so it
+    /// is passed through rather than flattened into "something went wrong".
+    @Test
+    func anUnfamiliarRefusalIsQuotedRatherThanTranslated() {
+        let state = AgentAuthProbe.outcome(from: "ERROR: region not supported", at: now)
+
+        #expect(state == .refused(reason: "ERROR: region not supported"))
+    }
+
+    /// The trap this whole probe exists to avoid. `codex login status` printed
+    /// exactly this on the linux box, exit 0, in 78 milliseconds — ten minutes
+    /// after a real request there had failed to refresh its token. Anything
+    /// that treats it as proof of life reintroduces the bug.
+    @Test
+    func theCheapStatusCommandWouldHaveLied() {
+        let state = AgentAuthProbe.outcome(
+            from: "Logged in using ChatGPT",
+            at: now
+        )
+
+        #expect(state != .verified(at: now))
+    }
+
+    /// The challenge asks for nothing but an answer: no repository, no tools.
+    @Test
+    func theChallengeIsTheSmallestRequestThatProvesAnything() {
+        let codex = AgentAuthProbe.command(
+            for: AgentInstallation(provider: .codex, version: "0.148.0", path: "/opt/codex")
+        )
+        let claude = AgentAuthProbe.command(
+            for: AgentInstallation(provider: .claude, version: "2.1.237", path: "/opt/claude")
+        )
+
+        #expect(codex.contains("--skip-git-repo-check"))
+        #expect(codex.contains("'/opt/codex'"))
+        #expect(claude.contains("-p "))
+        #expect(claude.contains("'/opt/claude'"))
+    }
+}
+
+/// What eligibility says once authentication is part of it.
+@MainActor
+struct DestinationAuthEligibilityTests {
+    private let install = AgentInstallation(
+        provider: .codex, version: "0.148.0", path: "/opt/codex"
+    )
+    private var report: DestinationReport {
+        DestinationReport(installations: [install], checkouts: ["malpern/little-herd": "/repo"])
+    }
+
+    /// The finding that started this: an account with a binary was called
+    /// eligible, and linux had binaries for both agents and could sign in with
+    /// neither.
+    @Test
+    func aninstalledAgentNoLongerClaimsToBeSignedIn() {
+        let eligibility = DestinationEligibility.resolve(
+            report: report, repository: nil, isAllowed: true
+        )
+
+        #expect(eligibility.isEligible)
+        #expect(eligibility.authState == .unverified)
+        #expect(eligibility.detail.contains("sign-in not checked"))
+        #expect(!eligibility.detail.contains("Can host a session"))
+    }
+
+    /// Once the provider has answered, it says so plainly.
+    @Test
+    func averifiedAccountSaysItCanHostASession() {
+        let eligibility = DestinationEligibility.resolve(
+            report: report, repository: nil, isAllowed: true,
+            auth: .verified(at: Date(timeIntervalSince1970: 1_700_000_000))
+        )
+
+        #expect(eligibility.detail.contains("Can host a session"))
+        #expect(eligibility.detail.contains("signed in"))
+        #expect(eligibility.symbolName == "checkmark.circle")
+    }
+
+    /// A refusal takes the machine out of the running, and reads as something
+    /// to sign in to rather than something to install onto.
+    @Test
+    func arefusedAccountIsNotOfferedAndSaysWhy() {
+        let eligibility = DestinationEligibility.resolve(
+            report: report, repository: nil, isAllowed: true,
+            auth: .refused(reason: "The sign-in here has expired.")
+        )
+
+        #expect(!eligibility.isEligible)
+        #expect(eligibility.detail.contains("cannot sign in"))
+        #expect(eligibility.detail.contains("expired"))
+        #expect(eligibility != .noAgent)
+    }
+
+    /// Intent still comes first. A machine you said no to reads as excluded,
+    /// not as a list of things wrong with it.
+    @Test
+    func achoiceStillOutranksAMeasurement() {
+        let eligibility = DestinationEligibility.resolve(
+            report: report, repository: nil, isAllowed: false,
+            auth: .refused(reason: "The sign-in here has expired.")
+        )
+
+        #expect(eligibility == .excluded)
     }
 }

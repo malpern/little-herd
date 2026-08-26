@@ -471,15 +471,22 @@ struct PanelRenderHarness {
         let rows: [(MachineConfiguration, DestinationEligibility)] = [
             (
                 machine("air", "MacBook Air", "air", .macOS, mayHost: true),
-                .eligible(claude)
+                .eligible(claude, .verified(at: Date(timeIntervalSince1970: 1_700_000_000)))
             ),
             (
-                machine("mini", "Mac mini", "openclaw", .macOS, mayHost: false),
-                .eligible(claude)
+                machine("mini", "Mac mini", "openclaw", .macOS, mayHost: true),
+                .eligible(claude, .unverified)
             ),
+            (
+                machine("studio", "Mac Studio", "studio", .macOS, mayHost: false),
+                .excluded
+            ),
+            // The linux box as it actually stands: both agents installed, both
+            // credentials present at mode 600, and neither able to sign in.
+            // Before this row could exist, it rendered as though it were ready.
             (
                 machine("linux", "Linux box", "linux", .linux, mayHost: true),
-                .noAgent
+                .signedOut(claude, reason: "The sign-in here has expired.")
             ),
             (
                 machine("nas", "Synology", "nas", .storage, mayHost: true),
