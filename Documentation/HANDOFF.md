@@ -446,6 +446,49 @@ which is also what a durable successor session needs, since `-p` exits when it
 finishes. The linux box is unaffected: its credentials are a file at mode 600
 and it runs headless.
 
+**The credential question was measured end to end on 25 August, by running the
+agents rather than by reading their credential stores.** Six probes, one per
+agent per machine, each asked to reply `AUTH_OK`:
+
+    Air     claude  ✗  "Not logged in · Please run /login"
+            codex   ✓  AUTH_OK
+    mini    claude  ✗  "Not logged in · Please run /login"       (over ssh)
+            codex   ✓  AUTH_OK                                   (over ssh)
+    linux   claude  ✗  "OAuth session expired and could not be refreshed"
+            codex   ✗  "Your access token could not be refreshed"
+
+**Transfer is not blocked. `ssh openclaw` → `codex exec` → an authenticated
+answer is a successor started non-interactively on a remote destination**, which
+is the step the whole design rests on, and it works today with no resident
+helper, no launchd agent, and nothing installed.
+
+Two corrections to the fact above, both of which matter.
+
+**Being inside the GUI login session is not sufficient for Claude Code on
+macOS.** The Air probe ran from a shell spawned by Claude.app itself — the same
+login session, the same user — and still got "Not logged in". So the barrier is
+not only the ssh boundary. There are *three* Keychain items, not one:
+`Claude Code-credentials` and two suffixed `-8f274711` and `-d950d442`, with no
+mapping to them found in `~/.claude.json`, `~/.claude/`, or the app's own
+`config.json`, and the bundled CLI takes no config-dir flag. Whatever the CLI
+looks for, it is not what the desktop app authenticated. **This weakens the
+proposed fix** — a launchd agent or tmux server resident in the GUI session was
+supposed to solve this, and it may not be enough on its own. Test that
+specifically before building on it.
+
+**File-backed does not mean durable.** Both of linux's credential files exist at
+mode 600 and both are *expired* — Claude's OAuth session and Codex's access
+token each refused to refresh. The mechanism worked and the token had lapsed,
+which is a different failure from having no credentials and reads identically
+from a distance.
+
+The product consequence is concrete: **`DestinationEligibility` cannot tell
+"the agent is installed" from "the agent is installed and can authenticate".**
+Its five answers are all about installs and checkouts, so linux would be offered
+as a destination right now and would fail at the moment of use. Eligibility
+needs an auth-liveness probe, and it is cheap — the six commands above are the
+whole of it.
+
 **No machine in this herd has an agent on the PATH ssh sees, and every one of
 them can run both.** Measured 19 August over non-interactive ssh, which is the
 only measurement that counts:
