@@ -1,20 +1,19 @@
 # Little Herd — handoff
 
-**State:** `v0.1.38` is released and `main` carries nothing beyond it. 422
+**State:** `v0.1.39` is released and `main` carries nothing beyond it. 440
 tests pass. Roadmap items 3 and 6 are done — destination eligibility, and each
 machine's agent versions — leaving one piece of item 3 open, which is that a
 destination is an account and the herd still stores machines; it has its own
 entry below.
 
-**0.1.38 is the memory-pressure release**, cut 25 August: the warning explains
-itself and names the application worth quitting, swap is measured on this Mac
-and on Linux and reported only while it is being written, hovering a machine
-puts that machine in the header, and signing in to a Synology says *which*
-check refused the certificate. That last one had been sitting on `main`
-unreleased and is the one that mattered to anybody but us — a sub-2048-bit RSA
-key, which is what a Synology serving its 2015 factory certificate has, reached
-the sign-in sheet as URLSession's own "A TLS error caused the secure connection
-to fail" and named neither the certificate nor the fix.
+**0.1.38 was the memory-pressure release** and **0.1.39 the destination one**,
+both cut on 25 August. 0.1.38: the warning explains itself and names the
+application worth quitting, swap is measured on this Mac and on Linux and
+reported only while it is being written, hovering a machine puts that machine
+in the header, and signing in to a Synology says *which* check refused the
+certificate — that last one had been sitting on `main` unreleased and was the
+one that mattered to anybody but us. 0.1.39: a destination no longer claims it
+can sign in, and there is a Check that asks.
 
 **A paid release is being considered, and the shape of it is settled** — see
 *Selling it* below. Nothing is built.
@@ -31,6 +30,7 @@ the first two shipped:
 and one on 25 August:
 
     0.1.38  memory pressure explains itself, and swap is measured
+    0.1.39  a destination says whether it can actually sign in
 
 **0.1.33 shipped a bug that could take a machine off the dashboard entirely** —
 an empty directory aborting the probe under zsh. Nothing in this herd tripped
@@ -909,7 +909,46 @@ granted, the result would be a monitor that cannot reach any machine but the
 one it runs on. Developer ID plus notarisation is the mainstream path for
 utilities of this shape, and `scripts/release` already does the whole of it.
 
+**Killing the local end of an SSH connection does not stop the command on the
+far side, and `ssh -tt` is what does.** Measured on the mini 25 August, because
+a comment in this repo claimed cancellation and nobody had checked: SIGTERM to
+the local client, and the remote loop was **still writing twenty-one seconds
+later** and alive when asked. With a forced pseudo-terminal the same test ends
+with the last remote write one second *before* the kill and the process gone.
+The consequence for anything that starts work on another machine is the sharp
+part — a probe that gives up leaves an agent running and spending the account's
+budget, while the app reports that nothing happened. The terminal is given to
+the authentication probe alone; the sampler runs long shell scripts whose
+output a terminal would mangle, and it has nothing to cancel. It costs CRLF
+line endings and ssh's parting "Connection to … closed.", both of which are
+filtered because neither is the agent speaking.
+
+**An agent's absolute path contains its version and the runtime moves it.**
+`claude-code` went 2.1.237 → 2.1.241 during a single session on 25 August and
+the old directory went with it, so a path measured minutes earlier was already
+wrong. A cached install therefore goes stale silently, and the failure arrives
+as an authentication error rather than a missing file unless something looks
+for "No such file or directory" — which is why `AgentAuthProbe` does, and
+reports it as an install to re-probe rather than an account to sign in to.
+
 ## Method notes
+
+**Four bugs in one afternoon, none of them findable by the suite, all of them
+found by asking what the code did to another machine.** Stdin inherited instead
+of closed, so a remote agent sat waiting on an EOF that never came. No watchdog,
+so one probe held a test for ten minutes. Silence read as a refusal, so a killed
+process looked like a signed-out account. And a cancellation that cancelled
+nothing. The pattern is worth naming: **every one of them lived in the layer
+that talks to the outside world, and that layer had no tests** — the pure logic
+beside it was covered, verified by breaking it, and correct throughout.
+
+**A fixture can lie twice in one day, and it looks exactly like a bug in the
+code.** Both times a render was missing something, the first instinct was to
+change the view, and both times the view was right. Once the growth evidence
+could not survive `apply`, which recomputes it; once the callback had been
+given to the folded fixture rather than the expanded one. Before editing a view
+because a render is missing something, check that the fixture asked for it.
+
 
 **Verify the instrument before believing it, again — this time the instrument
 was a mouse.** Synthetic hovering produced the tooltip once and then stopped
@@ -1257,6 +1296,29 @@ it; the files survived only because the directory had not been reaped yet.
     available without total is half a reading. Neither is urgent: the tooltip
     mentions swap only while swap is being written, so a machine that is not
     asked simply says nothing, which is what it should say.
+
+12. **The verifier is ahead of the thing that needs it, and the I/O half of it
+    has no tests.** Written 25 August, and worth being honest about. Its pure
+    parts — `AgentAuthProbe`, the eligibility states, the presentation — are
+    covered and were verified by breaking them. `AgentAuthVerifier`,
+    `ProbeWatchdog`, `runCapturingAll` and `runLocally` are referenced by no
+    test at all, and that is roughly a hundred and ninety lines of process and
+    concurrency plumbing in which **four bugs were found by running it and
+    none by the suite**: stdin inherited rather than closed, no watchdog at
+    all, silence read as a refusal, and a cancelled probe that did not stop
+    the work it started.
+
+    That last one is the shape of the risk. The comment claimed cancellation
+    and the code did not do it, and only an experiment against another machine
+    said so. If more is built here, build it a test harness first — a fake
+    agent script that can be made to hang, refuse, or answer is most of one.
+
+    The feature is also ahead of its consumer. It exists for the transfer flow
+    (item 4), which is not built, and its whole user-visible effect today is a
+    caption and a link that spends a request to change it. That is a
+    reasonable bet, not a finished feature; do not add to it before the mover
+    exists to use it.
+
 
 ## Keeping this file honest
 
