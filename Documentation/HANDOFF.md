@@ -973,6 +973,31 @@ transcript mtime, so a session running a single long tool call — a full test
 run, a build — stops writing and drops out of `active` while it is working
 hardest. Worth a look before anyone trusts the active count.
 
+**A run that stopped mid-tool is not a run waiting for you, and conflating
+them fills the panel with rows nobody can act on.** Measured on this herd:
+**twenty-eight sessions share the title "Smirk daily snapshot"** — a scheduled
+job names every run the same — and **fourteen of them ended inside a tool call
+rather than on `end_turn`**. Every one of those read as *waiting*, sat in the
+group meant for things that need a person, and could not be dismissed, resumed,
+or acted on in any way. `AgentSessionState.stalled` now tells them apart: a
+waiting session ended its turn and holds for your next message; a stalled one
+was killed, crashed, or its machine slept. Stalled joins the finished pile —
+counted in the header, not given a row.
+
+Two things this explains that looked like display bugs. **One title appearing
+twice in the panel, once active and once waiting, is two different sessions**,
+not one row drawn twice — today's run of a routine and a previous one. And
+Little Herd knows nothing about schedules: it reads transcript files, so a
+routine is only ever "a lot of sessions with the same name".
+
+**A home directory is not a project.** `lastMeaningfulComponent` answered
+"Clawd" for `/Users/clawd`, so six sessions started in one account's home
+produced six rows all named after the account the panel was already scoped to.
+`projectName(fromWorkingDirectory:)` now returns nil for a two-component
+`/Users/x` or `/home/x`, and the session parser substitutes "No project"
+rather than dropping the session — which it used to do, because a nil project
+name was a hard `guard`.
+
 ## Method notes
 
 **Four bugs in one afternoon, none of them findable by the suite, all of them

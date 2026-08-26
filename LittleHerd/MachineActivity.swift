@@ -495,6 +495,8 @@ nonisolated enum MachineActivityContext {
             .filter { $0 != "/" }
         guard !components.isEmpty else { return nil }
 
+        if isHomeDirectory(components) { return nil }
+
         return agentWorktree(components)
             ?? derivedData(components)
             ?? sourceTreeWithBuildOutput(components)
@@ -572,6 +574,18 @@ nonisolated enum MachineActivityContext {
 
     /// Nothing matched: use the deepest component that names something, rather
     /// than a build directory.
+    /// A session started in a home directory has no project, and naming it
+    /// after the account is worse than saying nothing.
+    ///
+    /// `lastMeaningfulComponent` would answer "Clawd" for `/Users/clawd`,
+    /// which is the account the panel is already scoped to — six sessions on
+    /// the mini produced six rows all called Clawd, none of them telling you
+    /// anything. Nil here, and the caller says so in its own words.
+    private static func isHomeDirectory(_ components: [String]) -> Bool {
+        guard components.count == 2 else { return false }
+        return ["users", "home"].contains(components[0].lowercased())
+    }
+
     private static func lastMeaningfulComponent(
         _ components: [String]
     ) -> String? {
@@ -948,7 +962,7 @@ nonisolated enum AgentTaskProbe {
           elif [ "$codex_age_ms" -ge 0 ] && [ "$codex_age_ms" -le "$little_herd_active_window_ms" ]; then
             codex_status=active
           else
-            codex_status=waiting
+            codex_status=stalled
           fi
           codex_id64=$(printf '%s' "$codex_id" | base64 | tr -d '\n')
           codex_cwd64=$(printf "%s" "$codex_cwd" | base64 | tr -d '\n')
@@ -1125,7 +1139,12 @@ nonisolated enum AgentTaskProbe {
             elif [ "$claude_age_ms" -ge 0 ] && [ "$claude_age_ms" -le "$little_herd_active_window_ms" ]; then
               claude_status=active
             else
-              claude_status=waiting
+              # Last entry is a tool call and nothing has moved since. That is
+              # a run that stopped part-way — killed, crashed, or the machine
+              # slept — not one holding for your next message. Saying
+              # "waiting" put fourteen dead runs of one scheduled job in the
+              # group meant for things that need a person.
+              claude_status=stalled
             fi
 
             # Every TaskCreate must be seen, not just recent ones. taskId is an

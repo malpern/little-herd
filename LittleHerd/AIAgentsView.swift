@@ -361,13 +361,14 @@ private struct HoveredAgentProgressRow: View {
         case .active: "Working — no structured plan"
         case .completed: "Finished — no structured plan"
         case .waiting: "Waiting — no structured plan"
+        case .stalled: "Stopped part-way — no structured plan"
         }
     }
 
     private var statusColor: Color {
         switch session.state {
         case .active: .green
-        case .completed: .blue
+        case .completed, .stalled: .blue
         case .waiting: .orange
         }
     }
@@ -405,7 +406,7 @@ private struct AgentProgressRing: View {
     private var ringColor: Color {
         switch state {
         case .active: .green
-        case .completed: .blue
+        case .completed, .stalled: .blue
         case .waiting: .orange
         }
     }
@@ -541,7 +542,7 @@ private struct AgentSessionStatusIndicator: View {
                 Circle()
                     .fill(Color.green)
                     .frame(width: 6, height: 6)
-            case .completed:
+            case .completed, .stalled:
                 Circle()
                     .fill(Color.blue)
                     .frame(width: 6, height: 6)

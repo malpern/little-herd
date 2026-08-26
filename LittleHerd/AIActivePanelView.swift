@@ -185,7 +185,7 @@ private struct AgentProviderBadge: View {
         switch state {
         case .active: LittleHerdTheme.loadGreen
         case .waiting: .orange
-        case .completed: .blue
+        case .completed, .stalled: .blue
         }
     }
 }

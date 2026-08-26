@@ -85,6 +85,87 @@ struct AgentProbeShellTests {
         #expect(session.state == .completed)
     }
 
+
+    /// A run that stopped inside a tool call is not holding for a person.
+    ///
+    /// Measured on this herd: of twenty-eight runs of one scheduled job,
+    /// fourteen ended mid-tool, and every one sat in Waiting for twelve hours
+    /// claiming to need something nobody could give it.
+    @Test
+    func arunThatStoppedMidToolIsStalledRatherThanWaiting() async throws {
+        let home = try FixtureHome()
+        try home.writeStalledSession(
+            projectPath: "/Users/tester/code/little-herd",
+            sessionID: "session-stalled",
+            stoppedSecondsAgo: 3 * 60 * 60
+        )
+
+        let snapshot = await AgentTaskProbe.readSnapshot(homeDirectory: home.path)
+        let session = try #require(snapshot.sessions.first { $0.provider == .claude })
+
+        #expect(session.state == .stalled)
+    }
+
+    /// And it stays out of the panel, which is the whole point of telling it
+    /// apart from waiting.
+    @Test
+    func astalledRunIsNotOfferedAsSomethingToAttendTo() async throws {
+        let home = try FixtureHome()
+        try home.writeStalledSession(
+            projectPath: "/Users/tester/code/little-herd",
+            sessionID: "session-stalled",
+            stoppedSecondsAgo: 3 * 60 * 60
+        )
+
+        let snapshot = await AgentTaskProbe.readSnapshot(homeDirectory: home.path)
+        let sessions = snapshot.sessions.map {
+            MachineAgentSession(
+                machine: MachineID("air"), session: $0,
+                machineName: "Air", machineSymbolName: "laptopcomputer"
+            )
+        }
+        let layout = AgentPanelLayout.make(from: sessions, showingFinished: false)
+
+        #expect(layout.waiting.isEmpty)
+        #expect(layout.active.isEmpty)
+    }
+
+    /// A session started in a home directory has no project, and the account
+    /// name is not a substitute — every session under `/Users/clawd` used to
+    /// arrive titled "Clawd".
+    @Test
+    func ahomeDirectoryIsNotAProject() async throws {
+        let home = try FixtureHome()
+        try home.writeFinishedTurn(
+            projectPath: "/Users/clawd",
+            sessionID: "session-home",
+            endedSecondsAgo: 60
+        )
+
+        let snapshot = await AgentTaskProbe.readSnapshot(homeDirectory: home.path)
+        let session = try #require(snapshot.sessions.first { $0.provider == .claude })
+
+        #expect(session.projectName == "No project")
+        #expect(session.projectName != "Clawd")
+    }
+
+    /// A real checkout still gets its name, or the rule above would have eaten
+    /// every project on the machine.
+    @Test
+    func adirectoryinsideAHomeStillNamesItsProject() async throws {
+        let home = try FixtureHome()
+        try home.writeFinishedTurn(
+            projectPath: "/Users/clawd/local-code/little-herd",
+            sessionID: "session-real",
+            endedSecondsAgo: 60
+        )
+
+        let snapshot = await AgentTaskProbe.readSnapshot(homeDirectory: home.path)
+        let session = try #require(snapshot.sessions.first { $0.provider == .claude })
+
+        #expect(session.projectName == "Little Herd")
+    }
+
     /// The regression that shipped: the probe used to read only the tail of a
     /// transcript, so on a long session the TaskCreate entries fell outside the
     /// window while their updates survived. Every id then pointed past the end
@@ -318,6 +399,33 @@ private struct FixtureHome {
         // The probe reads the file's mtime for age, so the fixture sets it.
         try FileManager.default.setAttributes(
             [.modificationDate: Date().addingTimeInterval(-endedSecondsAgo)],
+            ofItemAtPath: file
+        )
+    }
+
+
+    /// A transcript that stops inside a tool call and never returns — a run
+    /// that was killed, crashed, or slept.
+    func writeStalledSession(
+        projectPath: String,
+        sessionID: String,
+        stoppedSecondsAgo: TimeInterval
+    ) throws {
+        let directory = "\(path)/.claude/projects/fixture"
+        try FileManager.default.createDirectory(
+            atPath: directory,
+            withIntermediateDirectories: true
+        )
+        let lines = [
+            #"{"type":"user","cwd":"\#(projectPath)","sessionId":"\#(sessionID)","message":{"role":"user","content":"go"}}"#,
+            #"{"type":"assistant","message":{"stop_reason":null,"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"SKILL.md"}}]}}"#,
+        ]
+        let file = "\(directory)/\(sessionID).jsonl"
+        try lines.joined(separator: "\n").appending("\n").write(
+            toFile: file, atomically: true, encoding: .utf8
+        )
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date().addingTimeInterval(-stoppedSecondsAgo)],
             ofItemAtPath: file
         )
     }

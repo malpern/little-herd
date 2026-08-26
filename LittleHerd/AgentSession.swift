@@ -4,12 +4,24 @@ nonisolated enum AgentSessionState: String, Equatable, Sendable {
     case active
     case completed
     case waiting
+    /// Stopped part-way through, and not coming back on its own.
+    ///
+    /// Told apart from `waiting` because they need opposite things from a
+    /// person, and conflating them filled the panel with rows nobody could
+    /// act on. A waiting session ended its turn and is holding for your next
+    /// message. A stalled one stopped inside a tool call and never came back
+    /// — a routine that was killed, a machine that slept, a crash. Measured
+    /// on this herd: of twenty-eight runs of one scheduled job, fourteen ended
+    /// that way, and every one of them sat in Waiting for twelve hours
+    /// claiming to need something.
+    case stalled
 
     var title: LocalizedStringResource {
         switch self {
         case .active: "Active"
         case .completed: "Finished"
         case .waiting: "Waiting"
+        case .stalled: "Stopped"
         }
     }
 }
@@ -463,7 +475,13 @@ nonisolated struct AgentPanelLayout: Equatable, Sendable {
 
         let waiting = rows(in: .waiting)
         let active = rows(in: .active)
-        let finished = rows(in: .completed, limit: maximumFinishedCount)
+        // Stalled runs join the finished pile rather than getting a group of
+        // their own. Nothing draws that pile, which is the point: they are
+        // worth counting and not worth a row.
+        let finished = (rows(in: .completed) + rows(in: .stalled))
+            .sorted { $0.session.updatedAt > $1.session.updatedAt }
+            .prefix(max(maximumFinishedCount, 0))
+            .map { $0 }
 
         // Ambiguity is judged across what is actually on screen. Not within a
         // group — the same project waiting on one machine and running on
@@ -620,15 +638,20 @@ nonisolated enum AgentSessionOutputParser {
               let state = AgentSessionState(rawValue: String(fields[2])),
               let updatedMilliseconds = Double(fields[3]),
               let workingDirectory = decodeBase64(fields[4]),
-              let projectName = MachineActivityContext.projectName(
-                  fromWorkingDirectory: workingDirectory
-              ),
               let completedStepCount = Int(fields[5]),
               let totalStepCount = Int(fields[6]),
               let currentStepIndex = Int(fields[7])
         else {
             return nil
         }
+
+        // A working directory with no project in it — a home directory — is
+        // not a reason to drop the session. It is a reason to stop pretending
+        // the account name is a project: `/Users/clawd` used to arrive as
+        // "Clawd" on every row started there.
+        let projectName = MachineActivityContext.projectName(
+            fromWorkingDirectory: workingDirectory
+        ) ?? String(localized: "No project")
 
         let decodedStep = decodeBase64(fields[8])
         let progress: AgentSessionProgress?
@@ -705,6 +728,7 @@ nonisolated enum AgentSessionOutputParser {
         case .active: 0
         case .waiting: 1
         case .completed: 2
+        case .stalled: 3
         }
     }
 }
