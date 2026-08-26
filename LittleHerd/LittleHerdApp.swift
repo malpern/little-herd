@@ -735,7 +735,7 @@ struct DestinationCheckbox: View {
         switch capability {
         case .noAgent: "No agent"
         case .unknown: "Not measured"
-        case .signedOut: "Signed out"
+        case .signedOut: "Cannot run"
         // A repository is not asked about here — Settings has no session in
         // front of it — and an account whose provider has answered needs no
         // remark. One that has not been asked says so: it is the difference
@@ -753,7 +753,7 @@ struct DestinationCheckbox: View {
         case .eligible(let install, _):
             "\(machineName) has \(install.providerName) \(install.version) at \(install.path). Whether it can sign in has not been checked — the only thing that proves it is a request the provider answers, which costs a model call, so it is asked before a move rather than every thirty seconds."
         case .signedOut(let install, let reason):
-            "\(machineName) has \(install.providerName) \(install.version), but the provider refused it: \(reason) A session moved there would arrive and be unable to start."
+            "\(machineName) has \(install.providerName) \(install.version), and it did not run when asked: \(reason) A session moved there would arrive and be unable to start."
         case .noAgent:
             "\(machineName) has no agent Little Herd can run, so a session moved there would have nothing to run in."
         case .unknown:

@@ -173,10 +173,17 @@ nonisolated enum AgentAuthProbe {
         for line in lines {
             if let reason = refusal(in: line) { return .refused(reason: reason) }
         }
-        // Something went wrong and it did not look like any refusal known here.
-        // Reported verbatim rather than translated, because a refusal nobody
-        // has seen before is exactly the one worth reading in full.
-        return .refused(reason: lines.first ?? "No answer")
+        // Nothing came back at all. That is not a refusal — it is the same
+        // as the watchdog firing: nothing was learned, and saying "signed
+        // out" on the strength of silence sends someone to fix an account
+        // that may be perfectly fine. Measured: a nested agent launched from
+        // inside another agent's session is killed outright, with no output
+        // and no message, and it read as a refusal until this line existed.
+        guard let first = lines.first else { return .unverified }
+        // Something went wrong and it did not look like any refusal known
+        // here. Reported verbatim rather than translated, because a refusal
+        // nobody has seen before is exactly the one worth reading in full.
+        return .refused(reason: first)
     }
 
     /// A mise shim announces itself before running anything — see the version
@@ -188,6 +195,17 @@ nonisolated enum AgentAuthProbe {
 
     private static func refusal(in line: String) -> String? {
         let lowered = line.lowercased()
+        // Not an authentication problem at all, and it is the likeliest one to
+        // meet: an agent's path carries its version number and the runtime
+        // updates itself underneath. Measured 25 August — claude-code went
+        // 2.1.237 to 2.1.241 during a single session and the old directory
+        // went with it. The fix is to re-probe installs, not to sign in.
+        if lowered.contains("no such file or directory")
+            || lowered.contains("command not found")
+        {
+            return String(localized:
+                "The agent is no longer at that path — it has been updated.")
+        }
         if lowered.contains("not logged in") {
             return String(localized: "Not signed in on this account.")
         }
@@ -264,7 +282,7 @@ nonisolated enum DestinationEligibility: Equatable, Sendable {
             // model call.
             "\(install.providerName) \(install.version) here — sign-in not checked"
         case .signedOut(let install, let reason):
-            "\(install.providerName) cannot sign in here — \(reason)"
+            "\(install.providerName) could not run here — \(reason)"
         case .excluded:
             "Excluded here — turn it on in Settings."
         case .noAgent:

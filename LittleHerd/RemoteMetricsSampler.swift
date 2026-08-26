@@ -646,6 +646,65 @@ nonisolated enum SSHCommandRunner {
         return arguments + ["--", host, command]
     }
 
+    /// Standard output and standard error together, whatever the exit status.
+    ///
+    /// `run` below treats a non-zero exit as a failure and keeps only the
+    /// error text, which is right for sampling — a command that half-ran is
+    /// not a reading. The authentication challenge is the opposite case: the
+    /// refusal *is* the answer, and every refusal measured on this herd came
+    /// back on standard error with a non-zero status.
+    static func runCapturingAll(
+        host: String,
+        command: String,
+        identityFile: String? = nil,
+        timeout: TimeInterval = AgentAuthVerifier.timeout
+    ) async -> ProbeOutput {
+        guard SSHHostName.isValid(host) else {
+            return ProbeOutput(output: "", timedOut: false)
+        }
+
+        return await Task.detached(priority: .utility) {
+            let process = Process()
+            let pipe = Pipe()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
+            process.arguments = Self.arguments(
+                host: host,
+                command: command,
+                identityFile: identityFile
+            )
+            // One pipe for both streams: two would have to be drained
+            // concurrently to avoid the 64 KiB deadlock, and nothing here
+            // needs to tell them apart.
+            process.standardOutput = pipe
+            process.standardError = pipe
+            // Stdin must be closed, not inherited. An agent that finds an
+            // open stdin waits on it: measured here, the same `codex exec`
+            // that answers in thirty seconds from a shell ran into the
+            // ninety-second watchdog when launched from the app, because the
+            // app's own stdin never reaches EOF. /dev/null answers at once.
+            process.standardInput = FileHandle.nullDevice
+
+            do {
+                try process.run()
+            } catch {
+                return ProbeOutput(output: "", timedOut: false)
+            }
+
+            // Without this a wedged destination holds the read for ever: ssh
+            // keeps the pipe open as long as the remote command lives, and a
+            // remote agent waiting on something never closes it. Measured
+            // before it existed — a probe to the mini held a test for the ten
+            // minutes it took to kill it.
+            let watchdog = ProbeWatchdog(process: process, after: timeout)
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            return ProbeOutput(
+                output: String(decoding: data, as: UTF8.self),
+                timedOut: watchdog.finish()
+            )
+        }.value
+    }
+
     static func run(
         host: String,
         command: String,

@@ -716,7 +716,7 @@ struct DestinationAuthEligibilityTests {
         )
 
         #expect(!eligibility.isEligible)
-        #expect(eligibility.detail.contains("cannot sign in"))
+        #expect(eligibility.detail.contains("could not run here"))
         #expect(eligibility.detail.contains("expired"))
         #expect(eligibility != .noAgent)
     }
@@ -731,5 +731,46 @@ struct DestinationAuthEligibilityTests {
         )
 
         #expect(eligibility == .excluded)
+    }
+}
+
+/// The three ways a probe can tell you nothing, which must not read as a
+/// refusal. Each was met while wiring the verifier up.
+@MainActor
+struct AgentAuthSilenceTests {
+    private let now = Date(timeIntervalSince1970: 1_700_000_000)
+
+    /// A nested agent — one launched from inside another agent's session — is
+    /// killed outright, with no output and no message. It read as "signed
+    /// out" until silence was given its own answer.
+    @Test
+    func silenceIsNotARefusal() {
+        #expect(AgentAuthProbe.outcome(from: "", at: now) == .unverified)
+        #expect(AgentAuthProbe.outcome(from: "\n  \n", at: now) == .unverified)
+    }
+
+    /// An agent's path carries its version number and the runtime updates
+    /// itself underneath. claude-code went 2.1.237 to 2.1.241 during one
+    /// session and took its directory with it. The fix is to re-probe
+    /// installs, not to sign in, so it must not say "signed out".
+    @Test
+    func amovedBinaryNamesTheRealProblem() {
+        let state = AgentAuthProbe.outcome(
+            from: "/bin/sh: /path/claude-code/2.1.237/claude: No such file or directory",
+            at: now
+        )
+
+        #expect(state == .refused(reason: "The agent is no longer at that path — it has been updated."))
+    }
+
+    /// Output that is only noise is still silence.
+    @Test
+    func abannerOnItsOwnIsSilence() {
+        let state = AgentAuthProbe.outcome(
+            from: "mise ~/.config/mise/config.toml tools: codex@0.149.1",
+            at: now
+        )
+
+        #expect(state == .unverified)
     }
 }
