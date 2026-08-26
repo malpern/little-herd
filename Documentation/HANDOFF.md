@@ -482,12 +482,30 @@ token each refused to refresh. The mechanism worked and the token had lapsed,
 which is a different failure from having no credentials and reads identically
 from a distance.
 
-The product consequence is concrete: **`DestinationEligibility` cannot tell
-"the agent is installed" from "the agent is installed and can authenticate".**
-Its five answers are all about installs and checkouts, so linux would be offered
-as a destination right now and would fail at the moment of use. Eligibility
-needs an auth-liveness probe, and it is cheap — the six commands above are the
-whole of it.
+**Eligibility now carries authentication, and there is no cheap way to measure
+it.** `codex login status` looks like the answer — it printed "Logged in using
+ChatGPT" and exited 0 in 78 milliseconds — on the machine whose token had
+refused to refresh ten minutes earlier. It reports that credentials exist,
+which was never the question, and Claude Code offers nothing of the kind at
+all. The only proof is a request the provider answers; `AgentAuthProbe` asks
+for the smallest one there is, and **it is deliberately not part of the
+thirty-second sample**, because a monitor that quietly spends the budget it is
+reporting on has stopped being a monitor.
+
+`DestinationEligibility.eligible` therefore carries an `AgentAuthState`, and
+the affirmative answer stopped overclaiming. It used to read "Can host a
+session" on the strength of a binary being present — which is exactly what
+linux would have said, with two agents installed and neither able to sign in.
+It reads "sign-in not checked" until something checks, and `.signedOut` when a
+provider has refused, which is a machine to sign in on rather than one to
+install onto.
+
+**What is not built is the caller.** Nothing runs `AgentAuthProbe.command(for:)`
+yet — there is no reusable per-machine command runner, only `LocalProcessRunner`
+and the ssh invocation buried inside `RemoteMetricsSampler`. The transfer flow
+is the natural first caller, since it has to verify the successor before
+retiring the source anyway; a manual check in Settings is the other. Until one
+exists, every machine reads unverified, which is true.
 
 **No machine in this herd has an agent on the PATH ssh sees, and every one of
 them can run both.** Measured 19 August over non-interactive ssh, which is the
