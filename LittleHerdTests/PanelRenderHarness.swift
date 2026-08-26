@@ -35,7 +35,7 @@ struct PanelRenderHarness {
     }
 
     @discardableResult
-    private func render(
+    func render(
         _ view: some View,
         size: CGSize = PanelRenderHarness.panelSize,
         named name: String
@@ -67,7 +67,7 @@ struct PanelRenderHarness {
     /// Modelled on the panel as it was actually read on 18 August: seven
     /// sessions, mostly finished, project names repeating, one session with a
     /// plan and the rest without.
-    private func busyHerd() -> [MachineAgentSession] {
+    func busyHerd() -> [MachineAgentSession] {
         let now = Date.now
         func make(
             _ id: String,
@@ -752,5 +752,101 @@ struct CredentialsSheetRenderHarness {
     @Test
     func renderSuccess() throws {
         try render(.succeeded(volumes: 1, drives: 4), named: "credentials-success")
+    }
+}
+
+// MARK: - Active-only panel exploration
+
+extension PanelRenderHarness {
+    /// Built explicitly rather than filtered out of `busyHerd`, because the
+    /// thing this design is for — progress while it works — appears only on a
+    /// session that publishes a plan, and the shared fixture's planned session
+    /// is not one of the running ones. A render that cannot show the feature
+    /// is not a render of it.
+    private func activeRows() -> [AgentPanelRow] {
+        // Relative to now, or every row reads "1015d" — which is exactly the
+        // defect this harness caught the first time it was pointed at a panel.
+        let now = Date.now
+        func session(
+            _ id: String,
+            _ provider: AgentTaskProvider,
+            _ project: String,
+            _ title: String,
+            _ tool: String,
+            _ detail: String,
+            minutesAgo: Double,
+            progress: AgentSessionProgress? = nil
+        ) -> AgentPanelRow {
+            AgentPanelRow(
+                session: MachineAgentSession(
+                    machine: .macBookAir,
+                    session: AgentSession(
+                        id: id,
+                        provider: provider,
+                        projectName: project,
+                        state: .active,
+                        updatedAt: now.addingTimeInterval(-minutesAgo * 60),
+                        progress: progress,
+                        title: title,
+                        activity: AgentActivity(tool: tool, detail: detail),
+                        model: "claude-opus-5"
+                    ),
+                    machineName: "Air",
+                    machineSymbolName: "laptopcomputer"
+                ),
+                disambiguator: nil
+            )
+        }
+
+        return [
+            session(
+                "claude:aa11bb22", .claude, "little-herd",
+                "Synology TLS sign-in", "Bash", "Running the full test suite",
+                minutesAgo: 0,
+                progress: AgentSessionProgress(
+                    completedStepCount: 4,
+                    totalStepCount: 7,
+                    currentStepIndex: 5,
+                    currentStep: "Verify the published feed"
+                )
+            ),
+            session(
+                "codex:cc33dd44", .codex, "monorepo",
+                "MQ tester query state", "Edit", "AIAgentsView.swift",
+                minutesAgo: 2
+            ),
+            session(
+                "claude:ee55ff66", .claude, "add-secret",
+                "Crosspoint device PDF check", "Read", "AddSecret.swift",
+                minutesAgo: 14,
+                progress: AgentSessionProgress(
+                    completedStepCount: 1,
+                    totalStepCount: 9,
+                    currentStepIndex: 2,
+                    currentStep: "Read the source"
+                )
+            ),
+        ]
+    }
+
+    @Test
+    func renderActivePanel() throws {
+        try render(
+            AIActivePanelView(
+                rows: activeRows(),
+                agentCPU: ["codex:cc33dd44": 34],
+                machineName: "Air"
+            ),
+            named: "active-panel"
+        )
+    }
+
+    @Test
+    func renderActivePanelEmpty() throws {
+        try render(
+            AIActivePanelView(rows: [], machineName: "Air"),
+            size: CGSize(width: 300, height: 110),
+            named: "active-panel-empty"
+        )
     }
 }

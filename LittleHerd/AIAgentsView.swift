@@ -1123,7 +1123,7 @@ private struct AgentProviderIcon: View {
 }
 
 @MainActor
-private enum AgentProviderIcons {
+enum AgentProviderIcons {
     // Looked up on each use rather than cached in a `static let`.
     //
     // A stored static is computed once, on first access. That happened during
@@ -1170,17 +1170,30 @@ private enum AgentProviderIcons {
         bundleIdentifiers: [String],
         fallbackSymbolName: String
     ) -> NSImage {
-        for bundleIdentifier in bundleIdentifiers {
-            guard let applicationURL = NSWorkspace.shared.urlForApplication(
-                withBundleIdentifier: bundleIdentifier
-            ) else {
-                continue
-            }
-            if let icon = iconFromBundle(at: applicationURL) { return icon }
+        let urls = bundleIdentifiers.compactMap {
+            NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0)
+        }
 
-            // Worth trying anyway: on a machine where it does work, this is the
-            // icon the user actually sees in the Dock.
-            let workspaceIcon = NSWorkspace.shared.icon(forFile: applicationURL.path)
+        // Every identifier gets asked for a real icon before any of them is
+        // allowed to answer with a generic one. Two passes rather than one,
+        // and the reason is the blank squares these rows have been showing.
+        //
+        // `com.anthropic.claude-code` resolves — to the `claude.app` wrapper
+        // inside Claude Code's support directory, which carries no
+        // `CFBundleIconFile` at all. So `iconFromBundle` rightly declines, and
+        // then `NSWorkspace.icon(forFile:)` hands back the generic application
+        // placeholder. That is never empty, so the old single pass returned it
+        // and never reached `com.anthropic.claudefordesktop`, which has the
+        // icon everyone actually recognises. One identifier with no icon was
+        // shadowing the one with a good one, purely by being listed first.
+        for url in urls {
+            if let icon = iconFromBundle(at: url) { return icon }
+        }
+
+        // Only now, and still worth trying: on a machine where the bundle
+        // cannot be read, this is the icon the user sees in the Dock.
+        for url in urls {
+            let workspaceIcon = NSWorkspace.shared.icon(forFile: url.path)
             if !workspaceIcon.representations.isEmpty { return workspaceIcon }
         }
 
