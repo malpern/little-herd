@@ -39,7 +39,7 @@ nonisolated enum DashboardMetrics {
     /// a capacity and the word "free" between the bar and the machine's name.
     /// The other three sit in the same window with room to spare, and that
     /// space is the price of the window not resizing as you change metric.
-    static let overviewContent = CGSize(width: 324, height: 340)
+    static let overviewContent = CGSize(width: 324, height: 362)
     /// The metric row along the bottom of every dashboard screen.
     /// What the metric tabs cost the two machine screens, over and above what
     /// they already had.
@@ -60,7 +60,7 @@ nonisolated enum DashboardMetrics {
     /// right about the band and wrong about the tabs.
     static let metricFocusContent = CGSize(
         width: 400,
-        height: 342 + metricTabsHeight
+        height: 364 + metricTabsHeight
     )
     /// Everything about one machine.
     static let machineContent = CGSize(

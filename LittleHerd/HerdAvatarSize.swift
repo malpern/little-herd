@@ -13,11 +13,19 @@ import CoreGraphics
 /// which is the same thing said less directly and wrong the moment the window
 /// changes width.
 nonisolated enum HerdAvatarSize {
-    /// The size to aim for. The animal is the primary mark on this screen and
-    /// this is as large as it goes before the names beneath start colliding.
-    static let preferred: CGFloat = 42
+    /// The size to aim for. The animal is the primary mark on these screens —
+    /// it is how you find a machine before you have read anything — so it is
+    /// drawn as large as a column of four will hold.
+    static let preferred: CGFloat = 60
     /// Below this the animal would touch its neighbours.
     static let minimum: CGFloat = 24
+
+    /// The gap between the animal and the name under it, and between that
+    /// block and whatever sits above. One number, so a machine's identity is
+    /// spaced the same on the overview as it is beside a metric — they used to
+    /// differ by two points, which is invisible alone and reads as a wobble
+    /// when you move between the screens.
+    static let captionSpacing: CGFloat = 3
 
     static func forColumn(ofWidth width: CGFloat) -> CGFloat {
         // Four points of air on each side, so a wide animal in a narrow

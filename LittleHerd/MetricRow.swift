@@ -13,7 +13,11 @@ struct MetricRow: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(metric.kind.title)
-                    .font(.subheadline.weight(.medium))
+                    // The same as a metric pane's rows, one click away. The
+                    // two screens differ in ways that are earned — five tinted
+                    // metrics against fifty monochrome processes — and differed
+                    // in this way for no reason anybody could name.
+                    .font(.callout.weight(.medium))
                 MetricDetail(
                     kind: metric.kind,
                     auxiliaryValue: metric.auxiliaryValue,

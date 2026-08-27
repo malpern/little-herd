@@ -583,7 +583,7 @@ struct MachineStatusLabel: View {
         // Two points between the animal and its name, seven before the agent
         // mark: the machine's identity is one group, and what is running on it
         // is another.
-        VStack(spacing: 2) {
+        VStack(spacing: HerdAvatarSize.captionSpacing) {
             MachineAvatarView(avatar: machine.avatar, size: avatarSize)
                 .matchedAvatar(namespace, machine: machine.machine)
                 // A drive in trouble is worth seeing under every metric, not
@@ -609,17 +609,30 @@ struct MachineStatusLabel: View {
                     }
                 }
 
-            HStack(spacing: 4) {
-                Circle()
-                    .fill(machine.status.tint)
-                    .frame(width: 6, height: 6)
-                    .accessibilityLabel(machine.status.label)
-
-                Text(machine.shortName)
+            // The hidden template is what keeps the four names on one
+            // baseline. A long name shrinks to fit its column, a smaller font
+            // draws a shorter line, and the row rides up by the difference —
+            // so "Synology" sat three points above its neighbours while every
+            // frame in the layout was the same size. The template holds the
+            // height of an unshrunk line whatever the name does.
+            ZStack {
+                Text(verbatim: "Ag")
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.65)
+                    .hidden()
+                    .accessibilityHidden(true)
+
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(machine.status.tint)
+                        .frame(width: 6, height: 6)
+                        .accessibilityLabel(machine.status.label)
+
+                    Text(machine.shortName)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
+                }
             }
 
             // Appears when work starts and leaves when it stops, rather than

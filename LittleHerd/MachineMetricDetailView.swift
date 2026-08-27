@@ -129,7 +129,7 @@ struct MachineMetricDetail: View {
                         avatarSize: HerdAvatarSize.preferred,
                         namespace: namespace
                     )
-                    .padding(.top, 2)
+                    .padding(.top, HerdAvatarSize.captionSpacing)
                 }
                 .frame(width: 96)
                 .frame(maxHeight: .infinity, alignment: .center)
