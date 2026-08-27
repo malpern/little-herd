@@ -655,7 +655,8 @@ extension PanelRenderHarness {
                 progress: nil,
                 title: title,
                 activity: nil,
-                model: "claude-opus-5"
+                model: "claude-opus-5",
+                workingDirectory: "/Users/x/code/little-herd"
             )
         }
 
@@ -749,12 +750,54 @@ extension PanelRenderHarness {
             over: nil
         )
 
+        // A herd with one real destination in it: the mini has the agent and
+        // a checkout, the linux box has the agent and a lapsed credential, and
+        // the NAS has never been asked. That is the mix the refusal states
+        // were drawn for, and until eligibility was wired in none of them
+        // could be reached from the running app.
+        let claude = AgentInstallation(
+            provider: .claude,
+            version: "2.1.234",
+            path: "/Users/x/.local/bin/claude"
+        )
+        func account(
+            _ id: String,
+            report: DestinationReport?,
+            auth: AgentAuthState = .unverified
+        ) -> DestinationAccount {
+            DestinationAccount(
+                machine: MachineID(id),
+                name: id,
+                symbolName: "laptopcomputer",
+                report: report,
+                mayHostSessions: false,
+                auth: auth,
+                isVerifying: false
+            )
+        }
+        let herd = [
+            account("air", report: DestinationReport(
+                installations: [claude],
+                checkouts: ["malpern/little-herd": "/Users/x/code/little-herd"]
+            )),
+            account("mini", report: DestinationReport(
+                installations: [claude],
+                checkouts: ["malpern/little-herd": "/Users/y/little-herd"]
+            )),
+            account("linux", report: DestinationReport(
+                installations: [claude],
+                checkouts: ["malpern/little-herd": "/home/x/little-herd"]
+            ), auth: .refused(reason: "credentials expired")),
+            account("nas", report: nil),
+        ]
+
         func frame(_ drag: AgentDragSession, named name: String) throws {
             try render(
                 CPUOverviewView(
                     machines: machines,
                     metric: .cpu,
                     agentCPU: ["a": 61, "b": 4, "c": 38],
+                    herd: herd,
                     previewDrag: drag
                 ),
                 size: CGSize(width: 324, height: 222),

@@ -102,7 +102,8 @@ struct DashboardView: View {
                             namespace: machineTransition,
                             onSelectMetric: { model.selection = .machineMetric($0) },
                             onSelectMachine: { model.selection = .machine($0) },
-                            onSelectAgents: { model.showAgents(on: $0) }
+                            onSelectAgents: { model.showAgents(on: $0) },
+                            herd: model.machines.map(\.destinationAccount)
                         )
                         .id(model.overviewMetric)
                         .transition(.opacity)
@@ -568,6 +569,7 @@ private struct OverviewMetricContent: View {
     /// Opens a machine's AI page — what an agent token on the overview points
     /// at, which is neither the machine's summary nor the current metric.
     var onSelectAgents: ((MachineID) -> Void)?
+    var herd: [DestinationAccount] = []
 
     var body: some View {
         if metric == .ai {
@@ -594,7 +596,8 @@ private struct OverviewMetricContent: View {
                 onSelectMetric: onSelectMetric,
                 onSelectMachine: onSelectMachine,
                 onSelectAgents: onSelectAgents,
-                agentCPU: agentCPU
+                agentCPU: agentCPU,
+                herd: herd
             )
         }
     }

@@ -8,6 +8,8 @@ struct CPUOverviewView: View {
     var onSelectMachine: ((MachineID) -> Void)?
     var onSelectAgents: ((MachineID) -> Void)?
     var agentCPU: [String: Double] = [:]
+    /// Every account, so a drag can ask what each machine could actually take.
+    var herd: [DestinationAccount] = []
     /// The width this is laid out in. A constant here would go on dividing the
     /// old window into columns after the window grew, quietly leaving the
     /// right-hand margin twice the left.
@@ -67,13 +69,19 @@ struct CPUOverviewView: View {
 
     /// Which machines could take what is in hand.
     ///
-    /// Every machine but the one it came from, for now. This is the seam
-    /// `DestinationEligibility` belongs in — it already answers exactly this
-    /// question and is tested and uncalled — and wiring it here is the first
-    /// thing the transfer work should do rather than the last.
+    /// A measurement now, not a placeholder: the destination has an agent this
+    /// account can run, a checkout of the repository the work is in, and
+    /// credentials its provider has not refused. `AgentDropEligibility` holds
+    /// the reasoning, including the one part of the question it deliberately
+    /// does not ask yet.
     private func canAccept(_ machine: MachineID) -> Bool {
         guard let drag = activeDrag else { return false }
-        return machine != drag.origin
+        return AgentDropEligibility.canAccept(
+            machine,
+            carrying: drag.activity,
+            from: drag.origin,
+            in: herd
+        )
     }
 
     private func padState(for machine: MachineID) -> AgentPadState {

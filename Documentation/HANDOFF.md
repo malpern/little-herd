@@ -9,10 +9,11 @@ one to read before drawing a new one.
 anything to drag.** A machine running Claude Code or Codex carries a token
 under its name, on a pad; point at it for a card naming the sessions and what
 each is doing, click it for that machine's AI page, and pick it up to carry it
-across the herd, where every machine says whether it could take it. **Nothing
-moves on drop, deliberately** — `endDrag` computes the outcome and discards it.
-Wiring `DestinationEligibility` into `CPUOverviewView.canAccept` is the next
-step and lights the refusal states, which are built and currently unreachable.
+across the herd, where every machine says whether it could take it. Which machine can take it is a
+measurement — agent installed, repository checked out, credentials not refused
+— so the refusal states are reachable from the running app for the first time.
+**Nothing moves on drop, deliberately**: `endDrag` computes the outcome and
+discards it.
 
 **The website is live** at <https://malpern.github.io/little-herd/>, and the
 README is a front door that matches it — the hero is baked from the site's own
@@ -1224,23 +1225,39 @@ it; the files survived only because the directory had not been reaped yet.
 
 ## Next
 
-1. **The drag has an interface and no destination — `canAccept` is the seam.**
-   `CPUOverviewView.canAccept` currently says yes to every machine but the one
-   the token came from, so the `refused` pad state and the shake behind it are
-   designed and unreachable. `DestinationEligibility` already answers exactly
-   this question, is tested, and is uncalled: wiring it in is the first thing
-   the transfer work should do rather than the last, and it lights the refusal
-   path for free. Until then nothing moves on drop — `endDrag` computes the
-   outcome and discards it, deliberately, so the decision is visible where it
-   can be argued with rather than absent until the day it matters.
+1. **The drag asks a real question now; nothing acts on the answer.**
+   `CPUOverviewView.canAccept` goes through `AgentDropEligibility`, so a
+   machine offers itself only when it has an agent this account can run, a
+   checkout of the repository the work is in, and credentials its provider has
+   not refused. The repository is named by matching the carried session's
+   working directory against the *origin's* own checkouts, since nothing in a
+   session says which repository it belongs to.
+
+   **One part of the question is deliberately not asked, and it is a trap for
+   whoever changes this next.** `DestinationEligibility.resolve` gates on
+   `mayHostSessions`, which defaults to *off* and whose only setter — the
+   Settings checkbox — was removed on 25 August. Asking the full question today
+   returns `.excluded` for the whole herd and refuses every drag with no way
+   for anyone to say otherwise; that is the default outliving its control
+   rather than a safety posture. `AgentDropEligibility` passes `isAllowed:
+   true` and says so, and a test named for the regression fails the moment
+   somebody "fixes" it. **Restoring the setter is part of building the new
+   destination interface**, and when it exists this becomes one line.
+
+   What is still missing is the move itself: `endDrag` computes the outcome and
+   discards it. See item 5.
+
+   **A refusal gives no reason.** The pad turns and that is all; the
+   eligibility answer has a written `detail` for exactly this and nothing shows
+   it. A tooltip will not do — they do not appear mid-drag — so it wants a line
+   somewhere in the frame while a drag is live.
 
    **What is unverified, because all of this was built with the screen
-   unavailable:** how a token grabbed again mid-spring behaves in practice, and
-   whether the hover card's 350ms delay is right when a pointer is actually
-   moving over it. Both need someone at the machine; the delay is one number in
-   `CPUOverviewView.cardHover`. The click question that used to sit here is
-   settled — a tap on the token opens the AI page and no longer falls through
-   to the button underneath.
+   unavailable:** how a token grabbed again mid-spring behaves, and whether the
+   hover card's 350ms delay is right when a pointer is really moving. Both need
+   someone at the machine; the delay is one number in
+   `CPUOverviewView.cardHover`.
+
 2. **P-core/E-core awareness is blocked, not pending.** Per-core utilisation
    needs root on a remote Mac — `powermetrics` refuses without it, and neither
    `top` nor `iostat` exposes per-core lines. It would work on this Mac and no
