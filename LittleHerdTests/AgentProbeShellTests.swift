@@ -166,6 +166,46 @@ struct AgentProbeShellTests {
         #expect(session.projectName == "Little Herd")
     }
 
+
+    /// A session running one long tool call writes nothing to its transcript,
+    /// so the two-minute mtime window called it stopped at the moment it was
+    /// working hardest — and once stopped runs left the panel, that meant a
+    /// test suite or a build made its session disappear.
+    ///
+    /// A process that is running is running. Claude Code registers every live
+    /// session with its pid, and a pid can simply be asked whether it exists.
+    @Test
+    func alongToolCallDoesNotLookLikeAStoppedSession() async throws {
+        let home = try FixtureHome()
+        try home.writeLiveSession(
+            projectPath: "/Users/tester/code/little-herd",
+            sessionID: "session-busy",
+            lastWroteSecondsAgo: 20 * 60
+        )
+
+        let snapshot = await AgentTaskProbe.readSnapshot(homeDirectory: home.path)
+        let session = try #require(snapshot.sessions.first { $0.provider == .claude })
+
+        #expect(session.state == .active)
+    }
+
+    /// And a transcript with no live process behind it is still stopped, or
+    /// the registry would just be a way of never admitting anything ended.
+    @Test
+    func atranscriptWithNoProcessIsStillStopped() async throws {
+        let home = try FixtureHome()
+        try home.writeStalledSession(
+            projectPath: "/Users/tester/code/little-herd",
+            sessionID: "session-dead",
+            stoppedSecondsAgo: 20 * 60
+        )
+
+        let snapshot = await AgentTaskProbe.readSnapshot(homeDirectory: home.path)
+        let session = try #require(snapshot.sessions.first { $0.provider == .claude })
+
+        #expect(session.state == .stalled)
+    }
+
     /// The regression that shipped: the probe used to read only the tail of a
     /// transcript, so on a long session the TaskCreate entries fell outside the
     /// window while their updates survived. Every id then pointed past the end
@@ -427,6 +467,34 @@ private struct FixtureHome {
         try FileManager.default.setAttributes(
             [.modificationDate: Date().addingTimeInterval(-stoppedSecondsAgo)],
             ofItemAtPath: file
+        )
+    }
+
+
+    /// A live session: a stale transcript whose process is demonstrably
+    /// running, registered the way Claude Code registers one.
+    func writeLiveSession(
+        projectPath: String,
+        sessionID: String,
+        lastWroteSecondsAgo: TimeInterval
+    ) throws {
+        try writeStalledSession(
+            projectPath: projectPath,
+            sessionID: sessionID,
+            stoppedSecondsAgo: lastWroteSecondsAgo
+        )
+        let registry = "\(path)/.claude/sessions"
+        try FileManager.default.createDirectory(
+            atPath: registry,
+            withIntermediateDirectories: true
+        )
+        // This test's own process, which is unarguably alive.
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let record = #"{"pid":\#(pid),"sessionId":"\#(sessionID)","kind":"interactive"}"#
+        try record.write(
+            toFile: "\(registry)/\(pid).json",
+            atomically: true,
+            encoding: .utf8
         )
     }
 

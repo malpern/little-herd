@@ -730,6 +730,32 @@ nonisolated enum AgentTaskProbe {
     static let shellCommand = #"""
     little_herd_now_ms=$(($(date +%s) * 1000))
     little_herd_active_window_ms=120000
+    # Sessions that are running *now*, taken from Claude Code's own registry
+    # rather than inferred from a file's timestamp.
+    #
+    # Every live session writes ~/.claude/sessions/<pid>.json carrying its
+    # sessionId, and the pid can simply be asked whether it exists. That is a
+    # fact where the two-minute mtime window was a guess — and a guess that
+    # failed in the one direction that matters: a session running a single long
+    # tool call writes nothing to its transcript, so a test suite or a build
+    # made a session look stopped at the moment it was working hardest.
+    #
+    # Enumerated with `find`, never a glob. A glob that matches nothing takes
+    # the whole script down under zsh — the fact this repo already carries,
+    # and which cost a green suite the moment this loop was written the
+    # obvious way: every test that expected any session at all went red,
+    # because the probe had stopped before reaching them.
+    little_herd_live_ids=""
+    little_herd_reg_list=$(find "$HOME/.claude/sessions" -maxdepth 1 -name '*.json' 2>/dev/null)
+    for little_herd_reg in $little_herd_reg_list; do
+      [ -f "$little_herd_reg" ] || continue
+      little_herd_reg_pid=$(sed -n 's/.*"pid"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$little_herd_reg" | head -n 1)
+      [ -n "$little_herd_reg_pid" ] || continue
+      kill -0 "$little_herd_reg_pid" 2>/dev/null || continue
+      little_herd_reg_id=$(sed -n 's/.*"sessionId"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$little_herd_reg" | head -n 1)
+      [ -n "$little_herd_reg_id" ] || continue
+      little_herd_live_ids="$little_herd_live_ids $little_herd_reg_id"
+    done
     # How long a finished turn still counts as waiting for a person.
     #
     # "The agent finished its turn" is not "the session is over", and treating
@@ -1127,7 +1153,15 @@ nonisolated enum AgentTaskProbe {
               else empty end
             ' 2>/dev/null | tail -n 1)
             claude_age_ms=$((little_herd_now_ms - claude_mtime * 1000))
-            if [ "$claude_signal" = "completed" ]; then
+            # A process that is running is running, whatever its transcript's
+            # timestamp says. Checked before anything is inferred.
+            case " $little_herd_live_ids " in
+              *" $claude_id "*) claude_live=1 ;;
+              *) claude_live=0 ;;
+            esac
+            if [ "$claude_live" = "1" ] && [ "$claude_signal" != "completed" ]; then
+              claude_status=active
+            elif [ "$claude_signal" = "completed" ]; then
               # A turn that ended recently leaves the session waiting on you,
               # not finished. Only once it has been quiet for hours is it
               # history.
