@@ -711,6 +711,25 @@ extension PanelRenderHarness {
             named: "overview-with-tabs"
         )
 
+        // The metric row, with a machine in the red behind one of the tabs.
+        try render(
+            VStack(spacing: 18) {
+                OverviewMetricTabs(selection: .cpu, onSelect: { _ in })
+                OverviewMetricTabs(
+                    selection: .cpu,
+                    alarms: [.disk, .memory],
+                    onSelect: { _ in }
+                )
+                OverviewMetricTabs(
+                    selection: .disk,
+                    alarms: [.disk],
+                    onSelect: { _ in }
+                )
+            },
+            size: CGSize(width: 324, height: 160),
+            named: "metric-tabs-alarms"
+        )
+
         // What the pointer gets, which used to be a `.help` string. Three
         // sessions, deliberately unlike each other: one reporting a long tool
         // call that has to wrap, one reporting nothing at all and falling back

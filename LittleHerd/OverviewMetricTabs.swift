@@ -10,6 +10,8 @@ import SwiftUI
 /// while nobody was defending the pull-down.
 struct OverviewMetricTabs: View {
     let selection: OverviewMetric
+    /// The metrics with a machine in the red, which get a mark.
+    var alarms: Set<OverviewMetric> = []
     let onSelect: (OverviewMetric) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -39,16 +41,29 @@ struct OverviewMetricTabs: View {
         return Button {
             onSelect(metric)
         } label: {
-            Text(metric.title)
-                .font(.system(size: 11, weight: .semibold))
-                .kerning(0.1)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .foregroundStyle(
-                    isSelected ? LittleHerdTheme.forest : Color.secondary
-                )
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 5)
+            HStack(spacing: 4) {
+                Text(metric.title)
+                    .font(.system(size: 11, weight: .semibold))
+                    .kerning(0.1)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .foregroundStyle(
+                        isSelected ? LittleHerdTheme.forest : Color.secondary
+                    )
+
+                // Beside the word rather than over the corner of the pill: a
+                // tab is already a small target, and a mark that overlaps its
+                // edge reads as damage to the control rather than as news
+                // about what is behind it.
+                if alarms.contains(metric) {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 5, height: 5)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 5)
                 .background {
                     if isSelected {
                         RoundedRectangle(cornerRadius: HerdRadius.control, style: .continuous)
@@ -67,7 +82,14 @@ struct OverviewMetricTabs: View {
             reduceMotion ? nil : .snappy(duration: 0.22),
             value: selection
         )
-        .accessibilityLabel(Text(metric.title))
+        .animation(.smooth(duration: 0.25), value: alarms)
+        .accessibilityLabel(
+            alarms.contains(metric)
+                // Said in the label rather than as a hint: a hint is offered
+                // once and this is the reason to press the tab at all.
+                ? Text("\(String(localized: metric.title)), needs attention")
+                : Text(metric.title)
+        )
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }

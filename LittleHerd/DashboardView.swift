@@ -128,6 +128,7 @@ struct DashboardView: View {
                     // rather than throwing you back to the herd.
                     OverviewMetricTabs(
                         selection: model.overviewMetric,
+                        alarms: metricsInTheRed,
                         // The animation belongs to the press rather than to
                         // any one view: it is what makes the figures roll and
                         // the bars travel instead of cutting. Slightly faster
@@ -226,6 +227,22 @@ struct DashboardView: View {
 
     private var isLaunchOverlayVisible: Bool {
         isShowingLaunchSplash || isShowingNetworkVolumeOnboarding
+    }
+
+    /// Which metrics have a machine in the red, for the marks on the tabs.
+    ///
+    /// Asked of every machine on every metric rather than only the one being
+    /// shown, which is the entire point: the tab row is how you learn that
+    /// something is wrong on a screen you are not looking at.
+    private var metricsInTheRed: Set<OverviewMetric> {
+        var alarms: Set<OverviewMetric> = []
+        for metric in OverviewMetric.allCases {
+            let readings = model.overviewMachines.map {
+                $0.metricPresentation(for: metric, isReporting: $0.state == .live)
+            }
+            if MetricAlarm.isInTheRed(across: readings) { alarms.insert(metric) }
+        }
+        return alarms
     }
 
     /// Records that a machine may host work, and *persists it*.
