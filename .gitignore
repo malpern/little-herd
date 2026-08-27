@@ -9,3 +9,4 @@ xcuserdata/
 
 # local preview server config
 .claude/launch.json
+site/preview.html

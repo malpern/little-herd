@@ -30,12 +30,17 @@
   --card:       #FFFFFF;
   --card-edge:  rgba(29, 28, 26, 0.08);
   --shadow:     0 1px 2px rgba(29,28,26,.05), 0 8px 24px rgba(29,28,26,.06);
+  --licence-bg: var(--forest);
 
   --measure: 34rem;
   --pad: clamp(1.25rem, 5vw, 4rem);
 }
+/* Dark is defined twice on purpose. The first block catches a viewer whose OS
+   is dark and who has made no explicit choice; the second catches an explicit
+   choice, which a media query cannot see. Guarding the first against
+   [data-theme="light"] lets an explicit light choice beat a dark OS. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg:        #141513;
     --fg:        #F2EFE8;
     --muted:     #A8A29A;
@@ -44,7 +49,19 @@
     --card-edge: rgba(242, 239, 232, 0.10);
     --shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
     --forest:    #70C799;
+    --licence-bg:#10352A;
   }
+}
+:root[data-theme="dark"] {
+  --bg:        #141513;
+  --fg:        #F2EFE8;
+  --muted:     #A8A29A;
+  --rule:      rgba(242, 239, 232, 0.14);
+  --card:      #1C1E1B;
+  --card-edge: rgba(242, 239, 232, 0.10);
+  --shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+  --forest:    #70C799;
+  --licence-bg:#10352A;
 }
 
 /* ----------------------------------------------------------------- base */
@@ -168,8 +185,7 @@ section + section { border-block-start: 1px solid var(--rule); }
 .card p { margin: 0; font-size: .985rem; color: var(--muted); line-height: 1.55; }
 
 /* --------------------------------------------------------------- licence */
-.licence { background: var(--forest); color: #EAF3EC; }
-@media (prefers-color-scheme: dark) { .licence { background: #10352A; } }
+.licence { background: var(--licence-bg); color: #EAF3EC; }
 .licence h2 { color: #fff; }
 .licence p { color: rgba(234,243,236,.88); max-width: var(--measure); }
 .licence code { background: rgba(255,255,255,.14); color: #EAF3EC; }
