@@ -442,11 +442,16 @@ private struct DiscoveredMachinesList: View {
             }
         }
         .frame(height: 303, alignment: .top)
-        .background(.white.opacity(0.34))
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        // Semantic rather than a literal white at a third: this window has a
+        // dark ground too, where a white wash is a grey slab and the green it
+        // was outlined in disappears into it.
+        .background(.quaternary.opacity(0.5))
+        .clipShape(
+            RoundedRectangle(cornerRadius: HerdRadius.panel, style: .continuous)
+        )
         .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(LittleHerdTheme.forest.opacity(0.12), lineWidth: 1)
+            RoundedRectangle(cornerRadius: HerdRadius.panel, style: .continuous)
+                .strokeBorder(.separator, lineWidth: 1)
         )
     }
 }
@@ -465,7 +470,7 @@ private struct DiscoveryStatusView: View {
             } else {
                 Image(systemName: "network")
                     .font(.title2)
-                    .foregroundStyle(LittleHerdTheme.forest)
+                    .foregroundStyle(LittleHerdTheme.loadGreen)
                 Text(statusTitle)
                     .font(.callout.weight(.medium))
                 Text("Already-added machines are hidden. You can also add one by hostname.")
@@ -645,10 +650,19 @@ private struct AddMachinesSettingsDisclosure: View {
         .buttonStyle(.plain)
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
-        .background(.white.opacity(0.3), in: RoundedRectangle(cornerRadius: 9))
+        .background(
+            .quaternary.opacity(0.5),
+            in: RoundedRectangle(
+                cornerRadius: HerdRadius.surface,
+                style: .continuous
+            )
+        )
         .overlay(
-            RoundedRectangle(cornerRadius: 9)
-                .stroke(LittleHerdTheme.forest.opacity(0.1), lineWidth: 1)
+            RoundedRectangle(
+                cornerRadius: HerdRadius.surface,
+                style: .continuous
+            )
+            .strokeBorder(.separator, lineWidth: 1)
         )
     }
 }
@@ -708,7 +722,7 @@ private struct MachineSettingsReviewView: View {
 
                 Button("Done") { dismiss() }
                     .buttonStyle(.borderedProminent)
-                    .tint(LittleHerdTheme.forest)
+                    .tint(LittleHerdTheme.loadGreen)
                     .keyboardShortcut(.defaultAction)
             }
         }
@@ -743,13 +757,15 @@ private struct AddMachinesFooter: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .tint(LittleHerdTheme.forest)
+            .tint(LittleHerdTheme.loadGreen)
             .keyboardShortcut(.defaultAction)
             .disabled(selectedCount == 0)
         }
         .padding(.horizontal, 30)
         .frame(height: 58)
-        .background(.white.opacity(0.24))
+        // A bar rather than a wash, so the row of buttons reads as a footer
+        // on both grounds instead of as a lighter stripe on one.
+        .background(.bar)
         .overlay(alignment: .top) {
             Divider()
         }
@@ -807,7 +823,7 @@ private struct ManualMachineEntryView: View {
                     onAdd(name, hostname, kind)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(LittleHerdTheme.forest)
+                .tint(LittleHerdTheme.loadGreen)
                 .keyboardShortcut(.defaultAction)
                 .disabled(
                     hostname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

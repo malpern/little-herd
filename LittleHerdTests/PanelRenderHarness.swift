@@ -730,6 +730,45 @@ extension PanelRenderHarness {
             named: "metric-tabs-alarms"
         )
 
+        // Add Machines in both grounds. It had the same literal whites the
+        // onboarding screen did, and nobody had looked at it on the dark one.
+        func discovered(
+            _ id: String,
+            _ name: String,
+            _ avatar: HerdwareAvatar,
+            _ readiness: DiscoveredMachineReadiness
+        ) -> DiscoveredMachine {
+            DiscoveredMachine(
+                id: id,
+                name: name,
+                hostname: "\(id).local",
+                hardwareSummary: name,
+                platform: .macOS,
+                connection: .ssh,
+                avatar: avatar,
+                readiness: readiness
+            )
+        }
+
+        for scheme in [ColorScheme.light, .dark] {
+            let model = AddMachinesModel(
+                store: MachineConfigurationStore(
+                    storage: InMemoryConfigurationStorage()
+                ),
+                machines: [
+                    discovered("mini", "Mac mini", .calfMini, .ready),
+                    discovered("linux", "linux", .ponyTower, .ready),
+                    discovered("nas", "AlpernServer", .pigletNAS, .permissionNeeded),
+                ]
+            )
+            try render(
+                AddMachinesView(model: model)
+                    .environment(\.colorScheme, scheme),
+                size: CGSize(width: 728, height: 503),
+                named: "add-machines-\(scheme == .dark ? "dark" : "light")"
+            )
+        }
+
         // The one screen that asks the user for something, in both grounds,
         // because the version this replaces was built for the cream one and
         // turned to grey slabs on the other.
