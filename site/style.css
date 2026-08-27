@@ -549,3 +549,108 @@ kbd {
     }
   }
 }
+
+/* ------------------------------------------------------------ guide figures
+   One strip per step, built from the same Herdware avatars and the same
+   route/pulse vocabulary as the Coming soon scenes, so the guide and the
+   product page look like one site. Each says the capability in a picture
+   before the prose explains it. */
+.fig {
+  position: relative; width: 100%; max-width: 420px;
+  margin: 1.5rem 0 2.4rem;   /* room for the caption that hangs below it */
+}
+.fig::before { content: ""; display: block; padding-block-start: 35.7%; }  /* 420:150 */
+.fig img { position: absolute; width: 17%; height: auto; }
+.fig figcaption {
+  position: absolute; inset-block-end: -1.45rem; inset-inline-start: 0;
+  font-size: .85rem; color: var(--muted);
+}
+.fig .s-wire { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+.fig-ring .f1 { left: 8%;  top: 34%; }
+.fig-ring .f2 { left: 41%; top: 30%; }
+.fig-ring .f3 { right: 8%; top: 34%; }
+
+/* Three stacked avatars will not fit a 420x150 strip at 17% each -- they were
+   sitting on top of one another. This figure is taller and its avatars are
+   smaller, and the wires below follow the same box. */
+.fig-fan::before { padding-block-start: 50%; }   /* 420:210 */
+.fig-fan img { width: 14%; }
+.fig-fan .f1 { left: 6%;   top: 32%; }
+.fig-fan .f2 { right: 8%;  top: 2%; }
+.fig-fan .f3 { right: 8%;  top: 36%; }
+.fig-fan .f4 { right: 8%;  top: 70%; }
+
+.fig-kit .f1 { left: 10%;  top: 42%; }
+.fig-kit .f2 { left: 41%;  top: 42%; }
+.fig-kit .f3 { right: 10%; top: 42%; }
+.kit { position: absolute; top: 16%; display: flex; gap: 4px; }
+.kit i { width: 9px; height: 9px; border-radius: 2px; background: var(--teal); opacity: .55; }
+.kit.k1 { left: 12%; } .kit.k2 { left: 43%; } .kit.k3 { right: 12%; }
+
+.fig-away .f1 { left: 8%;  top: 34%; opacity: .35; }
+.fig-away .f2 { left: 60%; top: 34%; }
+.ring-track { fill: none; stroke: var(--teal); stroke-width: 2.5; opacity: .25; }
+.ring-spin  {
+  fill: none; stroke: var(--green); stroke-width: 2.5; stroke-linecap: round;
+  stroke-dasharray: 42 147; transform-origin: 286px 70px;
+}
+
+.fig-screen .f1 { left: 8%; top: 34%; }
+.pane {
+  position: absolute; left: 56%; top: 16%; width: 30%; aspect-ratio: 4 / 3;
+  border: 2px solid rgba(26,156,138,.55); border-radius: 8px;
+  display: grid; place-items: center; background: rgba(26,156,138,.08);
+}
+.pane img { position: static; width: 62%; }
+
+.fig-agents .f1 { left: 8%; top: 34%; }
+.lanes { position: absolute; left: 34%; top: 20%; width: 56%; display: grid; gap: 7px; }
+.lanes b {
+  height: 13px; border-radius: 4px; background: rgba(29,28,26,.10);
+  position: relative; display: block;
+}
+:root[data-theme="dark"] .lanes b { background: rgba(242,239,232,.10); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lanes b { background: rgba(242,239,232,.10); } }
+.lanes b::before {
+  content: ""; position: absolute; left: 5px; top: 50%; translate: 0 -50%;
+  width: 7px; height: 7px; border-radius: 50%;
+}
+.lanes .run::before, .lanes .run2::before { background: var(--green); }
+.lanes .wait::before { background: #F2A03F; }
+.lanes .done::before { background: #3B82D6; }
+.lanes b::after {
+  content: ""; position: absolute; left: 18px; top: 50%; translate: 0 -50%;
+  height: 4px; border-radius: 2px; background: currentColor; opacity: .22;
+}
+.lanes .run::after   { width: 44%; }
+.lanes .wait::after  { width: 26%; }
+.lanes .done::after  { width: 58%; }
+.lanes .run2::after  { width: 34%; }
+
+/* ---------------------------------------------------------------- tool card
+   The tool is not hidden. The capability is still the heading, but this is a
+   real link with a real destination -- a guide you cannot follow onward is a
+   dead end, and the first version buried each tool in a caption. */
+.tool {
+  display: grid; grid-template-columns: 1fr auto; align-items: baseline;
+  gap: .2rem 1rem; text-decoration: none; color: inherit;
+  border: 1px solid var(--card-edge); border-radius: 11px;
+  background: var(--card); box-shadow: var(--shadow);
+  padding: .85rem 1.05rem; margin-block-end: 1.4rem;
+  transition: border-color .2s ease, transform .2s ease;
+}
+.tool:hover { border-color: var(--teal); transform: translateY(-1px); }
+.tool-name { grid-column: 1; grid-row: 1; font-size: 1.05rem; font-weight: 600; letter-spacing: -.012em; color: var(--forest); }
+.tool-name code { background: none; padding: 0; font-size: .92em; color: inherit; }
+.tool-note { grid-column: 1; grid-row: 2; font-size: .9rem; color: var(--muted); }
+/* pin it, or auto-placement fills column 1 first and the link name
+   lands where the tool name should be */
+.tool-go { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: .85rem; color: var(--muted); white-space: nowrap; }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes ring-turn { to { rotate: 360deg; } }
+  .ring-spin { animation: ring-turn 2.6s linear infinite; }
+  .fig .s-pulse.d1 { animation-delay: -1.4s; }
+  .fig .s-pulse.d2 { animation-delay: -2.8s; }
+}

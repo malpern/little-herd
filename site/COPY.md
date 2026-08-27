@@ -331,8 +331,13 @@ Six steps, in order, each assuming the last: Tailscale, SSH config, Homebrew and
 a Brewfile, tmux, Screen Sharing, and Herdr. Little Herd is the payoff at the
 end and is not one of the six.
 
-**Every step carries its trap**, and the traps are the reason to read it rather
-than any of the thousand existing tutorials: a Tailscale key that expires and
+**Every step has a picture, a linked tool, and a trap.** The picture says the
+capability before the prose explains it, built from the Herdware avatars and
+the same route-and-pulse vocabulary as the product page, so the two look like
+one site. The tool is a real card with a real destination — the first version
+buried each one in a caption, and a guide you cannot follow onward is a dead
+end. And the traps are the reason to read this rather than any of the thousand
+existing tutorials: a Tailscale key that expires and
 silently drops an unattended box off the network; an SSH key with a passphrase
 that no scheduled job can ever use; a non-interactive shell that never gets
 Homebrew on its PATH, so everything works while you type and fails when it runs

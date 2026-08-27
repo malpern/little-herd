@@ -44,7 +44,19 @@
     <div class="step-body">
       <h2>Reach any machine from anywhere</h2>
       <p class="what">One name per machine that works from the sofa, from a hotel, and from another machine in the herd &mdash; with nothing exposed to the open internet.</p>
-      <p class="how"><span class="how-k">How</span> Tailscale</p>
+      <figure class="fig fig-ring">
+        <img class="f1" src="images/herdware/chick-laptop.png" alt=""><img class="f2" src="images/herdware/calf-mini.png" alt=""><img class="f3" src="images/herdware/ox-gpu.png" alt="">
+        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid meet">
+          <path class="s-route" d="M210 22 C 350 22, 400 128, 210 128 C 20 128, 70 22, 210 22 Z"/>
+          <path class="s-pulse" d="M210 22 C 350 22, 400 128, 210 128 C 20 128, 70 22, 210 22 Z"/>
+        </svg>
+        <figcaption>One name each, reachable from anywhere.</figcaption>
+      </figure>
+      <a class="tool" href="https://tailscale.com">
+        <span class="tool-name">Tailscale</span>
+        <span class="tool-note">Free for personal use</span>
+        <span class="tool-go">tailscale.com &#8599;</span>
+      </a>
       <p>This one is first because everything below it assumes you can reach
         the machine at all. Install on each one, sign in with the same account,
         turn on MagicDNS, and you are done &mdash; no port forwarding, no static
@@ -67,7 +79,23 @@
     <div class="step-body">
       <h2>Get onto any machine with one short command</h2>
       <p class="what"><code>ssh mini</code> instead of an address you have to remember, and a new machine that inherits the whole herd rather than being set up by hand.</p>
-      <p class="how"><span class="how-k">How</span> SSH and a config file</p>
+      <figure class="fig fig-fan">
+        <img class="f1" src="images/herdware/chick-laptop.png" alt=""><img class="f2" src="images/herdware/calf-mini.png" alt=""><img class="f3" src="images/herdware/ox-gpu.png" alt=""><img class="f4" src="images/herdware/piglet-nas.png" alt="">
+        <svg class="s-wire" viewBox="0 0 420 210" preserveAspectRatio="xMidYMid meet">
+          <path class="s-route" d="M92 96 C 170 62, 240 42, 320 36"/>
+          <path class="s-pulse" d="M92 96 C 170 62, 240 42, 320 36"/>
+          <path class="s-route" d="M92 96 C 170 100, 240 104, 320 105"/>
+          <path class="s-pulse d1" d="M92 96 C 170 100, 240 104, 320 105"/>
+          <path class="s-route" d="M92 96 C 170 136, 240 166, 320 174"/>
+          <path class="s-pulse d2" d="M92 96 C 170 136, 240 166, 320 174"/>
+        </svg>
+        <figcaption>One command, every machine.</figcaption>
+      </figure>
+      <a class="tool" href="https://www.ssh.com/academy/ssh/config">
+        <span class="tool-name">SSH and <code>~/.ssh/config</code></span>
+        <span class="tool-note">Already on every Mac and Linux machine</span>
+        <span class="tool-go">ssh.com/academy &#8599;</span>
+      </a>
       <p>Generate a key, copy it over with <code>ssh-copy-id</code>, then write
         the machine down in <code>~/.ssh/config</code> once:</p>
       <pre><code>Host mini
@@ -96,7 +124,18 @@
     <div class="step-body">
       <h2>Arrive on a machine and find your tools already there</h2>
       <p class="what">Every machine carries the same kit, so the one you connect to is somewhere you can work rather than somewhere you have to set up first.</p>
-      <p class="how"><span class="how-k">How</span> Homebrew and a Brewfile</p>
+      <figure class="fig fig-kit">
+        <img class="f1" src="images/herdware/chick-laptop.png" alt=""><img class="f2" src="images/herdware/calf-mini.png" alt=""><img class="f3" src="images/herdware/ox-gpu.png" alt="">
+        <span class="kit k1"><i></i><i></i><i></i></span>
+        <span class="kit k2"><i></i><i></i><i></i></span>
+        <span class="kit k3"><i></i><i></i><i></i></span>
+        <figcaption>The same kit, wherever you land.</figcaption>
+      </figure>
+      <a class="tool" href="https://brew.sh">
+        <span class="tool-name">Homebrew and a Brewfile</span>
+        <span class="tool-note">Free and open source</span>
+        <span class="tool-go">brew.sh &#8599;</span>
+      </a>
       <p>A herd whose members each have a different half of your toolkit is
         still a pile. Dump what you have into a list, keep the list in your
         dotfiles, and install from it on every machine:</p>
@@ -122,7 +161,19 @@ brew bundle --file ~/dotfiles/Brewfile</code></pre>
     <div class="step-body">
       <h2>Start something on another machine and walk away</h2>
       <p class="what">Close the lid, lose the connection, come back tomorrow &mdash; the work carries on, because it was never running on your laptop.</p>
-      <p class="how"><span class="how-k">How</span> tmux</p>
+      <figure class="fig fig-away">
+        <img class="f1" src="images/herdware/chick-laptop.png" alt=""><img class="f2" src="images/herdware/calf-mini.png" alt="">
+        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid meet">
+          <circle class="ring-track" cx="286" cy="70" r="30"/>
+          <circle class="ring-spin"  cx="286" cy="70" r="30"/>
+        </svg>
+        <figcaption>You leave. It carries on.</figcaption>
+      </figure>
+      <a class="tool" href="https://github.com/tmux/tmux/wiki/Getting-Started">
+        <span class="tool-name">tmux</span>
+        <span class="tool-note">Free and open source &middot; <code>brew install tmux</code></span>
+        <span class="tool-go">tmux wiki &#8599;</span>
+      </a>
       <p>The trick is that the session belongs to the far machine, not to your
         connection. You are attaching to something already running there:</p>
       <pre><code>ssh mini
@@ -143,7 +194,20 @@ tmux attach -t work   # come back, from anywhere</code></pre>
     <div class="step-body">
       <h2>See and use another machine&rsquo;s screen from this one</h2>
       <p class="what">The actual desktop of the box in the closet, for the things that only exist on a screen &mdash; a permission dialog, an installer, a first run.</p>
-      <p class="how"><span class="how-k">How</span> Screen Sharing <span class="how-x">&middot; built into macOS</span></p>
+      <figure class="fig fig-screen">
+        <img class="f1" src="images/herdware/chick-laptop.png" alt="">
+        <span class="pane"><img src="images/herdware/calf-mini.png" alt=""></span>
+        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid meet">
+          <path class="s-route" d="M126 78 L 236 78"/>
+          <path class="s-pulse" d="M126 78 L 236 78"/>
+        </svg>
+        <figcaption>Its desktop, on your screen.</figcaption>
+      </figure>
+      <a class="tool" href="https://support.apple.com/guide/mac-help/screen-sharing-overview-mh14066/mac">
+        <span class="tool-name">Screen Sharing</span>
+        <span class="tool-note">Built into macOS &mdash; nothing to install</span>
+        <span class="tool-go">Apple support &#8599;</span>
+      </a>
       <p>In Finder, <b>Go &rarr; Connect to Server</b> (<kbd>&#8984;K</kbd>) and
         enter <code>vnc://mini</code>. You get the actual desktop.</p>
       <p>Most of the time SSH is better &mdash; faster, scriptable, works on a
@@ -168,7 +232,18 @@ tmux attach -t work   # come back, from anywhere</code></pre>
     <div class="step-body">
       <h2>Run several agents at once and see which one is waiting on you</h2>
       <p class="what">Each agent in its own pane, marked working, blocked or done, on a session you can detach from and pick up later over SSH.</p>
-      <p class="how"><span class="how-k">How</span> <a href="https://github.com/herdrdev/herdr">Herdr</a></p>
+      <figure class="fig fig-agents">
+        <img class="f1" src="images/herdware/calf-mini.png" alt="">
+        <span class="lanes">
+          <b class="run"></b><b class="wait"></b><b class="done"></b><b class="run2"></b>
+        </span>
+        <figcaption>Working, waiting, done &mdash; at a glance.</figcaption>
+      </figure>
+      <a class="tool" href="https://github.com/herdrdev/herdr">
+        <span class="tool-name">Herdr</span>
+        <span class="tool-note">Free and open source</span>
+        <span class="tool-go">github.com/herdrdev/herdr &#8599;</span>
+      </a>
       <p>Once coding agents are doing real work, the question stops being
         &ldquo;is it done&rdquo; and becomes &ldquo;which of these is waiting on
         me.&rdquo; tmux will happily keep four agents alive and tell you nothing
