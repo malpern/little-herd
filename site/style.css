@@ -355,6 +355,11 @@ section + section { border-block-start: 1px solid var(--rule); }
 /* ------------------------------------------------------------------ foot */
 .end { text-align: center; }
 .end h2 { margin-block-end: 1.8rem; }
+/* .fine is capped at 38rem so it wraps well under the hero's left-aligned
+   column. In a centred section that cap makes the block hug the left edge and
+   centre its text inside itself, which put the fine print well left of the
+   button it belongs to. */
+.end .fine { margin-inline: auto; color: var(--muted); }
 footer { border-block-start: 1px solid var(--rule); padding-block: 2.4rem; }
 footer .wrap { display: flex; flex-wrap: wrap; gap: 1.4rem; align-items: center; justify-content: center;
                font-size: .94rem; color: var(--muted); }
@@ -669,3 +674,16 @@ kbd {
 @media (min-width: 62rem) { .four { grid-template-columns: repeat(3, 1fr); } }
 /* an anchored step should not land flush against the top of the window */
 .step { scroll-margin-block-start: 2rem; }
+
+/* The guide opens with a promise and closes by handing over. Without them it
+   was six steps that simply stopped. */
+.promise {
+  font-size: 1.06rem; max-width: 40rem;
+  border-inline-start: 3px solid var(--teal); padding-inline-start: 1.1rem;
+  margin-block: 1.4rem !important;
+}
+.promise b { font-weight: 600; }
+.payoff-last { color: rgba(234,243,236,.72); max-width: 40rem; margin-inline: auto; }
+.payoff-cta { justify-content: center; margin-block-start: 1.8rem; }
+.payoff .cta.ghost { color: rgba(234,243,236,.9); }
+.payoff .cta.ghost:hover { background: rgba(255,255,255,.10); color: #fff; }

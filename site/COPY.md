@@ -350,6 +350,13 @@ Homebrew on its PATH, so everything works while you type and fails when it runs
 alone; tmux started on the wrong machine; a macOS privacy prompt that only ever
 appears on the machine's own screen.
 
+**It opens with a promise and closes by handing over.** Without those it was
+six steps that simply stopped. The promise is the outcome rather than a list —
+*the mini under the desk is as easy to work on as the laptop in your hands* —
+and the close names what the reader now has before pointing at the one part we
+make. It also gives an honest cost: an afternoon, most of it waiting for
+installers.
+
 **It is deliberately finite.** Six steps, written once, true for years. A guide
 section that turns into a blog with three posts and a two-year gap reads as an
 abandoned project, which is worse than not having one.
