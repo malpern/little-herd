@@ -1,9 +1,33 @@
+<p align="center">
+  <img src="Documentation/Images/readme-hero.png"
+       alt="Little Herd — a menu-bar monitor for every machine you run"
+       width="100%">
+</p>
+
+<p align="center">
+  <a href="https://malpern.github.io/little-herd/"><b>Website</b></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/malpern/little-herd/releases/latest">Download the latest release</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/malpern/little-herd/releases">Release notes</a>
+</p>
+
+<p align="center">
+  <img alt="Latest release"
+       src="https://img.shields.io/github/v/release/malpern/little-herd?label=release&color=1F9E52">
+  <img alt="macOS 15+" src="https://img.shields.io/badge/macOS-15%2B-1F9E52">
+</p>
+
 # Little Herd
 
 Little Herd is a compact, native macOS system monitor for a configurable group
 of Macs, Linux computers, GPU workstations, and mounted network storage. A new
 install begins with the current Mac and can discover or manually add several
-machines at once.
+machines at once. It also surfaces the Claude Code and Codex sessions running
+across the herd, so the machine that is busy tells you what is making it busy.
+
+The website has screenshots, the story, and the download:
+**<https://malpern.github.io/little-herd/>**
 
 ![Little Herd CPU dashboard](Documentation/Screenshots/dashboard.png)
 
