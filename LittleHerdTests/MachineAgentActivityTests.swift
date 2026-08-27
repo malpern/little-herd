@@ -106,3 +106,53 @@ struct MachineAgentActivityTests {
         #expect(two?.showsCount == true)
     }
 }
+
+/// When the card over a token is open, and what closing it has to reach.
+struct AgentCardVisibilityTests {
+    /// The regression. Dismissing while the herd was announcing something
+    /// cleared the pointer's half and left the announcement's, so the card
+    /// came straight back and could not be closed until its timer ran out.
+    @Test
+    func dismissingClosesAnAnnouncement() {
+        var card = AgentCardVisibility()
+        #expect(card.isShowing(announcing: "a"))
+
+        card.dismiss(announcing: "a")
+
+        #expect(!card.isShowing(announcing: "a"))
+    }
+
+    /// The next arrival is a new thing to say, not the one that was waved
+    /// away.
+    @Test
+    func aLaterAnnouncementIsShownAgain() {
+        var card = AgentCardVisibility()
+        card.dismiss(announcing: "a")
+
+        #expect(card.isShowing(announcing: "b"))
+    }
+
+    /// Pointing at a token whose announcement has been dismissed asks the
+    /// question again, and gets an answer.
+    @Test
+    func thePointerReopensADismissedCard() {
+        var card = AgentCardVisibility()
+        card.dismiss(announcing: "a")
+        card.hover(true)
+
+        #expect(card.isShowing(announcing: "a"))
+    }
+
+    /// Looking away is not being done with what the herd was saying. A hover
+    /// that dismissed would make crossing the token on the way somewhere else
+    /// swallow the announcement.
+    @Test
+    func lookingAwayLeavesTheAnnouncementStanding() {
+        var card = AgentCardVisibility()
+        card.hover(true)
+        card.hover(false)
+
+        #expect(card.isShowing(announcing: "a"))
+        #expect(!card.isShowing(announcing: nil))
+    }
+}

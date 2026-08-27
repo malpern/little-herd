@@ -28,17 +28,22 @@ struct CPUOverviewView: View {
     /// Noticed, waiting for somebody to be looking.
     @State private var pending: AgentAnnouncement?
     @State private var announcing: AgentArrival?
-    @State private var announcement: Task<Void, Never>?
     /// The width this is laid out in. A constant here would go on dividing the
     /// old window into columns after the window grew, quietly leaving the
     /// right-hand margin twice the left.
     var width: CGFloat = DashboardMetrics.overviewContent.width
 
+    #if DEBUG
     /// A drag to draw instead of a real one. Only the render harness sets
     /// this: a drag lives in `@State`, so without a seam the only frames
     /// anyone could ever look at are the two ends of the gesture — and the
     /// states worth arguing about are all in the middle.
+    ///
+    /// Debug only, because it is a hole in the view's own story about where a
+    /// drag comes from, and a hole nobody can reach from a shipping build is
+    /// not one anybody has to reason about.
     var previewDrag: AgentDragSession?
+    #endif
 
     /// The drag in progress, owned here because a drag spans columns and no
     /// column can see its neighbours.
@@ -50,11 +55,17 @@ struct CPUOverviewView: View {
     /// the token that came back shakes.
     @State private var refusal: AgentDragSession?
 
-    private var activeDrag: AgentDragSession? { drag ?? previewDrag }
+    private var activeDrag: AgentDragSession? {
+        #if DEBUG
+        drag ?? previewDrag
+        #else
+        drag
+        #endif
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: columnSpacing) {
-            ForEach(machines) { machine in
+            ForEach(Array(machines.enumerated()), id: \.element.id) { index, machine in
                 CPUThermometerColumn(
                     machine: machine,
                     metric: metric,
@@ -63,18 +74,24 @@ struct CPUOverviewView: View {
                     namespace: namespace,
                     onSelectMetric: onSelectMetric,
                     onSelectMachine: onSelectMachine,
-                    agentCPU: agentCPU,
-                    padState: padState(for: machine.machine),
-                    onSelectAgents: onSelectAgents,
-                    announcing: announcing?.machine == machine.machine
-                        ? announcing?.session
-                        : nil,
-                    isCarried: activeDrag?.origin == machine.machine,
-                    wasRefused: refusal?.origin == machine.machine,
-                    onDragChanged: { activity, dx in
-                        beginOrUpdate(from: machine.machine, activity: activity, by: dx)
-                    },
-                    onDragEnded: endDrag
+                    agents: AgentTokenContext(
+                        agentCPU: agentCPU,
+                        padState: padState(for: machine.machine),
+                        onSelectAgents: onSelectAgents,
+                        announcing: announcing?.machine == machine.machine
+                            ? announcing?.session
+                            : nil,
+                        isCarried: activeDrag?.origin == machine.machine,
+                        wasRefused: refusal?.origin == machine.machine,
+                        cardSide: AgentCardSide.side(
+                            forMachineAt: index,
+                            inHerdOf: machines.count
+                        ),
+                        onDragChanged: { activity, dx in
+                            beginOrUpdate(from: machine.machine, activity: activity, by: dx)
+                        },
+                        onDragEnded: endDrag
+                    )
                 )
                 // The token being carried has to draw over the pads it is
                 // passing across. Without this its own column stacks in
@@ -92,6 +109,13 @@ struct CPUOverviewView: View {
         // be shown. Without this the announcement waits for a session change
         // that may not come for minutes.
         .onChange(of: windowActivity) { _, _ in showPendingArrival() }
+        // Both timers hang off the state they are counting down, so SwiftUI
+        // cancels them when the value changes and again when the view goes
+        // away. The loose `Task`s these replace outlived the window: one was
+        // not even held, so nothing could cancel it, and it came back to clear
+        // state on a view that had already gone.
+        .task(id: announcing?.session) { await holdAnnouncement() }
+        .task(id: refusal) { await holdRefusal() }
     }
 
     /// Something to watch that changes when the sessions do. `onChange` needs
@@ -141,14 +165,26 @@ struct CPUOverviewView: View {
         }
         self.pending = nil
         guard pending.isFresh(at: .now) else { return }
-
-        announcement?.cancel()
         announcing = pending.arrival
-        announcement = Task {
-            try? await Task.sleep(for: .seconds(4))
-            guard !Task.isCancelled else { return }
-            announcing = nil
-        }
+    }
+
+    /// Takes an announcement away again after long enough to read it.
+    private func holdAnnouncement() async {
+        guard announcing != nil else { return }
+        try? await Task.sleep(for: .seconds(4))
+        guard !Task.isCancelled else { return }
+        announcing = nil
+    }
+
+    /// Holds a refusal after the gesture that caused it.
+    ///
+    /// Long enough to read as an answer, short enough that it is not a state
+    /// the person has to dismiss.
+    private func holdRefusal() async {
+        guard refusal != nil else { return }
+        try? await Task.sleep(for: .milliseconds(600))
+        guard !Task.isCancelled else { return }
+        withAnimation(.easeOut(duration: 0.25)) { refusal = nil }
     }
 
     /// Which machines could take what is in hand.
@@ -214,12 +250,6 @@ struct CPUOverviewView: View {
             return
         }
         withAnimation(.easeOut(duration: 0.15)) { refusal = ending }
-        // Long enough to read as an answer, short enough that it is not a
-        // state the person has to dismiss.
-        Task {
-            try? await Task.sleep(for: .milliseconds(600))
-            withAnimation(.easeOut(duration: 0.25)) { refusal = nil }
-        }
     }
 
     private var machineCount: CGFloat { CGFloat(max(machines.count, 1)) }
@@ -246,6 +276,97 @@ struct CPUOverviewView: View {
     }
 }
 
+/// Which way the card over a token opens.
+///
+/// A side of its own rather than SwiftUI's `Edge` because the rule is
+/// arithmetic over the herd, and arithmetic belongs where it can be argued
+/// with — the same reason `HerdColumns` is not inside the gesture handler that
+/// once hid an off-by-one in it. The view maps this onto an edge at the one
+/// place it presents the popover.
+nonisolated enum AgentCardSide: Equatable, Sendable {
+    case leading
+    case trailing
+
+    /// The card opens into the emptier half of the window rather than over the
+    /// herd: a machine on the left opens right, one on the right opens left.
+    /// Vertically it would cover the avatars and names, which is the row the
+    /// card is asking you to keep your place in.
+    ///
+    /// The middle machine of an odd herd opens right, and so does a machine
+    /// this herd does not contain — with nothing to weigh, the side that works
+    /// for a herd of one is the safe answer.
+    static func side(forMachineAt index: Int, inHerdOf count: Int) -> AgentCardSide {
+        guard count > 1, index >= 0, index < count else { return .trailing }
+        return index < (count + 1) / 2 ? .trailing : .leading
+    }
+}
+
+/// Everything a column has to hand its token that is about the token rather
+/// than about the machine.
+///
+/// One value instead of eight parameters, because every one of them was
+/// forwarded untouched through a view that has no opinion about any of it, and
+/// a forwarding list that long is a place for two arguments to swap places
+/// unnoticed.
+struct AgentTokenContext {
+    /// Share of the whole machine per session, so the badge can tell working
+    /// from merely open.
+    var agentCPU: [String: Double] = [:]
+    var padState: AgentPadState = .idle
+    var onSelectAgents: ((MachineID) -> Void)?
+    /// The session that has just started here, while the herd is saying so.
+    var announcing: String?
+    /// Whether the drag in progress started here. Told rather than inferred:
+    /// the offset the token draws with is the view's business, but *being
+    /// carried* is a fact about the drag, and deriving it twice is how the two
+    /// disagree.
+    var isCarried = false
+    /// Whether the drop this token just came back from was refused.
+    var wasRefused = false
+    var cardSide: AgentCardSide = .trailing
+    var onDragChanged: ((MachineAgentActivity, CGFloat) -> Void)?
+    var onDragEnded: (() -> Void)?
+}
+
+/// Whether the card over a token is open, and which of the two reasons it is
+/// open for.
+///
+/// A value rather than a pair of `@State` flags because the binding it feeds
+/// had a bug that only shows up in the combination: the getter answered for
+/// both reasons and the setter wrote only one, so dismissing an announcement
+/// left it open and there was nothing to do but wait out its timer.
+nonisolated struct AgentCardVisibility: Equatable, Sendable {
+    /// Open because the pointer settled on the token.
+    var isHovering = false
+    /// The announcement that has already been waved away.
+    ///
+    /// The announcement itself belongs to the overview, which owns the timer
+    /// and the herd it is announcing for, so a token cannot clear it — but it
+    /// can remember which one it has been told to stop showing. That is a
+    /// smaller thing to pass down than a callback, and it cannot be wired to
+    /// the wrong machine.
+    var dismissed: String?
+
+    func isShowing(announcing: String?) -> Bool {
+        if isHovering { return true }
+        guard let announcing else { return false }
+        return announcing != dismissed
+    }
+
+    /// The pointer arriving or leaving, which never touches an announcement:
+    /// pointing at a token mid-announcement and then looking away is not the
+    /// same as being done with what the herd was saying.
+    mutating func hover(_ hovering: Bool) {
+        isHovering = hovering
+    }
+
+    /// Being done with the card, whichever reason it was open for.
+    mutating func dismiss(announcing: String?) {
+        isHovering = false
+        dismissed = announcing
+    }
+}
+
 private struct CPUThermometerColumn: View {
     let machine: MachineMonitorModel
     let metric: OverviewMetric
@@ -254,15 +375,7 @@ private struct CPUThermometerColumn: View {
     var namespace: Namespace.ID?
     var onSelectMetric: ((MachineID) -> Void)?
     var onSelectMachine: ((MachineID) -> Void)?
-    var agentCPU: [String: Double] = [:]
-    var padState: AgentPadState = .idle
-    var onSelectAgents: ((MachineID) -> Void)?
-    /// The session that has just started here, while the herd is saying so.
-    var announcing: String?
-    var isCarried = false
-    var wasRefused = false
-    var onDragChanged: ((MachineAgentActivity, CGFloat) -> Void)?
-    var onDragEnded: (() -> Void)?
+    var agents = AgentTokenContext()
 
     var body: some View {
         // A real Button, not a tap gesture: the window is movable by its
@@ -324,14 +437,7 @@ private struct CPUThermometerColumn: View {
                     machine: machine,
                     avatarSize: avatarSize,
                     namespace: namespace,
-                    agentCPU: agentCPU,
-                    padState: padState,
-                    onSelectAgents: onSelectAgents,
-                    announcing: announcing,
-                    isCarried: isCarried,
-                    wasRefused: wasRefused,
-                    onDragChanged: onDragChanged,
-                    onDragEnded: onDragEnded
+                    agents: agents
                 )
                 .contentShape(Rectangle())
             }
@@ -442,30 +548,19 @@ struct MachineStatusLabel: View {
     let machine: MachineMonitorModel
     var avatarSize: CGFloat = 32
     var namespace: Namespace.ID?
-    /// Share of the whole machine per session, so the badge can tell working
-    /// from merely open.
-    var agentCPU: [String: Double] = [:]
-    var padState: AgentPadState = .idle
-    var onSelectAgents: ((MachineID) -> Void)?
-    var announcing: String?
-    /// Whether the drag in progress started here. Told rather than inferred:
-    /// the offset below is this view's business, but *being carried* is a fact
-    /// about the drag, and deriving it twice is how the two disagree.
-    var isCarried = false
-    /// Whether the drop this token just came back from was refused.
-    var wasRefused = false
-    var onDragChanged: ((MachineAgentActivity, CGFloat) -> Void)?
-    var onDragEnded: (() -> Void)?
+    /// Everything about the token this machine is carrying. Defaulted, because
+    /// the machine's own page draws this label with no token at all.
+    var agents = AgentTokenContext()
 
     @State private var carried: CGSize = .zero
     @State private var isReady = false
     @State private var isDragging = false
-    @State private var isShowingCard = false
-    /// The pending "the pointer has settled, show the card" work, kept so
-    /// crossing the token on the way somewhere else cancels it.
-    @State private var hoverIntent: Task<Void, Never>?
-    /// Sideways jitter after a refused drop.
-    @State private var shake: CGFloat = 0
+    @State private var card = AgentCardVisibility()
+    /// How many refused drops this token has come back from, which is what the
+    /// jitter is triggered off. A count rather than the refusal itself: the
+    /// refusal is cleared again when it expires, and a trigger fires on every
+    /// change, so the token would have shaken a second time on the way out.
+    @State private var refusals = 0
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -519,8 +614,8 @@ struct MachineStatusLabel: View {
             // The pad is drawn whenever there is something on it or a drag is
             // asking where things could go. At rest under an idle machine it
             // would be a permanent empty box.
-            if activity != nil || padState != .idle {
-                MachineAgentPad(state: padState, height: avatarSize * 0.64 + 10) {
+            if activity != nil || agents.padState != .idle {
+                MachineAgentPad(state: agents.padState, height: avatarSize * 0.64 + 10) {
                     if let activity {
                         MachineAgentToken(
                             activity: activity,
@@ -531,7 +626,7 @@ struct MachineStatusLabel: View {
                             size: avatarSize * 0.64,
                             lift: lift
                         )
-                        .offset(x: carried.width + shake, y: carried.height)
+                        .offset(x: carried.width, y: carried.height)
                         // Implicit, and keyed on the offset, so a token grabbed
                         // again while it is still flying home retargets from
                         // where it is on screen. `withAnimation` around the
@@ -539,20 +634,41 @@ struct MachineStatusLabel: View {
                         // then overwrites, which is the classic way to get a
                         // jump at exactly the moment the person is watching.
                         .animation(homeward, value: carried)
+                        .keyframeAnimator(
+                            initialValue: CGFloat.zero,
+                            trigger: refusals
+                        ) { token, jitter in
+                            token.offset(x: jitter)
+                        } keyframes: { _ in
+                            // Five stops in a little over a quarter second,
+                            // each smaller than the last: a refusal, not a
+                            // wobble.
+                            CubicKeyframe(-5, duration: 0.055)
+                            CubicKeyframe(4, duration: 0.055)
+                            CubicKeyframe(-3, duration: 0.055)
+                            CubicKeyframe(2, duration: 0.055)
+                            CubicKeyframe(0, duration: 0.055)
+                        }
                         .zIndex(1)
                         .onHover { hovering in
                             isReady = hovering
-                            cardHover(hovering)
+                            // Immediately on the way out, and after a pause on
+                            // the way in — the delay exists so that crossing
+                            // the token on the way to something else does not
+                            // throw a panel over the herd, and a matching
+                            // delay leaving would leave the card sitting over
+                            // the machine you were actually reaching for.
+                            if !hovering { card.hover(false) }
                         }
                         // Says the token is a target in its own right, not a
                         // decoration on the button underneath it.
                         .pointerStyle(.link)
-                        .popover(isPresented: showsCard, arrowEdge: .bottom) {
+                        .popover(isPresented: showsCard, arrowEdge: cardEdge) {
                             MachineAgentCard(
                                 activity: activity,
                                 machineName: machine.shortName,
-                                agentCPU: agentCPU,
-                                leading: isShowingCard ? nil : announcing
+                                agentCPU: agents.agentCPU,
+                                leading: card.isHovering ? nil : agents.announcing
                             )
                         }
                         // Before the drag, so a click on the token opens the
@@ -560,8 +676,8 @@ struct MachineStatusLabel: View {
                         // that opens the machine's summary. They are different
                         // destinations and the token points at the nearer one.
                         .onTapGesture {
-                            isShowingCard = false
-                            onSelectAgents?(machine.machine)
+                            card.dismiss(announcing: agents.announcing)
+                            agents.onSelectAgents?(machine.machine)
                         }
                         .gesture(dragGesture(for: activity))
                     }
@@ -571,9 +687,18 @@ struct MachineStatusLabel: View {
             }
         }
         .animation(.spring(duration: 0.32), value: activity)
-        .onChange(of: wasRefused) { _, refused in
-            if refused { shakeOff() }
+        // A refusal shakes the token on its way back. Guarded here rather than
+        // inside the animation, so reduced motion leaves the trigger alone and
+        // there is nothing to play at all.
+        .onChange(of: agents.wasRefused) { _, refused in
+            if refused, !reduceMotion { refusals += 1 }
         }
+        // The pointer settling on the token, held for long enough to be an
+        // ask. Hung off the hover state rather than run from a loose `Task`,
+        // so leaving the token — or the window going away underneath it —
+        // cancels the pending card instead of letting it arrive over whatever
+        // is there by then.
+        .task(id: wantsCard) { await showCardIfStillWanted() }
     }
 
     /// Open because the pointer asked, or because something just started.
@@ -582,31 +707,42 @@ struct MachineStatusLabel: View {
     /// time, and pointing at a token mid-announcement is a person asking the
     /// question the announcement was already answering. The pointer wins, so
     /// the card stops being on a timer the moment it is being read.
+    ///
+    /// Dismissing has to reach both reasons. When the setter wrote only the
+    /// hover half, a getter that still saw the announcement pulled the card
+    /// straight back up, and the only way to close it was to wait.
     private var showsCard: Binding<Bool> {
         Binding(
-            get: { isShowingCard || announcing != nil },
-            set: { isShowingCard = $0 }
+            get: { card.isShowing(announcing: agents.announcing) },
+            set: { showing in
+                if showing {
+                    card.hover(true)
+                } else {
+                    card.dismiss(announcing: agents.announcing)
+                }
+            }
         )
     }
 
-    /// Shows the card once the pointer has settled, and takes it away at once
-    /// when the pointer leaves.
-    ///
-    /// Asymmetric on purpose: the delay exists so that crossing the token on
-    /// the way to something else does not throw a panel over the herd, and a
-    /// matching delay on the way out would leave the card sitting over the
-    /// machine you were actually reaching for.
-    private func cardHover(_ hovering: Bool) {
-        hoverIntent?.cancel()
-        guard hovering else {
-            isShowingCard = false
-            return
+    /// Which side of the token the card opens on, decided by where this
+    /// machine sits in the herd.
+    private var cardEdge: Edge {
+        switch agents.cardSide {
+        case .leading: .leading
+        case .trailing: .trailing
         }
-        hoverIntent = Task {
-            try? await Task.sleep(for: .milliseconds(350))
-            guard !Task.isCancelled else { return }
-            isShowingCard = true
-        }
+    }
+
+    /// Whether the pointer is asking for the card. A drag cancels the ask: the
+    /// card is anchored to a token that is now moving, and it is answering a
+    /// question the person has stopped asking.
+    private var wantsCard: Bool { isReady && !isDragging }
+
+    private func showCardIfStillWanted() async {
+        guard wantsCard else { return }
+        try? await Task.sleep(for: .milliseconds(350))
+        guard !Task.isCancelled else { return }
+        card.hover(true)
     }
 
     /// Nothing while it is in hand — the token belongs to the pointer then —
@@ -619,24 +755,8 @@ struct MachineStatusLabel: View {
             : .spring(duration: 0.34, bounce: 0.35)
     }
 
-    /// A refused drop shakes the token on its way back.
-    ///
-    /// The target machine tinting says *which* one said no; this says the drop
-    /// itself was rejected. Without it a refusal and a change of mind are the
-    /// same picture — the token returns home either way.
-    private func shakeOff() {
-        guard !reduceMotion else { return }
-        let steps: [CGFloat] = [-5, 4, -3, 2, 0]
-        Task {
-            for step in steps {
-                withAnimation(.easeOut(duration: 0.055)) { shake = step }
-                try? await Task.sleep(for: .milliseconds(55))
-            }
-        }
-    }
-
     private var lift: MachineAgentToken.TokenLift {
-        if isCarried || carried != .zero { return .carried }
+        if agents.isCarried || carried != .zero { return .carried }
         return isReady ? .ready : .resting
     }
 
@@ -649,18 +769,15 @@ struct MachineStatusLabel: View {
         DragGesture(minimumDistance: 4, coordinateSpace: .local)
             .onChanged { value in
                 isDragging = true
-                // The card is anchored to a token that is now moving, and it
-                // is answering a question the person has stopped asking.
-                isShowingCard = false
-                hoverIntent?.cancel()
+                card.dismiss(announcing: agents.announcing)
                 // One to one with the pointer, and deliberately not animated:
                 // a token that eased toward the cursor would be following it
                 // rather than being held.
                 carried = value.translation
-                onDragChanged?(activity, value.translation.width)
+                agents.onDragChanged?(activity, value.translation.width)
             }
             .onEnded { _ in
-                onDragEnded?()
+                agents.onDragEnded?()
                 isDragging = false
                 // Home with a spring, always. Nothing moves yet, and a token
                 // that stayed where it was dropped would be claiming something
@@ -674,7 +791,7 @@ struct MachineStatusLabel: View {
         guard machine.state == .live else { return nil }
         return MachineAgentActivityReader.activity(
             for: machine.agentSessions,
-            cpuBySession: agentCPU
+            cpuBySession: agents.agentCPU
         )
     }
 

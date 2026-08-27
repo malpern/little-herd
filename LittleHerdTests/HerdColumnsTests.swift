@@ -49,3 +49,46 @@ struct HerdColumnsTests {
         #expect(columns.machine(draggedFrom: MachineID("ghost"), displacedBy: 0) == nil)
     }
 }
+
+/// Which way the card over a token opens. Arithmetic over the herd, and the
+/// last piece of arithmetic over the herd shipped with an off-by-one in it.
+struct AgentCardSideTests {
+    /// A machine on the left opens right, into the window rather than over the
+    /// herd — and, at the left edge, rather than off the screen.
+    @Test
+    func theFirstHalfOpensRight() {
+        #expect(AgentCardSide.side(forMachineAt: 0, inHerdOf: 4) == .trailing)
+        #expect(AgentCardSide.side(forMachineAt: 1, inHerdOf: 4) == .trailing)
+    }
+
+    @Test
+    func theSecondHalfOpensLeft() {
+        #expect(AgentCardSide.side(forMachineAt: 2, inHerdOf: 4) == .leading)
+        #expect(AgentCardSide.side(forMachineAt: 3, inHerdOf: 4) == .leading)
+    }
+
+    /// An odd herd has no halfway, so the middle machine goes with the left
+    /// half. Rounding the other way would put three of five on the leading
+    /// side, which reads as a mistake at exactly the width where a person can
+    /// see both answers at once.
+    @Test
+    func theMiddleOfAnOddHerdOpensRight() {
+        #expect(AgentCardSide.side(forMachineAt: 1, inHerdOf: 3) == .trailing)
+        #expect(AgentCardSide.side(forMachineAt: 2, inHerdOf: 3) == .leading)
+    }
+
+    /// One machine is all left half.
+    @Test
+    func aHerdOfOneOpensRight() {
+        #expect(AgentCardSide.side(forMachineAt: 0, inHerdOf: 1) == .trailing)
+    }
+
+    /// A machine this herd does not contain still has to answer, because the
+    /// answer is a popover's edge and there is nowhere for it to be nothing.
+    @Test
+    func aMachineOutsideTheHerdStillAnswers() {
+        #expect(AgentCardSide.side(forMachineAt: 0, inHerdOf: 0) == .trailing)
+        #expect(AgentCardSide.side(forMachineAt: -1, inHerdOf: 4) == .trailing)
+        #expect(AgentCardSide.side(forMachineAt: 9, inHerdOf: 4) == .trailing)
+    }
+}
