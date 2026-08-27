@@ -84,6 +84,7 @@
 		B8613453826F6A56D32919D6 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A2C8E4C049BD68DD7C9764E /* IOKit.framework */; };
 		BF0A72836087C3E499B9E54D /* InMemoryConfigurationStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28A334FD1C930D9B96C4E2F1 /* InMemoryConfigurationStorage.swift */; };
 		BF4C5C635505FCDC2EDDE8EC /* CodexBarOfferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F405C1D91AB9D95F0D588013 /* CodexBarOfferTests.swift */; };
+		C239D2D922B785BBF084A38C /* HerdAvatarSize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 941460A953D8A453CCA3CF1E /* HerdAvatarSize.swift */; };
 		C26304A73D54EB5BDBDE66A4 /* HerdColumnsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B38445BD2EC011BFCC8B8A /* HerdColumnsTests.swift */; };
 		C3EC710A9D4AC5B469D730AE /* SynologyCredentialsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33E5557F8559949577B4F98F /* SynologyCredentialsView.swift */; };
 		C559B0290435591AC405EB0E /* AgentDragSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD88947F9BC77489C83CD330 /* AgentDragSessionTests.swift */; };
@@ -178,6 +179,7 @@
 		8F455A7153E6520E2477FF1A /* MachineAlerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineAlerts.swift; sourceTree = "<group>"; };
 		902F116974B1C2D720ED2B18 /* FullDiskAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullDiskAccess.swift; sourceTree = "<group>"; };
 		90FE8216081F585ED580AE1C /* Machine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Machine.swift; sourceTree = "<group>"; };
+		941460A953D8A453CCA3CF1E /* HerdAvatarSize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdAvatarSize.swift; sourceTree = "<group>"; };
 		95D3E317CB51DFD9180687CF /* SynologyDSM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyDSM.swift; sourceTree = "<group>"; };
 		965A795B156AE46A3D239AFB /* CPUOverviewHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUOverviewHeaderView.swift; sourceTree = "<group>"; };
 		96FE2EB9BC85C8D939ED84BE /* AgentResourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentResourceTests.swift; sourceTree = "<group>"; };
@@ -278,6 +280,7 @@
 				2605FCF3C1DE6064204751BF /* FolderSizeScanner.swift */,
 				60B1C3B57A90EE8805729A1B /* FolderSizeStore.swift */,
 				902F116974B1C2D720ED2B18 /* FullDiskAccess.swift */,
+				941460A953D8A453CCA3CF1E /* HerdAvatarSize.swift */,
 				C6AE1D932764BCE8C5F27FD5 /* HerdColumns.swift */,
 				D56F2E897732951FB02B9B7F /* HerdwareAvatar.swift */,
 				F82C710E619943CBDCBE3355 /* HerdWorkload.swift */,
@@ -514,6 +517,7 @@
 				40506444A83FF76553A19A24 /* FolderSizeStore.swift in Sources */,
 				9C4DC60AB6AFC3F1EEC79B02 /* FolderSizes.swift in Sources */,
 				A75BF90DF86C9F46EB1FC29C /* FullDiskAccess.swift in Sources */,
+				C239D2D922B785BBF084A38C /* HerdAvatarSize.swift in Sources */,
 				6AB7CD21519D28D1089C7122 /* HerdColumns.swift in Sources */,
 				5CB3283CDCE6D84BF5D5D30B /* HerdWorkload.swift in Sources */,
 				3A45C65052806FE4A571A349 /* HerdwareAvatar.swift in Sources */,

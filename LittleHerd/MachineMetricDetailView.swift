@@ -126,7 +126,7 @@ struct MachineMetricDetail: View {
 
                     MachineStatusLabel(
                         machine: machine,
-                        avatarSize: 34,
+                        avatarSize: HerdAvatarSize.preferred,
                         namespace: namespace
                     )
                     .padding(.top, 2)

@@ -268,11 +268,7 @@ struct CPUOverviewView: View {
     /// hierarchy has to be obvious at a glance or it reads as two things of
     /// roughly equal weight, which is the one arrangement that says nothing.
     private var avatarSize: CGFloat {
-        switch machines.count {
-        case ...3: 42
-        case 4: 34
-        default: 27
-        }
+        HerdAvatarSize.forColumn(ofWidth: columnWidth)
     }
 }
 
@@ -436,6 +432,16 @@ private struct CPUThermometerColumn: View {
             .pointerStyle(.link)
             .accessibilityLabel(Text("\(machine.name) \(String(localized: metric.title))"))
             .accessibilityHint(columnHelp)
+            // **The same sentence, to the pointer as well as to VoiceOver.**
+            // This column has always built a full explanation — what the
+            // memory pressure means and what to do about it — and has only
+            // ever offered it as an accessibility hint, so hovering the one
+            // thing on the dashboard that asks a question of you produced
+            // nothing at all. The symbol inside the column carries the same
+            // text, but a tooltip declared inside a button's label never gets
+            // a region of its own: the button owns the whole label, so the
+            // help has to be declared out here.
+            .help(columnHelp)
 
             // …the icon opens everything about the machine.
             Button {
@@ -543,6 +549,7 @@ struct OverviewMetricValue: View {
         case .percent(let percent):
             CPUPercentage(value: percent)
                 .font(.title3.weight(.semibold).monospacedDigit())
+
         // Neither reaches the overview: it has no network column, and a metric
         // with nothing behind it falls through to the same dash.
         case .bytesPerSecond, .unavailable:
