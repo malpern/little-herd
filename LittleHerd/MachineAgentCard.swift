@@ -14,6 +14,13 @@ struct MachineAgentCard: View {
     /// Share of the whole machine per session, so a session with no plan to
     /// report can still say what it is costing.
     var agentCPU: [String: Double] = [:]
+    /// A session to put first — the one that has just started, when the card
+    /// is being shown because it did.
+    ///
+    /// The id rather than a sort by timestamp: a session's `updatedAt` moves
+    /// whenever it does anything, so "most recent" and "just started" are
+    /// different questions, and this card is answering the second.
+    var leading: String?
 
     /// Four, then a count. A card that grows without limit stops being a
     /// glance and becomes a panel — and the panel already exists, one click
@@ -25,7 +32,7 @@ struct MachineAgentCard: View {
             header
 
             VStack(alignment: .leading, spacing: 9) {
-                ForEach(activity.sessions.prefix(Self.listed)) { session in
+                ForEach(ordered.prefix(Self.listed)) { session in
                     session_(session)
                 }
             }
@@ -46,6 +53,16 @@ struct MachineAgentCard: View {
         .frame(width: 268, alignment: .leading)
     }
 
+    /// Busiest first, unless one of them has just started.
+    private var ordered: [AgentSession] {
+        guard let leading,
+              let index = activity.sessions.firstIndex(where: { $0.id == leading })
+        else { return activity.sessions }
+        var sessions = activity.sessions
+        sessions.insert(sessions.remove(at: index), at: 0)
+        return sessions
+    }
+
     private var header: some View {
         HStack(spacing: 7) {
             Image(nsImage: AgentProviderIcons.icon(for: activity.provider))
@@ -57,13 +74,31 @@ struct MachineAgentCard: View {
             Text(headline)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
+
+            if let alsoRunning {
+                Text(alsoRunning)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
         }
     }
 
+    /// The card arriving uninvited has to say why in its first line, and it
+    /// cannot say it as a suffix: "3 Claude sessions on Air · just started"
+    /// reads as a claim about all three.
     private var headline: String {
-        activity.count == 1
+        if leading != nil {
+            return "Just started on \(machineName)"
+        }
+        return activity.count == 1
             ? "\(activity.provider.shortName) on \(machineName)"
             : "\(activity.count) \(activity.provider.shortName) sessions on \(machineName)"
+    }
+
+    /// The count, when the headline has given its place to the announcement.
+    private var alsoRunning: String? {
+        guard leading != nil, activity.count > 1 else { return nil }
+        return "\(activity.count) running"
     }
 
     /// Name over line, because they answer different questions — which piece

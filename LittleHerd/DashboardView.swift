@@ -104,7 +104,11 @@ struct DashboardView: View {
                             onSelectMetric: { model.selection = .machineMetric($0) },
                             onSelectMachine: { model.selection = .machine($0) },
                             onSelectAgents: { model.showAgents(on: $0) },
-                            herd: model.machines.map(\.destinationAccount)
+                            herd: model.machines.map(\.destinationAccount),
+                            // Only here. The menu bar draws its own rows and
+                            // is dismissed by the click that would read the
+                            // card anyway.
+                            announcesArrivals: true
                         )
                         .id(model.overviewMetric)
                         .transition(.opacity)
@@ -586,6 +590,7 @@ private struct OverviewMetricContent: View {
     /// at, which is neither the machine's summary nor the current metric.
     var onSelectAgents: ((MachineID) -> Void)?
     var herd: [DestinationAccount] = []
+    var announcesArrivals = false
 
     var body: some View {
         if metric == .ai {
@@ -613,7 +618,8 @@ private struct OverviewMetricContent: View {
                 onSelectMachine: onSelectMachine,
                 onSelectAgents: onSelectAgents,
                 agentCPU: agentCPU,
-                herd: herd
+                herd: herd,
+                announcesArrivals: announcesArrivals
             )
         }
     }

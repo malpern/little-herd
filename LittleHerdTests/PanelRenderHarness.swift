@@ -735,6 +735,39 @@ extension PanelRenderHarness {
             named: "agent-hover-card"
         )
 
+        // The same card as an announcement: the session that just started is
+        // moved to the top, and the header says why the card appeared without
+        // being asked.
+        try render(
+            MachineAgentCard(
+                activity: MachineAgentActivity(
+                    provider: .claude,
+                    sessions: [
+                        detailed(
+                            "a",
+                            "Synology TLS sign-in",
+                            AgentActivity(
+                                tool: "Bash",
+                                detail: "Running the full test suite against a "
+                                    + "clean derived data directory"
+                            )
+                        ),
+                        detailed("b", "Panel redesign", nil),
+                        detailed(
+                            "c",
+                            "Destination eligibility and the transfer spike",
+                            AgentActivity(tool: "Read", detail: "CPUOverviewView.swift")
+                        ),
+                    ]
+                ),
+                machineName: "Air",
+                agentCPU: ["a": 61, "b": 4, "c": 12],
+                leading: "c"
+            ),
+            size: CGSize(width: 268, height: 260),
+            named: "agent-arrival-card"
+        )
+
         // Every frame of the drag, which is the part that cannot be judged by
         // reading it. A gesture is four or five pictures, and the ones in the
         // middle — a herd offering itself, one machine refusing — are the ones

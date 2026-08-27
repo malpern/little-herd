@@ -11,8 +11,22 @@ struct CPUOverviewView: View {
     /// Every account, so a drag can ask what each machine could actually take.
     var herd: [DestinationAccount] = []
 
+    /// Whether this overview is allowed to announce arrivals. False by
+    /// default so nothing announces from a render, a preview, or any surface
+    /// that is not the dashboard window.
+    var announcesArrivals = false
+
     @AppStorage(LittleHerdPreferences.requiresDestinationApprovalKey)
     private var requiresDestinationApproval = false
+
+    /// Whether this window is the one the person is looking at. An
+    /// announcement into a window that is behind three others is a card
+    /// nobody sees and a timer nobody can replay.
+    @Environment(\.controlActiveState) private var windowActivity
+
+    @State private var arrivals = AgentArrivalWatch()
+    @State private var announcing: AgentArrival?
+    @State private var announcement: Task<Void, Never>?
     /// The width this is laid out in. A constant here would go on dividing the
     /// old window into columns after the window grew, quietly leaving the
     /// right-hand margin twice the left.
@@ -50,6 +64,9 @@ struct CPUOverviewView: View {
                     agentCPU: agentCPU,
                     padState: padState(for: machine.machine),
                     onSelectAgents: onSelectAgents,
+                    announcing: announcing?.machine == machine.machine
+                        ? announcing?.session
+                        : nil,
                     isCarried: activeDrag?.origin == machine.machine,
                     wasRefused: refusal?.origin == machine.machine,
                     onDragChanged: { activity, dx in
@@ -68,6 +85,47 @@ struct CPUOverviewView: View {
         .padding(.horizontal, horizontalPadding)
         .padding(.top, 10)
         .padding(.bottom, 16)
+        .onChange(of: sessionFingerprint) { _, _ in announceArrivals() }
+    }
+
+    /// Something to watch that changes when the sessions do. `onChange` needs
+    /// an `Equatable`, and the machines are reference types whose contents
+    /// change underneath a view that is already looking at them.
+    private var sessionFingerprint: [String] {
+        machines.flatMap { machine in
+            machine.agentSessions
+                .filter { $0.state == .active }
+                .map { "\(machine.machine.rawValue)/\($0.id)" }
+        }
+    }
+
+    /// Shows the card over a token that has just appeared, briefly.
+    ///
+    /// The reveal is the card rather than a wider column: a column that grew
+    /// would push its neighbours, so a session starting on one machine would
+    /// move the thermometers, avatars and click targets of the other three.
+    /// A popover overlays and nothing else moves.
+    ///
+    /// **Hover is deliberately kept.** This is an announcement, and an
+    /// announcement you missed is gone — the same defect that retired the
+    /// hovered header, which was information nobody could point at. Pointing
+    /// at the token is how you ask again.
+    private func announceArrivals() {
+        guard announcesArrivals, windowActivity == .key else { return }
+        let herdSessions = machines.map {
+            (machine: $0.machine, sessions: $0.agentSessions)
+        }
+        guard let arrival = arrivals.arrival(in: herdSessions, at: .now) else {
+            return
+        }
+
+        announcement?.cancel()
+        announcing = arrival
+        announcement = Task {
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            announcing = nil
+        }
     }
 
     /// Which machines could take what is in hand.
@@ -176,6 +234,8 @@ private struct CPUThermometerColumn: View {
     var agentCPU: [String: Double] = [:]
     var padState: AgentPadState = .idle
     var onSelectAgents: ((MachineID) -> Void)?
+    /// The session that has just started here, while the herd is saying so.
+    var announcing: String?
     var isCarried = false
     var wasRefused = false
     var onDragChanged: ((MachineAgentActivity, CGFloat) -> Void)?
@@ -244,6 +304,7 @@ private struct CPUThermometerColumn: View {
                     agentCPU: agentCPU,
                     padState: padState,
                     onSelectAgents: onSelectAgents,
+                    announcing: announcing,
                     isCarried: isCarried,
                     wasRefused: wasRefused,
                     onDragChanged: onDragChanged,
@@ -363,6 +424,7 @@ struct MachineStatusLabel: View {
     var agentCPU: [String: Double] = [:]
     var padState: AgentPadState = .idle
     var onSelectAgents: ((MachineID) -> Void)?
+    var announcing: String?
     /// Whether the drag in progress started here. Told rather than inferred:
     /// the offset below is this view's business, but *being carried* is a fact
     /// about the drag, and deriving it twice is how the two disagree.
@@ -462,11 +524,12 @@ struct MachineStatusLabel: View {
                         // Says the token is a target in its own right, not a
                         // decoration on the button underneath it.
                         .pointerStyle(.link)
-                        .popover(isPresented: $isShowingCard, arrowEdge: .bottom) {
+                        .popover(isPresented: showsCard, arrowEdge: .bottom) {
                             MachineAgentCard(
                                 activity: activity,
                                 machineName: machine.shortName,
-                                agentCPU: agentCPU
+                                agentCPU: agentCPU,
+                                leading: isShowingCard ? nil : announcing
                             )
                         }
                         // Before the drag, so a click on the token opens the
@@ -488,6 +551,19 @@ struct MachineStatusLabel: View {
         .onChange(of: wasRefused) { _, refused in
             if refused { shakeOff() }
         }
+    }
+
+    /// Open because the pointer asked, or because something just started.
+    ///
+    /// One binding rather than two popovers: a view can present only one at a
+    /// time, and pointing at a token mid-announcement is a person asking the
+    /// question the announcement was already answering. The pointer wins, so
+    /// the card stops being on a timer the moment it is being read.
+    private var showsCard: Binding<Bool> {
+        Binding(
+            get: { isShowingCard || announcing != nil },
+            set: { isShowingCard = $0 }
+        )
     }
 
     /// Shows the card once the pointer has settled, and takes it away at once
