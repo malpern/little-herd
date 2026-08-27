@@ -45,7 +45,24 @@ html, n_css = re.subn(
 body = re.search(r"<body>(.*)</body>", html, re.S).group(1)
 style = re.search(r"<style>.*?</style>", html, re.S).group(0)
 
-out = "<title>Little Herd</title>\n" + style + "\n" + body
+# an Artifact is one file, so the demo script has to come along inside it
+def inline_script(match):
+    f = here / match.group(1)
+    if not f.exists():
+        sys.exit(f"missing script: {match.group(1)}")
+    return "<script>\n" + f.read_text() + "\n</script>"
+
+body, n_js = re.subn(r'<script src="([^"]+)"></script>', inline_script, body)
+
+# the demo builds avatar paths at runtime, which a single file cannot resolve
+avatars = sorted((here / "images" / "herdware").glob("*.png"))
+assets = ",".join(
+    '"%s":"data:image/png;base64,%s"' % (f.stem, base64.b64encode(f.read_bytes()).decode())
+    for f in avatars
+)
+shim = "<script>window.LH_ASSETS={" + assets + "};</script>\n"
+
+out = "<title>Little Herd</title>\n" + style + "\n" + shim + body
 
 # Escape every non-ASCII character to a numeric entity. The <meta charset> went
 # with the <head> we just stripped, and a host that assumes latin-1 renders the
@@ -53,4 +70,4 @@ out = "<title>Little Herd</title>\n" + style + "\n" + body
 out = "".join(c if ord(c) < 128 else f"&#{ord(c)};" for c in out)
 
 (here / "preview.html").write_text(out, encoding="ascii")
-print(f"preview.html: {len(out)/1e6:.1f} MB, inlined {n_src} images + {n_css} css")
+print(f"preview.html: {len(out)/1e6:.1f} MB, inlined {n_src} images + {n_css} css + {n_js} script + {len(avatars)} avatars")

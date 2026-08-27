@@ -202,6 +202,93 @@ The layout keeps a slot between section 5 and the licence for a price block,
 so pricing can arrive without a redesign. Nothing goes in it now, and the hero
 does not hint at it beyond "while in development."
 
+---
+
+## Coming soon — labelled, not implied
+
+Two sections describe work that is **not built**. Each carries a "Coming soon"
+pill and sits on its own tinted ground, and every sentence in them is future
+tense. That is what makes them honest: the copy rule is never to claim what the
+app does not do, and a plainly labelled intention is not a claim.
+
+> **Move a session to the machine that's free.**
+>
+> Your laptop is compiling and the mini is idle. Little Herd will stop a Claude
+> or Codex session on one machine and start its successor on another, with the
+> work intact.
+>
+> Not process migration — that isn't possible and isn't wanted. The session
+> writes its full context, and a transfer branch carries that plus anything
+> uncommitted, so the destination checks out one ref and has all of it at once.
+>
+> Your machines share one account, so a move rebalances silicon, not tokens.
+> Little Herd will say so rather than let you move a session for a reason it
+> cannot deliver. Machine to machine only: your phone can start a transfer and
+> watch it, but is never a destination.
+
+> **Cloud work, in the same window.**
+>
+> Codex cloud tasks listed beside your machines, so the herd is everything
+> working for you rather than everything you own.
+>
+> Moving cloud work down to a machine will use each vendor's own command, never
+> a protocol of Little Herd's. The two are honestly different and the interface
+> will say so: Codex cloud tasks can be listed, while Claude sessions can only
+> be pulled by id, because nothing can enumerate them from here.
+
+Both are compressed from `HANDOFF.md` items 4 and 8, including the constraints
+— "silicon, not tokens", the phone never being a destination, the vendors' own
+commands. Those limits are the most credible thing in the section. A roadmap
+that lists only upside reads as a wish; one that states what it will refuse to
+do reads as a plan.
+
+**When transfer ships, watching stays the headline.** Moving becomes a strong
+section and not the thesis, because watching is the everyday use and the reason
+it lives in the menu bar, while moving is occasional. It also means the product
+does not collapse if the transfer proves finicky in practice.
+
+---
+
+## Motion
+
+Two animations, both meaning something, and nothing decorative.
+
+**The wordmark's dot breathes** on a 4.5s cycle, because it *is* a status
+light. It sits inside the `<use>` shadow tree where no selector reaches it, so
+the colour animates through the `--dot` custom property — which has to be
+registered with `@property` as a `<color>`, or it steps instead of fading.
+
+**The Herdware avatars lift on hover.** They read as toys; they should feel
+like you could pick one up.
+
+Both sit inside `prefers-reduced-motion: no-preference`. Scroll-reveals, fades
+and parallax were left out: they are what a generated page looks like, and this
+page has a real mark and real toys to spend motion on instead.
+
+---
+
+## The live panel
+
+Two sections carry a working miniature of the app window instead of a
+screenshot: the CPU overview in section 1, and the AI panel in section 2 —
+which had no picture at all, because the only shots on hand were CPU and
+memory and pairing either with it would have illustrated a claim it does not
+make.
+
+It earns the space by teaching. Hovering a machine puts that machine in the
+header, which is the app's central idea and the one thing a still can never
+show. The metric tabs walk through all four views. Sessions arrive, wait and
+finish on their own, which is what the AI panel actually looks like over a
+minute.
+
+**It is labelled "A working recreation".** Everything it does is something the
+app does — the same metrics, the same segmented bars, the same colour ramp,
+the same green-for-live and red-for-unreachable — but the numbers are invented,
+and the caption says so rather than letting anyone take it for a screenshot.
+
+Keyboard users get the same thing: every machine and every session row is
+focusable and responds to focus exactly as it does to hover.
+
 ## Still needed
 
 Fresh screenshots, and one of the AI view — the section that names the thing

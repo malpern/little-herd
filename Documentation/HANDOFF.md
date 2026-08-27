@@ -1529,6 +1529,13 @@ it; the files survived only because the directory had not been reaped yet.
     can stay dry. Whimsical art plus whimsical writing is twee, and the
     audience that owns four computers leaves.
 
+    **Two sections now run a live recreation of the window rather than a
+    screenshot** (`site/demo.js`): the CPU overview, and the AI panel that had
+    no picture at all. Hover puts a machine in the header, the tabs walk the
+    four metrics, and sessions arrive and finish on their own. It is captioned
+    as a recreation and the numbers are invented. **If the real panel changes
+    shape, this is a second place that has to change with it.**
+
     **Screenshots are still not taken, and the obstacle is TCC.**
     `screencapture -l` (which `scripts/capture_app_window.swift` uses) and
     `screencapture -R` are both refused outright on this machine — "could not
@@ -1541,6 +1548,20 @@ it; the files survived only because the directory had not been reaped yet.
     this Air runs a scaled resolution. Anyone picking this up should verify by
     looking at the cropped image, not at its dimensions — the first attempt
     reported a perfectly plausible 600x656 at 2x and was entirely black.
+
+    **The page describes items 4 and 8 as Coming soon.** Decided 26 August,
+    on the grounds that the site is published but not announced. Each sits on
+    its own tinted ground behind a "Coming soon" pill, every sentence is future
+    tense, and both carry the constraints rather than only the upside —
+    "silicon, not tokens", the phone never being a destination, the vendors'
+    own commands. Those limits are the most credible thing in the section; a
+    roadmap that lists only upside reads as a wish. **If either item changes
+    shape, the page is now a second place that has to change with it.**
+
+    When transfer ships, watching stays the headline and moving becomes a
+    strong section rather than the thesis — watching is the everyday use and
+    the reason it lives in the menu bar, and the product should not collapse if
+    a transfer proves finicky in practice.
 
     **Two things stand between here and a site, and neither is a feature.**
     Confirm whether the certificate fix is still unreleased, and **take fresh
