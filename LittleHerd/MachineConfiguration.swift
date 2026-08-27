@@ -294,6 +294,28 @@ final class MachineConfigurationStore {
         replace(with: updated)
     }
 
+    /// Records whether a machine may take work moved to it, and saves it.
+    ///
+    /// Here rather than in the view that draws the control, because the view
+    /// that drew it first reached for `MachineMonitorModel.setMayHostSessions`
+    /// — which changes memory and nothing else, since persistence used to flow
+    /// the other way from the Settings checkbox that edited this store. The
+    /// toggle worked and the answer was gone by the next launch. A permission
+    /// a relaunch forgets is worse than no permission, so the write lives with
+    /// the thing that can actually save it.
+    ///
+    /// - Returns: whether anything changed, so a caller can skip pushing an
+    ///   unchanged herd back through the monitors.
+    @discardableResult
+    func setMayHostSessions(_ mayHost: Bool, on machine: MachineID) -> Bool {
+        guard var configuration = machines.first(where: { $0.id == machine }),
+              configuration.mayHostSessions != mayHost
+        else { return false }
+        configuration.mayHostSessions = mayHost
+        update(configuration)
+        return true
+    }
+
     func replace(with configurations: [MachineConfiguration]) {
         guard !configurations.isEmpty, configurations != machines else { return }
         machines = configurations

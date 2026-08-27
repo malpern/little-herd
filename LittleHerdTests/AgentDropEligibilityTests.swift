@@ -4,12 +4,12 @@ import Testing
 
 /// What a machine will take, when a token is carried over it.
 struct AgentDropEligibilityTests {
-    private let air = MachineID("air")
-    private let mini = MachineID("mini")
-    private let linux = MachineID("linux")
-    private let nas = MachineID("nas")
+    let air = MachineID("air")
+    let mini = MachineID("mini")
+    let linux = MachineID("linux")
+    let nas = MachineID("nas")
 
-    private let claude = AgentInstallation(
+    let claude = AgentInstallation(
         provider: .claude,
         version: "2.1.234",
         path: "/Users/x/.local/bin/claude"
@@ -30,7 +30,7 @@ struct AgentDropEligibilityTests {
         )
     }
 
-    private func account(
+    func account(
         _ machine: MachineID,
         report: DestinationReport?,
         auth: AgentAuthState = .unverified,
@@ -47,7 +47,7 @@ struct AgentDropEligibilityTests {
         )
     }
 
-    private var carried: MachineAgentActivity {
+    var carried: MachineAgentActivity {
         MachineAgentActivity(
             provider: .claude,
             sessions: [session(directory: "/Users/x/code/little-herd")]
@@ -81,10 +81,10 @@ struct AgentDropEligibilityTests {
         )
     }
 
-    /// **The regression this whole file exists to catch.** `mayHostSessions`
-    /// defaults to off and its only setter was removed, so asking the full
-    /// question would return `.excluded` for every machine and the herd would
-    /// refuse a drag everywhere. Every account in these fixtures has it off.
+    /// **The default, and the regression this file exists to catch.**
+    /// `mayHostSessions` is off on every account in these fixtures. With the
+    /// setting off — which is how Little Herd ships — that must not matter, or
+    /// the herd refuses a drag everywhere.
     @Test
     func aMachineIsNotRefusedMerelyForHavingNoStoredIntent() {
         let accounts = herd(
@@ -197,5 +197,88 @@ struct AgentDropEligibilityTests {
             checkouts: ["malpern/little-herd": "/Users/x/code/little-herd"]
         )
         #expect(report.repository(containing: "/Users/x/code/little-herd-site") == nil)
+    }
+}
+
+
+// MARK: - Asking first, when the setting is on
+
+extension AgentDropEligibilityTests {
+    var approving: [DestinationAccount] {
+        [
+            account(air, report: DestinationReport(
+                installations: [claude],
+                checkouts: ["malpern/little-herd": "/Users/x/code/little-herd"]
+            )),
+            account(mini, report: DestinationReport(
+                installations: [claude],
+                checkouts: ["malpern/little-herd": "/Users/y/little-herd"]
+            ), mayHost: true),
+            account(linux, report: DestinationReport(
+                installations: [claude],
+                checkouts: ["malpern/little-herd": "/home/x/little-herd"]
+            )),
+            account(nas, report: nil),
+        ]
+    }
+
+    func can(_ machine: MachineID, asking: Bool) -> Bool {
+        AgentDropEligibility.canAccept(
+            machine,
+            carrying: carried,
+            from: air,
+            in: approving,
+            requiresApproval: asking
+        )
+    }
+
+    /// With the setting on, a machine that could run the work still will not
+    /// until it has been allowed.
+    @Test
+    func withTheSettingOnAnUnallowedMachineRefuses() {
+        #expect(!can(linux, asking: true))
+        #expect(
+            AgentDropEligibility.eligibility(
+                of: linux,
+                carrying: carried,
+                from: air,
+                in: approving,
+                requiresApproval: true
+            ) == .excluded
+        )
+    }
+
+    /// And one that has been allowed takes it.
+    @Test
+    func withTheSettingOnAnAllowedMachineAccepts() {
+        #expect(can(mini, asking: true))
+    }
+
+    /// With the setting off, the allowance is not consulted at all — both the
+    /// allowed and the unallowed machine take the work.
+    @Test
+    func withTheSettingOffTheAllowanceIsNotConsulted() {
+        #expect(can(mini, asking: false))
+        #expect(can(linux, asking: false))
+    }
+
+    /// Being allowed does not make a machine able. Permission and capability
+    /// are separate questions and the NAS answers no to the second whatever
+    /// the first says.
+    @Test
+    func allowingAMachineDoesNotGiveItAnAgent() {
+        let allowedNAS = [
+            approving[0],
+            account(nas, report: nil, mayHost: true),
+        ]
+        #expect(
+            !AgentDropEligibility.canAccept(
+                nas,
+                carrying: carried,
+                from: air,
+                in: allowedNAS,
+                requiresApproval: true
+            )
+        )
     }
 }

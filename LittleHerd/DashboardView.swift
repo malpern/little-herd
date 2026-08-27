@@ -74,7 +74,8 @@ struct DashboardView: View {
                             herd: model.machines.map(\.destinationAccount),
                             namespace: machineTransition,
                             onBack: { model.selection = .overview },
-                            onSignIn: signInAction(for: selectedMachine)
+                            onSignIn: signInAction(for: selectedMachine),
+                            onAllow: allow
                         )
                     } else if let selectedMachine = model.selectedMachine {
                         HStack(spacing: 0) {
@@ -195,6 +196,21 @@ struct DashboardView: View {
 
     private var isLaunchOverlayVisible: Bool {
         isShowingLaunchSplash || isShowingNetworkVolumeOnboarding
+    }
+
+    /// Records that a machine may host work, and *persists it*.
+    ///
+    /// Through the configuration store, not the machine model: the model's own
+    /// setter changes memory and nothing else, because persistence used to
+    /// flow the other way — from a Settings checkbox that edited the stored
+    /// configuration and pushed it down. A permission that a relaunch forgets
+    /// is worse than no permission, so this writes first and lets
+    /// `applyConfigurations` carry the answer back into the herd.
+    private func allow(_ machine: MachineID, _ mayHost: Bool) {
+        guard let store = machineStore,
+              store.setMayHostSessions(mayHost, on: machine)
+        else { return }
+        onConfigurationsChanged(store.machines)
     }
 
     private var windowContentSize: CGSize {
@@ -715,6 +731,7 @@ private struct MachineMetricDetail: View {
     var namespace: Namespace.ID?
     let onBack: () -> Void
     var onSignIn: (() -> Void)?
+    var onAllow: (MachineID, Bool) -> Void = { _, _ in }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -756,7 +773,8 @@ private struct MachineMetricDetail: View {
                 machine: machine,
                 metric: metric,
                 herd: herd,
-                onSignIn: onSignIn
+                onSignIn: onSignIn,
+                onAllow: onAllow
             )
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
@@ -779,6 +797,7 @@ private struct MachineMetricDetailContent: View {
     let metric: OverviewMetric
     var herd: [DestinationAccount] = []
     var onSignIn: (() -> Void)?
+    var onAllow: (MachineID, Bool) -> Void = { _, _ in }
 
     var body: some View {
         switch metric {
@@ -786,7 +805,12 @@ private struct MachineMetricDetailContent: View {
         case .memory: MachineMemoryPane(machine: machine, onSignIn: onSignIn)
         case .disk: MachineStoragePane(machine: machine, onSignIn: onSignIn)
         case .ai:
-            MachineAgentPane(machine: machine, herd: herd, onSignIn: onSignIn)
+            MachineAgentPane(
+                machine: machine,
+                herd: herd,
+                onSignIn: onSignIn,
+                onAllow: onAllow
+            )
         }
     }
 }
@@ -1113,6 +1137,10 @@ private struct MachineAgentPane: View {
     /// of itself. Skew is only visible in comparison.
     var herd: [DestinationAccount] = []
     var onSignIn: (() -> Void)?
+    var onAllow: (MachineID, Bool) -> Void = { _, _ in }
+
+    @AppStorage(LittleHerdPreferences.requiresDestinationApprovalKey)
+    private var requiresDestinationApproval = false
 
     var body: some View {
         MetricDetailPane(
@@ -1128,6 +1156,13 @@ private struct MachineAgentPane: View {
                 sessions: sessions,
                 versions: versions
             )
+
+            // Only when the setting is on. A permission control on a machine
+            // that needs no permission is a question nobody asked, and this
+            // pane already carries the destination facts it would sit beside.
+            if requiresDestinationApproval {
+                MachineDestinationAllowance(machine: machine, onAllow: onAllow)
+            }
         }
     }
 
@@ -1141,6 +1176,53 @@ private struct MachineAgentPane: View {
         machine.state == .live
             ? "No recent agent sessions"
             : unavailableMessage(for: machine)
+    }
+}
+
+/// The one control that makes "ask before a machine can take work" usable.
+///
+/// It exists because the setting's gate is `mayHostSessions`, which defaults to
+/// off — so without somewhere to say yes, turning the setting on would refuse
+/// the whole herd and leave no way back. The setting and its setter ship
+/// together, and neither is drawn when the other is absent.
+private struct MachineDestinationAllowance: View {
+    let machine: MachineMonitorModel
+    /// Writes the answer through to the configuration store. Required, not
+    /// optional: the model's own `setMayHostSessions` changes memory and
+    /// nothing else — persistence used to flow the other way, from the
+    /// Settings checkbox that edited the stored configuration — so a control
+    /// wired only to the model is forgotten on the next launch, which is the
+    /// one thing a permission must never do.
+    let onAllow: (MachineID, Bool) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Divider().padding(.vertical, 4)
+
+            Toggle(
+                "Allow work to be moved here",
+                isOn: Binding(
+                    get: { machine.mayHostSessions },
+                    set: { onAllow(machine.machine, $0) }
+                )
+            )
+            .font(.caption.weight(.medium))
+            .toggleStyle(.checkbox)
+
+            Text(allowanceDetail)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 2)
+    }
+
+    /// What allowing it would actually get you, which is not the same question
+    /// as whether it is allowed — a machine can be permitted and still unable.
+    private var allowanceDetail: String {
+        machine.mayHostSessions
+            ? machine.destinationEligibility().detail
+            : "Not offered as a destination."
     }
 }
 

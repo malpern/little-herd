@@ -10,6 +10,9 @@ struct CPUOverviewView: View {
     var agentCPU: [String: Double] = [:]
     /// Every account, so a drag can ask what each machine could actually take.
     var herd: [DestinationAccount] = []
+
+    @AppStorage(LittleHerdPreferences.requiresDestinationApprovalKey)
+    private var requiresDestinationApproval = false
     /// The width this is laid out in. A constant here would go on dividing the
     /// old window into columns after the window grew, quietly leaving the
     /// right-hand margin twice the left.
@@ -80,7 +83,8 @@ struct CPUOverviewView: View {
             machine,
             carrying: drag.activity,
             from: drag.origin,
-            in: herd
+            in: herd,
+            requiresApproval: requiresDestinationApproval
         )
     }
 

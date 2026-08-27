@@ -142,6 +142,14 @@ enum LittleHerdPreferences {
     /// Whether transcripts already on disk have been read for thresholds. Once,
     /// because the watching path keeps them current afterwards.
     static let hasSeededCompactionThresholdsKey = "hasSeededCompactionThresholdsV1"
+    /// Whether a machine must be explicitly allowed before work can be moved
+    /// to it. **Off by default, and that is the considered position rather
+    /// than a convenience.** Little Herd reaches these machines over the
+    /// user's own SSH keys, so a transfer can start nothing they could not
+    /// already start from a shell — the switch is an accident boundary, not a
+    /// security one, and dressing it as the latter would overclaim. On for
+    /// anyone who wants a drop onto the wrong column to be recoverable.
+    static let requiresDestinationApprovalKey = "requiresDestinationApproval"
     static let networkVolumeAccessOnboardingCompletedKey =
         "networkVolumeAccessOnboardingCompleted"
 
@@ -510,6 +518,8 @@ private struct LittleHerdSettingsView: View {
     private var alertsEnabled = false
     @AppStorage(LittleHerdPreferences.startsUsageSourceKey)
     private var startsUsageSource = true
+    @AppStorage(LittleHerdPreferences.requiresDestinationApprovalKey)
+    private var requiresDestinationApproval = false
     @State private var configuringNAS: MachineConfiguration?
     /// Bumped when a password is saved.
     ///
@@ -537,6 +547,19 @@ private struct LittleHerdSettingsView: View {
                     .font(.body.weight(.medium))
 
                 Text("Usage figures come from CodexBar, because neither vendor writes a limit anywhere Little Herd can read. When CodexBar isn’t running the figure quietly stops moving, which looks the same as having no limit at all.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            VStack(alignment: .leading, spacing: 7) {
+                Toggle(
+                    "Ask before a machine can take work",
+                    isOn: $requiresDestinationApproval
+                )
+                .font(.body.weight(.medium))
+
+                Text("Off, every machine that could run the work will take it. On, each one has to be allowed once, on its own AI page, and the herd refuses the rest while you drag. Little Herd uses your own SSH access either way, so this guards against dropping on the wrong machine rather than against anyone reaching it.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

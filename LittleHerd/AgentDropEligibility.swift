@@ -9,28 +9,32 @@ import Foundation
 /// can run, it has a checkout of the repository the work is in, and its
 /// provider has not refused the credentials.
 ///
-/// **Intent is deliberately left out, and this is the one thing to know before
-/// changing it.** `DestinationEligibility.resolve` gates on
-/// `MachineConfiguration.mayHostSessions`, which defaults to *off* and whose
-/// only setter — a checkbox in Settings — was removed on 25 August as
-/// pre-solving. Asking the full question today would therefore return
-/// `.excluded` for every machine in the herd, and the herd would refuse a drag
-/// everywhere with no way for anyone to say otherwise. That is not the safety
-/// posture the default was written for; it is the default outliving its
-/// control. So this asks the measured half and says so, and when a new
-/// destination interface brings the setter back, this becomes
-/// `resolve(isAllowed:)` and the tests below change with it.
+/// **Whether intent is asked at all is a setting, off by default.** With
+/// `requiresDestinationApproval` off — the shipped default — every machine
+/// that *could* run the work will take it, and `mayHostSessions` is not
+/// consulted. That is deliberate: Little Herd reaches these machines over the
+/// user's own SSH keys, so a transfer starts nothing they could not already
+/// start from a shell. The switch is an accident boundary, not a security one.
+///
+/// **Turning it on must not brick the herd, and nearly did.**
+/// `mayHostSessions` defaults to *off*, so gating on it while nothing can set
+/// it refuses every machine with no way for anyone to say otherwise — a
+/// default outliving its control. The per-machine allowance on the machine's
+/// AI page is what makes the switch usable, and it appears only when the
+/// switch is on, so the setting and its setter arrive together or not at all.
 nonisolated enum AgentDropEligibility {
     /// - Parameters:
     ///   - activity: what is in hand.
     ///   - origin: where it was picked up, which supplies the checkouts that
     ///     name the repository the work is in.
     ///   - herd: every account, including the origin's.
+    ///   - requiresApproval: `LittleHerdPreferences.requiresDestinationApprovalKey`.
     static func eligibility(
         of machine: MachineID,
         carrying activity: MachineAgentActivity,
         from origin: MachineID,
-        in herd: [DestinationAccount]
+        in herd: [DestinationAccount],
+        requiresApproval: Bool = false
     ) -> DestinationEligibility {
         guard machine != origin,
               let destination = herd.first(where: { $0.machine == machine })
@@ -39,8 +43,7 @@ nonisolated enum AgentDropEligibility {
         return DestinationEligibility.resolve(
             report: destination.report,
             repository: repository(of: activity, from: origin, in: herd),
-            // See the note above: measured only, because intent has no control.
-            isAllowed: true,
+            isAllowed: requiresApproval ? destination.mayHostSessions : true,
             auth: destination.auth
         )
     }
@@ -49,10 +52,17 @@ nonisolated enum AgentDropEligibility {
         _ machine: MachineID,
         carrying activity: MachineAgentActivity,
         from origin: MachineID,
-        in herd: [DestinationAccount]
+        in herd: [DestinationAccount],
+        requiresApproval: Bool = false
     ) -> Bool {
-        eligibility(of: machine, carrying: activity, from: origin, in: herd)
-            .isEligible
+        eligibility(
+            of: machine,
+            carrying: activity,
+            from: origin,
+            in: herd,
+            requiresApproval: requiresApproval
+        )
+        .isEligible
     }
 
     /// The repository the carried work is in, named by the origin.

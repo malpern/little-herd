@@ -1233,8 +1233,31 @@ it; the files survived only because the directory had not been reaped yet.
    working directory against the *origin's* own checkouts, since nothing in a
    session says which repository it belongs to.
 
-   **One part of the question is deliberately not asked, and it is a trap for
-   whoever changes this next.** `DestinationEligibility.resolve` gates on
+   **Whether intent is asked at all is a setting, off by default** — *Ask
+   before a machine can take work*, decided 26 August. Off, every machine that
+   could run the work will take it. The reasoning is that Little Herd reaches
+   these machines over the user's own SSH keys, so a transfer starts nothing
+   they could not already start from a shell: the switch is an accident
+   boundary, not a security one, and copy that dressed it as the latter would
+   overclaim. On, each machine has to be allowed once on its own AI page.
+
+   **The setting and its setter had to ship together.** `mayHostSessions`
+   defaults to off, so turning the switch on with nothing able to set it would
+   refuse the whole herd and leave no way back — a default outliving its
+   control. The allowance control appears only while the switch is on.
+
+   **The first version of that control was forgotten on relaunch**, which for a
+   permission is worse than not having one. It called
+   `MachineMonitorModel.setMayHostSessions`, which changes memory and nothing
+   else — persistence flows the other way, from the stored configuration down.
+   The write now lives on `MachineConfigurationStore`, where the thing that can
+   actually save it is, and a test fails if it stops saving. Left undone: the
+   grant is keyed on `MachineID` while `hostname` is a mutable field on the
+   same record, so re-pointing a machine carries its permission to a host
+   nobody approved. **Bind the grant to host and ssh user before a transfer can
+   act on it.**
+
+   **The older note, still true:** `DestinationEligibility.resolve` gates on
    `mayHostSessions`, which defaults to *off* and whose only setter — the
    Settings checkbox — was removed on 25 August. Asking the full question today
    returns `.excluded` for the whole herd and refuses every drag with no way
