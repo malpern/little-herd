@@ -671,7 +671,10 @@ kbd {
 .card-tool:hover { border-block-end-color: currentColor; }
 /* Six cards in a four-wide grid leave a ragged 4 + 2, so hold three across
    once there is room for them. */
-@media (min-width: 62rem) { .four { grid-template-columns: repeat(3, 1fr); } }
+/* Eight cards: four across leaves two clean rows. Three would give 3+3+2 and
+   put back the ragged last row this rule exists to prevent. */
+@media (min-width: 56rem) { .four { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 67rem) { .four { grid-template-columns: repeat(4, 1fr); } }
 /* an anchored step should not land flush against the top of the window */
 .step { scroll-margin-block-start: 2rem; }
 
@@ -687,3 +690,33 @@ kbd {
 .payoff-cta { justify-content: center; margin-block-start: 1.8rem; }
 .payoff .cta.ghost { color: rgba(234,243,236,.9); }
 .payoff .cta.ghost:hover { background: rgba(255,255,255,.10); color: #fff; }
+
+/* --- step 7: three machines writing to one destination */
+.fig-backup::before { padding-block-start: 50%; }   /* 420:210 */
+/* Three stacked at 14% left no gap between their boxes -- they touched at
+   full width and overlapped once the figure scaled down. */
+.fig-backup img { width: 13%; }
+.fig-backup .f1 { left: 6%;  top: 8%; }
+.fig-backup .f2 { left: 6%;  top: 38%; }
+.fig-backup .f3 { left: 6%;  top: 68%; }
+.fig-backup .f4 { right: 8%; top: 38%; width: 19%; }
+
+/* --- step 8: two machines, each holding the other's heartbeat */
+.fig-alert .f1 { left: 10%;  top: 36%; }
+.fig-alert .f2 { right: 10%; top: 36%; }
+.beat {
+  position: absolute; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--green);
+}
+.beat.b1 { left: 16%;  top: 22%; }
+.beat.b2 { right: 16%; top: 22%; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes beat-pulse { 0%, 100% { opacity: 1; transform: scale(1); }
+                          50%      { opacity: .35; transform: scale(.8); } }
+  .beat { animation: beat-pulse 2.2s ease-in-out infinite; }
+  .beat.b2 { animation-delay: -1.1s; }
+}
+
+/* --- the closing note: adjacent to the payoff, so it takes no tint of its own */
+.aside-note .lede { max-width: 42rem; }
+.aside-note .note { max-width: 42rem; margin-block-start: 1rem; }
