@@ -180,7 +180,8 @@
 <!-- Not shipped. Every claim in here is future tense and the pill says so;
      the detail comes from HANDOFF item 4 (transfer) and item 8 (cloud). -->
 <section class="soon">
-  <div class="wrap">
+  <div class="wrap split">
+    <div>
     <span class="pill">Coming soon</span>
     <h2>Move a session to the machine that&rsquo;s free.</h2>
     <p class="lede">Your laptop is compiling and the mini is idle. Little Herd
@@ -194,11 +195,23 @@
       silicon, not tokens. Little Herd will say so rather than let you move a
       session for a reason it cannot deliver. Machine to machine only: your
       phone can start a transfer and watch it, but is never a destination.</p>
+    </div>
+    <div class="scene scene-move" aria-hidden="true">
+      <img class="s-src" src="images/herdware/chick-laptop.png" alt="">
+      <img class="s-dst" src="images/herdware/calf-mini.png" alt="">
+      <svg class="s-wire" viewBox="0 0 420 168" preserveAspectRatio="xMidYMid meet">
+        <!-- the route is drawn once and the pulse is the same path with a short
+             dash travelling along it, so the two can never disagree -->
+        <path class="s-route" d="M84 98 C 150 30, 270 30, 336 98"/>
+        <path class="s-pulse" d="M84 98 C 150 30, 270 30, 336 98"/>
+      </svg>
+    </div>
   </div>
 </section>
 
 <section class="soon">
-  <div class="wrap">
+  <div class="wrap split">
+    <div>
     <span class="pill">Coming soon</span>
     <h2>Cloud work, in the same window.</h2>
     <p class="lede">Codex cloud tasks listed beside your machines, so the herd
@@ -208,6 +221,18 @@
       two are honestly different and the interface will say so: Codex cloud
       tasks can be listed, while Claude sessions can only be pulled by id,
       because nothing can enumerate them from here.</p>
+    </div>
+    <div class="scene scene-cloud" aria-hidden="true">
+      <img class="c-owl" src="images/herdware/owl-cloud.png" alt="">
+      <img class="c-m1" src="images/herdware/calf-mini.png" alt="">
+      <img class="c-m2" src="images/herdware/ox-gpu.png" alt="">
+      <svg class="s-wire" viewBox="0 0 420 168" preserveAspectRatio="xMidYMid meet">
+        <path class="s-route" d="M104 104 C 146 90, 172 72, 192 58"/>
+        <path class="s-pulse c-p1" d="M104 104 C 146 90, 172 72, 192 58"/>
+        <path class="s-route" d="M316 104 C 274 90, 248 72, 228 58"/>
+        <path class="s-pulse c-p2" d="M316 104 C 274 90, 248 72, 228 58"/>
+      </svg>
+    </div>
   </div>
 </section>
 

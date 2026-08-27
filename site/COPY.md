@@ -347,6 +347,31 @@ abandoned project, which is worse than not having one.
 pages. The angle has to stay this specific setup — a few Macs, a Linux box, a
 NAS, at home, increasingly running agents.
 
+---
+
+## The Coming soon scenes
+
+Both unbuilt sections carry a small animated scene made from the Herdware
+avatars, because those two sections are about motion — a session travelling
+between machines, and cloud work arriving beside them — and a still cannot
+carry either.
+
+**The transfer scene is the app's own signature motion**, borrowed: a route
+arcing from one machine to another with a lit pulse travelling along it, the
+source easing back as it leaves and the destination lifting as it lands.
+
+**The cloud scene finally uses the owl.** `owl-cloud.png` has been in the
+Herdware set since the beginning with nothing to belong to; it is the cloud, so
+it floats above the two machines with a wire down to each, alternating.
+
+Two rules held while building them. The pulse is **the same path** as the route
+— same `d`, drawn twice — so the dot cannot drift off the wire at any width; an
+offset path in CSS pixels would have needed the box to stay one fixed size.
+And everything moves only under `prefers-reduced-motion: no-preference`,
+including the scroll parallax: with motion off the routes are still drawn and
+the machines still sit where they belong, so the picture reads with nothing
+animating at all.
+
 ## Still needed
 
 Fresh screenshots, and one of the AI view — the section that names the thing
