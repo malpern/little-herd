@@ -3,419 +3,80 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Little Herd — a menu-bar monitor for all your machines</title>
-<meta name="description" content="Little Herd watches your Mac, your other Macs, your Linux boxes and your NAS from the menu bar — CPU, memory, disk, and which AI agents are running where.">
+<title>Little Herd — run your computers as a herd</title>
+<meta name="description" content="Four computers are four islands until they share one network, one way in, the same tools, and work that survives a closed lid. Here is how — and one small window to watch the herd.">
 <link rel="icon" href="images/icon.png">
 <meta property="og:title" content="Little Herd">
-<meta property="og:description" content="All your computers. One little window.">
+<meta property="og:description" content="Stop running four computers. Run a herd.">
 <meta property="og:image" content="images/social-card.jpg">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<style>
-/* ---------------------------------------------------------------- tokens
-   Taken from the app's own asset catalog (LittleHerd/Assets.xcassets) so the
-   page and the screenshots cannot drift apart. Do not eyedropper the art. */
-:root {
-  --cream:      #FBF8F1;   /* HerdBackground, light */
-  --ink:        #1D1C1A;   /* HerdBackground, dark  */
-  --forest:     #134F3C;   /* HerdForest, light     */
-  --green:      #1F9E52;   /* HerdLoadGreen         */
-  --teal:       #1A9C8A;   /* HerdLoadTeal          */
-  --alert:      #E84A29;   /* DashboardView.swift   */
-
-  --bg:         var(--cream);
-  --fg:         var(--ink);
-  --muted:      #5F5B54;
-  --rule:       rgba(29, 28, 26, 0.12);
-  --card:       #FFFFFF;
-  --card-edge:  rgba(29, 28, 26, 0.08);
-  --shadow:     0 1px 2px rgba(29,28,26,.05), 0 8px 24px rgba(29,28,26,.06);
-  --licence-bg: var(--forest);
-
-  --measure: 34rem;
-  --pad: clamp(1.25rem, 5vw, 4rem);
-}
-/* Dark is defined twice on purpose. The first block catches a viewer whose OS
-   is dark and who has made no explicit choice; the second catches an explicit
-   choice, which a media query cannot see. Guarding the first against
-   [data-theme="light"] lets an explicit light choice beat a dark OS. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg:        #141513;
-    --fg:        #F2EFE8;
-    --muted:     #A8A29A;
-    --rule:      rgba(242, 239, 232, 0.14);
-    --card:      #1C1E1B;
-    --card-edge: rgba(242, 239, 232, 0.10);
-    --shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
-    --forest:    #70C799;
-    --licence-bg:#10352A;
-  }
-}
-:root[data-theme="dark"] {
-  --bg:        #141513;
-  --fg:        #F2EFE8;
-  --muted:     #A8A29A;
-  --rule:      rgba(242, 239, 232, 0.14);
-  --card:      #1C1E1B;
-  --card-edge: rgba(242, 239, 232, 0.10);
-  --shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
-  --forest:    #70C799;
-  --licence-bg:#10352A;
-}
-
-/* ----------------------------------------------------------------- base */
-* { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
-  font-size: 1.0625rem;
-  line-height: 1.62;
-  -webkit-font-smoothing: antialiased;
-}
-h1, h2, h3 { line-height: 1.12; letter-spacing: -0.022em; margin: 0; font-weight: 600; }
-h2 + p, h2 + .lede { margin-block-start: 1.15rem; }
-h1 { font-size: clamp(2.4rem, 6.2vw, 4rem); letter-spacing: -0.032em; }
-h2 { font-size: clamp(1.75rem, 3.6vw, 2.6rem); letter-spacing: -0.026em; }
-h3 { font-size: 1.0625rem; letter-spacing: -0.01em; }
-p  { margin: 0 0 1.1em; }
-a  { color: var(--forest); }
-code {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 0.92em;
-  background: rgba(26,156,138,.13);
-  padding: 0.1em 0.36em;
-  border-radius: 4px;
-}
-img { max-width: 100%; height: auto; display: block; }
-.wrap { max-width: 74rem; margin-inline: auto; padding-inline: var(--pad); }
-.lede { font-size: clamp(1.06rem, 1.7vw, 1.28rem); color: var(--muted); max-width: var(--measure); }
-
-/* --------------------------------------------------------------- header */
-.top {
-  position: absolute; inset-block-start: 0; inset-inline: 0; z-index: 3;
-  display: flex; align-items: center; gap: .7rem;
-  padding: 1.15rem var(--pad);
-  color: #EAF3EC;
-}
-.top img { width: 30px; height: 30px; border-radius: 7px; }
-/* The wordmark is outlined Gabarito, so it needs no webfont: the letters take
-   currentColor and the tittle-turned-status-dot takes --dot, which inherits
-   through <use> where a class selector could not reach. */
-.wordmark { height: 19px; width: auto; color: inherit; }
-.wordmark.foot { height: 15px; color: var(--muted); }
-.top { --dot: #34C46F; }   /* over the dark hero, the darker green goes muddy */
-footer { --dot: var(--green); }
-.top nav { margin-inline-start: auto; }
-.top nav a { color: rgba(234,243,236,.78); text-decoration: none; font-size: .95rem; }
-.top nav a:hover { color: #fff; }
-
-/* ----------------------------------------------------------------- hero
-   The art is generated with a deliberately calm, dark left third; the scrim
-   only deepens it so white type is safe at every width. */
-.hero {
-  position: relative;
-  background: #0C2B24 url(images/hero.jpg) right center / cover no-repeat;
-  color: #F4F8F4;
-  min-height: min(41rem, 88vh);
-  display: flex; align-items: center;
-}
-.hero::before {
-  content: ""; position: absolute; inset: 0;
-  background:
-    linear-gradient(96deg, rgba(7,32,26,.96) 0%, rgba(7,32,26,.88) 30%, rgba(8,36,29,.34) 56%, rgba(8,36,29,0) 76%),
-    linear-gradient(to top, rgba(7,32,26,.62), rgba(7,32,26,0) 42%);
-}
-.hero .wrap { position: relative; z-index: 2; width: 100%; padding-block: 8rem 4rem; }
-.hero h1 { max-width: 15ch; }
-.hero p {
-  font-size: clamp(1.08rem, 1.75vw, 1.32rem);
-  color: rgba(244,248,244,.9);
-  max-width: 33rem; margin-block: 1.15rem 2rem;
-}
-.cta {
-  display: inline-block; background: var(--green); color: #fff;
-  font-size: 1.03rem; font-weight: 600; letter-spacing: -0.012em;
-  padding: .82rem 1.6rem; border-radius: 10px; text-decoration: none;
-  box-shadow: 0 1px 1px rgba(0,0,0,.18), 0 6px 20px rgba(31,158,82,.32);
-}
-.cta:hover { background: #24B25D; }
-.fine { font-size: .93rem; color: rgba(244,248,244,.66); margin-block-start: .9rem; max-width: 38rem; }
-.fine b { font-weight: 600; color: rgba(244,248,244,.82); }
-/* Break between the dot-separated facts, never inside one — the default wrap
-   stranded "silicon and Intel" on its own line under "Apple". */
-.fine > span { white-space: nowrap; }
-
-/* ------------------------------------------------------------------ motion
-   Two animations, both of which mean something. Anything decorative was left
-   out on purpose: scattered scroll-reveals are what a generated page looks
-   like, and this one has a real mark and real toys to spend motion on. */
-
-/* The dot in the wordmark is a status light, so it behaves like one. It lives
-   inside the <use> shadow tree where no selector reaches it, so the colour is
-   animated through the custom property instead -- which needs @property to be
-   registered as a colour, or it would jump rather than fade. Browsers without
-   @property simply get a steady dot. */
-@property --dot { syntax: "<color>"; inherits: true; initial-value: #1F9E52; }
-@keyframes herd-live { 0%, 100% { --dot: #34C46F; } 50% { --dot: #2C8C57; } }
-
-.avatars img { transition: transform .3s cubic-bezier(.2,.7,.3,1), filter .3s ease; }
-.cta { transition: background .18s ease, transform .18s ease, box-shadow .18s ease; }
-
-@media (prefers-reduced-motion: no-preference) {
-  .top { animation: herd-live 4.5s ease-in-out infinite; }
-  /* the avatars read as toys; they should feel like you could pick one up */
-  .avatars li:hover img {
-    transform: translateY(-7px) scale(1.045);
-    filter: drop-shadow(0 8px 12px rgba(29,28,26,.20));
-  }
-  .cta:hover { transform: translateY(-1px); }
-}
-
-/* ------------------------------------------------------- the live miniature
-   A recreation of the app window, laid out to match the real one: cream
-   ground, segmented vertical bars, avatar and name under each, and the header
-   swapping to whichever machine you point at. Labelled on the page as a demo,
-   because it is one -- the numbers are invented. */
-.lh {
-  width: 300px; background: var(--cream); color: var(--ink);  /* HerdBackground, the app's own window colour */
-  border: 1px solid var(--card-edge); border-radius: 14px; padding: 12px 14px 10px;
-  box-shadow: 0 2px 6px rgba(29,28,26,.10), 0 18px 44px rgba(29,28,26,.14);
-  font-size: 13px; line-height: 1.35; user-select: none;
-}
-:root[data-theme="dark"] .lh, 
-:root:not([data-theme="light"]) .lh { color: var(--ink); }
-.lh, .lh * { -webkit-font-smoothing: antialiased; }
-.lh-chrome { display: flex; gap: 6px; margin-bottom: 12px; }
-.lh-chrome i { width: 11px; height: 11px; border-radius: 50%; background: #DDD8CE; }
-.lh-chrome .r { background: #F0645C; } .lh-chrome .y { background: #F2BC3F; } .lh-chrome .g { background: #DDD8CE; }
-
-/* Every box below has a FIXED height, not a minimum. The window must not
-   change size when you open a machine, switch metric, or when a session
-   finishes -- it sits inline in the page, so any growth shoves the reader's
-   place on the page. */
-.lh-head { height: 56px; border-bottom: 1px solid rgba(29,28,26,.10); padding-bottom: 9px; margin-bottom: 12px; overflow: hidden; }
-.lh-stage { height: 176px; }
-/* `hidden` sets display:none from the UA stylesheet, which ANY author display
-   rule outranks -- so `.lh-rows { display: grid }` kept the AI rows painting
-   underneath the CPU view, as a column of stray status dots below the window.
-   Restate it with weight the author rules cannot beat. */
-.lh [hidden] { display: none !important; }
-.lh-cols, .lh-rows { height: 100%; }
-.lh-metric { font-size: 18px; font-weight: 700; letter-spacing: -.02em; color: #1D1C1A; }
-.lh-sub { display: block; font-size: 11.5px; color: #6B665E; margin-top: 1px; }
-.lh-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #1F9E52;
-  margin-right: 5px; vertical-align: middle; transition: background-color .45s ease; }
-.lh-dot.down { background: #E84A29; } .lh-dot.running { background: #1F9E52; }
-.lh-dot.waiting { background: #F2A03F; } .lh-dot.done { background: #3B82D6; }
-/* A machine's own page. The app puts the bar you clicked on the left, grown,
-   with the metric value above it and the avatar and name below -- and makes
-   that whole column the way back, alongside the chevron. The detail sits to
-   its right behind a divider under a small caps title. */
-.lh-focus { display: flex; align-items: center; height: 100%; }
-.lh-back {
-  display: flex; align-items: center; gap: 4px;
-  border: 0; background: none; font: inherit; color: inherit;
-  cursor: pointer; padding: 3px 4px; border-radius: 6px;
-}
-.lh-back:hover { background: rgba(26,156,138,.10); }
-.lh-chev { font-size: 19px; line-height: 1; color: #6B665E; }
-.lh-back b { font-weight: 700; font-size: 16px; letter-spacing: -.02em; }
-
-.lh-detail { display: flex; gap: 10px; height: 100%; }
-.lh-sum {
-  flex: 0 0 92px; display: flex; flex-direction: column; align-items: center; gap: 5px;
-  border: 0; background: none; font: inherit; color: inherit; cursor: pointer;
-  /* square on the divider side, or the radius bends the rule into an arc */
-  border-radius: 8px 0 0 8px; padding: 2px 0;
-  border-right: 1px solid rgba(29,28,26,.10);
-}
-.lh-sum:hover { background: rgba(26,156,138,.10); }
-.lh-sum-pct { font-size: 17px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.lh-sum-pct.hot { color: #E84A29; }
-/* the grown bar: wider blocks than the overview's, which is the whole point */
-.lh-sum-bar { display: flex; flex-direction: column; gap: 2px; width: 38px; }
-.lh-sum-bar i { height: 7px; border-radius: 2px; background: rgba(29,28,26,.09);
-  transition: background-color .45s cubic-bezier(.4,0,.2,1); }
-.lh-sum-bar i.green { background: #1F9E52; } .lh-sum-bar i.yellow { background: #E8C13F; }
-.lh-sum-bar i.orange { background: #EE8B33; } .lh-sum-bar i.red { background: #E84A29; }
-.lh-sum img { width: 28px; height: 28px; }
-.lh-sum-name { font-size: 11.5px; font-weight: 600; white-space: nowrap; }
-
-.lh-pane { flex: 1; min-width: 0; overflow: hidden; }
-.lh-pane-title { font-size: 9.5px; letter-spacing: .08em; color: #8A857C; margin-bottom: 6px; }
-.lh-line { display: flex; align-items: baseline; gap: 8px; font-size: 12px; margin-bottom: 5px; }
-.lh-line b { font-weight: 600; }
-.lh-line span { margin-left: auto; color: #6B665E; font-size: 11px; font-variant-numeric: tabular-nums; }
-.lh-vol { margin-bottom: 8px; }
-.lh-vol-top { display: flex; align-items: baseline; font-size: 12px; }
-.lh-vol-top b { font-weight: 600; }
-.lh-vol-top span { margin-left: auto; color: #6B665E; font-size: 11px; font-variant-numeric: tabular-nums; }
-.lh-vol-bar { height: 6px; border-radius: 3px; background: rgba(29,28,26,.09); margin: 3px 0 2px; overflow: hidden; }
-.lh-vol-bar i { display: block; height: 100%; border-radius: 3px; transition: width .5s ease, background-color .45s ease; }
-.lh-vol-bar i.green { background: #1F9E52; } .lh-vol-bar i.yellow { background: #E8C13F; }
-.lh-vol-bar i.orange { background: #EE8B33; } .lh-vol-bar i.red { background: #E84A29; }
-.lh-vol-sub { font-size: 10px; color: #6B665E; }
-
-.lh-cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.lh-col { display: flex; flex-direction: column; align-items: center; gap: 5px; border-radius: 8px;
-  padding: 4px 2px; outline: none; transition: background-color .25s ease; }
-.lh-col { cursor: pointer; }
-.lh-col:hover, .lh-col:focus-visible { background: rgba(26,156,138,.10); }
-.lh-pct { font-size: 17px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums;
-  transition: color .4s ease; }
-.lh-pct.hot { color: #E84A29; }
-.lh-bar { display: flex; flex-direction: column; gap: 2.5px; width: 30px; }
-.lh-bar i { height: 7px; border-radius: 2px; background: rgba(29,28,26,.09);
-  transition: background-color .45s cubic-bezier(.4,0,.2,1); }
-.lh-bar i.green { background: #1F9E52; } .lh-bar i.yellow { background: #E8C13F; }
-.lh-bar i.orange { background: #EE8B33; } .lh-bar i.red { background: #E84A29; }
-.lh-col img { width: 30px; height: 30px; }
-.lh-name { font-size: 11.5px; font-weight: 600; white-space: nowrap; }
-.lh-free { font-size: 10px; color: #6B665E; min-height: 13px; }  /* reserved even when empty */
-
-.lh-rows { display: grid; grid-template-rows: repeat(4, 1fr); gap: 2px; }
-.lh-agent { display: flex; align-items: center; gap: 7px; padding: 0 6px; border-radius: 8px; outline: none;
-  transition: background-color .25s ease; }
-.lh-agent-name { flex: 1; min-width: 0; }
-.lh-agent-name b { display: block; font-size: 12px; font-weight: 600; }
-.lh-agent-name i { font-style: normal; font-size: 10.5px; color: #6B665E; }
-.lh-step { font-size: 10.5px; color: #6B665E; font-variant-numeric: tabular-nums; }
-
-.lh-tabs { display: flex; gap: 2px; margin-top: 11px; border-top: 1px solid rgba(29,28,26,.10); padding-top: 9px; }
-.lh-tabs button {
-  flex: 1; font: inherit; font-size: 11px; font-weight: 600; letter-spacing: .01em;
-  border: 0; background: none; color: #6B665E; padding: 4px 0; border-radius: 6px; cursor: pointer;
-}
-.lh-tabs button[aria-selected="true"] { background: rgba(26,156,138,.14); color: #14624E; }
-.lh-tabs button:hover { color: #14624E; }
-
-.demo-note { font-size: .85rem; color: var(--muted); margin-top: .9rem; text-align: center; max-width: 300px; }
-
-/* -------------------------------------------------------------- sections */
-section { padding-block: clamp(4rem, 9vw, 7rem); }
-section + section { border-block-start: 1px solid var(--rule); }
-.split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: center; }
-.split .shot { justify-self: center; }
-/* Direct child only. As `.shot img` this also matched every avatar inside the
-   live demo, giving each one the screenshot's rounded corners and drop shadow
-   -- which on a transparent PNG draws a little white plate behind the animal. */
-.shot > img {
-  border-radius: 14px;
-  box-shadow: 0 2px 6px rgba(29,28,26,.10), 0 18px 44px rgba(29,28,26,.14);
-  width: 300px;
-}
-.pull {
-  font-size: clamp(1.15rem, 2vw, 1.42rem);
-  letter-spacing: -0.018em; color: var(--forest);
-  border-inline-start: 3px solid var(--teal);
-  padding-inline-start: 1rem; margin-block: 1.6rem;
-  max-width: var(--measure);
-}
-.note { font-size: .96rem; color: var(--muted); max-width: var(--measure); }
-
-/* --------------------------------------------------------------- avatars */
-.herdware { text-align: center; }
-.herdware h2, .herdware .lede { margin-inline: auto; }
-.herdware .lede { margin-block-end: 3rem; }
-.avatars {
-  list-style: none; margin: 0; padding: 0;
-  display: grid; gap: clamp(1rem, 2.4vw, 2rem);
-  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
-}
-.avatars li { display: flex; flex-direction: column; align-items: center; gap: .35rem; }
-.avatars img { width: clamp(84px, 11vw, 132px); height: auto; }
-.avatars span { font-size: .9rem; color: var(--muted); letter-spacing: -0.006em; }
-
-/* ------------------------------------------------------------------ grid */
-.grid {
-  display: grid; gap: 1rem; margin-block-start: 2.8rem;
-  grid-template-columns: repeat(auto-fit, minmax(16.5rem, 1fr));
-}
-.card {
-  background: var(--card); border: 1px solid var(--card-edge);
-  border-radius: 13px; padding: 1.35rem 1.4rem; box-shadow: var(--shadow);
-}
-.card h3 { margin-block-end: .45rem; }
-.card p { margin: 0; font-size: .985rem; color: var(--muted); line-height: 1.55; }
-
-/* ----------------------------------------------------------- coming soon
-   Given its own ground so nobody mistakes it for what ships today. */
-.soon { background: rgba(26,156,138,.07); }
-:root[data-theme="dark"] .soon { background: rgba(26,156,138,.10); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .soon { background: rgba(26,156,138,.10); } }
-.pill {
-  display: inline-block; font-size: .76rem; font-weight: 600;
-  letter-spacing: .07em; text-transform: uppercase;
-  color: var(--teal); border: 1px solid currentColor;
-  padding: .2rem .6rem; border-radius: 999px; margin-block-end: 1.1rem;
-}
-.soon .split + .split { margin-block-start: clamp(2.5rem, 5vw, 4rem); }
-
-/* --------------------------------------------------------------- licence */
-.licence { background: var(--licence-bg); color: #EAF3EC; }
-.licence h2 { color: #fff; }
-.licence p { color: rgba(234,243,236,.88); max-width: var(--measure); }
-.licence code { background: rgba(255,255,255,.14); color: #EAF3EC; }
-
-/* ------------------------------------------------------------------ foot */
-.end { text-align: center; }
-.end h2 { margin-block-end: 1.8rem; }
-footer { border-block-start: 1px solid var(--rule); padding-block: 2.4rem; }
-footer .wrap { display: flex; flex-wrap: wrap; gap: 1.4rem; align-items: center; justify-content: center;
-               font-size: .94rem; color: var(--muted); }
-footer a { color: var(--muted); }
-
-/* ---------------------------------------------------------------- narrow */
-@media (max-width: 47rem) {
-  .split { grid-template-columns: 1fr; }
-  .split .shot { order: -1; }
-  .hero { min-height: 0; }
-  .hero .wrap { padding-block: 7.5rem 3.5rem; }
-  /* The desktop scrim is horizontal because the art's calm space is on the
-     left. Stacked at phone width that went nearly opaque and buried the
-     characters, so narrow screens get one vertical gradient instead, and the
-     art is centred rather than pinned right. */
-  .hero { background-position: 58% center; }
-  .hero::before {
-    background: linear-gradient(rgba(7,32,26,.42), rgba(7,32,26,.80) 66%);
-  }
-}
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="wordmark" viewBox="0 0 915 147"><path fill="currentColor" d="M81.6 144.4L0.0 144.4L0.0 8.2L26.2 8.2L26.2 127.6L20.4 119.3L81.6 119.3ZM123.8 144.4L97.6 144.4L97.6 46.6L123.8 46.6ZM187.7 146.1Q172.6 146.1 163.9 138.2Q155.3 130.4 155.3 113.0L155.3 47.8L155.0 46.6L160.3 23.7L181.5 23.7L181.5 108.8Q181.5 115.2 184.5 118.1Q187.6 121.0 192.6 121.0Q195.7 121.0 198.4 120.5Q201.0 120.0 202.9 119.4L202.9 143.9Q199.7 144.9 196.1 145.5Q192.5 146.1 187.7 146.1ZM140.1 70.8L140.1 46.6L202.9 46.6L202.9 70.8ZM264.7 146.1Q249.6 146.1 240.9 138.2Q232.2 130.4 232.2 113.0L232.2 47.8L232.0 46.6L237.2 23.7L258.4 23.7L258.4 108.8Q258.4 115.2 261.5 118.1Q264.6 121.0 269.5 121.0Q272.7 121.0 275.3 120.5Q278.0 120.0 279.9 119.4L279.9 143.9Q276.7 144.9 273.0 145.5Q269.4 146.1 264.7 146.1ZM217.0 70.8L217.0 46.6L279.9 46.6L279.9 70.8ZM324.6 145.4Q318.0 145.4 312.5 142.6Q307.0 139.8 303.7 133.9Q300.4 128.0 300.4 118.7L300.4 8.2L326.3 8.2L326.3 109.5Q326.3 116.4 329.1 118.5Q331.9 120.7 336.1 120.7L336.1 144.0Q333.9 144.7 330.7 145.1Q327.5 145.4 324.6 145.4ZM395.6 146.3Q381.1 146.3 370.2 140.1Q359.2 133.8 353.1 122.4Q347.1 111.0 347.1 95.6Q347.1 80.4 353.1 68.9Q359.2 57.4 370.2 50.9Q381.1 44.3 395.6 44.3Q410.5 44.3 421.4 51.0Q432.3 57.7 438.3 69.2Q444.3 80.6 444.3 95.4Q444.3 97.7 444.2 99.7Q444.0 101.8 443.8 103.2L368.6 103.2L368.6 83.6L424.0 83.6L419.9 93.0Q419.9 80.7 413.9 72.8Q408.0 64.9 395.8 64.9Q384.8 64.9 378.3 71.7Q371.8 78.4 371.8 89.5L371.8 100.2Q371.8 112.0 378.4 118.7Q385.1 125.5 396.8 125.5Q407.0 125.5 412.7 121.3Q418.5 117.1 422.7 110.8L440.9 121.3Q434.4 133.3 423.1 139.8Q411.8 146.3 395.6 146.3ZM598.2 144.4L598.2 8.2L624.5 8.2L624.5 144.4ZM514.8 144.4L514.8 8.2L541.0 8.2L541.0 144.4ZM531.8 90.3L531.8 65.2L606.8 65.2L606.8 90.3ZM692.0 146.3Q677.5 146.3 666.5 140.1Q655.6 133.8 649.5 122.4Q643.4 111.0 643.4 95.6Q643.4 80.4 649.5 68.9Q655.6 57.4 666.5 50.9Q677.5 44.3 692.0 44.3Q706.9 44.3 717.8 51.0Q728.7 57.7 734.7 69.2Q740.7 80.6 740.7 95.4Q740.7 97.7 740.6 99.7Q740.4 101.8 740.1 103.2L665.0 103.2L665.0 83.6L720.4 83.6L716.2 93.0Q716.2 80.7 710.3 72.8Q704.4 64.9 692.2 64.9Q681.2 64.9 674.7 71.7Q668.2 78.4 668.2 89.5L668.2 100.2Q668.2 112.0 674.8 118.7Q681.4 125.5 693.2 125.5Q703.3 125.5 709.1 121.3Q714.8 117.1 719.0 110.8L737.2 121.3Q730.8 133.3 719.4 139.8Q708.1 146.3 692.0 146.3ZM776.3 46.6L782.9 73.5L782.9 144.4L756.7 144.4L756.7 46.6ZM777.6 87.1L772.7 84.9L772.7 64.8L774.6 62.6Q776.8 59.0 781.3 54.8Q785.7 50.5 791.7 47.4Q797.6 44.3 803.9 44.3Q807.1 44.3 809.7 44.8Q812.3 45.2 813.8 46.2L813.8 70.0L807.4 70.0Q794.3 70.0 787.4 74.1Q780.4 78.2 777.6 87.1ZM862.8 146.7Q849.5 146.7 839.3 140.2Q829.1 133.7 823.5 122.1Q817.8 110.4 817.8 95.4Q817.8 80.3 823.5 68.8Q829.2 57.2 839.5 50.8Q849.7 44.3 862.9 44.3Q875.9 44.3 885.5 50.4Q895.1 56.4 900.5 67.8Q905.8 79.3 905.8 95.4Q905.8 111.0 900.4 122.5Q895.0 134.1 885.3 140.4Q875.7 146.7 862.8 146.7ZM867.5 122.5Q877.7 122.5 884.1 115.1Q890.5 107.6 890.5 95.5Q890.5 83.5 884.1 75.9Q877.7 68.4 867.5 68.4Q857.4 68.4 850.9 75.9Q844.5 83.5 844.5 95.4Q844.5 107.5 850.9 115.0Q857.4 122.5 867.5 122.5ZM895.8 144.4L889.2 121.2L891.1 121.2L891.1 72.3L889.2 72.3L889.2 8.2L915.4 8.2L915.4 144.4Z"/><circle cx="110.6" cy="15.9" r="17.8" fill="var(--dot, #1F9E52)"/></symbol></svg>
-
 <header class="top">
   <img src="images/icon.png" alt="">
-  <svg class="wordmark" viewBox="0 0 915 147" role="img" aria-label="Little Herd"><use href="#wordmark"/></svg>
-  <nav><a href="https://github.com/malpern/little-herd">GitHub</a></nav>
+  <svg class="wordmark" viewBox="0 0 915 147" role="img" aria-label="Little Herd"><use href="wordmark.svg#wordmark"/></svg>
+  <nav><a href="herd.html">Guide</a> <a href="https://github.com/malpern/little-herd">GitHub</a></nav>
 </header>
 
 <div class="hero">
   <div class="wrap">
-    <h1>All your computers. One little window.</h1>
-    <p>Little Herd watches your Mac, your other Macs, your Linux boxes and your
-       NAS from the menu bar — CPU, memory, disk, and which AI agents are
-       running where.</p>
-    <a class="cta" href="https://github.com/malpern/little-herd/releases/latest">Download for macOS</a>
+    <h1>Stop running four computers. Run a herd.</h1>
+    <p>A laptop. A mini that used to be your desktop. A Linux box you built for
+       one project. A NAS with the backups on it. Right now they are four
+       islands — here is how they become one herd, and one small window to
+       watch it.</p>
+    <div class="cta-row">
+      <a class="cta" href="herd.html">Start a herd</a>
+      <a class="cta ghost" href="https://github.com/malpern/little-herd/releases/latest">Download Little Herd</a>
+    </div>
     <p class="fine"><span><b>Free while in development</b></span> · <span>macOS 15 or later</span> · <span>Apple silicon and Intel</span></p>
   </div>
 </div>
 
 <main>
 
+<section class="herd-idea">
+  <div class="wrap">
+    <h2>What makes a herd.</h2>
+    <p class="lede">Not owning several computers &mdash; you already do. A herd
+      is what they become once four things are true. None of them costs money,
+      and none of them is Little Herd.</p>
+    <div class="four">
+      <div>
+        <h3>One network</h3>
+        <p>Every machine reachable by one name, from anywhere, without opening a
+          port to the internet.</p>
+      </div>
+      <div>
+        <h3>One way in</h3>
+        <p>The same short command gets you onto any of them, and a new machine
+          inherits the herd instead of being set up by hand.</p>
+      </div>
+      <div>
+        <h3>The same tools everywhere</h3>
+        <p>A machine you can actually work on, rather than one missing half of
+          what you reach for.</p>
+      </div>
+      <div>
+        <h3>Work that outlives the connection</h3>
+        <p>Close the lid and the build keeps going, because it was never running
+          on your laptop.</p>
+      </div>
+    </div>
+    <a class="cta ghost" href="herd.html">The six-step guide &rarr;</a>
+  </div>
+</section>
+
 <section>
   <div class="wrap split">
     <div>
-      <h2>Every other monitor watches one machine.</h2>
-      <p class="lede">You have a laptop, a mini under the desk, a Linux box in
-        the closet, and a NAS with the backups on it. Your system monitor shows
-        you exactly one of them.</p>
+      <h2>And one window that watches all of it.</h2>
+      <p class="lede">Every other system monitor watches one machine. Once you
+        have a herd, that is the wrong unit &mdash; you need to know which of
+        them is busy and whether any of them is down.</p>
       <p>Little Herd shows them side by side — one bar per machine, its name and
         its face underneath, a green dot when it’s live and a red one when it
         isn’t. One glance answers the question you actually have: which machine
@@ -609,8 +270,9 @@ footer a { color: var(--muted); }
 
 <footer>
   <div class="wrap">
-    <svg class="wordmark foot" viewBox="0 0 915 147" role="img" aria-label="Little Herd"><use href="#wordmark"/></svg>
+    <svg class="wordmark foot" viewBox="0 0 915 147" role="img" aria-label="Little Herd"><use href="wordmark.svg#wordmark"/></svg>
     <span>© 2026 Micah Alpern</span>
+    <a href="herd.html">Start a herd</a>
     <a href="https://github.com/malpern/little-herd">Source on GitHub</a>
     <a href="https://github.com/malpern/little-herd/releases">Release notes</a>
     <a href="https://github.com/malpern/little-herd/blob/main/LICENSE.md">Licence</a>

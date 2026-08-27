@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Start a herd — Little Herd</title>
+<meta name="description" content="Six things that turn a pile of computers into a herd: one network, one way in, the same tools everywhere, work that survives a closed lid, a screen when you need one, and somewhere for the agents to live.">
+<link rel="icon" href="images/icon.png">
+<link rel="stylesheet" href="style.css">
+<meta property="og:title" content="Start a herd">
+<meta property="og:description" content="Six things that turn a pile of computers into a herd.">
+<meta property="og:image" content="images/social-card.jpg">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+
+<header class="top top-solid">
+  <a class="lockup" href="./">
+    <img src="images/icon.png" alt="">
+    <svg class="wordmark" viewBox="0 0 915 147" role="img" aria-label="Little Herd"><use href="wordmark.svg#wordmark"/></svg>
+  </a>
+  <nav><a href="https://github.com/malpern/little-herd">GitHub</a></nav>
+</header>
+
+<main class="guide">
+
+<section class="guide-intro">
+  <div class="wrap">
+    <span class="pill">The guide</span>
+    <h1>Start a herd.</h1>
+    <p class="lede">Six things turn a pile of computers into a herd. They go in
+      this order, because each one assumes the last. None of them needs Little
+      Herd, and none of them takes an afternoon.</p>
+    <p class="note">Everything here is built into macOS, free, or open source.
+      Where there is one mistake that costs an evening, it is called out — most
+      of these look like they worked right up until the moment they matter.</p>
+  </div>
+</section>
+
+<ol class="steps wrap">
+
+  <li class="step">
+    <div class="step-n">1</div>
+    <div class="step-body">
+      <h2>One network</h2>
+      <p class="what"><b>Tailscale</b> &mdash; every machine gets one name that
+        works from anywhere.</p>
+      <p>This is first because everything below assumes you can reach the
+        machine. Install it on each one, sign in with the same account, and turn
+        on MagicDNS. Now <code>ssh mini</code> works from the sofa, from a hotel,
+        and from another machine in the herd &mdash; without port forwarding,
+        without a static IP, and without exposing anything to the open internet.</p>
+      <p class="trap"><b>The trap:</b> a machine&rsquo;s key expires by default,
+        usually in about six months. A laptop you use daily just asks you to sign
+        in again. <em>An unattended box silently drops off the network</em> and
+        you discover it the next time you need it, which is the worst possible
+        moment. Disable key expiry for anything headless.</p>
+      <p class="trap"><b>And:</b> a <code>.local</code> name is mDNS. It resolves
+        at home and nowhere else, so a setup tested only on the sofa looks
+        finished and fails the first time you leave the house. Use the tailnet
+        name everywhere, including in scripts.</p>
+    </div>
+  </li>
+
+  <li class="step">
+    <div class="step-n">2</div>
+    <div class="step-body">
+      <h2>One way in</h2>
+      <p class="what"><b>SSH, with a config file</b> &mdash; short names instead
+        of addresses you have to remember.</p>
+      <p>Generate a key, copy it over with <code>ssh-copy-id</code>, then write
+        the machine down in <code>~/.ssh/config</code> once:</p>
+      <pre><code>Host mini
+  HostName mini.your-tailnet.ts.net
+  User you</code></pre>
+      <p>From then on it is <code>ssh mini</code>, and so is
+        <code>scp file mini:</code>, and so is everything else that speaks SSH.
+        Keep that file in your dotfiles and <code>Include</code> it, so a new
+        machine inherits the whole herd instead of being configured by hand.</p>
+      <p class="trap"><b>The trap:</b> a key with a passphrase cannot be used by
+        anything that runs unattended &mdash; there is nobody there to type it.
+        Keep your passphrase key for sitting-at-the-keyboard work, and give
+        scheduled jobs their own passphrase-free key, authorised for exactly the
+        one link it needs. A single key for both is how a convenience becomes
+        the blast radius.</p>
+      <p class="trap"><b>And:</b> SSH silently ignores a config or key file that
+        other users can write. Wrong permissions do not produce an error that
+        says &ldquo;permissions&rdquo; &mdash; they produce
+        <code>Permission denied (publickey)</code>, which sends you off
+        debugging the key instead. <code>chmod 600</code>.</p>
+    </div>
+  </li>
+
+  <li class="step">
+    <div class="step-n">3</div>
+    <div class="step-body">
+      <h2>The same tools everywhere</h2>
+      <p class="what"><b>Homebrew and a Brewfile</b> &mdash; so a machine is
+        somewhere you can actually work, not somewhere missing your tools.</p>
+      <p>A herd whose members each have a different half of your toolkit is
+        still a pile. Dump what you have into a list, keep the list in your
+        dotfiles, and install from it on every machine:</p>
+      <pre><code>brew bundle dump --file ~/dotfiles/Brewfile
+brew bundle --file ~/dotfiles/Brewfile</code></pre>
+      <p>A new machine goes from bare to useful in one command, and when you
+        adopt a tool you add it once.</p>
+      <p class="trap"><b>The trap:</b> a non-interactive shell &mdash; a cron
+        job, a scheduled task, or <code>ssh machine some-command</code> &mdash;
+        does not read your profile, so on Apple silicon it never gets
+        <code>/opt/homebrew/bin</code> on its <code>PATH</code>. Everything works
+        when you are typing and fails when it runs by itself, reporting
+        <em>command not found</em> for something you can plainly see installed.
+        Scripts should set their own PATH rather than assume yours.</p>
+      <p class="trap"><b>And:</b> casks are GUI applications. Put them on the
+        machine you sit in front of, not the headless one, where they are weight
+        with nothing to show.</p>
+    </div>
+  </li>
+
+  <li class="step">
+    <div class="step-n">4</div>
+    <div class="step-body">
+      <h2>Work that survives the lid closing</h2>
+      <p class="what"><b>tmux</b> &mdash; a session on the far machine that keeps
+        going when you disconnect.</p>
+      <p>Without this, every long job is hostage to your laptop staying awake.
+        Close the lid, lose the build. With it, the work lives on the machine
+        doing it:</p>
+      <pre><code>ssh mini
+tmux new -s work      # start it there
+# Ctrl-b then d       # detach; the work keeps going
+tmux attach -t work   # come back, from anywhere</code></pre>
+      <p>This is the single biggest change in how remote machines feel. They
+        stop being fragile.</p>
+      <p class="trap"><b>The trap:</b> tmux has to run <em>on the remote
+        machine</em>. Starting it in a local terminal and then SSH-ing from
+        inside gives you a session that dies with your connection, which is the
+        exact thing you were trying to prevent. SSH first, then tmux.</p>
+    </div>
+  </li>
+
+  <li class="step">
+    <div class="step-n">5</div>
+    <div class="step-body">
+      <h2>A screen, when you need one</h2>
+      <p class="what"><b>Screen Sharing</b> &mdash; already in macOS, no install,
+        no account.</p>
+      <p>In Finder, <b>Go &rarr; Connect to Server</b> (<kbd>&#8984;K</kbd>) and
+        enter <code>vnc://mini</code>. You get the actual desktop.</p>
+      <p>Most of the time SSH is better &mdash; faster, scriptable, works on a
+        bad connection. But some things only exist on the screen: a permission
+        dialog, an installer, a first run, an app that has decided to show you a
+        window. Those are not stubbornness on your part; they genuinely cannot be
+        done over a shell.</p>
+      <p class="trap"><b>The trap:</b> macOS privacy prompts appear on the
+        machine&rsquo;s own screen and nowhere else, so a script that needs
+        Screen Recording or Full Disk Access will sit there having silently
+        failed while you stare at an SSH session with no error in it. Grant those
+        over Screen Sharing, once, before automating anything that needs them.</p>
+      <p class="trap"><b>And the honest limit:</b> if a machine is wedged before
+        the operating system is up, neither SSH nor Screen Sharing can reach it,
+        because both are software running inside the thing that has not started.
+        That is what a hardware KVM is for, and it is the only thing that is.</p>
+    </div>
+  </li>
+
+  <li class="step">
+    <div class="step-n">6</div>
+    <div class="step-body">
+      <h2>Somewhere for the agents to live</h2>
+      <p class="what"><b><a href="https://github.com/herdrdev/herdr">Herdr</a></b>
+        &mdash; a terminal multiplexer that knows what an agent is.</p>
+      <p>Once coding agents are doing real work, the question stops being
+        &ldquo;is it done&rdquo; and becomes &ldquo;which of these is waiting on
+        me.&rdquo; tmux will happily keep four agents alive and tell you nothing
+        about any of them; Herdr shows each one as working, blocked, or done, and
+        its sessions detach and reattach over SSH the same way.</p>
+      <p>It runs the agents on <em>one</em> machine, which is the natural
+        complement to seeing them across all of them &mdash; and it is where
+        Little Herd stops being optional.</p>
+    </div>
+  </li>
+
+</ol>
+
+<section class="payoff">
+  <div class="wrap">
+    <h2>Now watch the whole thing.</h2>
+    <p class="lede">Six machines set up this way are a herd, and a herd is
+      exactly the thing nothing on your Mac can show you. Little Herd puts all of
+      them in one small window &mdash; what each is doing, how full its disks
+      are, and which agent is running where.</p>
+    <a class="cta" href="./">See Little Herd</a>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <svg class="wordmark foot" viewBox="0 0 915 147" role="img" aria-label="Little Herd"><use href="wordmark.svg#wordmark"/></svg>
+    <span>&copy; 2026 Micah Alpern</span>
+    <a href="./">Little Herd</a>
+    <a href="https://github.com/malpern/little-herd">Source on GitHub</a>
+  </div>
+</footer>
+
+</body>
+</html>

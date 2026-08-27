@@ -1567,6 +1567,27 @@ it; the files survived only because the directory had not been reaped yet.
     and all, including the shared-container row. **The README is still stale on
     this** — it says hovering a machine in any overview replaces the header.
 
+    **The site is reframed around the herd, and there is a second page.**
+    Decided 26 August. The word was decoration — used constantly, never taught —
+    so the hero now sells the practice and the download is the second call to
+    action. `site/herd.html` is a finite six-step guide: Tailscale, SSH config,
+    Homebrew and a Brewfile, tmux, Screen Sharing, and **Herdr**
+    (<https://github.com/herdrdev/herdr>, an agent multiplexer — it shows agents
+    on one machine, which is the complement to seeing them across all of them).
+    Little Herd is the payoff and is not one of the six, which is what makes the
+    rest of it believable.
+
+    Every step carries its trap, and the traps are the whole reason to read it
+    rather than any other tutorial. **They are generalised, not copied:** the
+    lessons come from a real setup, the hostnames, addresses, accounts and
+    topology of that setup stay private, and nothing in the guide names a
+    machine that exists. Keep it that way.
+
+    Two pages meant the stylesheet had to leave `index.html` — it is
+    `site/style.css` now, and the wordmark symbol is `site/wordmark.svg`
+    referenced by `<use>`, with `build-preview.py` folding both back inline for
+    the Artifact.
+
     **Screenshots are still not taken, and the obstacle is TCC.**
     `screencapture -l` (which `scripts/capture_app_window.swift` uses) and
     `screencapture -R` are both refused outright on this machine — "could not

@@ -35,12 +35,13 @@ contrast is the whole personality.
 
 ## Hero
 
-> # All your computers. One little window.
+> # Stop running four computers. Run a herd.
 >
-> Little Herd watches your Mac, your other Macs, your Linux boxes and your NAS
-> from the menu bar — CPU, memory, disk, and which AI agents are running where.
+> A laptop. A mini that used to be your desktop. A Linux box you built for one
+> project. A NAS with the backups on it. Right now they are four islands — here
+> is how they become one herd, and one small window to watch it.
 >
-> **[ Download for macOS ]**
+> **[ Start a herd ]**  **[ Download Little Herd ]**
 > Free while in development · macOS 15 or later · Apple silicon and Intel
 
 Set over the calm left third of the hero art.
@@ -299,6 +300,52 @@ Machine columns are focusable and open on Enter or Space. The session rows are
 deliberately *not* focusable, because nothing happens when you activate one and
 a tab stop that leads nowhere is worse than no tab stop.
 
+
+---
+
+## Positioning: the herd is the idea, the app is the payoff
+
+The word *herd* used to be decoration. The site said it constantly and never
+taught it, so a visitor who did not already think this way read it as a name
+for the animals. It is a claim now, and the page makes it.
+
+**The hero sells the practice.** "Stop running four computers. Run a herd."
+Then the reader's own hardware named back to them — a laptop, a mini that used
+to be your desktop, a Linux box you built for one project, a NAS with the
+backups — and the promise that those four islands can be one herd. Two calls to
+action, the guide first and the download second.
+
+**Then: what makes a herd.** Four properties, none of which is Little Herd and
+none of which costs money — one network, one way in, the same tools everywhere,
+work that outlives the connection. Saying plainly that the product is not
+required is what makes the rest of the page believable.
+
+**Only then the monitor.** "And one window that watches all of it." The old
+line, "every other monitor watches one machine", was competing inside the
+monitor category on its terms. This audience is not shopping for a monitor;
+they have just realised the mini under the desk could be doing something.
+
+## The guide — `herd.html`
+
+Six steps, in order, each assuming the last: Tailscale, SSH config, Homebrew and
+a Brewfile, tmux, Screen Sharing, and Herdr. Little Herd is the payoff at the
+end and is not one of the six.
+
+**Every step carries its trap**, and the traps are the reason to read it rather
+than any of the thousand existing tutorials: a Tailscale key that expires and
+silently drops an unattended box off the network; an SSH key with a passphrase
+that no scheduled job can ever use; a non-interactive shell that never gets
+Homebrew on its PATH, so everything works while you type and fails when it runs
+alone; tmux started on the wrong machine; a macOS privacy prompt that only ever
+appears on the machine's own screen.
+
+**It is deliberately finite.** Six steps, written once, true for years. A guide
+section that turns into a blog with three posts and a two-year gap reads as an
+abandoned project, which is worse than not having one.
+
+**The generic version of this loses.** "What is SSH" competes with a million
+pages. The angle has to stay this specific setup — a few Macs, a Linux box, a
+NAS, at home, increasingly running agents.
 
 ## Still needed
 
