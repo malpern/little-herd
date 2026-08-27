@@ -49,6 +49,10 @@ struct AIAgentsView: View {
                     collapsed: $collapsed,
                     onSelectMachine: onSelectMachine
                 )
+                // Room to scroll the last session clear of the metric tabs
+                // under this panel, so the end of the list looks like an end
+                // rather than a cut.
+                .padding(.bottom, 8)
             }
             // Was `.hidden`, which is why a list taller than the panel gave no
             // sign that it continued.

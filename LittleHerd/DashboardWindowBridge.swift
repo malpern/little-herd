@@ -226,7 +226,19 @@ final class DashboardWindowObserverView: NSView {
         // frameRect(forContentRect:) adds a titlebar that is already included
         // and leaves the content a few points short — enough to clip the
         // machine names off the bottom of the overview.
-        let target = NSRect(origin: .zero, size: dashboardContentSize)
+        // The window is the content plus the titlebar band, and it is this
+        // line that decides it for every screen. Setting the frame to the
+        // content alone leaves the last thing on the screen cut off — which is
+        // how the metric tabs shipped clipped on the machine pages while
+        // looking fine on the overview, whose size SwiftUI happened to
+        // recompute for itself.
+        let target = NSRect(
+            origin: .zero,
+            size: CGSize(
+                width: dashboardContentSize.width,
+                height: DashboardMetrics.windowHeight(for: dashboardContentSize)
+            )
+        )
         guard abs(target.width - window.frame.width) > 0.5
             || abs(target.height - window.frame.height) > 0.5
         else {

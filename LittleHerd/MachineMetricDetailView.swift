@@ -619,7 +619,7 @@ struct MachineAgentRows: View {
     private static let iconSize: CGFloat = 26
 
     var body: some View {
-        if !versions.isEmpty {
+        if DashboardChrome.showsInstalledAgents, !versions.isEmpty {
             InstalledAgentsHeader()
 
             ForEach(versions) { report in

@@ -27,4 +27,13 @@ nonisolated enum DashboardChrome {
     /// that was neither a title nor a subtitle — two small glyphs carrying a
     /// third meaning in a corner.
     static let showsUsageMarksInHeader = false
+
+    /// The installed-agents list on a machine's AI page, and the seam headers
+    /// that separated it from the sessions.
+    ///
+    /// Which agents are installed and at which version is a fact about the
+    /// machine rather than about the work, and it was the first thing on a
+    /// page you open to see what is running. With it gone the page is the
+    /// sessions, and needs no headers to say so.
+    static let showsInstalledAgents = false
 }

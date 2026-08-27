@@ -8,6 +8,16 @@ import CoreGraphics
 /// the overview went on carving up the old width — which shows as a right
 /// margin twice the left and as nothing at all in a build log.
 nonisolated enum DashboardMetrics {
+    /// The height of every screen here, as the window must be told it.
+    ///
+    /// **The content and the window are not the same height.** The sizes below
+    /// are what the view needs; the window has to be that plus the band macOS
+    /// keeps for the traffic lights, and getting this wrong clips the bottom
+    /// of whatever is last on the screen.
+    static func windowHeight(for content: CGSize) -> CGFloat {
+        content.height + titlebarInset
+    }
+
     /// What macOS keeps for the traffic lights.
     ///
     /// **The window draws under its own titlebar, and SwiftUI still insets the
@@ -25,17 +35,32 @@ nonisolated enum DashboardMetrics {
 
     /// The overview: four columns of thermometers, with the metric tabs under
     /// them.
-    static let overviewContent = CGSize(
-        width: 324,
-        height: 296 + titlebarInset
-    )
+    static let overviewContent = CGSize(width: 324, height: 296)
+    /// The metric row along the bottom of every dashboard screen.
+    /// What the metric tabs cost the two machine screens, over and above what
+    /// they already had.
+    ///
+    /// Almost nothing, and that is the surprising part. Those two heights were
+    /// set while the window was being sized to the content *without* the
+    /// titlebar band, so the screens had been laying out in thirty-two points
+    /// less than their numbers claimed. Fixing that handed back very nearly a
+    /// tab row. This is the difference, plus a little air under the last row.
+    static let metricTabsHeight: CGFloat = 16
+
     /// One machine through the current metric's lens.
     ///
-    /// This and the one below are literals, and deliberately not written as
-    /// content plus the inset: they were arrived at by looking at the running
-    /// window, so whatever the titlebar takes is already inside them. Adding
-    /// the inset here would make both screens thirty-two points too tall.
-    static let metricFocusContent = CGSize(width: 400, height: 330)
+    /// This and the one below keep the heights they were given by looking at
+    /// the running window, so the titlebar band is already inside them — but
+    /// those numbers predate the tab row, which is why both shipped with the
+    /// tabs cut off. The earlier reasoning that they needed no adjustment was
+    /// right about the band and wrong about the tabs.
+    static let metricFocusContent = CGSize(
+        width: 400,
+        height: 330 + metricTabsHeight
+    )
     /// Everything about one machine.
-    static let machineContent = CGSize(width: 420, height: 340)
+    static let machineContent = CGSize(
+        width: 420,
+        height: 340 + metricTabsHeight
+    )
 }

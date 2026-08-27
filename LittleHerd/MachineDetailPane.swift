@@ -82,6 +82,11 @@ struct MetricDetailPane<Rows: View>: View {
                         rows()
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    // So the last row can be scrolled clear of the metric tabs
+                    // below. Without it the list ends flush against their rule
+                    // and the final row is cut mid-height with nowhere further
+                    // to go, which reads as clipped rather than as scrollable.
+                    .padding(.bottom, 8)
                 }
                 .scrollBounceBehavior(.basedOnSize)
                 .scrollIndicators(.automatic)
@@ -103,10 +108,13 @@ struct MetricDetailRow<Accessory: View>: View {
     /// When this resolves to an installed app, its icon leads the row instead
     /// of `symbolName`.
     var bundlePath: String?
-    /// A larger leading mark, when the row has one of its own. Sessions use
-    /// the provider's icon at the size the summary panel uses, so a session
-    /// reads the same on both screens.
+    /// The leading mark's size.
+    ///
+    /// Defaults to what the AI panel leads its rows with, so a process on the
+    /// CPU page and a session on the AI page are the same object at the same
+    /// weight rather than two sizes of the same idea.
     var leadingIconSize: CGFloat?
+    private var iconSize: CGFloat { leadingIconSize ?? AIActiveAgentRow.iconSize }
     /// Draws the provider's own icon instead of a symbol or a bundle icon.
     var provider: AgentTaskProvider?
     let title: Text
@@ -120,20 +128,15 @@ struct MetricDetailRow<Accessory: View>: View {
                 Image(nsImage: AgentProviderIcons.icon(for: provider))
                     .resizable()
                     .scaledToFit()
-                    .frame(
-                        width: leadingIconSize ?? 14,
-                        height: leadingIconSize ?? 14
-                    )
-                    .clipShape(
-                        RoundedRectangle(cornerRadius: (leadingIconSize ?? 14) * 0.22)
-                    )
+                    .frame(width: iconSize, height: iconSize)
+                    .clipShape(RoundedRectangle(cornerRadius: iconSize * 0.22))
                     .accessibilityLabel(Text(provider.displayName))
             } else {
                 ApplicationIcon(
                     bundlePath: bundlePath,
                     fallbackSymbol: symbolName,
                     tint: tint,
-                    size: leadingIconSize ?? 14
+                    size: iconSize
                 )
             }
 
@@ -324,9 +327,15 @@ struct ApplicationIcon: View {
                 .accessibilityHidden(true)
         } else {
             Image(systemName: fallbackSymbol)
-                .font(.system(size: 10, weight: .semibold))
+                // Scaled with the slot rather than fixed at ten points. Only
+                // the frame used to grow, so making the rows' icons match the
+                // AI panel's left every symbol the same size in a bigger gap
+                // — and an application that resolves to a real icon filled it
+                // while one falling back to a symbol did not, which read as
+                // two different row designs in one list.
+                .font(.system(size: size * 0.68, weight: .semibold))
                 .foregroundStyle(tint)
-                .frame(width: size)
+                .frame(width: size, height: size)
                 .accessibilityHidden(true)
         }
     }
