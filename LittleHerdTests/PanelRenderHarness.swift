@@ -699,6 +699,13 @@ extension PanelRenderHarness {
                 Divider().padding(.horizontal, 14)
                 CPUOverviewView(machines: machines, metric: .cpu)
                 OverviewMetricTabs(selection: .cpu, onSelect: { _ in })
+            }
+            // The real window loses this much to the traffic lights, and
+            // `ImageRenderer` has no safe area to lose it to. Without this the
+            // picture fits and the window clips — which is exactly how the tab
+            // row shipped cut in half.
+            .safeAreaInset(edge: .top) {
+                Color.clear.frame(height: DashboardMetrics.titlebarInset)
             },
             size: DashboardMetrics.overviewContent,
             named: "overview-with-tabs"
