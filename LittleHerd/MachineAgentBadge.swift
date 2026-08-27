@@ -1,61 +1,77 @@
 import SwiftUI
 
-/// The mark under a machine's name that says an agent is working on it.
+/// The agents working on a machine, drawn as a token that sits on it.
 ///
-/// Deliberately a badge and not another header. What was removed from these
-/// panels was a header that rewrote itself as the pointer swept across —
-/// unpointable, unreadable on purpose, invisible from the keyboard. This is
-/// the opposite shape: a small target you aim at, which answers about itself
-/// and takes nothing else off the screen while it does.
+/// Deliberately an object rather than an annotation, and that is a decision
+/// about where this is going rather than how it looks now. Moving work between
+/// machines is meant to become one of the things this app is *for*, with a
+/// session eventually dragged from one column to another — and you cannot drag
+/// a badge. A badge is a property of the thing it is stuck to; a token is a
+/// thing in its own right that happens to be resting somewhere.
+///
+/// So it has a container, an edge and a shadow: the three cues that say a
+/// surface is liftable rather than printed on. It is sized to be grabbed
+/// comfortably rather than merely noticed, while staying plainly smaller than
+/// the animal, which is the machine itself and the place a token rests.
+///
+/// It is not draggable yet. The interaction is deliberately not built — but
+/// the shape it will need is, so that adding the gesture later does not mean
+/// redrawing what people have already learned to read.
 struct MachineAgentBadge: View {
     let activity: MachineAgentActivity
     let machineName: String
+    /// Derived from the avatar, so the machine stays plainly primary whatever
+    /// size the herd forces it to.
+    var size: CGFloat = 22
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isPulsing = false
 
-    private static let iconSize: CGFloat = 15
+    private var iconSize: CGFloat { size * 0.62 }
 
     var body: some View {
-        Image(nsImage: AgentProviderIcons.icon(for: activity.provider))
-            .resizable()
-            .scaledToFit()
-            .frame(width: Self.iconSize, height: Self.iconSize)
-            .clipShape(RoundedRectangle(cornerRadius: Self.iconSize * 0.22))
-            // The work, not the state. A session that is running is doing
-            // something now, and a mark that only sat there would say the same
-            // as one on a machine that had finished an hour ago.
-            .overlay(alignment: .bottomLeading) {
-                Circle()
-                    .fill(LittleHerdTheme.loadGreen)
-                    .frame(width: 5, height: 5)
-                    .opacity(reduceMotion ? 1 : (isPulsing ? 0.35 : 1))
-                    .offset(x: -1, y: 1)
-                    .animation(
-                        reduceMotion
-                            ? nil
-                            : .easeInOut(duration: 1.1).repeatForever(autoreverses: true),
-                        value: isPulsing
-                    )
+        HStack(spacing: size * 0.14) {
+            Image(nsImage: AgentProviderIcons.icon(for: activity.provider))
+                .resizable()
+                .scaledToFit()
+                .frame(width: iconSize, height: iconSize)
+                .clipShape(RoundedRectangle(cornerRadius: iconSize * 0.22))
+                // The token breathes rather than carrying a separate dot: at
+                // this size a third element made a crowd, and the pulse says
+                // the same thing — happening now, not remembered.
+                //
+                // Never below two-thirds. Half read as disabled rather than
+                // busy, caught in a still frame of the render, which is the
+                // one place the bottom of a pulse can be judged.
+                .opacity(reduceMotion ? 1 : (isPulsing ? 0.68 : 1))
+                .animation(
+                    reduceMotion
+                        ? nil
+                        : .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
+                    value: isPulsing
+                )
+
+            if activity.showsCount {
+                Text("\(activity.count)")
+                    .font(.system(size: size * 0.42, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
             }
-            .overlay(alignment: .topTrailing) {
-                if activity.showsCount {
-                    Text("\(activity.count)")
-                        .font(.system(size: 8, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 3)
-                        .padding(.vertical, 1)
-                        .background(Capsule().fill(Color.accentColor))
-                        .overlay(
-                            Capsule()
-                                .stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 1)
-                        )
-                        .offset(x: 5, y: -4)
+        }
+        .padding(.horizontal, size * 0.24)
+        .padding(.vertical, size * 0.16)
+        .background {
+            RoundedRectangle(cornerRadius: size * 0.34, style: .continuous)
+                .fill(.background.secondary)
+                .overlay {
+                    RoundedRectangle(cornerRadius: size * 0.34, style: .continuous)
+                        .stroke(.separator, lineWidth: 0.5)
                 }
-            }
-            .onAppear { isPulsing = true }
-            .help(summary)
-            .accessibilityLabel(Text(summary))
+                .shadow(color: .black.opacity(0.12), radius: 1.5, y: 0.5)
+        }
+        .onAppear { isPulsing = true }
+        .help(summary)
+        .accessibilityLabel(Text(summary))
     }
 
     /// The popover's content as one string, which is what `help` can carry.

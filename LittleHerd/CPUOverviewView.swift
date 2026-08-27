@@ -36,11 +36,15 @@ struct CPUOverviewView: View {
             - columnSpacing * CGFloat(max(machines.count - 1, 0))
         return min(68, max(40, available / machineCount))
     }
+    /// The animal is the machine, and it is the primary mark on this screen.
+    /// Grown a little now that a second, smaller mark sits under it: the
+    /// hierarchy has to be obvious at a glance or it reads as two things of
+    /// roughly equal weight, which is the one arrangement that says nothing.
     private var avatarSize: CGFloat {
         switch machines.count {
-        case ...3: 38
-        case 4: 30
-        default: 24
+        case ...3: 42
+        case 4: 34
+        default: 27
         }
     }
 }
@@ -231,7 +235,10 @@ struct MachineStatusLabel: View {
     var agentCPU: [String: Double] = [:]
 
     var body: some View {
-        VStack(spacing: 1) {
+        // Two points between the animal and its name, seven before the agent
+        // mark: the machine's identity is one group, and what is running on it
+        // is another.
+        VStack(spacing: 2) {
             MachineAvatarView(avatar: machine.avatar, size: avatarSize)
                 .matchedAvatar(namespace, machine: machine.machine)
                 // A drive in trouble is worth seeing under every metric, not
@@ -277,9 +284,15 @@ struct MachineStatusLabel: View {
             if let activity {
                 MachineAgentBadge(
                     activity: activity,
-                    machineName: machine.shortName
+                    machineName: machine.shortName,
+                    // Derived, so the hierarchy survives a herd of two and a
+                    // herd of six alike. Two thirds rather than a third: this
+                    // is a thing you will one day pick up and drop on another
+                    // machine, and a mark too small to grab comfortably would
+                    // have to be redrawn the day that gesture arrives.
+                    size: avatarSize * 0.64
                 )
-                .padding(.top, 2)
+                .padding(.top, 7)
                 .transition(.scale(scale: 0.6).combined(with: .opacity))
             }
         }
