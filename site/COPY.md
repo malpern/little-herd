@@ -35,22 +35,36 @@ contrast is the whole personality.
 
 ## Hero
 
-> # Stop running four computers. Run a herd.
+> # Put your herd to work.
 >
-> A laptop. A mini that used to be your desktop. A Linux box you built for one
-> project. A NAS with the backups on it. Right now they are four islands — here
-> is how they become one herd, and one small window to watch it.
+> See the load across your Macs, your Linux boxes, your NAS and the AI sessions
+> running on them — from the menu bar. Little Herd watches; choosing the machine
+> is still yours.
 >
 > **[ Start a herd ]**  **[ Download Little Herd ]**
 > Free while in development · macOS 15 or later · Apple silicon and Intel
 
 Set over the calm left third of the hero art.
 
-The headline had to do two jobs in seven words: say there are *several*
-machines, and say the window is *small*. "Little window" also quietly explains
-the name. Alternatives that lost: "Watch over your whole herd" (says nothing
-about computers to someone who arrives cold), "A menu-bar monitor for all your
-machines" (accurate, and reads like a directory listing).
+Taken from the app, which is the right direction of travel: this is the line
+the onboarding screen opens with, and a product that greets you with one
+sentence and sells itself with another is two products.
+
+**It comes within a sentence of breaking the rule above it**, and that is why
+the second half of the paragraph is worded as it is. "Put your herd to work"
+can be read as the app putting machines to work — dispatching, moving,
+managing, all of which this app does not do. What makes it true is that *you*
+are the one doing it: the herd is yours and the work is yours, and Little Herd
+shows you where there is room. "Little Herd watches; choosing the machine is
+still yours" is not throat-clearing, it is the clause that keeps the headline
+honest. If either half is ever cut, cut both.
+
+Headlines that lost: "All your computers. One little window." (true, and says
+nothing about why you would want that), "Stop running four computers. Run a
+herd." (starts by telling the reader they are doing it wrong), "Watch over your
+whole herd" (says nothing about computers to someone arriving cold), "A
+menu-bar monitor for all your machines" (accurate, and reads like a directory
+listing).
 
 **Say the price state in the hero.** "Free while in development" is four words
 that stop someone hunting for a pricing page and set up a later change without
