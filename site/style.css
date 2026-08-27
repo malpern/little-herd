@@ -445,3 +445,13 @@ kbd {
 .hero .cta.ghost:hover { background: rgba(255,255,255,.10); color: #fff; }
 .cta.ghost:hover { background: rgba(26,156,138,.10); }
 .cta-row { display: flex; flex-wrap: wrap; gap: .8rem; align-items: center; }
+
+/* The tool is the means, not the point: the capability is the heading, the
+   benefit is the line under it, and the name of the thing that gets you there
+   comes third and quietly. */
+.how { font-size: .93rem; color: var(--muted); margin-block: -.4em 1.2em !important; }
+.how-k {
+  font-size: .72rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--teal); margin-inline-end: .5rem; font-weight: 600;
+}
+.how-x { color: var(--muted); opacity: .8; }
