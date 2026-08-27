@@ -785,6 +785,40 @@ extension PanelRenderHarness {
             )
         }
 
+        // The fan, which cannot be rendered through the overview because
+        // hover is a live state — so it is rendered directly, at the width and
+        // tile size the overview gives it, for three, six and nine agents.
+        func fanSessions(_ n: Int) -> [AgentSession] {
+            (0 ..< n).map { index in
+                AgentSession(
+                    id: "s\(index)",
+                    provider: index % 2 == 0 ? .claude : .codex,
+                    projectName: "little-herd",
+                    state: .active,
+                    updatedAt: .now,
+                    progress: nil,
+                    title: "Session \(index)",
+                    activity: nil,
+                    model: "claude-opus-5"
+                )
+            }
+        }
+
+        try render(
+            VStack(alignment: .leading, spacing: 26) {
+                ForEach([3, 6, 9], id: \.self) { count in
+                    MachineAgentFan(
+                        sessions: fanSessions(count),
+                        animalCentre: count == 3 ? 100 : 162,
+                        width: 324,
+                        tile: 37
+                    )
+                }
+            },
+            size: CGSize(width: 324, height: 200),
+            named: "agent-fan"
+        )
+
         // What the pointer gets, which used to be a `.help` string. Three
         // sessions, deliberately unlike each other: one reporting a long tool
         // call that has to wrap, one reporting nothing at all and falling back

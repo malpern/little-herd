@@ -24,6 +24,9 @@ struct CPUOverviewView: View {
     /// nobody sees and a timer nobody can replay.
     @Environment(\.controlActiveState) private var windowActivity
 
+    /// The machine whose deck is fanned out, if any.
+    @State private var fanned: MachineID?
+
     @State private var arrivals = AgentArrivalWatch()
     /// Noticed, waiting for somebody to be looking.
     @State private var pending: AgentAnnouncement?
@@ -78,6 +81,10 @@ struct CPUOverviewView: View {
                         agentCPU: agentCPU,
                         padState: padState(for: machine.machine),
                         onSelectAgents: onSelectAgents,
+                        // The deck does not stay behind while the fan is out:
+                        // it *is* what rose, and drawing both showed the same
+                        // agent twice, once peeking and once above.
+                        isFanned: fanned == machine.machine,
                         announcing: announcing?.machine == machine.machine
                             ? announcing?.session
                             : nil,
@@ -93,10 +100,23 @@ struct CPUOverviewView: View {
                         onDragEnded: endDrag
                     )
                 )
-                // The token being carried has to draw over the pads it is
-                // passing across. Without this its own column stacks in
-                // source order and a neighbour's lit pad covers the thing in
-                // hand exactly when it is closest to landing.
+                // Everything but the machine being pointed at steps back, so
+                // a fan spanning the whole window still reads as belonging to
+                // one animal. The alternative was a tail or a tray, which is
+                // chrome for a job the herd can do itself.
+                .opacity(fanned == nil || fanned == machine.machine ? 1 : 0.35)
+                .onHover { hovering in
+                    guard DashboardChrome.showsAgentTokens else { return }
+                    withAnimation(.smooth(duration: 0.22)) {
+                        if hovering {
+                            fanned = agentActivity(on: machine) == nil
+                                ? nil
+                                : machine.machine
+                        } else if fanned == machine.machine {
+                            fanned = nil
+                        }
+                    }
+                }
                 .zIndex(activeDrag?.origin == machine.machine ? 1 : 0)
             }
         }
@@ -104,6 +124,7 @@ struct CPUOverviewView: View {
         .padding(.horizontal, horizontalPadding)
         .padding(.top, 10)
         .padding(.bottom, 16)
+        .overlay(alignment: .topLeading) { fanOverlay }
         .onChange(of: sessionFingerprint) { _, _ in noticeArrivals() }
         // The moment the herd is being looked at is the moment an arrival can
         // be shown. Without this the announcement waits for a session change
@@ -185,6 +206,52 @@ struct CPUOverviewView: View {
         try? await Task.sleep(for: .milliseconds(600))
         guard !Task.isCancelled else { return }
         withAnimation(.easeOut(duration: 0.25)) { refusal = nil }
+    }
+
+    /// The fanned deck, drawn over the herd rather than inside a column.
+    @ViewBuilder
+    private var fanOverlay: some View {
+        if let fanned,
+           let machine = machines.first(where: { $0.machine == fanned }),
+           let activity = agentActivity(on: machine) {
+            MachineAgentFan(
+                sessions: activity.sessions,
+                animalCentre: centreOfColumn(for: fanned),
+                width: width,
+                tile: avatarSize * 0.62,
+                onOpenAll: { onSelectAgents?(fanned) }
+            )
+            // Level with the band the resting deck peeks into, so the icons
+            // rise straight up out of the animal rather than travelling
+            // sideways on the way.
+            .offset(y: fanY)
+            .transition(.opacity)
+            .allowsHitTesting(true)
+        }
+    }
+
+    /// Where a machine's animal sits across the window.
+    private func centreOfColumn(for machine: MachineID) -> CGFloat {
+        guard let index = machines.firstIndex(where: { $0.machine == machine })
+        else { return width / 2 }
+        let stride = columnWidth + columnSpacing
+        let firstCentre = horizontalPadding + columnWidth / 2
+        return firstCentre + CGFloat(index) * stride
+    }
+
+    /// The fan's top, measured from the top of the overview: above the animals
+    /// and clear of the row of names underneath them.
+    private var fanY: CGFloat {
+        10 + DashboardMetrics.thermometerColumnHeight
+            - avatarSize * 0.62 - MachineAgentStack.clearance(forAvatar: avatarSize)
+    }
+
+    private func agentActivity(on machine: MachineMonitorModel) -> MachineAgentActivity? {
+        guard machine.state == .live else { return nil }
+        return MachineAgentActivityReader.activity(
+            for: machine.agentSessions,
+            cpuBySession: agentCPU
+        )
     }
 
     /// Which machines could take what is in hand.
@@ -310,6 +377,8 @@ struct AgentTokenContext {
     var agentCPU: [String: Double] = [:]
     var padState: AgentPadState = .idle
     var onSelectAgents: ((MachineID) -> Void)?
+    /// Whether this machine's deck has risen into the fan.
+    var isFanned = false
     /// The session that has just started here, while the herd is saying so.
     var announcing: String?
     /// Whether the drag in progress started here. Told rather than inferred:
@@ -621,7 +690,7 @@ struct MachineStatusLabel: View {
                 // Behind the animal, and drawn as a background so the animal
                 // occludes it — the deck is being carried, not worn.
                 .background(alignment: .top) {
-                    if DashboardChrome.showsAgentTokens, let activity {
+                    if DashboardChrome.showsAgentTokens, !agents.isFanned, let activity {
                         MachineAgentStack(activity: activity, avatarSize: avatarSize)
                     }
                 }
