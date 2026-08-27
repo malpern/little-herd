@@ -333,8 +333,9 @@ they have just realised the mini under the desk could be doing something.
 
 ## The guide — `herd.html`
 
-Six steps, in order, each assuming the last: Tailscale, SSH config, Homebrew and
-a Brewfile, tmux, Screen Sharing, and Herdr. Little Herd is the payoff at the
+Eight steps, in order, each assuming the last, in three acts: **get access**
+(Tailscale, SSH config, Homebrew), **do work on it** (tmux, Screen Sharing,
+Herdr), **keep it alive** (backup, alerting). Little Herd is the payoff at the
 end and is not one of the six.
 
 **Every step has a picture, a linked tool, and a trap.** The picture says the
@@ -357,7 +358,7 @@ and the close names what the reader now has before pointing at the one part we
 make. It also gives an honest cost: an afternoon, most of it waiting for
 installers.
 
-**It is deliberately finite.** Six steps, written once, true for years. A guide
+**It is deliberately finite.** Eight steps, written once, true for years. A guide
 section that turns into a blog with three posts and a two-year gap reads as an
 abandoned project, which is worse than not having one.
 
@@ -400,3 +401,18 @@ does not make.
 The wordmark is done: Gabarito 600, outlined, with the *i*'s tittle as the
 green status dot. It sits beside the app icon in the header and alone in the
 footer.
+
+---
+
+## What was left out, and why
+
+**Pi-hole is a closing note, not a step.** It is a good use of a spare machine
+and the obvious next question once someone has a herd and an idle mini — but it
+is not about running machines *together*, it does not build on the step before
+it, and it is one opinionated application rather than a capability. Make it a
+step and the next question is why not Home Assistant, why not Plex, and the
+guide becomes a directory somebody has to maintain.
+
+So it appears with a media server and a build cache in a short note that says
+what they are and stops: *a herd member can also just do a job*. The question
+gets an answer; the scope holds.

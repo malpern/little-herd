@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Start a herd — Little Herd</title>
-<meta name="description" content="Six things you can do once your computers are a herd: reach any of them from anywhere, get on with one command, find your tools already there, start work and walk away, use another machine’s screen, and run several agents at once.">
+<meta name="description" content="Eight things you can do once your computers are a herd: reach any of them from anywhere, get on with one command, find your tools already there, start work and walk away, use another machine’s screen, and run several agents at once.">
 <link rel="icon" href="images/icon.png">
 <link rel="stylesheet" href="style.css">
 <meta property="og:title" content="Start a herd">
@@ -28,7 +28,7 @@
   <div class="wrap">
     <span class="pill">The guide</span>
     <h1>Start a herd.</h1>
-    <p class="lede">Six things turn a pile of computers into a herd. They go in
+    <p class="lede">Eight things turn a pile of computers into a herd. They go in
       this order, because each one assumes the last. None of them needs Little
       Herd, and no single one of them is a big job.</p>
     <p class="promise"><b>When you are done</b>, the mini under the desk is as
@@ -260,15 +260,124 @@ tmux attach -t work   # come back, from anywhere</code></pre>
     </div>
   </li>
 
+  <li class="step" id="backup">
+    <div class="step-n">7</div>
+    <div class="step-body">
+      <h2>Back every machine up to one place</h2>
+      <p class="what">One destination that all of them write to, so the box in
+        the closet stops being storage you own and becomes the machine that
+        holds everything.</p>
+      <figure class="fig fig-backup">
+        <img class="f1" src="images/herdware/chick-laptop.png" alt="">
+        <img class="f2" src="images/herdware/calf-mini.png" alt="">
+        <img class="f3" src="images/herdware/ox-gpu.png" alt="">
+        <img class="f4" src="images/herdware/piglet-nas.png" alt="">
+        <svg class="s-wire" viewBox="0 0 420 210" preserveAspectRatio="xMidYMid meet">
+          <path class="s-route" d="M60 60 C 140 70, 220 96, 300 112"/>
+          <path class="s-pulse" d="M60 60 C 140 70, 220 96, 300 112"/>
+          <path class="s-route" d="M60 118 C 140 120, 220 118, 300 116"/>
+          <path class="s-pulse d1" d="M60 118 C 140 120, 220 118, 300 116"/>
+          <path class="s-route" d="M60 176 C 140 166, 220 138, 300 122"/>
+          <path class="s-pulse d2" d="M60 176 C 140 166, 220 138, 300 122"/>
+        </svg>
+        <figcaption>Everything lands in one place.</figcaption>
+      </figure>
+      <a class="tool" href="https://support.apple.com/guide/mac-help/back-up-your-mac-with-time-machine-mh35860/mac">
+        <span class="tool-name">Time Machine</span>
+        <span class="tool-note">Built into macOS &middot; point it at a network volume</span>
+        <span class="tool-go">Apple support &#8599;</span>
+      </a>
+      <p>Every Mac in the herd can back up over the network to the same NAS
+        share &mdash; no cable, no swapping a drive between machines. For a Linux
+        box, or for anything you would rather the NAS could not read,
+        <a href="https://restic.net">restic</a> encrypts on the machine and
+        sends only ciphertext, so the destination stores your backups without
+        being able to open them.</p>
+      <p class="trap"><b>The trap:</b> a backup you have never restored from is
+        not a backup, it is a belief. Restore one file, deliberately, the week
+        you set it up &mdash; the failure you are guarding against is the one
+        where the job has been reporting success for a year into a destination
+        that quietly stopped mounting.</p>
+      <p class="trap"><b>And:</b> whatever key writes the backups can usually
+        delete them, so a machine that is compromised can take its own history
+        with it. If the destination can be made append-only, do it; if it
+        cannot, at least know that is the gap rather than assuming a copy
+        somewhere is the same as a copy you cannot lose.</p>
+    </div>
+  </li>
+
+  <li class="step" id="alerts">
+    <div class="step-n">8</div>
+    <div class="step-body">
+      <h2>Find out when one of them stops</h2>
+      <p class="what">An unattended machine that dies is only a problem the
+        moment you need it &mdash; which is always the worst moment. Have it
+        tell you instead.</p>
+      <figure class="fig fig-alert">
+        <img class="f1" src="images/herdware/calf-mini.png" alt="">
+        <img class="f2" src="images/herdware/ox-gpu.png" alt="">
+        <span class="beat b1"></span>
+        <span class="beat b2"></span>
+        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid meet">
+          <path class="s-route" d="M104 66 C 170 40, 230 40, 296 66"/>
+          <path class="s-pulse" d="M104 66 C 170 40, 230 40, 296 66"/>
+          <path class="s-route" d="M296 108 C 230 134, 170 134, 104 108"/>
+          <path class="s-pulse d1" d="M296 108 C 230 134, 170 134, 104 108"/>
+        </svg>
+        <figcaption>Each one checks on the other.</figcaption>
+      </figure>
+      <a class="tool" href="https://healthchecks.io">
+        <span class="tool-name">Healthchecks.io</span>
+        <span class="tool-note">Free tier and open source</span>
+        <span class="tool-go">healthchecks.io &#8599;</span>
+      </a>
+      <p>Or self-host
+        <a href="https://github.com/louislam/uptime-kuma">Uptime Kuma</a> on a
+        machine in the herd, with the caveat below. The shape that works either
+        way is a dead man&rsquo;s switch: each machine, and
+        each scheduled job, checks in after a successful run. Nothing arriving
+        is the alarm. That catches the failures a ping never will &mdash; a
+        machine that is up and answering while the backup on it has not run
+        since March.</p>
+      <p class="trap"><b>The trap:</b> do not let a machine watch itself. A box
+        that reports on its own backups goes quiet at exactly the moment its
+        report matters, and silence from something that only ever spoke when it
+        was healthy is indistinguishable from everything being fine. Have
+        another machine hold the expectation.</p>
+      <p class="trap"><b>And the honest limit:</b> if two machines watch each
+        other and the power goes out, both are down and neither can tell you.
+        Only something outside the house closes that, which is the argument for
+        a hosted check over one you run at home &mdash; and the reason to know
+        which of the two you have chosen.</p>
+    </div>
+  </li>
+
 </ol>
+
+<section class="aside-note">
+  <div class="wrap">
+    <h2>A herd member can also just do a job.</h2>
+    <p class="lede">Once a machine is reachable, kept current and watched, it
+      can be given something to run for the whole house rather than for you.
+      <a href="https://pi-hole.net">Pi-hole</a> answers DNS for every device on
+      the network and drops the ad and tracker domains before they resolve. A
+      media server does the same trick for films. A spare machine with a fast
+      disk makes a good build cache.</p>
+    <p class="note">None of those are in this guide, because each is its own
+      afternoon and none of them is about running machines <em>together</em>.
+      They are simply the sort of thing you can do once you have somewhere to
+      put them.</p>
+  </div>
+</section>
 
 <section class="payoff">
   <div class="wrap">
     <h2>You have a herd.</h2>
     <p class="lede">Every machine reachable by name from anywhere. One command
       onto any of them. The same tools waiting when you arrive, work that
-      outlives your connection, a screen when you need one, and agents you can
-      walk away from.</p>
+      outlives your connection, a screen when you need one, agents you can walk
+      away from, one place holding every backup, and something that will tell
+      you when any of it stops.</p>
     <p class="payoff-last">The last thing missing is being able to see it all
       at once &mdash; which is the one part we make.</p>
     <div class="cta-row payoff-cta">
