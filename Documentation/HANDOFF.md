@@ -1,6 +1,6 @@
 # Little Herd — handoff
 
-**State:** `v0.1.44` is released and `main` carries nothing beyond it. 465
+**State:** `v0.1.48` is released and `main` carries nothing beyond it. 502
 tests pass. Roadmap item 6 is done — each machine's agent versions. Item 4 is
 measured and deliberately has no interface; see its entry below, which is the
 one to read before drawing a new one.
@@ -14,6 +14,16 @@ measurement — agent installed, repository checked out, credentials not refused
 — so the refusal states are reachable from the running app for the first time.
 **Nothing moves on drop, deliberately**: `endDrag` computes the outcome and
 discards it.
+
+**A session that starts announces itself**, by opening that machine's card for
+four seconds with the new session on top — held until the dashboard is the
+window being looked at, and dropped after forty-five seconds rather than
+calling something "just started" that started while you were away. Hover is
+kept alongside it on purpose: an announcement you missed is otherwise gone.
+Cards open beside their token, right for a machine in the herd's first half and
+left for one in its second, so the avatars and names stay visible.
+
+**Asking permission is a setting, off by default.** See item 1.
 
 **The website is live** at <https://malpern.github.io/little-herd/>, and the
 README is a front door that matches it — the hero is baked from the site's own
@@ -57,6 +67,10 @@ and four on 26 August:
     0.1.42  Codex sessions renameable; hovered headers removed from every panel
     0.1.43  agent tokens on the CPU screen, and the drag that carries them
     0.1.44  a hover card on a token, and a click that opens the AI page
+    0.1.45  the drag asks each machine what it could actually take
+    0.1.46  a session that starts says so — which fired essentially never
+    0.1.47  the fix for 0.1.46: it now waits for somebody to be looking
+    0.1.48  cards open beside their token, and can be dismissed
 
 **0.1.33 shipped a bug that could take a machine off the dashboard entirely** —
 an empty directory aborting the probe under zsh. Nothing in this herd tripped
@@ -1103,7 +1117,42 @@ than being shared out. The first guess added 32 points and left a visible
 trough; the answer was the amount the pads actually cost minus the slack that
 was already there.
 
+**A feature can ship, pass its whole suite, and fire never.** The arrival
+announcement was guarded on the dashboard being the *focused* window at the
+instant a session began. Sessions are started from a terminal, so it never was
+— from outside, indistinguishable from nothing having shipped, and the user
+said so. Worse, the guard sat *before* the watch, so while unfocused the
+arrival was not even recorded: the bookkeeping that tells a new session from
+one already passed over was gated on somebody happening to be looking.
+**Presentation guards go after the bookkeeping, never in front of it.** Every
+test passed throughout, because every test was about the watch and none was
+about when the view is allowed to speak.
+
+**A `Binding` whose getter reads two sources and whose setter writes one cannot
+be dismissed.** The card was presented on `isHovering || announcing != nil`
+while dismissal cleared only the first, so clicking away did nothing until the
+timer ran out. Both reasons are one value now (`AgentCardVisibility`), and
+letting go clears whichever it was.
+
+**Swift does not warn about an unused `private` type.** 139 lines of hover-row
+views survived the removal of the hovered headers with zero callers and a clean
+build. Nothing but a deliberate search finds these — the same blind spot that
+let `HoveredMachineMetricHeader` sit unwired from the first public commit.
+
+**A grep that returns zero uses may mean the thing does not exist.** A review
+here reported dead code that was never written: the count was zero because the
+name matched nothing at all, and it read as "declared and unreferenced". Check
+that a symbol exists before reporting it as unused.
+
 ## Method notes
+
+**Subagents in worktrees branch from what is pushed, not from what is in front
+of you.** Two agents split the review work on disjoint files, and both worktrees
+were cut from the last release commit rather than from local `HEAD` — so a
+change committed minutes earlier was absent from both, and merging their work
+nearly reverted it. It surfaced only because the merged file was diffed against
+the pre-split original rather than eyeballed. **Diff the merge, and check your
+own recent commits survived it.**
 
 **Four bugs in one afternoon, none of them findable by the suite, all of them
 found by asking what the code did to another machine.** Stdin inherited instead
@@ -1276,10 +1325,16 @@ it; the files survived only because the directory had not been reaped yet.
    somewhere in the frame while a drag is live.
 
    **What is unverified, because all of this was built with the screen
-   unavailable:** how a token grabbed again mid-spring behaves, and whether the
-   hover card's 350ms delay is right when a pointer is really moving. Both need
-   someone at the machine; the delay is one number in
-   `CPUOverviewView.cardHover`.
+   unavailable:** how a token grabbed again mid-spring behaves; whether the
+   hover delay is right when a pointer is really moving; and **where the cards
+   actually land** — `ImageRenderer` cannot lay out a popover, so the placement
+   rule has tests and no picture. Hover a token in each half of the herd and
+   check they open in opposite directions.
+
+   One behaviour changed in passing and is worth knowing: a drag that ends with
+   the pointer still resting on its token can now raise the card after the
+   hover delay, where the cancelled intent used to stay cancelled until you
+   re-hovered.
 
 2. **P-core/E-core awareness is blocked, not pending.** Per-core utilisation
    needs root on a remote Mac — `powermetrics` refuses without it, and neither
