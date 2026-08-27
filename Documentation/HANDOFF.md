@@ -1358,6 +1358,19 @@ it; the files survived only because the directory had not been reaped yet.
     across all of them. Say "no agent to install on the other machines" early;
     for this audience it is a feature and a relief, not a footnote.
 
+    **The hero art exists.** `DesignAssets/little-herd-site-hero-source.png`
+    is a wide 1536x1024 recomposition of the splash scene with a calm dark
+    left third to set a headline and a button over, and
+    `little-herd-social-card-source.png` is that same image centre-cropped to
+    the 1.91:1 Open Graph wants, so the two cannot drift. Both were made with
+    the OpenAI images API from the existing art as reference; the recipe, the
+    working key, and a rejected variant that invented an Apple-like mark on a
+    laptop screen are in `little-herd-site-hero-prompt.md`. Generated art gets
+    looked at at full size before it goes near the page.
+
+    Still missing and not yet drawn: a wordmark and a favicon. The favicon is
+    a reduction of the existing app icon rather than new art.
+
     **Two things stand between here and a site, and neither is a feature.**
     Confirm whether the certificate fix is still unreleased, and **take fresh
     screenshots** — both files in `Documentation/Screenshots` are from
