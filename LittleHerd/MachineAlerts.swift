@@ -159,8 +159,7 @@ final class MachineAlertCenter {
             else {
                 return ""
             }
-            let free = Int64(volume.availableBytes)
-                .formatted(.byteCount(style: .file))
+            let free = HerdByteCount.storage(Int64(volume.availableBytes))
             return "\(volume.name) is \(Int(volume.usedPercent))% full — \(free) left."
         case .memoryCritical:
             return machine.memoryConsumers.first.map {

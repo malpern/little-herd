@@ -489,8 +489,8 @@ struct MachineStoragePane: View {
     /// as the named volume's usage when it is the whole container's — the
     /// volume itself may be using a fraction of that.
     private func capacityDescription(for volume: StorageVolume) -> LocalizedStringResource {
-        let free = Int64(volume.availableBytes).formatted(.byteCount(style: .file))
-        let total = Int64(volume.totalBytes).formatted(.byteCount(style: .file))
+        let free = HerdByteCount.storage(Int64(volume.availableBytes))
+        let total = HerdByteCount.storage(Int64(volume.totalBytes))
         // Condition leads when there is one: a degraded volume matters more than
         // how much room is left on it.
         if let health = volume.health, health == .warning || health == .critical {

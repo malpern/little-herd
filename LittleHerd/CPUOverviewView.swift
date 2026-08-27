@@ -410,8 +410,9 @@ private struct CPUThermometerColumn: View {
                     // should sit in one place in it.
                     VStack(spacing: 0) {
                         Text(
-                            Int64(fullestVolume?.availableBytes ?? 0),
-                            format: .byteCount(style: .file)
+                            HerdByteCount.storage(
+                                Int64(fullestVolume?.availableBytes ?? 0)
+                            )
                         )
                         .font(.caption2.weight(.medium))
 

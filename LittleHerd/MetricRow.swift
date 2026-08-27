@@ -183,7 +183,7 @@ private struct MetricDetail: View {
                     }
                 case .disk:
                     if let auxiliaryValue {
-                        Text("\(Int64(auxiliaryValue), format: .byteCount(style: .file)) free")
+                        Text("\(HerdByteCount.storage(Int64(auxiliaryValue))) free")
                     } else {
                         Text("Startup disk")
                     }

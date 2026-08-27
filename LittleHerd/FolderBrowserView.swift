@@ -195,8 +195,7 @@ private struct FolderRowView: View {
             Text(
                 row.entry.sizeBytes < 1
                     ? "—"
-                    : Int64(row.entry.sizeBytes)
-                        .formatted(.byteCount(style: .file))
+                    : HerdByteCount.storage(Int64(row.entry.sizeBytes))
             )
                 .monospacedDigit()
                 .frame(width: 58, alignment: .trailing)
