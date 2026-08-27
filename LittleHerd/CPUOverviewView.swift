@@ -25,6 +25,8 @@ struct CPUOverviewView: View {
     @Environment(\.controlActiveState) private var windowActivity
 
     @State private var arrivals = AgentArrivalWatch()
+    /// Noticed, waiting for somebody to be looking.
+    @State private var pending: AgentAnnouncement?
     @State private var announcing: AgentArrival?
     @State private var announcement: Task<Void, Never>?
     /// The width this is laid out in. A constant here would go on dividing the
@@ -85,7 +87,11 @@ struct CPUOverviewView: View {
         .padding(.horizontal, horizontalPadding)
         .padding(.top, 10)
         .padding(.bottom, 16)
-        .onChange(of: sessionFingerprint) { _, _ in announceArrivals() }
+        .onChange(of: sessionFingerprint) { _, _ in noticeArrivals() }
+        // The moment the herd is being looked at is the moment an arrival can
+        // be shown. Without this the announcement waits for a session change
+        // that may not come for minutes.
+        .onChange(of: windowActivity) { _, _ in showPendingArrival() }
     }
 
     /// Something to watch that changes when the sessions do. `onChange` needs
@@ -110,17 +116,34 @@ struct CPUOverviewView: View {
     /// announcement you missed is gone — the same defect that retired the
     /// hovered header, which was information nobody could point at. Pointing
     /// at the token is how you ask again.
-    private func announceArrivals() {
-        guard announcesArrivals, windowActivity == .key else { return }
+    /// **Bookkeeping first, and never behind the focus check.** The first
+    /// version guarded on the window being focused before it looked at the
+    /// sessions at all, which broke it twice over: sessions are started from a
+    /// terminal, so the dashboard is essentially never focused at that instant
+    /// — nothing was announced — and the watch never recorded them either, so
+    /// it could not tell a new session from one it had already passed over.
+    private func noticeArrivals() {
+        guard announcesArrivals else { return }
         let herdSessions = machines.map {
             (machine: $0.machine, sessions: $0.agentSessions)
         }
         guard let arrival = arrivals.arrival(in: herdSessions, at: .now) else {
             return
         }
+        pending = AgentAnnouncement(arrival: arrival, noticedAt: .now)
+        showPendingArrival()
+    }
+
+    /// Shows a waiting arrival, if there is one and it is still true.
+    private func showPendingArrival() {
+        guard announcesArrivals, windowActivity == .key, let pending else {
+            return
+        }
+        self.pending = nil
+        guard pending.isFresh(at: .now) else { return }
 
         announcement?.cancel()
-        announcing = arrival
+        announcing = pending.arrival
         announcement = Task {
             try? await Task.sleep(for: .seconds(4))
             guard !Task.isCancelled else { return }

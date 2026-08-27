@@ -6,6 +6,28 @@ nonisolated struct AgentArrival: Equatable, Sendable {
     let session: String
 }
 
+/// An arrival that has been noticed but not yet shown to anybody.
+///
+/// Sessions are started from a terminal, so the dashboard is virtually never
+/// the focused window at the instant one begins — an announcement that could
+/// only fire at that exact moment fired essentially never, which is how the
+/// first version of this shipped and looked like nothing at all. The arrival
+/// waits instead, and is shown when the person next looks at the herd.
+nonisolated struct AgentAnnouncement: Equatable, Sendable {
+    let arrival: AgentArrival
+    let noticedAt: Date
+
+    /// After this, "just started" is a lie and the card would be claiming
+    /// something happened now that happened while you were away. Long enough
+    /// to cover starting a session and switching windows to watch it; short
+    /// enough that coming back from lunch says nothing.
+    static let staleAfter: TimeInterval = 45
+
+    func isFresh(at now: Date) -> Bool {
+        now.timeIntervalSince(noticedAt) < Self.staleAfter
+    }
+}
+
 /// Notices when a session appears, so the herd can say what started rather than
 /// only that something did.
 ///

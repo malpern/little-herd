@@ -137,3 +137,50 @@ struct AgentArrivalWatchTests {
         )
     }
 }
+
+/// An arrival noticed while nobody was looking.
+///
+/// **The bug this suite missed the first time.** Sessions are started from a
+/// terminal, so the dashboard is virtually never the focused window at the
+/// instant one begins. The first version could only announce at that exact
+/// moment, so it announced essentially never and looked like nothing had
+/// shipped — and because the focus check ran *before* the watch, the arrival
+/// was not even recorded.
+struct AgentAnnouncementTests {
+    private let start = Date(timeIntervalSince1970: 1_000_000)
+    private var announcement: AgentAnnouncement {
+        AgentAnnouncement(
+            arrival: AgentArrival(machine: MachineID("air"), session: "a"),
+            noticedAt: start
+        )
+    }
+
+    /// Start a session, switch to the dashboard to watch it: still true.
+    @Test
+    func anArrivalSurvivesTheWalkBackToTheDashboard() {
+        #expect(announcement.isFresh(at: start.addingTimeInterval(20)))
+    }
+
+    /// Come back much later and it says nothing, rather than calling something
+    /// that happened while you were away "just started".
+    @Test
+    func anOldArrivalIsNotAnnounced() {
+        #expect(!announcement.isFresh(at: start.addingTimeInterval(300)))
+    }
+
+    /// The boundary itself, so the constant cannot drift without a test
+    /// noticing.
+    @Test
+    func freshnessEndsWhereItSaysItDoes() {
+        #expect(
+            announcement.isFresh(
+                at: start.addingTimeInterval(AgentAnnouncement.staleAfter - 1)
+            )
+        )
+        #expect(
+            !announcement.isFresh(
+                at: start.addingTimeInterval(AgentAnnouncement.staleAfter)
+            )
+        )
+    }
+}
