@@ -48,10 +48,10 @@ struct MachineAgentPad<Content: View>: View {
             .frame(maxWidth: .infinity)
             .frame(height: height)
             .background {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: HerdRadius.surface, style: .continuous)
                     .fill(fill)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        RoundedRectangle(cornerRadius: HerdRadius.surface, style: .continuous)
                             .strokeBorder(stroke, style: strokeStyle)
                     }
             }

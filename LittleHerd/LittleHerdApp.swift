@@ -635,7 +635,7 @@ private struct LittleHerdSettingsView: View {
             .scrollContentBackground(.hidden)
             .scrollDisabled(true)
             .frame(height: CGFloat(machineStore.machines.count) * 38 + 4)
-            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 8))
+            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: HerdRadius.surface))
         }
         .padding(24)
         .frame(width: 420)

@@ -753,15 +753,7 @@ struct SeamHeader: View {
     let title: LocalizedStringResource
 
     var body: some View {
-        HStack(spacing: 6) {
-            Text(title)
-                .font(.caption2.weight(.semibold))
-                .tracking(0.35)
-                .foregroundStyle(.tertiary)
-                .accessibilityAddTraits(.isHeader)
-
-            VStack { Divider() }
-        }
+        SectionLabel(title: Text(title), prominence: .seam, hasRule: true)
     }
 }
 

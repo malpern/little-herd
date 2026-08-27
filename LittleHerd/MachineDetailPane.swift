@@ -32,10 +32,7 @@ struct MetricDetailPane<Rows: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Text(title)
-                    .font(.caption2.weight(.semibold))
-                    .tracking(0.35)
-                    .foregroundStyle(.secondary)
+                SectionLabel(title: Text(title))
 
                 Spacer(minLength: 8)
 
@@ -114,7 +111,7 @@ struct MetricDetailRow<Accessory: View>: View {
     /// CPU page and a session on the AI page are the same object at the same
     /// weight rather than two sizes of the same idea.
     var leadingIconSize: CGFloat?
-    private var iconSize: CGFloat { leadingIconSize ?? AIActiveAgentRow.iconSize }
+    private var iconSize: CGFloat { leadingIconSize ?? HerdIconSize.row }
     /// Draws the provider's own icon instead of a symbol or a bundle icon.
     var provider: AgentTaskProvider?
     let title: Text

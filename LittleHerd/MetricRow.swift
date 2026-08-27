@@ -54,7 +54,7 @@ private struct MetricSymbol: View {
             .frame(width: 27, height: 27)
             .background(
                 kind.color.opacity(isSupported ? 0.12 : 0.05),
-                in: RoundedRectangle(cornerRadius: 7)
+                in: RoundedRectangle(cornerRadius: HerdRadius.surface)
             )
             .accessibilityHidden(true)
     }

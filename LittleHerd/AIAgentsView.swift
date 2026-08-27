@@ -337,10 +337,7 @@ private struct AgentSectionHeader: View {
                 if let label = label ?? section.name {
                     Text(label)
                         .font(.caption2.weight(.semibold))
-                        // Positive tracking at this size, per the same rule
-                        // that tightens large text: small type reads as
-                        // cramped without it.
-                        .tracking(0.3)
+                        .tracking(SectionLabel.tracking)
                 }
 
                 if !isExpanded, hiddenCount > 0 {

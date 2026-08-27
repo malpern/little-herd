@@ -51,7 +51,7 @@ struct OverviewMetricTabs: View {
                 .padding(.vertical, 5)
                 .background {
                     if isSelected {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        RoundedRectangle(cornerRadius: HerdRadius.control, style: .continuous)
                             .fill(LittleHerdTheme.loadTeal.opacity(0.14))
                             // The pill travels between tabs rather than
                             // appearing where it lands, so a glance that
