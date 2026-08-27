@@ -193,11 +193,23 @@ footer { --dot: var(--green); }
 .lh-chrome i { width: 11px; height: 11px; border-radius: 50%; background: #DDD8CE; }
 .lh-chrome .r { background: #F0645C; } .lh-chrome .y { background: #F2BC3F; } .lh-chrome .g { background: #DDD8CE; }
 
-/* the header area is a fixed height so a hover cannot resize the window */
-.lh-head { min-height: 54px; border-bottom: 1px solid rgba(29,28,26,.10); padding-bottom: 9px; margin-bottom: 12px; }
+/* Every box below has a FIXED height, not a minimum. The window must not
+   change size when you hover it, when a metric changes, or when a session
+   finishes -- it sits inline in the page, so any growth shoves the reader's
+   place on the page. This is the same reason the real app reserves its header
+   area rather than letting a hover resize the window. */
+.lh-head { height: 56px; border-bottom: 1px solid rgba(29,28,26,.10); padding-bottom: 9px; margin-bottom: 12px; overflow: hidden; }
+.lh-stage { height: 168px; }
+/* `hidden` sets display:none from the UA stylesheet, which ANY author display
+   rule outranks -- so `.lh-rows { display: grid }` kept the AI rows painting
+   underneath the CPU view, as a column of stray status dots below the window.
+   Restate it with weight the author rules cannot beat. */
+.lh [hidden] { display: none !important; }
+.lh-cols, .lh-rows { height: 100%; }
 .lh-metric { font-size: 18px; font-weight: 700; letter-spacing: -.02em; color: #1D1C1A; }
 .lh-sub { display: block; font-size: 11.5px; color: #6B665E; margin-top: 1px; }
-.lh-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #1F9E52; margin-right: 5px; vertical-align: middle; }
+.lh-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #1F9E52;
+  margin-right: 5px; vertical-align: middle; transition: background-color .45s ease; }
 .lh-dot.down { background: #E84A29; } .lh-dot.running { background: #1F9E52; }
 .lh-dot.waiting { background: #F2A03F; } .lh-dot.done { background: #3B82D6; }
 .lh-hover-top { display: flex; align-items: center; gap: 5px; font-size: 12.5px; }
@@ -211,20 +223,24 @@ footer { --dot: var(--green); }
 .lh-hover-rows i { font-style: normal; color: #6B665E; }
 
 .lh-cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.lh-col { display: flex; flex-direction: column; align-items: center; gap: 5px; border-radius: 8px; padding: 4px 2px; outline: none; }
+.lh-col { display: flex; flex-direction: column; align-items: center; gap: 5px; border-radius: 8px;
+  padding: 4px 2px; outline: none; transition: background-color .25s ease; }
 .lh-col:hover, .lh-col:focus-visible { background: rgba(26,156,138,.10); }
-.lh-pct { font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
+.lh-pct { font-size: 17px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+  transition: color .4s ease; }
 .lh-pct.hot { color: #E84A29; }
 .lh-bar { display: flex; flex-direction: column; gap: 2.5px; width: 30px; }
-.lh-bar i { height: 7px; border-radius: 2px; background: rgba(29,28,26,.09); transition: background .5s ease; }
+.lh-bar i { height: 7px; border-radius: 2px; background: rgba(29,28,26,.09);
+  transition: background-color .45s cubic-bezier(.4,0,.2,1); }
 .lh-bar i.green { background: #1F9E52; } .lh-bar i.yellow { background: #E8C13F; }
 .lh-bar i.orange { background: #EE8B33; } .lh-bar i.red { background: #E84A29; }
 .lh-col img { width: 30px; height: 30px; }
 .lh-name { font-size: 11.5px; font-weight: 600; white-space: nowrap; }
-.lh-free { font-size: 10px; color: #6B665E; }
+.lh-free { font-size: 10px; color: #6B665E; min-height: 13px; }  /* reserved even when empty */
 
-.lh-rows { display: flex; flex-direction: column; gap: 2px; }
-.lh-agent { display: flex; align-items: center; gap: 7px; padding: 6px 6px; border-radius: 8px; outline: none; }
+.lh-rows { display: grid; grid-template-rows: repeat(4, 1fr); gap: 2px; }
+.lh-agent { display: flex; align-items: center; gap: 7px; padding: 0 6px; border-radius: 8px; outline: none;
+  transition: background-color .25s ease; }
 .lh-agent:hover, .lh-agent:focus-visible { background: rgba(26,156,138,.10); }
 .lh-agent-name { flex: 1; min-width: 0; }
 .lh-agent-name b { display: block; font-size: 12px; font-weight: 600; }
