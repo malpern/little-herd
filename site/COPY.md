@@ -204,5 +204,11 @@ does not hint at it beyond "while in development."
 
 ## Still needed
 
-A wordmark — "Little Herd" set in something with a little warmth, next to the
-app icon. Everything above assumes one exists in the header and the footer.
+Fresh screenshots, and one of the AI view — the section that names the thing
+nothing else does currently runs without a picture, because the only shots on
+hand show CPU and memory and pairing either with it would illustrate a claim it
+does not make.
+
+The wordmark is done: Gabarito 600, outlined, with the *i*'s tittle as the
+green status dot. It sits beside the app icon in the header and alone in the
+footer.
