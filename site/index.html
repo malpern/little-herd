@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Little Herd — a menu-bar monitor for all your machines</title>
+<meta name="description" content="Little Herd watches your Mac, your other Macs, your Linux boxes and your NAS from the menu bar — CPU, memory, disk, and which AI agents are running where.">
+<link rel="icon" href="images/icon.png">
+<meta property="og:title" content="Little Herd">
+<meta property="og:description" content="All your computers. One little window.">
+<meta property="og:image" content="images/social-card.jpg">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+/* ---------------------------------------------------------------- tokens
+   Taken from the app's own asset catalog (LittleHerd/Assets.xcassets) so the
+   page and the screenshots cannot drift apart. Do not eyedropper the art. */
+:root {
+  --cream:      #FBF8F1;   /* HerdBackground, light */
+  --ink:        #1D1C1A;   /* HerdBackground, dark  */
+  --forest:     #134F3C;   /* HerdForest, light     */
+  --green:      #1F9E52;   /* HerdLoadGreen         */
+  --teal:       #1A9C8A;   /* HerdLoadTeal          */
+  --alert:      #E84A29;   /* DashboardView.swift   */
+
+  --bg:         var(--cream);
+  --fg:         var(--ink);
+  --muted:      #5F5B54;
+  --rule:       rgba(29, 28, 26, 0.12);
+  --card:       #FFFFFF;
+  --card-edge:  rgba(29, 28, 26, 0.08);
+  --shadow:     0 1px 2px rgba(29,28,26,.05), 0 8px 24px rgba(29,28,26,.06);
+  --licence-bg: var(--forest);
+
+  --measure: 34rem;
+  --pad: clamp(1.25rem, 5vw, 4rem);
+}
+/* Dark is defined twice on purpose. The first block catches a viewer whose OS
+   is dark and who has made no explicit choice; the second catches an explicit
+   choice, which a media query cannot see. Guarding the first against
+   [data-theme="light"] lets an explicit light choice beat a dark OS. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:        #141513;
+    --fg:        #F2EFE8;
+    --muted:     #A8A29A;
+    --rule:      rgba(242, 239, 232, 0.14);
+    --card:      #1C1E1B;
+    --card-edge: rgba(242, 239, 232, 0.10);
+    --shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+    --forest:    #70C799;
+    --licence-bg:#10352A;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:        #141513;
+  --fg:        #F2EFE8;
+  --muted:     #A8A29A;
+  --rule:      rgba(242, 239, 232, 0.14);
+  --card:      #1C1E1B;
+  --card-edge: rgba(242, 239, 232, 0.10);
+  --shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+  --forest:    #70C799;
+  --licence-bg:#10352A;
+}
+
+/* ----------------------------------------------------------------- base */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { line-height: 1.12; letter-spacing: -0.022em; margin: 0; font-weight: 600; }
+h2 + p, h2 + .lede { margin-block-start: 1.15rem; }
+h1 { font-size: clamp(2.4rem, 6.2vw, 4rem); letter-spacing: -0.032em; }
+h2 { font-size: clamp(1.75rem, 3.6vw, 2.6rem); letter-spacing: -0.026em; }
+h3 { font-size: 1.0625rem; letter-spacing: -0.01em; }
+p  { margin: 0 0 1.1em; }
+a  { color: var(--forest); }
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.92em;
+  background: rgba(26,156,138,.13);
+  padding: 0.1em 0.36em;
+  border-radius: 4px;
+}
+img { max-width: 100%; height: auto; display: block; }
+.wrap { max-width: 74rem; margin-inline: auto; padding-inline: var(--pad); }
+.lede { font-size: clamp(1.06rem, 1.7vw, 1.28rem); color: var(--muted); max-width: var(--measure); }
+
+/* --------------------------------------------------------------- header */
+.top {
+  position: absolute; inset-block-start: 0; inset-inline: 0; z-index: 3;
+  display: flex; align-items: center; gap: .7rem;
+  padding: 1.15rem var(--pad);
+  color: #EAF3EC;
+}
+.top img { width: 30px; height: 30px; border-radius: 7px; }
+.top strong { font-weight: 600; letter-spacing: -0.018em; font-size: 1.03rem; }
+.top nav { margin-inline-start: auto; }
+.top nav a { color: rgba(234,243,236,.78); text-decoration: none; font-size: .95rem; }
+.top nav a:hover { color: #fff; }
+
+/* ----------------------------------------------------------------- hero
+   The art is generated with a deliberately calm, dark left third; the scrim
+   only deepens it so white type is safe at every width. */
+.hero {
+  position: relative;
+  background: #0C2B24 url(images/hero.jpg) right center / cover no-repeat;
+  color: #F4F8F4;
+  min-height: min(41rem, 88vh);
+  display: flex; align-items: center;
+}
+.hero::before {
+  content: ""; position: absolute; inset: 0;
+  background:
+    linear-gradient(96deg, rgba(7,32,26,.96) 0%, rgba(7,32,26,.88) 30%, rgba(8,36,29,.34) 56%, rgba(8,36,29,0) 76%),
+    linear-gradient(to top, rgba(7,32,26,.62), rgba(7,32,26,0) 42%);
+}
+.hero .wrap { position: relative; z-index: 2; width: 100%; padding-block: 8rem 4rem; }
+.hero h1 { max-width: 15ch; }
+.hero p {
+  font-size: clamp(1.08rem, 1.75vw, 1.32rem);
+  color: rgba(244,248,244,.9);
+  max-width: 33rem; margin-block: 1.15rem 2rem;
+}
+.cta {
+  display: inline-block; background: var(--green); color: #fff;
+  font-size: 1.03rem; font-weight: 600; letter-spacing: -0.012em;
+  padding: .82rem 1.6rem; border-radius: 10px; text-decoration: none;
+  box-shadow: 0 1px 1px rgba(0,0,0,.18), 0 6px 20px rgba(31,158,82,.32);
+}
+.cta:hover { background: #24B25D; }
+.fine { font-size: .93rem; color: rgba(244,248,244,.66); margin-block-start: .9rem; max-width: 38rem; }
+.fine b { font-weight: 600; color: rgba(244,248,244,.82); }
+
+/* -------------------------------------------------------------- sections */
+section { padding-block: clamp(4rem, 9vw, 7rem); }
+section + section { border-block-start: 1px solid var(--rule); }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: center; }
+.split .shot { justify-self: center; }
+.shot img {
+  border-radius: 14px;
+  box-shadow: 0 2px 6px rgba(29,28,26,.10), 0 18px 44px rgba(29,28,26,.14);
+  width: 300px;
+}
+.pull {
+  font-size: clamp(1.15rem, 2vw, 1.42rem);
+  letter-spacing: -0.018em; color: var(--forest);
+  border-inline-start: 3px solid var(--teal);
+  padding-inline-start: 1rem; margin-block: 1.6rem;
+  max-width: var(--measure);
+}
+.note { font-size: .96rem; color: var(--muted); max-width: var(--measure); }
+
+/* --------------------------------------------------------------- avatars */
+.herdware { text-align: center; }
+.herdware h2, .herdware .lede { margin-inline: auto; }
+.herdware .lede { margin-block-end: 3rem; }
+.avatars {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: clamp(1rem, 2.4vw, 2rem);
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+}
+.avatars li { display: flex; flex-direction: column; align-items: center; gap: .35rem; }
+.avatars img { width: clamp(84px, 11vw, 132px); height: auto; }
+.avatars span { font-size: .9rem; color: var(--muted); letter-spacing: -0.006em; }
+
+/* ------------------------------------------------------------------ grid */
+.grid {
+  display: grid; gap: 1rem; margin-block-start: 2.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(16.5rem, 1fr));
+}
+.card {
+  background: var(--card); border: 1px solid var(--card-edge);
+  border-radius: 13px; padding: 1.35rem 1.4rem; box-shadow: var(--shadow);
+}
+.card h3 { margin-block-end: .45rem; }
+.card p { margin: 0; font-size: .985rem; color: var(--muted); line-height: 1.55; }
+
+/* --------------------------------------------------------------- licence */
+.licence { background: var(--licence-bg); color: #EAF3EC; }
+.licence h2 { color: #fff; }
+.licence p { color: rgba(234,243,236,.88); max-width: var(--measure); }
+.licence code { background: rgba(255,255,255,.14); color: #EAF3EC; }
+
+/* ------------------------------------------------------------------ foot */
+.end { text-align: center; }
+.end h2 { margin-block-end: 1.8rem; }
+footer { border-block-start: 1px solid var(--rule); padding-block: 2.4rem; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 1.4rem; align-items: center; justify-content: center;
+               font-size: .94rem; color: var(--muted); }
+footer a { color: var(--muted); }
+
+/* ---------------------------------------------------------------- narrow */
+@media (max-width: 47rem) {
+  .split { grid-template-columns: 1fr; }
+  .split .shot { order: -1; }
+  .hero { min-height: 0; }
+  .hero .wrap { padding-block: 7.5rem 3.5rem; }
+  .hero::before {
+    background:
+      linear-gradient(rgba(7,32,26,.62), rgba(7,32,26,.88) 62%),
+      linear-gradient(96deg, rgba(7,32,26,.8), rgba(7,32,26,.35));
+  }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <img src="images/icon.png" alt="">
+  <strong>Little Herd</strong>
+  <nav><a href="https://github.com/malpern/little-herd">GitHub</a></nav>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <h1>All your computers. One little window.</h1>
+    <p>Little Herd watches your Mac, your other Macs, your Linux boxes and your
+       NAS from the menu bar — CPU, memory, disk, and which AI agents are
+       running where.</p>
+    <a class="cta" href="https://github.com/malpern/little-herd/releases/latest">Download for macOS</a>
+    <p class="fine"><b>Free while in development</b> · macOS 15 or later · Apple silicon and Intel</p>
+  </div>
+</div>
+
+<main>
+
+<section>
+  <div class="wrap split">
+    <div>
+      <h2>Every other monitor watches one machine.</h2>
+      <p class="lede">You have a laptop, a mini under the desk, a Linux box in
+        the closet, and a NAS with the backups on it. Your system monitor shows
+        you exactly one of them.</p>
+      <p>Little Herd shows them side by side — one bar per machine, its name and
+        its face underneath, a green dot when it’s live and a red one when it
+        isn’t. One glance answers the question you actually have: which machine
+        is busy, and is anything down?</p>
+    </div>
+    <div class="shot"><img src="images/shot-cpu.png" width="600" height="656"
+      alt="Little Herd’s CPU overview: four machines side by side as segmented bars, each with an animal avatar, name and status dot."></div>
+  </div>
+</section>
+
+<!-- No screenshot here on purpose: the only shots on hand are CPU and memory,
+     and pairing this section with the memory panel would illustrate a claim it
+     does not show. Restore the two-column .split when an AI-view shot exists. -->
+<section>
+  <div class="wrap">
+    <h2>See which agent is working, and where.</h2>
+    <p class="lede">Claude Code and Codex sessions across every machine in the
+      herd: the project each one is in, whether it’s running, waiting for you,
+      or finished, and how far through its plan it has got.</p>
+    <p class="note">Little Herd reads session metadata only — never your
+      prompts, your responses, your command lines, or your keys. Nothing is
+      sent anywhere.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap split">
+    <div>
+      <h2>Hover a machine, and the header becomes that machine.</h2>
+      <p class="lede">What it’s running, what’s holding its memory, or how full
+        its disks are — in the same space, without the window resizing under
+        you.</p>
+      <p class="note">Memory is reported as macOS’s own pressure state, so cache
+        doing its job doesn’t read as a problem.</p>
+    </div>
+    <div class="shot"><img src="images/shot-memory.png" width="600" height="656"
+      alt="Hovering a machine replaces the header with that machine’s own detail — here, memory pressure and the apps holding the most memory."></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Nothing to install on the other machines.</h2>
+    <p class="lede">No agent. No daemon. No password, no root, no companion app.
+      Little Herd runs one short read-only command over the SSH connection you
+      already have, once every ten seconds.</p>
+    <p class="pull">If you can <code>ssh</code> to it, Little Herd can watch it.</p>
+    <p class="note">Your keys stay in your SSH config — Little Herd stores a
+      hostname and, if you use one, the path to an identity file. A Synology is
+      the one machine that needs an account, and its password goes in the login
+      keychain, never in preferences.</p>
+  </div>
+</section>
+
+<section class="herdware">
+  <div class="wrap">
+    <h2>Every machine gets a face.</h2>
+    <p class="lede">Twelve of them: laptop, mini, studio, all-in-one, NUC, edge
+      box, NAS, tower, GPU workstation, rack, coordinator, and cloud. Little
+      Herd guesses which one fits while it’s discovering your machines. You get
+      the last word.</p>
+    <ul class="avatars">
+      <li><img src="images/herdware/chick-laptop.png" alt=""><span>Laptop</span></li>
+      <li><img src="images/herdware/calf-mini.png" alt=""><span>Mini</span></li>
+      <li><img src="images/herdware/lamb-studio.png" alt=""><span>Studio</span></li>
+      <li><img src="images/herdware/duck-all-in-one.png" alt=""><span>All-in-one</span></li>
+      <li><img src="images/herdware/rabbit-nuc.png" alt=""><span>NUC</span></li>
+      <li><img src="images/herdware/cat-edge.png" alt=""><span>Edge box</span></li>
+      <li><img src="images/herdware/piglet-nas.png" alt=""><span>NAS</span></li>
+      <li><img src="images/herdware/pony-tower.png" alt=""><span>Tower</span></li>
+      <li><img src="images/herdware/ox-gpu.png" alt=""><span>GPU workstation</span></li>
+      <li><img src="images/herdware/goat-rack.png" alt=""><span>Rack</span></li>
+      <li><img src="images/herdware/rooster-coordinator.png" alt=""><span>Coordinator</span></li>
+      <li><img src="images/herdware/owl-cloud.png" alt=""><span>Cloud</span></li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>And the rest of it.</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Memory pressure, not memory used</h3>
+        <p>macOS’s own normal, warning and critical states — so cache doing its
+           job doesn’t read as a problem.</p>
+      </div>
+      <div class="card">
+        <h3>Possible leaks, marked</h3>
+        <p>An app whose memory has grown steadily across seven readings gets a
+           red dot, with the measured growth behind it.</p>
+      </div>
+      <div class="card">
+        <h3>The volume that runs out first</h3>
+        <p>Each machine’s fullest disk, with free space underneath. APFS volumes
+           sharing a container are counted once.</p>
+      </div>
+      <div class="card">
+        <h3>What’s actually running</h3>
+        <p>Per-machine process lists with approximate core usage, each with its
+           own app icon.</p>
+      </div>
+      <div class="card">
+        <h3>It reconnects by itself</h3>
+        <p>A machine that sleeps keeps its last values and says <em>Unavailable</em>,
+           with a tooltip saying why. No dialog.</p>
+      </div>
+      <div class="card">
+        <h3>Signed, notarized, and updates itself</h3>
+        <p>Developer ID and Apple notarization, with automatic updates.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Reserved: the price block goes here when there is one. Deliberately empty
+     so pricing can arrive without the page being redrawn around it. -->
+
+<section class="licence">
+  <div class="wrap">
+    <h2>The source is public.</h2>
+    <p>Read it, build it, change it, ship it inside your own work — anything
+      except selling a competing product. Two years after each release goes out,
+      that release becomes MIT.</p>
+    <p><code>FSL-1.1-MIT</code></p>
+  </div>
+</section>
+
+<section class="end">
+  <div class="wrap">
+    <h2>Point it at your herd.</h2>
+    <a class="cta" href="https://github.com/malpern/little-herd/releases/latest">Download for macOS</a>
+    <p class="fine" style="color:var(--muted)">Free while in development · macOS 15 or later</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Micah Alpern</span>
+    <a href="https://github.com/malpern/little-herd">Source on GitHub</a>
+    <a href="https://github.com/malpern/little-herd/releases">Release notes</a>
+    <a href="https://github.com/malpern/little-herd/blob/main/LICENSE.md">Licence</a>
+  </div>
+</footer>
+
+</body>
+</html>

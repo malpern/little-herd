@@ -18,8 +18,12 @@ vanishes the moment it answers you — and the removal of the destination
 interface, which was a permission and a placement decision for a move that
 cannot happen.
 
-**A paid release is being considered, and the shape of it is settled** — see
-*Selling it* below. Nothing is built.
+**The website is unblocked and nothing is built.** Little Herd is **free for
+now, paid later**; the site is hand-written static HTML in `site/` on GitHub
+Pages, dark hero over a light body, built from the app's own colour tokens. The
+paid shape stays recorded and unbuilt. See *The website* below — it is also the
+material review, and it says what the assets already have and what the words
+do not.
 
 Five releases went out on 20 August, and three of them were fixes for things
 the first two shipped:
@@ -1337,26 +1341,113 @@ it; the files survived only because the directory had not been reaped yet.
     concrete reason — offline or privacy, not symmetry. Frame it then as a
     degraded park, not a peer destination.
 
-10. **Selling it — the shape is decided, none of it is built.** Discussed
-    25 August. Whether to charge at all is **not** decided and is the one thing
-    a website cannot be written without: a free tool's page is a download
-    button, a paid one needs a price, a trial, and a reason to trust a
-    solo-maintained menu-bar app with SSH access to your machines. The licence
-    is already unusual enough to need explaining — `FSL-1.1-MIT`,
-    source-available, MIT after two years — and a badge will not do it.
+10. **The website — free for now, and the plan is settled.** Decided
+    26 August, which unblocks everything below it. The question the last
+    handoff called the one a website cannot be written without — charge or
+    not — is answered **free for now, paid later**. The page gets a download
+    button and tells the truth today; it does not promise a purchase that
+    nothing can yet fulfil. The paid shape recorded below survives unchanged
+    and is what drops in when it is built, so the layout reserves a place for
+    a price block rather than being redrawn around one.
 
-    Everything downstream of that question is settled. Distribution is
-    Developer ID and notarisation, because the store is closed to this app for
-    good (see the facts above) and `scripts/release` already does the whole
-    job. Payment goes through a **merchant of record** — Lemon Squeezy or
-    Paddle — which takes a cut and absorbs VAT and sales-tax filing, the
-    genuinely miserable half of selling software alone. The licence key lives
-    in the **Keychain**, reusing `KeychainSecret` *including its lesson*: it
-    deletes and re-adds rather than updating, because updating preserves the
-    first build's access list, and for a licence key that means every paying
-    customer locked out by a Sparkle update. Activation is two REST calls and
-    no SDK; put the host in `NSExceptionDomains` so it keeps a real ATS floor
-    while the NAS does not.
+    Two more decisions came with it. The site is **hand-written static HTML
+    and CSS in `site/`, published to GitHub Pages by an Action** — no
+    framework, because a one-page marketing site with a build step is a second
+    thing to maintain and this repo already has `scripts/release` to keep
+    honest. A custom domain is a DNS change later, not a rewrite. And the art
+    direction is a **dark forest-green hero over a light body**: the splash
+    art full-bleed on the evergreen ground, then the page turns to the app's
+    own cream for the feature sections so the screenshots read cleanly.
+
+    **The app already ships the site's palette, and it should be used rather
+    than sampled from the art.** `LittleHerd/Assets.xcassets` holds the
+    authority: `HerdBackground` `#FBF8F1` light and `#1D1C1A` dark,
+    `HerdForest` `#134F3C`, `HerdLoadGreen` `#1F9E52`, `HerdLoadTeal`
+    `#1A9C8A`, and the alert red at `#E84A29` in `DashboardView.swift:1706`.
+    A site built from those tokens matches the screenshots exactly; one built
+    by eyedropping the splash art will not, and the mismatch shows worst
+    precisely where a screenshot meets the page.
+
+    **What the material review found.** The assets are strong and the words
+    are not. The splash art, the app icon, and the twelve-avatar Herdware set
+    are finished, on-brand, and better than most indie Mac sites open with —
+    the Herdware sheet in particular is a section of the site that already
+    exists as an image. What is missing is everything verbal: there is no
+    tagline, no wordmark, no favicon, no social preview image, and no line
+    anywhere that says what this is to someone who has not read the source.
+    `README.md` is the only prose and it is engineering prose — accurate,
+    thorough, and organised around how the app works rather than what it is
+    for. It opens with bundle identifiers and preference-key migration. None
+    of it can be lifted onto a marketing page.
+
+    **The positioning to write to.** Every other monitor watches one machine;
+    this one watches the herd, and it is the only one that can say which AI
+    agent is running where. That is the whole pitch and the order matters —
+    the herd first, because it is the category, and the agents second, because
+    it is the thing nothing else does. The audience owns a laptop, a mini, a
+    Linux box, and a NAS, and has lately started running Claude and Codex
+    across all of them. Say "no agent to install on the other machines" early;
+    for this audience it is a feature and a relief, not a footnote.
+
+    **The hero art exists.** `DesignAssets/little-herd-site-hero-source.png`
+    is a wide 1536x1024 recomposition of the splash scene with a calm dark
+    left third to set a headline and a button over, and
+    `little-herd-social-card-source.png` is that same image centre-cropped to
+    the 1.91:1 Open Graph wants, so the two cannot drift. Both were made with
+    the OpenAI images API from the existing art as reference; the recipe, the
+    working key, and a rejected variant that invented an Apple-like mark on a
+    laptop screen are in `little-herd-site-hero-prompt.md`. Generated art gets
+    looked at at full size before it goes near the page.
+
+    Still missing and not yet drawn: a wordmark and a favicon. The favicon is
+    a reduction of the existing app icon rather than new art.
+
+    **The copy is drafted and lives in `site/COPY.md`.** It is the source the
+    page quotes rather than a suggestion — headline, six sections, both CTAs,
+    and the reasoning for each, including which alternatives lost and why. The
+    facts in it were checked against the app rather than against the README:
+    macOS 15.0 and a universal binary come from `project.yml` and `lipo`. Its
+    voice section is four rules, each one a thing the first draft got wrong;
+    the load-bearing one is that the animals supply the warmth, so the prose
+    can stay dry. Whimsical art plus whimsical writing is twee, and the
+    audience that owns four computers leaves.
+
+    **Screenshots are still not taken, and the obstacle is TCC.**
+    `screencapture -l` (which `scripts/capture_app_window.swift` uses) and
+    `screencapture -R` are both refused outright on this machine — "could not
+    create image from window" and "could not create image from rect" — while a
+    plain full-screen `screencapture` succeeds and returns real content. So
+    the fallback is a full grab cropped to the window rect, and **that crop
+    came back solid black with the diagnosis unfinished**: the full frame had
+    content, so it is the crop that is wrong, most likely the scale factor,
+    since `NSScreen.screens[0]` need not be the display that was captured and
+    this Air runs a scaled resolution. Anyone picking this up should verify by
+    looking at the cropped image, not at its dimensions — the first attempt
+    reported a perfectly plausible 600x656 at 2x and was entirely black.
+
+    **Two things stand between here and a site, and neither is a feature.**
+    Confirm whether the certificate fix is still unreleased, and **take fresh
+    screenshots** — both files in `Documentation/Screenshots` are from
+    20 August and predate the working session CPU meter, the destinations
+    section, and everything from 25 August. For a menu-bar app the screenshots
+    *are* the site. Render the panels with `PanelRenderHarness`, but check the
+    hero shots in the running app: the harness draws no `ScrollView`, no lazy
+    stack, no `Form`, no hover state, and turns a `.borderless` button into a
+    yellow placeholder. Shoot **dark-mode versions too** — `HerdBackground`
+    has a dark variant, so the app can supply screenshots that sit on the
+    evergreen hero without fighting it, which the cream ones would.
+
+    **The paid shape, unchanged and not yet built.** Distribution is Developer
+    ID and notarisation, because the store is closed to this app for good (see
+    the facts above) and `scripts/release` already does the whole job. Payment
+    goes through a **merchant of record** — Lemon Squeezy or Paddle — which
+    takes a cut and absorbs VAT and sales-tax filing, the genuinely miserable
+    half of selling software alone. The licence key lives in the **Keychain**,
+    reusing `KeychainSecret` *including its lesson*: it deletes and re-adds
+    rather than updating, because updating preserves the first build's access
+    list, and for a licence key that means every paying customer locked out by
+    a Sparkle update. Activation is two REST calls and no SDK; put the host in
+    `NSExceptionDomains` so it keeps a real ATS floor while the NAS does not.
 
     **Trial: 14 days, calendar, from first launch, stated plainly.** Not 7 — a
     monitor's value is ambient and someone who installs on a Friday never
@@ -1385,14 +1476,9 @@ it; the files survived only because the directory had not been reaped yet.
     with about three activations, not per monitored machine — charging per
     watched machine taxes the behaviour the product exists to encourage.
 
-    **Before a website, two things that are not features.** Release the
-    certificate fix (see the state above), and take fresh screenshots: both
-    files in `Documentation/Screenshots` are from 20 August and predate the
-    working session CPU meter, the destinations section, and everything from
-    25 August. For a menu-bar app the screenshots *are* the site. Render the
-    panels with `PanelRenderHarness`, but check the hero shots in the running
-    app — the harness draws no `ScrollView`, no lazy stack, no `Form`, no
-    hover state, and turns a `.borderless` button into a yellow placeholder.
+    The licence itself still needs explaining wherever it appears —
+    `FSL-1.1-MIT`, source-available, MIT after two years — and a badge will
+    not do it. One sentence in plain words, on the page and in the README.
 
 11. **Swap is read on two machines of four.** This Mac and Linux report it;
     a remote Mac is not asked, and the Synology is not either. The remote-Mac
