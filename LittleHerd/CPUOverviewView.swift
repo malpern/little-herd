@@ -403,10 +403,16 @@ private struct CPUThermometerColumn: View {
                     .padding(.vertical, 1)
                     .matchedThermometer(namespace, machine: machine.machine)
 
-                    if metric == .disk, let volume = fullestVolume {
+                    // Drawn for every machine on the Disk screen, and merely
+                    // invisible on one that has no capacity to report. Leaving
+                    // it out instead collapsed that column by two lines, so an
+                    // unreachable machine's avatar and name floated half a
+                    // row above its neighbours' — the herd stopped reading as
+                    // a row of machines and started reading as a mistake.
+                    if metric == .disk {
                         VStack(spacing: 0) {
                             Text(
-                                Int64(volume.availableBytes),
+                                Int64(fullestVolume?.availableBytes ?? 0),
                                 format: .byteCount(style: .file)
                             )
                             .font(.caption2.weight(.medium))
@@ -416,6 +422,8 @@ private struct CPUThermometerColumn: View {
                         }
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
+                        .opacity(fullestVolume == nil ? 0 : 1)
+                        .accessibilityHidden(fullestVolume == nil)
                     }
                 }
                 .frame(maxWidth: .infinity)
