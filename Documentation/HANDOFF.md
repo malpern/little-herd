@@ -1177,6 +1177,28 @@ edit to hide the agent tokens did nothing at all, because a refactor had
 renamed the property it matched on, and the build stayed green because the code
 was untouched. The render caught it. **Assert the match before editing.**
 
+**A locally built Release is not a substitute for a release, and it fails in a
+way that shows nothing.** Xcode ad-hoc signs a local Release build, but the
+vendored Sparkle framework keeps its Developer ID team signature — and dyld
+refuses to map a framework whose team differs from the process, so the app dies
+during launch with no window, no alert and no console output the user would
+see. The crash report says `Library not loaded: @rpath/Sparkle.framework`, with
+the real reason buried at the end of a long "tried:" list: *different Team
+IDs*. Re-signing the framework, its XPC services, the updater and the app
+ad-hoc makes it launch, and breaks Sparkle for good — an ad-hoc build cannot
+validate the feed's artefacts. **To put a build on a machine, cut a release.**
+
+**`scripts/release` can fail spuriously at the Gatekeeper check, and takes the
+evidence with it.** A run notarized *Accepted*, then died on
+`spctl -a -t install` not reporting `source=Notarized Developer ID`; the same
+command against the previously published build passed, which ruled out the
+check being wrong on this OS. Re-running with identical inputs succeeded. The
+work directory is cleaned up on failure, so diagnosis after the fact is not
+possible — **before assuming an artefact is bad, test the check against the
+last good release, then simply run it again.** A half-run also leaves
+`LittleHerd/Info.plist` stamped at the new version, which the next run's
+preflight rejects as a dirty tree: `git checkout` it first.
+
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
