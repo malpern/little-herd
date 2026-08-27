@@ -34,16 +34,20 @@ def inline(match):
 
 # src="images/…" in <img>, and url(images/…) in the hero's CSS background
 html, n_src = re.subn(r'(src)="(images/[^"]+)"', inline, html)
-html, n_css = re.subn(
-    r'url\((images/[^)]+)\)',
-    lambda m: "url(" + inline(re.match(r'()(.*)', m.group(1))).split('="', 1)[1].rstrip('"') + ")",
-    html,
-)
+
 
 # strip the document skeleton the Artifact publisher supplies itself, and the
 # metadata that only means something on a real origin
 body = re.search(r"<body>(.*)</body>", html, re.S).group(1)
-style = re.search(r"<style>.*?</style>", html, re.S).group(0)
+# the stylesheet is a separate file now, so fold it back in for the Artifact
+link = re.search(r'<link rel="stylesheet" href="([^"]+)">', html)
+css = (here / link.group(1)).read_text()
+css, n_css = re.subn(
+    r"url\((images/[^)]+)\)",
+    lambda m: "url(" + inline(re.match(r"()(.*)", m.group(1))).split('="', 1)[1].rstrip('"') + ")",
+    css,
+)
+style = "<style>\n" + css + "\n</style>"
 
 # an Artifact is one file, so the demo script has to come along inside it
 def inline_script(match):
@@ -61,6 +65,13 @@ assets = ",".join(
     for f in avatars
 )
 shim = "<script>window.LH_ASSETS={" + assets + "};</script>\n"
+
+# <use> cannot reach another file inside a single-file Artifact, so the
+# wordmark symbol comes back inline and the references point at it again
+mark = (here / "wordmark.svg").read_text()
+mark = mark.replace('<svg xmlns="http://www.w3.org/2000/svg">', '<svg width="0" height="0" style="position:absolute" aria-hidden="true">')
+body = body.replace('href="wordmark.svg#wordmark"', 'href="#wordmark"')
+shim = mark + "\n" + shim
 
 out = "<title>Little Herd</title>\n" + style + "\n" + shim + body
 

@@ -1,0 +1,447 @@
+/* Little Herd — one stylesheet, shared by every page.
+   Lifted out of index.html when the guide became a second page; a copy in
+   each would have drifted within a week. */
+
+/* ---------------------------------------------------------------- tokens
+   Taken from the app's own asset catalog (LittleHerd/Assets.xcassets) so the
+   page and the screenshots cannot drift apart. Do not eyedropper the art. */
+:root {
+  --cream:      #FBF8F1;   /* HerdBackground, light */
+  --ink:        #1D1C1A;   /* HerdBackground, dark  */
+  --forest:     #134F3C;   /* HerdForest, light     */
+  --green:      #1F9E52;   /* HerdLoadGreen         */
+  --teal:       #1A9C8A;   /* HerdLoadTeal          */
+  --alert:      #E84A29;   /* DashboardView.swift   */
+
+  --bg:         var(--cream);
+  --fg:         var(--ink);
+  --muted:      #5F5B54;
+  --rule:       rgba(29, 28, 26, 0.12);
+  --card:       #FFFFFF;
+  --card-edge:  rgba(29, 28, 26, 0.08);
+  --shadow:     0 1px 2px rgba(29,28,26,.05), 0 8px 24px rgba(29,28,26,.06);
+  --licence-bg: var(--forest);
+
+  --measure: 34rem;
+  --pad: clamp(1.25rem, 5vw, 4rem);
+}
+/* Dark is defined twice on purpose. The first block catches a viewer whose OS
+   is dark and who has made no explicit choice; the second catches an explicit
+   choice, which a media query cannot see. Guarding the first against
+   [data-theme="light"] lets an explicit light choice beat a dark OS. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:        #141513;
+    --fg:        #F2EFE8;
+    --muted:     #A8A29A;
+    --rule:      rgba(242, 239, 232, 0.14);
+    --card:      #1C1E1B;
+    --card-edge: rgba(242, 239, 232, 0.10);
+    --shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+    --forest:    #70C799;
+    --licence-bg:#10352A;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:        #141513;
+  --fg:        #F2EFE8;
+  --muted:     #A8A29A;
+  --rule:      rgba(242, 239, 232, 0.14);
+  --card:      #1C1E1B;
+  --card-edge: rgba(242, 239, 232, 0.10);
+  --shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+  --forest:    #70C799;
+  --licence-bg:#10352A;
+}
+
+/* ----------------------------------------------------------------- base */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { line-height: 1.12; letter-spacing: -0.022em; margin: 0; font-weight: 600; }
+h2 + p, h2 + .lede { margin-block-start: 1.15rem; }
+h1 { font-size: clamp(2.4rem, 6.2vw, 4rem); letter-spacing: -0.032em; }
+h2 { font-size: clamp(1.75rem, 3.6vw, 2.6rem); letter-spacing: -0.026em; }
+h3 { font-size: 1.0625rem; letter-spacing: -0.01em; }
+p  { margin: 0 0 1.1em; }
+a  { color: var(--forest); }
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.92em;
+  background: rgba(26,156,138,.13);
+  padding: 0.1em 0.36em;
+  border-radius: 4px;
+}
+img { max-width: 100%; height: auto; display: block; }
+.wrap { max-width: 74rem; margin-inline: auto; padding-inline: var(--pad); }
+.lede { font-size: clamp(1.06rem, 1.7vw, 1.28rem); color: var(--muted); max-width: var(--measure); }
+
+/* --------------------------------------------------------------- header */
+.top {
+  position: absolute; inset-block-start: 0; inset-inline: 0; z-index: 3;
+  display: flex; align-items: center; gap: .7rem;
+  padding: 1.15rem var(--pad);
+  color: #EAF3EC;
+}
+.top img { width: 30px; height: 30px; border-radius: 7px; }
+/* The wordmark is outlined Gabarito, so it needs no webfont: the letters take
+   currentColor and the tittle-turned-status-dot takes --dot, which inherits
+   through <use> where a class selector could not reach. */
+.wordmark { height: 19px; width: auto; color: inherit; }
+.wordmark.foot { height: 15px; color: var(--muted); }
+.top { --dot: #34C46F; }   /* over the dark hero, the darker green goes muddy */
+footer { --dot: var(--green); }
+.top nav { margin-inline-start: auto; }
+.top nav { display: flex; gap: 1.1rem; }
+.top nav a { color: rgba(234,243,236,.78); text-decoration: none; font-size: .95rem; }
+.top nav a:hover { color: #fff; }
+
+/* ----------------------------------------------------------------- hero
+   The art is generated with a deliberately calm, dark left third; the scrim
+   only deepens it so white type is safe at every width. */
+.hero {
+  position: relative;
+  background: #0C2B24 url(images/hero.jpg) right center / cover no-repeat;
+  color: #F4F8F4;
+  min-height: min(41rem, 88vh);
+  display: flex; align-items: center;
+}
+.hero::before {
+  content: ""; position: absolute; inset: 0;
+  background:
+    linear-gradient(96deg, rgba(7,32,26,.96) 0%, rgba(7,32,26,.88) 30%, rgba(8,36,29,.34) 56%, rgba(8,36,29,0) 76%),
+    linear-gradient(to top, rgba(7,32,26,.62), rgba(7,32,26,0) 42%);
+}
+.hero .wrap { position: relative; z-index: 2; width: 100%; padding-block: 8rem 4rem; }
+.hero h1 { max-width: 15ch; }
+.hero p {
+  font-size: clamp(1.08rem, 1.75vw, 1.32rem);
+  color: rgba(244,248,244,.9);
+  max-width: 33rem; margin-block: 1.15rem 2rem;
+}
+.cta {
+  display: inline-block; background: var(--green); color: #fff;
+  font-size: 1.03rem; font-weight: 600; letter-spacing: -0.012em;
+  padding: .82rem 1.6rem; border-radius: 10px; text-decoration: none;
+  box-shadow: 0 1px 1px rgba(0,0,0,.18), 0 6px 20px rgba(31,158,82,.32);
+}
+.cta:hover { background: #24B25D; }
+.fine { font-size: .93rem; color: rgba(244,248,244,.66); margin-block-start: .9rem; max-width: 38rem; }
+.fine b { font-weight: 600; color: rgba(244,248,244,.82); }
+/* Break between the dot-separated facts, never inside one — the default wrap
+   stranded "silicon and Intel" on its own line under "Apple". */
+.fine > span { white-space: nowrap; }
+
+/* ------------------------------------------------------------------ motion
+   Two animations, both of which mean something. Anything decorative was left
+   out on purpose: scattered scroll-reveals are what a generated page looks
+   like, and this one has a real mark and real toys to spend motion on. */
+
+/* The dot in the wordmark is a status light, so it behaves like one. It lives
+   inside the <use> shadow tree where no selector reaches it, so the colour is
+   animated through the custom property instead -- which needs @property to be
+   registered as a colour, or it would jump rather than fade. Browsers without
+   @property simply get a steady dot. */
+@property --dot { syntax: "<color>"; inherits: true; initial-value: #1F9E52; }
+@keyframes herd-live { 0%, 100% { --dot: #34C46F; } 50% { --dot: #2C8C57; } }
+
+.avatars img { transition: transform .3s cubic-bezier(.2,.7,.3,1), filter .3s ease; }
+.cta { transition: background .18s ease, transform .18s ease, box-shadow .18s ease; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .top { animation: herd-live 4.5s ease-in-out infinite; }
+  /* the avatars read as toys; they should feel like you could pick one up */
+  .avatars li:hover img {
+    transform: translateY(-7px) scale(1.045);
+    filter: drop-shadow(0 8px 12px rgba(29,28,26,.20));
+  }
+  .cta:hover { transform: translateY(-1px); }
+}
+
+/* ------------------------------------------------------- the live miniature
+   A recreation of the app window, laid out to match the real one: cream
+   ground, segmented vertical bars, avatar and name under each, and the header
+   swapping to whichever machine you point at. Labelled on the page as a demo,
+   because it is one -- the numbers are invented. */
+.lh {
+  width: 300px; background: var(--cream); color: var(--ink);  /* HerdBackground, the app's own window colour */
+  border: 1px solid var(--card-edge); border-radius: 14px; padding: 12px 14px 10px;
+  box-shadow: 0 2px 6px rgba(29,28,26,.10), 0 18px 44px rgba(29,28,26,.14);
+  font-size: 13px; line-height: 1.35; user-select: none;
+}
+:root[data-theme="dark"] .lh, 
+:root:not([data-theme="light"]) .lh { color: var(--ink); }
+.lh, .lh * { -webkit-font-smoothing: antialiased; }
+.lh-chrome { display: flex; gap: 6px; margin-bottom: 12px; }
+.lh-chrome i { width: 11px; height: 11px; border-radius: 50%; background: #DDD8CE; }
+.lh-chrome .r { background: #F0645C; } .lh-chrome .y { background: #F2BC3F; } .lh-chrome .g { background: #DDD8CE; }
+
+/* Every box below has a FIXED height, not a minimum. The window must not
+   change size when you open a machine, switch metric, or when a session
+   finishes -- it sits inline in the page, so any growth shoves the reader's
+   place on the page. */
+.lh-head { height: 56px; border-bottom: 1px solid rgba(29,28,26,.10); padding-bottom: 9px; margin-bottom: 12px; overflow: hidden; }
+.lh-stage { height: 176px; }
+/* `hidden` sets display:none from the UA stylesheet, which ANY author display
+   rule outranks -- so `.lh-rows { display: grid }` kept the AI rows painting
+   underneath the CPU view, as a column of stray status dots below the window.
+   Restate it with weight the author rules cannot beat. */
+.lh [hidden] { display: none !important; }
+.lh-cols, .lh-rows { height: 100%; }
+.lh-metric { font-size: 18px; font-weight: 700; letter-spacing: -.02em; color: #1D1C1A; }
+.lh-sub { display: block; font-size: 11.5px; color: #6B665E; margin-top: 1px; }
+.lh-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #1F9E52;
+  margin-right: 5px; vertical-align: middle; transition: background-color .45s ease; }
+.lh-dot.down { background: #E84A29; } .lh-dot.running { background: #1F9E52; }
+.lh-dot.waiting { background: #F2A03F; } .lh-dot.done { background: #3B82D6; }
+/* A machine's own page. The app puts the bar you clicked on the left, grown,
+   with the metric value above it and the avatar and name below -- and makes
+   that whole column the way back, alongside the chevron. The detail sits to
+   its right behind a divider under a small caps title. */
+.lh-focus { display: flex; align-items: center; height: 100%; }
+.lh-back {
+  display: flex; align-items: center; gap: 4px;
+  border: 0; background: none; font: inherit; color: inherit;
+  cursor: pointer; padding: 3px 4px; border-radius: 6px;
+}
+.lh-back:hover { background: rgba(26,156,138,.10); }
+.lh-chev { font-size: 19px; line-height: 1; color: #6B665E; }
+.lh-back b { font-weight: 700; font-size: 16px; letter-spacing: -.02em; }
+
+.lh-detail { display: flex; gap: 10px; height: 100%; }
+.lh-sum {
+  flex: 0 0 92px; display: flex; flex-direction: column; align-items: center; gap: 5px;
+  border: 0; background: none; font: inherit; color: inherit; cursor: pointer;
+  /* square on the divider side, or the radius bends the rule into an arc */
+  border-radius: 8px 0 0 8px; padding: 2px 0;
+  border-right: 1px solid rgba(29,28,26,.10);
+}
+.lh-sum:hover { background: rgba(26,156,138,.10); }
+.lh-sum-pct { font-size: 17px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.lh-sum-pct.hot { color: #E84A29; }
+/* the grown bar: wider blocks than the overview's, which is the whole point */
+.lh-sum-bar { display: flex; flex-direction: column; gap: 2px; width: 38px; }
+.lh-sum-bar i { height: 7px; border-radius: 2px; background: rgba(29,28,26,.09);
+  transition: background-color .45s cubic-bezier(.4,0,.2,1); }
+.lh-sum-bar i.green { background: #1F9E52; } .lh-sum-bar i.yellow { background: #E8C13F; }
+.lh-sum-bar i.orange { background: #EE8B33; } .lh-sum-bar i.red { background: #E84A29; }
+.lh-sum img { width: 28px; height: 28px; }
+.lh-sum-name { font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+
+.lh-pane { flex: 1; min-width: 0; overflow: hidden; }
+.lh-pane-title { font-size: 9.5px; letter-spacing: .08em; color: #8A857C; margin-bottom: 6px; }
+.lh-line { display: flex; align-items: baseline; gap: 8px; font-size: 12px; margin-bottom: 5px; }
+.lh-line b { font-weight: 600; }
+.lh-line span { margin-left: auto; color: #6B665E; font-size: 11px; font-variant-numeric: tabular-nums; }
+.lh-vol { margin-bottom: 8px; }
+.lh-vol-top { display: flex; align-items: baseline; font-size: 12px; }
+.lh-vol-top b { font-weight: 600; }
+.lh-vol-top span { margin-left: auto; color: #6B665E; font-size: 11px; font-variant-numeric: tabular-nums; }
+.lh-vol-bar { height: 6px; border-radius: 3px; background: rgba(29,28,26,.09); margin: 3px 0 2px; overflow: hidden; }
+.lh-vol-bar i { display: block; height: 100%; border-radius: 3px; transition: width .5s ease, background-color .45s ease; }
+.lh-vol-bar i.green { background: #1F9E52; } .lh-vol-bar i.yellow { background: #E8C13F; }
+.lh-vol-bar i.orange { background: #EE8B33; } .lh-vol-bar i.red { background: #E84A29; }
+.lh-vol-sub { font-size: 10px; color: #6B665E; }
+
+.lh-cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.lh-col { display: flex; flex-direction: column; align-items: center; gap: 5px; border-radius: 8px;
+  padding: 4px 2px; outline: none; transition: background-color .25s ease; }
+.lh-col { cursor: pointer; }
+.lh-col:hover, .lh-col:focus-visible { background: rgba(26,156,138,.10); }
+.lh-pct { font-size: 17px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+  transition: color .4s ease; }
+.lh-pct.hot { color: #E84A29; }
+.lh-bar { display: flex; flex-direction: column; gap: 2.5px; width: 30px; }
+.lh-bar i { height: 7px; border-radius: 2px; background: rgba(29,28,26,.09);
+  transition: background-color .45s cubic-bezier(.4,0,.2,1); }
+.lh-bar i.green { background: #1F9E52; } .lh-bar i.yellow { background: #E8C13F; }
+.lh-bar i.orange { background: #EE8B33; } .lh-bar i.red { background: #E84A29; }
+.lh-col img { width: 30px; height: 30px; }
+.lh-name { font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.lh-free { font-size: 10px; color: #6B665E; min-height: 13px; }  /* reserved even when empty */
+
+.lh-rows { display: grid; grid-template-rows: repeat(4, 1fr); gap: 2px; }
+.lh-agent { display: flex; align-items: center; gap: 7px; padding: 0 6px; border-radius: 8px; outline: none;
+  transition: background-color .25s ease; }
+.lh-agent-name { flex: 1; min-width: 0; }
+.lh-agent-name b { display: block; font-size: 12px; font-weight: 600; }
+.lh-agent-name i { font-style: normal; font-size: 10.5px; color: #6B665E; }
+.lh-step { font-size: 10.5px; color: #6B665E; font-variant-numeric: tabular-nums; }
+
+.lh-tabs { display: flex; gap: 2px; margin-top: 11px; border-top: 1px solid rgba(29,28,26,.10); padding-top: 9px; }
+.lh-tabs button {
+  flex: 1; font: inherit; font-size: 11px; font-weight: 600; letter-spacing: .01em;
+  border: 0; background: none; color: #6B665E; padding: 4px 0; border-radius: 6px; cursor: pointer;
+}
+.lh-tabs button[aria-selected="true"] { background: rgba(26,156,138,.14); color: #14624E; }
+.lh-tabs button:hover { color: #14624E; }
+
+.demo-note { font-size: .85rem; color: var(--muted); margin-top: .9rem; text-align: center; max-width: 300px; }
+
+/* -------------------------------------------------------------- sections */
+section { padding-block: clamp(4rem, 9vw, 7rem); }
+section + section { border-block-start: 1px solid var(--rule); }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: center; }
+.split .shot { justify-self: center; }
+/* Direct child only. As `.shot img` this also matched every avatar inside the
+   live demo, giving each one the screenshot's rounded corners and drop shadow
+   -- which on a transparent PNG draws a little white plate behind the animal. */
+.shot > img {
+  border-radius: 14px;
+  box-shadow: 0 2px 6px rgba(29,28,26,.10), 0 18px 44px rgba(29,28,26,.14);
+  width: 300px;
+}
+.pull {
+  font-size: clamp(1.15rem, 2vw, 1.42rem);
+  letter-spacing: -0.018em; color: var(--forest);
+  border-inline-start: 3px solid var(--teal);
+  padding-inline-start: 1rem; margin-block: 1.6rem;
+  max-width: var(--measure);
+}
+.note { font-size: .96rem; color: var(--muted); max-width: var(--measure); }
+
+/* --------------------------------------------------------------- avatars */
+.herdware { text-align: center; }
+.herdware h2, .herdware .lede { margin-inline: auto; }
+.herdware .lede { margin-block-end: 3rem; }
+.avatars {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: clamp(1rem, 2.4vw, 2rem);
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+}
+.avatars li { display: flex; flex-direction: column; align-items: center; gap: .35rem; }
+.avatars img { width: clamp(84px, 11vw, 132px); height: auto; }
+.avatars span { font-size: .9rem; color: var(--muted); letter-spacing: -0.006em; }
+
+/* ------------------------------------------------------------------ grid */
+.grid {
+  display: grid; gap: 1rem; margin-block-start: 2.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(16.5rem, 1fr));
+}
+.card {
+  background: var(--card); border: 1px solid var(--card-edge);
+  border-radius: 13px; padding: 1.35rem 1.4rem; box-shadow: var(--shadow);
+}
+.card h3 { margin-block-end: .45rem; }
+.card p { margin: 0; font-size: .985rem; color: var(--muted); line-height: 1.55; }
+
+/* ----------------------------------------------------------- coming soon
+   Given its own ground so nobody mistakes it for what ships today. */
+.soon { background: rgba(26,156,138,.07); }
+:root[data-theme="dark"] .soon { background: rgba(26,156,138,.10); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .soon { background: rgba(26,156,138,.10); } }
+.pill {
+  display: inline-block; font-size: .76rem; font-weight: 600;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--teal); border: 1px solid currentColor;
+  padding: .2rem .6rem; border-radius: 999px; margin-block-end: 1.1rem;
+}
+.soon .split + .split { margin-block-start: clamp(2.5rem, 5vw, 4rem); }
+
+/* --------------------------------------------------------------- licence */
+.licence { background: var(--licence-bg); color: #EAF3EC; }
+.licence h2 { color: #fff; }
+.licence p { color: rgba(234,243,236,.88); max-width: var(--measure); }
+.licence code { background: rgba(255,255,255,.14); color: #EAF3EC; }
+
+/* ------------------------------------------------------------------ foot */
+.end { text-align: center; }
+.end h2 { margin-block-end: 1.8rem; }
+footer { border-block-start: 1px solid var(--rule); padding-block: 2.4rem; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 1.4rem; align-items: center; justify-content: center;
+               font-size: .94rem; color: var(--muted); }
+footer a { color: var(--muted); }
+
+/* ---------------------------------------------------------------- narrow */
+@media (max-width: 47rem) {
+  .split { grid-template-columns: 1fr; }
+  .split .shot { order: -1; }
+  .hero { min-height: 0; }
+  .hero .wrap { padding-block: 7.5rem 3.5rem; }
+  /* The desktop scrim is horizontal because the art's calm space is on the
+     left. Stacked at phone width that went nearly opaque and buried the
+     characters, so narrow screens get one vertical gradient instead, and the
+     art is centred rather than pinned right. */
+  .hero { background-position: 58% center; }
+  .hero::before {
+    background: linear-gradient(rgba(7,32,26,.42), rgba(7,32,26,.80) 66%);
+  }
+}
+
+/* ------------------------------------------------------------------ guide
+   The second page. Same tokens, same type scale; what changes is that this
+   one is read rather than scanned, so the measure tightens and the traps get
+   a rule of their own. */
+.top-solid { position: static; background: var(--forest); }
+:root[data-theme="dark"] .top-solid { background: #10352A; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .top-solid { background: #10352A; } }
+.lockup { display: flex; align-items: center; gap: .7rem; text-decoration: none; color: inherit; }
+
+.guide-intro { padding-block: clamp(3rem, 7vw, 5rem) 1rem; }
+.guide-intro h1 { font-size: clamp(2.1rem, 5vw, 3.2rem); margin-block: .6rem .9rem; }
+.guide-intro .lede, .guide-intro .note { max-width: 40rem; }
+.guide-intro .note { margin-block-start: 1rem; }
+
+.steps { list-style: none; margin: 0 auto; padding-block: 1rem clamp(3rem, 6vw, 5rem); }
+.step { display: grid; grid-template-columns: 3rem 1fr; gap: clamp(1rem, 2.5vw, 2rem); padding-block: clamp(2rem, 4vw, 3rem); }
+.step + .step { border-block-start: 1px solid var(--rule); }
+.step-n {
+  font-size: 1.5rem; font-weight: 600; color: var(--teal);
+  font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+.step-body { max-width: 40rem; }
+.step-body h2 { font-size: clamp(1.4rem, 2.6vw, 1.9rem); }
+.step-body p { margin-block: 0 1em; }
+.what { font-size: 1.1rem; color: var(--fg); margin-block-start: .7rem !important; }
+.what b { font-weight: 600; }
+/* A trap is the part worth paying for; it gets a rule so it cannot be skimmed. */
+.trap {
+  border-inline-start: 3px solid var(--alert);
+  padding: .15rem 0 .15rem 1rem;
+  font-size: .97rem; color: var(--muted);
+}
+.trap b { color: var(--fg); font-weight: 600; }
+.step pre {
+  background: rgba(29,28,26,.05); border: 1px solid var(--card-edge);
+  border-radius: 9px; padding: .85rem 1rem; overflow-x: auto;
+  font-size: .93rem; line-height: 1.5; margin-block: 0 1em;
+}
+:root[data-theme="dark"] .step pre { background: rgba(242,239,232,.05); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .step pre { background: rgba(242,239,232,.05); } }
+.step pre code { background: none; padding: 0; font-size: inherit; }
+kbd {
+  font: inherit; font-size: .9em; border: 1px solid var(--card-edge);
+  border-block-end-width: 2px; border-radius: 5px; padding: .05em .35em;
+  background: var(--card);
+}
+.payoff { background: var(--licence-bg); color: #EAF3EC; text-align: center; padding-block: clamp(3.5rem, 7vw, 5.5rem); }
+.payoff h2 { color: #fff; }
+.payoff .lede { color: rgba(234,243,236,.85); margin: 1.1rem auto 2rem; }
+
+/* --------------------------------------------------------- the herd, on home */
+.herd-idea { background: rgba(26,156,138,.06); }
+:root[data-theme="dark"] .herd-idea { background: rgba(26,156,138,.09); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .herd-idea { background: rgba(26,156,138,.09); } }
+.herd-idea .lede { margin-block-end: 2.4rem; }
+.four { display: grid; gap: 1.4rem 2rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); margin-block-end: 2.4rem; }
+.four div { border-block-start: 2px solid var(--teal); padding-block-start: .8rem; }
+.four h3 { margin-block-end: .3rem; }
+.four p { margin: 0; font-size: .97rem; color: var(--muted); }
+/* On the hero the ghost sits on the dark art, so it takes the light ink;
+   inside the page it takes the forest. One rule cannot serve both grounds. */
+.cta.ghost {
+  background: none; box-shadow: none; border: 1px solid currentColor;
+  color: var(--forest);
+}
+.hero .cta.ghost { color: rgba(244,248,244,.9); }
+.hero .cta.ghost:hover { background: rgba(255,255,255,.10); color: #fff; }
+.cta.ghost:hover { background: rgba(26,156,138,.10); }
+.cta-row { display: flex; flex-wrap: wrap; gap: .8rem; align-items: center; }
