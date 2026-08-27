@@ -269,25 +269,28 @@ page has a real mark and real toys to spend motion on instead.
 
 ## The live panel
 
-Two sections carry a working miniature of the app window instead of a
-screenshot: the CPU overview in section 1, and the AI panel in section 2 —
-which had no picture at all, because the only shots on hand were CPU and
-memory and pairing either with it would have illustrated a claim it does not
-make.
+Three sections carry a working miniature of the app window instead of a
+screenshot: the CPU overview, the AI panel, and a machine's own Disk page.
 
-It earns the space by teaching. Hovering a machine puts that machine in the
-header, which is the app's central idea and the one thing a still can never
-show. The metric tabs walk through all four views. Sessions arrive, wait and
-finish on their own, which is what the AI panel actually looks like over a
-minute.
+It earns the space by teaching. Clicking a machine opens that machine, and the
+metric picker comes with it, so switching lens keeps you where you are — which
+is the interaction the app is actually built around and the one a still cannot
+show. Sessions arrive, wait and finish on their own, which is what the AI panel
+looks like over a minute.
+
+**It used to demonstrate hovering a machine to put it in the header. The app
+removed that, so the page removed it too** — along with the screenshot of it.
+A page that demonstrates a feature the product no longer has is worse than a
+page with no demo at all, because everything else on it then reads as a guess.
 
 **It is labelled "A working recreation".** Everything it does is something the
-app does — the same metrics, the same segmented bars, the same colour ramp,
-the same green-for-live and red-for-unreachable — but the numbers are invented,
-and the caption says so rather than letting anyone take it for a screenshot.
+app does, but the numbers are invented and the caption says so rather than
+letting anyone take it for a screenshot.
 
-Keyboard users get the same thing: every machine and every session row is
-focusable and responds to focus exactly as it does to hover.
+Machine columns are focusable and open on Enter or Space. The session rows are
+deliberately *not* focusable, because nothing happens when you activate one and
+a tab stop that leads nowhere is worse than no tab stop.
+
 
 ## Still needed
 

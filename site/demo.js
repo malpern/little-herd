@@ -3,9 +3,14 @@
  * This is a recreation, not a screenshot, and it is labelled as one on the
  * page. Everything it does is something the real app does: the same four
  * metrics, the same segmented bars, the same green-yellow-orange-red ramp, the
- * same green dot for live and red for unreachable, and above all the same
- * hover behaviour -- putting the machine you are pointing at into the header,
- * which is the app's central idea and impossible to convey in a still.
+ * same green dot for live and red for unreachable, and the same way in: click
+ * a machine and the panel becomes that machine, with the metric picker still
+ * there so switching CPU to Disk re-lenses the machine you are already on.
+ *
+ * It used to swap the header on hover. The app dropped that -- a header that
+ * changed as the pointer crossed a column said the app had noticed the mouse
+ * rather than what a click would do -- so this dropped it too. A page that
+ * demonstrates a removed feature is worse than one with no demo at all.
  *
  * Numbers are invented and drift on a random walk. Nothing here reports a real
  * machine, and no claim is made that it does.
@@ -28,23 +33,24 @@
     { name: "Air", avatar: "chick-laptop",
       cpu: 51, mem: 62, disk: 74, free: "121 GB free",
       procs: { cpu: [["Xcode", "3.2 cores"], ["Claude Code", "0.9 cores"], ["Chrome", "0.4 cores"]],
-               mem: [["Dia", "4.56 GB"], ["Claude Code", "1.43 GB"], ["Xcode", "1.1 GB"]],
-               disk: [["Macintosh HD", "121 GB free of 460 GB"]] } },
+               mem: [["Dia", "4.56 GB"], ["Claude Code", "1.43 GB"], ["Xcode", "1.1 GB"]] },
+      volumes: [{ name: "Macintosh HD", note: "3 volumes in one container", free: "121 GB", total: "460 GB", pct: 74 }] },
     { name: "Mini", avatar: "calf-mini",
       cpu: 13, mem: 44, disk: 39, free: "1.2 TB free",
       procs: { cpu: [["codex", "1.4 cores"], ["node", "0.6 cores"]],
-               mem: [["codex", "2.10 GB"], ["node", "0.88 GB"]],
-               disk: [["Macintosh HD", "1.2 TB free of 2 TB"]] } },
+               mem: [["codex", "2.10 GB"], ["node", "0.88 GB"]] },
+      volumes: [{ name: "Macintosh HD", note: "2 volumes in one container", free: "1.2 TB", total: "2 TB", pct: 39 },
+                { name: "Time Machine", note: "", free: "220 GB", total: "4 TB", pct: 94 }] },
     { name: "Linux", avatar: "ox-gpu",
       cpu: 6, mem: 31, disk: 52, free: "460 GB free",
       procs: { cpu: [["docker", "0.9 cores"], ["restic", "0.3 cores"]],
-               mem: [["docker", "1.62 GB"], ["restic", "0.31 GB"]],
-               disk: [["nvme0n1p2", "460 GB free of 1 TB"]] } },
+               mem: [["docker", "1.62 GB"], ["restic", "0.31 GB"]] },
+      volumes: [{ name: "nvme0n1p2", note: "", free: "460 GB", total: "1 TB", pct: 52 }] },
     { name: "Synology", avatar: "piglet-nas",
       cpu: 3, mem: 26, disk: 67, free: "2.6 TB free",
       procs: { cpu: [["synoindexd", "0.2 cores"]],
-               mem: [["synoindexd", "0.44 GB"]],
-               disk: [["Volume 1", "2.6 TB free of 8.1 TB"]] } },
+               mem: [["synoindexd", "0.44 GB"]] },
+      volumes: [{ name: "Volume 1", note: "SHR, 4 drives", free: "2.6 TB", total: "8.1 TB", pct: 67 }] },
   ];
 
   const AGENT_POOL = [
@@ -73,8 +79,9 @@
   const tone = (p) => (p >= 90 ? "red" : p >= 75 ? "orange" : p >= 55 ? "yellow" : "green");
 
   function build(root) {
-    let view = root.dataset.view === "ai" ? "ai" : "cpu";
-    let hover = null;
+    const VIEWS = ["cpu", "mem", "disk", "ai"];
+    let view = VIEWS.includes(root.dataset.view) ? root.dataset.view : "cpu";
+    let focus = null;   // the machine being looked at, or null for the herd
 
     const machines = MACHINES.map((m) => ({
       ...m, live: true,
@@ -92,35 +99,28 @@
           <span class="lh-metric"></span>
           <span class="lh-sub"><span class="lh-dot live"></span><span class="lh-sub-text"></span></span>
         </div>
-        <div class="lh-hover" hidden>
-          <div class="lh-hover-top">
-            <span class="lh-dot live"></span><img alt=""><b></b><span class="lh-tag"></span>
-          </div>
-          <div class="lh-hover-rows"></div>
+        <div class="lh-focus" hidden>
+          <button class="lh-back" type="button" aria-label="Back to the herd">&#8249;</button>
+          <img alt=""><span class="lh-dot live"></span><b></b>
+          <span class="lh-focus-metric"></span>
         </div>
       </div>
       <div class="lh-stage">
         <div class="lh-cols"></div>
         <div class="lh-rows" hidden></div>
+        <div class="lh-detail" hidden></div>
       </div>
       <div class="lh-tabs" role="tablist"></div>`;
 
     const $ = (s) => root.querySelector(s);
-    const idle = $(".lh-idle"), hoverBox = $(".lh-hover");
+    const idle = $(".lh-idle"), focusBox = $(".lh-focus");
     const metricEl = $(".lh-metric"), subText = $(".lh-sub-text"), subDot = $(".lh-sub .lh-dot");
-    const hDot = hoverBox.querySelector(".lh-dot"), hImg = hoverBox.querySelector("img");
-    const hName = hoverBox.querySelector("b"), hTag = hoverBox.querySelector(".lh-tag");
-    const hRows = hoverBox.querySelector(".lh-hover-rows");
-    const cols = $(".lh-cols"), rows = $(".lh-rows"), tabs = $(".lh-tabs");
+    const fDot = focusBox.querySelector(".lh-dot"), fImg = focusBox.querySelector("img");
+    const fName = focusBox.querySelector("b"), fMetric = focusBox.querySelector(".lh-focus-metric");
+    const back = focusBox.querySelector(".lh-back");
+    const cols = $(".lh-cols"), rows = $(".lh-rows"), detail = $(".lh-detail"), tabs = $(".lh-tabs");
+    back.addEventListener("click", () => { focus = null; switchView(); });
 
-    function bindHover(el, get) {
-      const on = () => { hover = get(); paintHead(); };
-      const off = () => { hover = null; paintHead(); };
-      el.addEventListener("mouseenter", on);
-      el.addEventListener("focus", on);
-      el.addEventListener("mouseleave", off);
-      el.addEventListener("blur", off);
-    }
 
     const colEls = machines.map((m) => {
       const el = document.createElement("div");
@@ -132,7 +132,13 @@
         <img src="${asset(m.avatar)}" alt="">
         <span class="lh-name"><span class="lh-dot live"></span>${m.name}</span>
         <span class="lh-free"></span>`;
-      bindHover(el, () => ({ kind: "machine", data: m }));
+      el.setAttribute("role", "button");
+      el.title = `Open ${m.name}`;
+      const open = () => { focus = m; switchView(); };
+      el.addEventListener("click", open);
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+      });
       cols.appendChild(el);
       return { pct: el.querySelector(".lh-pct"), segs: [...el.querySelectorAll(".lh-bar i")],
                dot: el.querySelector(".lh-name .lh-dot"), free: el.querySelector(".lh-free") };
@@ -141,12 +147,12 @@
     const rowEls = slots.map((s) => {
       const el = document.createElement("div");
       el.className = "lh-agent";
-      el.tabIndex = 0;
+      // deliberately not focusable: these rows do nothing, and a tab stop that
+      // leads nowhere is worse than no tab stop
       el.innerHTML = `
         <span class="lh-dot"></span>
         <span class="lh-agent-name"><b></b><i></i></span>
         <span class="lh-step"></span>`;
-      bindHover(el, () => ({ kind: "agent", data: s }));
       rows.appendChild(el);
       return { el, dot: el.querySelector(".lh-dot"), name: el.querySelector("b"),
                sub: el.querySelector("i"), step: el.querySelector(".lh-step") };
@@ -155,23 +161,27 @@
     METRICS.forEach((m) => {
       const b = document.createElement("button");
       b.type = "button"; b.role = "tab"; b.textContent = m.label; b.dataset.key = m.key;
-      b.addEventListener("click", () => { view = m.key; hover = null; switchView(); });
+      // switching metric re-lenses the machine you are on rather than going back
+      b.addEventListener("click", () => { view = m.key; switchView(); });
       tabs.appendChild(b);
     });
 
     function switchView() {
-      cols.hidden = view === "ai";
-      rows.hidden = view !== "ai";
+      const drilled = !!focus && view !== "ai";
+      cols.hidden = drilled || view === "ai";
+      rows.hidden = drilled || view !== "ai";
+      detail.hidden = !drilled;
       tabs.querySelectorAll("button").forEach((x) =>
         x.setAttribute("aria-selected", String(x.dataset.key === view)));
-      paintHead(); paintCols(); paintRows();
+      paintHead(); paintCols(); paintRows(); paintDetail();
     }
 
     function paintHead() {
       const liveCount = machines.filter((m) => m.live).length;
-      idle.hidden = !!hover;
-      hoverBox.hidden = !hover;
-      if (!hover) {
+      const drilled = !!focus && view !== "ai";
+      idle.hidden = drilled;
+      focusBox.hidden = !drilled;
+      if (!drilled) {
         metricEl.textContent = METRICS.find((m) => m.key === view).label;
         subDot.className = "lh-dot " + (liveCount === machines.length ? "live" : "down");
         subText.textContent = view === "ai"
@@ -179,22 +189,12 @@
           : `${liveCount} of ${machines.length} live`;
         return;
       }
-      if (hover.kind === "machine") {
-        const m = hover.data;
-        hDot.className = "lh-dot " + (m.live ? "live" : "down");
-        hImg.hidden = false; hImg.src = asset(m.avatar);
-        hName.textContent = m.name;
-        hTag.innerHTML = view === "mem" ? "Memory pressure <em>Normal</em>" : "";
-        hRows.innerHTML = (view === "ai" ? [] : m.procs[view] || [])
-          .map(([n, v]) => `<span><b>${n}</b><i>${v}</i></span>`).join("");
-      } else {
-        const a = hover.data;
-        hDot.className = "lh-dot " + a.state;
-        hImg.hidden = true;
-        hName.textContent = a.agent;
-        hTag.textContent = `${a.project} on ${a.machine}`;
-        hRows.innerHTML = `<span><b>${STATE_LABEL[a.state]}</b><i>step ${a.step}</i></span>`;
-      }
+      fDot.className = "lh-dot " + (focus.live ? "live" : "down");
+      fImg.src = asset(focus.avatar);
+      fName.textContent = focus.name;
+      // the metric picker stays live on a machine's page, so this says which
+      // lens you are looking through rather than offering a way back
+      fMetric.textContent = METRICS.find((m) => m.key === view).label;
     }
 
     function paintCols() {
@@ -221,6 +221,22 @@
         r.sub.textContent = `${s.project} · ${s.machine}`;
         r.step.innerHTML = s.state === "done" ? "&#10003;" : s.step;
       });
+    }
+
+    function paintDetail() {
+      if (!focus || view === "ai") return;
+      if (view === "disk") {
+        detail.innerHTML = focus.volumes.map((v) => `
+          <div class="lh-vol">
+            <div class="lh-vol-top"><b>${v.name}</b><span>${v.free} free</span></div>
+            <div class="lh-vol-bar"><i style="width:${v.pct}%" class="${tone(v.pct)}"></i></div>
+            <div class="lh-vol-sub">${v.note ? v.note + " &middot; " : ""}${v.total} total</div>
+          </div>`).join("");
+        return;
+      }
+      const list = focus.procs[view] || [];
+      detail.innerHTML = list.map(([n, val]) => `
+        <div class="lh-line"><b>${n}</b><span>${val}</span></div>`).join("");
     }
 
     // A tick only moves the targets; this loop walks the shown values towards
@@ -275,14 +291,17 @@
         s.state = s.state === "running" ? (Math.random() < 0.5 ? "waiting" : "done") : "running";
       }
 
-      // Do not repaint the header while it is showing something hovered --
-      // the pointer is on it and the reader is reading it.
-      if (!hover) paintHead();
+      paintHead();
       paintRows();
       paintCols();   // always paint: rAF only supplies the in-between frames
       nudge();
     }
 
+    // an instance can open already looking at one machine, so a section can
+    // show the detail view without the reader having to find it first
+    if (root.dataset.focus) {
+      focus = machines.find((m) => m.name === root.dataset.focus) || null;
+    }
     switchView();
 
     const still = window.matchMedia("(prefers-reduced-motion: reduce)");
