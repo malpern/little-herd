@@ -998,6 +998,37 @@ produced six rows all named after the account the panel was already scoped to.
 rather than dropping the session — which it used to do, because a nil project
 name was a hard `guard`.
 
+**Renaming a Claude session from outside it aims at the wrong store, and
+Anthropic has declined to consolidate the stores.** Codex has a published
+method — `thread/name/set` on its app server, which is what
+`AgentRenamer` uses — and Claude has nothing equivalent. The obvious
+workaround, appending a `custom-title` line to the transcript, is what the
+community `/better-title` skill and `claude-sessions-mcp` both do, and it is
+worse than unsupported:
+
+- **The desktop sidebar does not read it.** Titles there come from the app's
+  own store, `~/Library/Application Support/Claude/claude-code-sessions/…/
+  local_<uuid>.json`, keyed by its own id with `cliSessionId` pointing back at
+  the transcript. Checked on this Mac: 197 records, each with its own `title`.
+- **Where it *is* read, it expires.** The session list scans only the last
+  64 KB of a transcript for `customTitle`, so on a long session the entry is
+  pushed out of the window and the title vanishes from `/resume`. Reported from
+  the field on the issue below, and this session's own transcript is 38 MB.
+- **The divergence is known and closed.** Issue #64304 documents at least three
+  title stores that never reconcile and was closed as *not planned*.
+
+**Watch [anthropics/claude-code#33165](https://github.com/anthropics/claude-code/issues/33165)**
+— "Allow Claude to rename its own session (programmatic session rename API)",
+open, the live thread. What matters is not a rename API in the abstract but a
+**single authoritative title store**, or the separate index file that issue
+proposes instead of tail-scanning. Until one lands, any implementation aims at
+a moving target.
+
+    gh api repos/anthropics/claude-code/issues/33165 --jq '[.number,.state,.title]|@tsv'
+
+Native subscription needs a scope this token does not have; `gh auth refresh -h
+github.com -s notifications` once, then subscribing, would do it hands-free.
+
 ## Method notes
 
 **Four bugs in one afternoon, none of them findable by the suite, all of them
