@@ -39,7 +39,17 @@ nonisolated enum DashboardMetrics {
     /// a capacity and the word "free" between the bar and the machine's name.
     /// The other three sit in the same window with room to spare, and that
     /// space is the price of the window not resizing as you change metric.
-    static let overviewContent = CGSize(width: 324, height: 362)
+    static let overviewContent = CGSize(width: 324, height: 376)
+    /// The figure, the thermometer and — on Disk — the capacity, as one block
+    /// of fixed height.
+    ///
+    /// Fixed so the machines under it hold their place as you change metric,
+    /// and so the room Disk spends on its two lines of capacity is room the
+    /// other metrics can spend on a taller bar. Both of those used to be done
+    /// by reserving the capacity's space everywhere, which kept the machines
+    /// still but left a hole above them.
+    static let thermometerColumnHeight: CGFloat = 132
+
     /// The metric row along the bottom of every dashboard screen.
     /// What the metric tabs cost the two machine screens, over and above what
     /// they already had.

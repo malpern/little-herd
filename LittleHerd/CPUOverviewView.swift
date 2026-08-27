@@ -394,38 +394,47 @@ private struct CPUThermometerColumn: View {
                     SegmentedThermometer(
                         value: presentation.thermometerValue,
                         blockHeight: 6,
-                        spacing: 2.25
+                        spacing: 2.25,
+                        fillsHeight: true
                     )
                     .padding(.vertical, 1)
                     .matchedThermometer(namespace, machine: machine.machine)
 
-                    // **Drawn on every screen, and only sometimes visible.**
-                    // Twice now this block has been left out where it had
-                    // nothing to say, and twice the column above it collapsed
-                    // by two lines: first for a machine with no capacity to
-                    // report, which floated half a row above its neighbours,
-                    // and then for every metric that is not Disk, which moved
-                    // the whole herd up and down as you changed tab. The
-                    // window is one size for all four metrics, so the machines
-                    // should sit in one place in it.
-                    VStack(spacing: 0) {
-                        Text(
-                            HerdByteCount.storage(
-                                Int64(fullestVolume?.availableBytes ?? 0)
+                    // **Only where there is a capacity to write.** This block
+                    // used to be drawn everywhere and hidden where it had
+                    // nothing to say, because leaving it out collapsed the
+                    // column and moved the machines — twice. The stack around
+                    // it is a fixed height now, so the machines below hold
+                    // their place whatever is in here, and the room this does
+                    // not use goes to the thermometer instead of showing as a
+                    // gap.
+                    if metric == .disk {
+                        VStack(spacing: 0) {
+                            Text(
+                                HerdByteCount.storage(
+                                    Int64(fullestVolume?.availableBytes ?? 0)
+                                )
                             )
-                        )
-                        .font(.caption2.weight(.medium))
+                            .font(.caption2.weight(.medium))
 
-                        Text("free")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                            Text("free")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        // Space held on Disk for every machine, filled only by
+                        // those with a volume to report. Per metric and not
+                        // per machine: keying it on the machine let an
+                        // unreachable one grow a bar half a row taller than
+                        // its neighbours', which is the same collapse as
+                        // before wearing the opposite sign.
+                        .opacity(showsCapacity ? 1 : 0)
+                        .accessibilityHidden(!showsCapacity)
                     }
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .opacity(showsCapacity ? 1 : 0)
-                    .accessibilityHidden(!showsCapacity)
                 }
                 .frame(maxWidth: .infinity)
+                .frame(height: DashboardMetrics.thermometerColumnHeight)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -479,7 +488,9 @@ private struct CPUThermometerColumn: View {
 
     private var fullestVolume: StorageVolume? { machine.fullestVolume }
 
-    /// Whether there is a capacity to show, as opposed to a space held for one.
+    /// Whether there is a capacity to write, as opposed to a space held for
+    /// one. The space is held by every column on Disk; only the machines that
+    /// answered fill it.
     private var showsCapacity: Bool { metric == .disk && fullestVolume != nil }
 
     private var columnHelp: Text {
@@ -915,6 +926,14 @@ struct SegmentedThermometer: View {
     var blockWidth: CGFloat = 30
     var blockHeight: CGFloat = 6
     var spacing: CGFloat = 3
+    /// Divide whatever height it is given between the ten blocks, rather than
+    /// standing at `blockHeight` and leaving the remainder empty.
+    ///
+    /// The overview uses this so a metric with nothing written under its bar
+    /// spends that room on the bar itself: CPU and Memory are the same column
+    /// as Disk minus two lines of capacity, and those two lines were showing
+    /// as a hole rather than as a taller thermometer.
+    var fillsHeight = false
 
     var body: some View {
         VStack(spacing: spacing) {
@@ -926,7 +945,12 @@ struct SegmentedThermometer: View {
                             ? ThermometerScale.band(forLevel: level).color
                             : LittleHerdTheme.emptyBlock
                     )
-                    .frame(width: blockWidth, height: blockHeight)
+                    .frame(width: blockWidth)
+                    .frame(
+                        height: fillsHeight ? nil : blockHeight,
+                        alignment: .center
+                    )
+                    .frame(maxHeight: fillsHeight ? .infinity : nil)
             }
         }
         .animation(.smooth(duration: 0.45), value: value)
