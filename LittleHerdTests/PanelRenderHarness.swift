@@ -730,6 +730,22 @@ extension PanelRenderHarness {
             named: "metric-tabs-alarms"
         )
 
+        // The one screen that asks the user for something, in both grounds,
+        // because the version this replaces was built for the cream one and
+        // turned to grey slabs on the other.
+        for scheme in [ColorScheme.light, .dark] {
+            try render(
+                NetworkVolumeOnboardingView(
+                    isRequesting: false,
+                    onContinue: {},
+                    onNotNow: {}
+                )
+                .environment(\.colorScheme, scheme),
+                size: CGSize(width: 420, height: 374),
+                named: "onboarding-\(scheme == .dark ? "dark" : "light")"
+            )
+        }
+
         // What the pointer gets, which used to be a `.help` string. Three
         // sessions, deliberately unlike each other: one reporting a long tool
         // call that has to wrap, one reporting nothing at all and falling back

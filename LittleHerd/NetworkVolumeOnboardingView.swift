@@ -1,5 +1,18 @@
 import SwiftUI
 
+/// The one screen that asks the user for something.
+///
+/// **Rewritten because it was built for the cream window and never adapted.**
+/// Its surfaces were literal white at half opacity and its marks were
+/// `HerdForest`, a green chosen to sit on paper — so in dark mode the cards
+/// became grey slabs and the icons on them all but disappeared. Every fill
+/// here is semantic now, and the one green is the mid-tone the thermometer
+/// uses, which carries on both grounds.
+///
+/// It is also shorter. It had a hero, three feature chips, and an explanation
+/// card, and the chips said what the sentence above them already said —
+/// marketing on a screen whose actual job is to explain a system prompt that
+/// is about to appear.
 struct NetworkVolumeOnboardingView: View {
     let isRequesting: Bool
     let onContinue: () -> Void
@@ -7,165 +20,112 @@ struct NetworkVolumeOnboardingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            LittleHerdOnboardingHero()
-                .padding(.top, 16)
+            OnboardingHerd()
+                .padding(.top, 26)
 
-            LittleHerdOnboardingBenefits()
-                .padding(.top, 14)
+            VStack(spacing: 7) {
+                Text("Put your herd to work")
+                    .font(.title2.weight(.bold))
+
+                Text("See the load across your Macs, Linux boxes, and the AI sessions running on them — then pick the right machine for the next job.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 330)
+            }
+            .padding(.top, 18)
+
+            Spacer(minLength: 18)
 
             NetworkVolumeNextStep()
-                .padding(.top, 12)
-
-            Spacer(minLength: 12)
 
             NetworkVolumeOnboardingActions(
                 isRequesting: isRequesting,
                 onContinue: onContinue,
                 onNotNow: onNotNow
             )
-            .padding(.bottom, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 20)
         }
-        .padding(.horizontal, 22)
+        .padding(.horizontal, 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(LittleHerdTheme.background)
     }
 }
 
-private struct LittleHerdOnboardingHero: View {
+/// Three of the herd, overlapping.
+///
+/// No rings. They were a two-point white stroke, which on the cream ground
+/// separated the animals and on the dark one drew three bright circles that
+/// were the first thing you saw. A shadow does the same separating and belongs
+/// to whatever is behind it.
+private struct OnboardingHerd: View {
     var body: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: -12) {
-                OnboardingAnimal(
-                    avatar: .chickLaptop,
-                    size: 64,
-                    verticalOffset: 7
-                )
-                OnboardingAnimal(
-                    avatar: .calfMini,
-                    size: 74,
-                    verticalOffset: 0
-                )
-                OnboardingAnimal(
-                    avatar: .oxGPU,
-                    size: 64,
-                    verticalOffset: 7
-                )
-            }
-            .frame(height: 78)
-            .accessibilityHidden(true)
-
-            Text("Put your herd to work")
-                .font(.title2.weight(.bold))
-
-            Text("See the load across your Macs, Linux boxes, and AI coding sessions—then pick the right machine for the next job.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: 355)
+        HStack(spacing: -14) {
+            animal(.chickLaptop, size: 66, lift: 8)
+            animal(.calfMini, size: 78, lift: 0)
+            animal(.oxGPU, size: 66, lift: 8)
         }
+        .frame(height: 82)
+        .accessibilityHidden(true)
     }
-}
 
-private struct OnboardingAnimal: View {
-    let avatar: HerdwareAvatar
-    let size: CGFloat
-    let verticalOffset: CGFloat
-
-    var body: some View {
+    private func animal(
+        _ avatar: HerdwareAvatar,
+        size: CGFloat,
+        lift: CGFloat
+    ) -> some View {
         Image(avatar.assetName)
             .resizable()
             .scaledToFit()
             .frame(width: size, height: size)
-            .padding(5)
-            .background(
-                LittleHerdTheme.loadTeal.opacity(0.1),
-                in: Circle()
-            )
-            .overlay(
-                Circle()
-                    .stroke(.white.opacity(0.85), lineWidth: 2)
-            )
-            .offset(y: verticalOffset)
+            .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+            .offset(y: lift)
     }
 }
 
-private struct LittleHerdOnboardingBenefits: View {
-    var body: some View {
-        HStack(spacing: 8) {
-            OnboardingBenefit(
-                symbolName: "gauge.with.dots.needle.33percent",
-                title: "See load"
-            )
-            OnboardingBenefit(
-                symbolName: "sparkles",
-                title: "Find room"
-            )
-            OnboardingBenefit(
-                symbolName: "terminal",
-                title: "Follow agents"
-            )
-        }
-    }
-}
-
-private struct OnboardingBenefit: View {
-    let symbolName: String
-    let title: LocalizedStringResource
-
-    var body: some View {
-        VStack(spacing: 5) {
-            Image(systemName: symbolName)
-                .font(.body.weight(.medium))
-                .foregroundStyle(LittleHerdTheme.forest)
-
-            Text(title)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 46)
-        .background(.white.opacity(0.52), in: RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(LittleHerdTheme.forest.opacity(0.08), lineWidth: 1)
-        )
-    }
-}
-
+/// What the next tap will do, which is the reason this screen exists.
 private struct NetworkVolumeNextStep: View {
     var body: some View {
-        HStack(spacing: 11) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: "externaldrive.connected.to.line.below")
                 .font(.title3.weight(.medium))
-                .foregroundStyle(LittleHerdTheme.forest)
-                .frame(width: 32, height: 32)
+                // The thermometer's green rather than the wordmark's: this one
+                // is a mid-tone and reads on paper and on near-black alike.
+                .foregroundStyle(LittleHerdTheme.loadGreen)
+                .frame(width: 34, height: 34)
                 .background(
-                    LittleHerdTheme.forest.opacity(0.09),
-                    in: RoundedRectangle(cornerRadius: 8)
+                    LittleHerdTheme.loadGreen.opacity(0.12),
+                    in: RoundedRectangle(
+                        cornerRadius: HerdRadius.surface,
+                        style: .continuous
+                    )
                 )
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text("Next: include shared storage")
-                    .font(.caption.weight(.semibold))
+                    .font(.callout.weight(.semibold))
 
                 Text("macOS will ask for network-volume access. Little Herd reads names and available capacity only.")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 0)
         }
-        .padding(10)
+        .padding(12)
         .background(
-            LittleHerdTheme.forest.opacity(0.055),
-            in: RoundedRectangle(cornerRadius: 11)
+            .quaternary.opacity(0.5),
+            in: RoundedRectangle(
+                cornerRadius: HerdRadius.panel,
+                style: .continuous
+            )
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 11)
-                .stroke(LittleHerdTheme.forest.opacity(0.08), lineWidth: 1)
+            RoundedRectangle(cornerRadius: HerdRadius.panel, style: .continuous)
+                .strokeBorder(.separator, lineWidth: 1)
         )
     }
 }
@@ -190,11 +150,11 @@ private struct NetworkVolumeOnboardingActions: View {
                     }
                     Text(isRequesting ? "Waiting for macOS…" : "Continue")
                 }
-                .frame(minWidth: 126)
+                .frame(minWidth: 130)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .tint(LittleHerdTheme.forest)
+            .tint(LittleHerdTheme.loadGreen)
             .keyboardShortcut(.defaultAction)
             .disabled(isRequesting)
         }
