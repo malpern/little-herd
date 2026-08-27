@@ -315,10 +315,16 @@ to be your desktop, a Linux box you built for one project, a NAS with the
 backups — and the promise that those four islands can be one herd. Two calls to
 action, the guide first and the download second.
 
-**Then: what makes a herd.** Four properties, none of which is Little Herd and
-none of which costs money — one network, one way in, the same tools everywhere,
+**Then: what a herd lets you do.** Six capabilities, none of which is Little
+Herd and none of which costs money — one network, one way in, the same tools everywhere,
 work that outlives the connection. Saying plainly that the product is not
 required is what makes the rest of the page believable.
+
+Each card names its tool — Tailscale, SSH, Homebrew, tmux, Screen Sharing,
+Herdr — linked to the step of the guide that explains it. Naming them is what
+turns the grid from a summary into navigation: a reader who already knows one
+of those words has somewhere to go, and one who knows none of them learns six
+things worth knowing.
 
 **Only then the monitor.** "And one window that watches all of it." The old
 line, "every other monitor watches one machine", was competing inside the
