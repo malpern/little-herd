@@ -6,7 +6,6 @@ struct CPUOverviewView: View {
     var namespace: Namespace.ID?
     var onSelectMetric: ((MachineID) -> Void)?
     var onSelectMachine: ((MachineID) -> Void)?
-    var onHoverMachine: ((MachineID, Bool) -> Void)?
 
     var body: some View {
         HStack(alignment: .top, spacing: columnSpacing) {
@@ -18,8 +17,7 @@ struct CPUOverviewView: View {
                     avatarSize: avatarSize,
                     namespace: namespace,
                     onSelectMetric: onSelectMetric,
-                    onSelectMachine: onSelectMachine,
-                    onHoverMachine: onHoverMachine
+                    onSelectMachine: onSelectMachine
                 )
             }
         }
@@ -53,7 +51,6 @@ private struct CPUThermometerColumn: View {
     var namespace: Namespace.ID?
     var onSelectMetric: ((MachineID) -> Void)?
     var onSelectMachine: ((MachineID) -> Void)?
-    var onHoverMachine: ((MachineID, Bool) -> Void)?
 
     var body: some View {
         // A real Button, not a tap gesture: the window is movable by its
@@ -100,6 +97,10 @@ private struct CPUThermometerColumn: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            // Says the bar is a target. The hovered header used to do this
+            // job by changing when you crossed a column, which told you the
+            // app had noticed the pointer rather than what a click would do.
+            .pointerStyle(.link)
             .accessibilityLabel(Text("\(machine.name) \(String(localized: metric.title))"))
             .accessibilityHint(columnHelp)
 
@@ -115,15 +116,12 @@ private struct CPUThermometerColumn: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .pointerStyle(.link)
             .accessibilityLabel(Text("\(machine.name) details"))
         }
         .frame(width: columnWidth)
         .frame(maxHeight: .infinity, alignment: .top)
         .padding(.vertical, 4)
-        // The whole column, not just its controls: the header answers for the
-        // machine, so pointing anywhere at the machine should summon it.
-        .contentShape(Rectangle())
-        .onHover { onHoverMachine?(machine.machine, $0) }
     }
 
     /// A storage machine keeps its column when it is not answering: its numbers

@@ -13,8 +13,6 @@ struct DashboardView: View {
     )
     private var hasCompletedNetworkVolumeOnboarding = false
     @Namespace private var machineTransition
-    @State private var hoveredAgentID: MachineAgentSession.ID?
-    @State private var hoveredMachineID: MachineID?
     @State private var isShowingLaunchSplash =
         LittleHerdLaunchSplashSession.claimPresentation()
     @State private var isShowingNetworkVolumeOnboarding = false
@@ -45,8 +43,6 @@ struct DashboardView: View {
                         CPUOverviewHeaderArea(
                             machines: model.overviewMachines,
                             agentSessions: agentSessions,
-                            hoveredAgentID: hoveredAgentID,
-                            hoveredMachineID: hoveredMachineID,
                             aiUsageLimits: model.aiUsageLimits,
                             metric: model.overviewMetric,
                             onSelect: model.selectOverviewMetric
@@ -61,8 +57,6 @@ struct DashboardView: View {
                         CPUOverviewHeaderArea(
                             machines: model.overviewMachines,
                             agentSessions: agentSessions,
-                            hoveredAgentID: hoveredAgentID,
-                            hoveredMachineID: hoveredMachineID,
                             aiUsageLimits: model.aiUsageLimits,
                             metric: model.overviewMetric,
                             onSelect: model.selectOverviewMetric
@@ -101,8 +95,6 @@ struct DashboardView: View {
                         OverviewMetricContent(
                             machines: model.overviewMachines,
                             agentSessions: agentSessions,
-                            hoveredAgentID: $hoveredAgentID,
-                            hoveredMachineID: $hoveredMachineID,
                             metric: model.overviewMetric,
                             compactionThresholds: model.compactionThresholds,
                             agentCPU: model.agentCPU,
@@ -314,45 +306,30 @@ struct DashboardView: View {
     }
 }
 
+/// The header, which now says the same thing whatever the pointer is over.
+///
+/// It used to swap for whichever row or column was hovered, showing that one
+/// machine's activity or that one session's plan. The detail view is where
+/// that belongs: a header that rewrites itself under the pointer cannot be
+/// read deliberately, cannot be pointed at, and is invisible to anyone
+/// navigating by keyboard.
 private struct CPUOverviewHeaderArea: View {
     let machines: [MachineMonitorModel]
     let agentSessions: [MachineAgentSession]
-    let hoveredAgentID: MachineAgentSession.ID?
-    let hoveredMachineID: MachineID?
     let aiUsageLimits: AIUsageLimitsModel
     let metric: OverviewMetric
     let onSelect: (OverviewMetric) -> Void
 
     var body: some View {
-        ZStack {
-            if metric == .ai,
-               let hoveredAgent = agentSessions.first(where: {
-                   $0.id == hoveredAgentID
-               })
-            {
-                HoveredAgentHeader(machineSession: hoveredAgent)
-            } else if metric != .ai,
-                      let hovered = machines.first(where: {
-                          $0.machine == hoveredMachineID
-                      })
-            {
-                HoveredMachineMetricHeader(machine: hovered, metric: metric)
-            } else {
-                CPUOverviewHeader(
-                    liveMachineCount: machines.count(where: {
-                        $0.state == .live
-                    }),
-                    machineCount: machines.count,
-                    activeAgentCount: agentSessions.count {
-                        $0.session.state == .active
-                    },
-                    agentCount: agentSessions.count,
-                    aiUsageLimits: aiUsageLimits,
-                    metric: metric,
-                    onSelect: onSelect
-                )
-            }
-        }
+        CPUOverviewHeader(
+            liveMachineCount: machines.count(where: { $0.state == .live }),
+            machineCount: machines.count,
+            activeAgentCount: agentSessions.count { $0.session.state == .active },
+            agentCount: agentSessions.count,
+            aiUsageLimits: aiUsageLimits,
+            metric: metric,
+            onSelect: onSelect
+        )
         .frame(maxWidth: .infinity)
         .frame(height: 68)
     }
@@ -576,8 +553,6 @@ private struct OverviewMetricContent: View {
     let machines: [MachineMonitorModel]
     let agentSessions: [MachineAgentSession]
     var selectedMachine: MachineID?
-    @Binding var hoveredAgentID: MachineAgentSession.ID?
-    @Binding var hoveredMachineID: MachineID?
     let metric: OverviewMetric
     var compactionThresholds = AgentCompactionThresholds()
     var agentCPU: [String: Double] = [:]
@@ -596,7 +571,6 @@ private struct OverviewMetricContent: View {
             )
             AIAgentsView(
                 sessions: AgentPanelFocus.sessions(agentSessions, on: focused),
-                hoveredAgentID: $hoveredAgentID,
                 onSelectMachine: onSelectMetric,
                 workload: HerdWorkloadReader.finding(for: workloadInputs),
                 compactionThresholds: compactionThresholds,
@@ -611,17 +585,6 @@ private struct OverviewMetricContent: View {
                 namespace: namespace,
                 onSelectMetric: onSelectMetric,
                 onSelectMachine: onSelectMachine,
-                onHoverMachine: { machine, isHovered in
-                    // Guarded the way the agent rows are: two columns can
-                    // report in either order as the pointer crosses between
-                    // them, and an unguarded exit blanks the header the
-                    // neighbour has just claimed.
-                    if isHovered {
-                        hoveredMachineID = machine
-                    } else if hoveredMachineID == machine {
-                        hoveredMachineID = nil
-                    }
-                }
             )
         }
     }
@@ -1431,66 +1394,6 @@ private struct MachineIdentityRail: View {
         .frame(width: 112)
         .frame(maxHeight: .infinity, alignment: .center)
         .padding(.horizontal, 4)
-    }
-}
-
-struct HoveredMachineActivityHeader: View {
-    let machine: MachineMonitorModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(machine.status.tint)
-                    .frame(width: 5, height: 5)
-                    .accessibilityLabel(machine.status.label)
-
-                MachineAvatarView(avatar: machine.avatar, size: 18)
-
-                Text(machine.shortName)
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
-
-                Spacer(minLength: 8)
-
-                Text("WHAT IT’S DOING")
-                    .font(.caption2.weight(.semibold))
-                    .tracking(0.35)
-                    .foregroundStyle(.secondary)
-
-                HoveredMachineCPUValue(
-                    value: machine.state == .live ? machine.cpu.value : nil
-                )
-            }
-
-            HoveredMachineActivityRows(
-                state: machine.state,
-                activities: machine.activities,
-                coreCount: machine.coreCount,
-                unavailability: machine.unavailability
-            )
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 4)
-    }
-
-}
-
-private struct HoveredMachineCPUValue: View {
-    let value: Double?
-
-    var body: some View {
-        if let value {
-            Text(value / 100, format: .percent.precision(.fractionLength(0)))
-                .font(.caption2.weight(.semibold).monospacedDigit())
-                .foregroundStyle(value > 99 ? Color.red : Color.secondary)
-                .contentTransition(.numericText(value: value))
-        } else {
-            Text("—")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-        }
     }
 }
 

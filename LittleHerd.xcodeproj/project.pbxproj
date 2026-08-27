@@ -65,7 +65,6 @@
 		ADFBD220A565C255B252322A /* Machine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90FE8216081F585ED580AE1C /* Machine.swift */; };
 		AE7E668C1245F5127C1E588D /* NetworkVolumeOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */; };
 		B270CF7B1257E519C16B1B71 /* CodexRolloutUsageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29F273B61D78B7B84881FE18 /* CodexRolloutUsageTests.swift */; };
-		B3560BD65BAB29961DD5DB6C /* HoveredMachineMetricHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 672A36609CA039974CDF72E7 /* HoveredMachineMetricHeader.swift */; };
 		B503079BC74767A615F0B400 /* CodexBarSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1B84E18576938DDB61E77B6 /* CodexBarSource.swift */; };
 		B8613453826F6A56D32919D6 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A2C8E4C049BD68DD7C9764E /* IOKit.framework */; };
 		BF0A72836087C3E499B9E54D /* InMemoryConfigurationStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28A334FD1C930D9B96C4E2F1 /* InMemoryConfigurationStorage.swift */; };
@@ -132,7 +131,6 @@
 		6125192CA7CFE81311C048BC /* MachineMonitorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineMonitorModel.swift; sourceTree = "<group>"; };
 		6513E7513A64EC239339381A /* KeychainSecret.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSecret.swift; sourceTree = "<group>"; };
 		66BA172D3CC6CD4B8AEBC144 /* LittleHerdApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LittleHerdApp.swift; sourceTree = "<group>"; };
-		672A36609CA039974CDF72E7 /* HoveredMachineMetricHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoveredMachineMetricHeader.swift; sourceTree = "<group>"; };
 		694A0E6E34E815E5A5218AA0 /* AgentProbeShellTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentProbeShellTests.swift; sourceTree = "<group>"; };
 		6BE7C98CC9A2691BAFB89BCC /* MachineActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineActivity.swift; sourceTree = "<group>"; };
 		6D7D3C2D4C1908811B46F252 /* LittleHerd.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LittleHerd.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -233,7 +231,6 @@
 				902F116974B1C2D720ED2B18 /* FullDiskAccess.swift */,
 				D56F2E897732951FB02B9B7F /* HerdwareAvatar.swift */,
 				F82C710E619943CBDCBE3355 /* HerdWorkload.swift */,
-				672A36609CA039974CDF72E7 /* HoveredMachineMetricHeader.swift */,
 				CE6423E97058743B9C08DD97 /* Info.plist */,
 				6513E7513A64EC239339381A /* KeychainSecret.swift */,
 				66BA172D3CC6CD4B8AEBC144 /* LittleHerdApp.swift */,
@@ -449,7 +446,6 @@
 				A75BF90DF86C9F46EB1FC29C /* FullDiskAccess.swift in Sources */,
 				5CB3283CDCE6D84BF5D5D30B /* HerdWorkload.swift in Sources */,
 				3A45C65052806FE4A571A349 /* HerdwareAvatar.swift in Sources */,
-				B3560BD65BAB29961DD5DB6C /* HoveredMachineMetricHeader.swift in Sources */,
 				0173CB23C12E9DDBD3B79AE2 /* KeychainSecret.swift in Sources */,
 				D91CA4B85E7162E4DB2649A6 /* LittleHerdApp.swift in Sources */,
 				2ED305BEE5B202DD76C12D58 /* LittleHerdBranding.swift in Sources */,

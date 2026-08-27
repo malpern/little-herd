@@ -3,7 +3,6 @@ import SwiftUI
 
 struct AIAgentsView: View {
     let sessions: [MachineAgentSession]
-    @Binding var hoveredAgentID: MachineAgentSession.ID?
     var onSelectMachine: ((MachineID) -> Void)?
     /// Where the load is, set against where the sessions are. Nil most of the
     /// time, and deliberately so — see `HerdWorkloadReader`.
@@ -19,25 +18,16 @@ struct AIAgentsView: View {
     /// because a panel scoped to one machine that never says which one is a
     /// panel you cannot trust.
     var machineName: String?
-    /// The rest of the herd, for the one question a parked session raises.
-    /// Empty in a herd of one, and then the section never appears.
 
-    /// Which groups are folded. Every section folds, not only the finished
-    /// one — a panel where one header behaves differently from its neighbours
-    /// teaches people that headers are decoration.
+    /// Which groups are folded. Both of them fold, because a panel where one
+    /// header behaves differently from its neighbour teaches people that
+    /// headers are decoration.
     ///
-    /// Finished is not a group here any more. It was the majority of what a
-    /// probe returns and the least useful thing on screen — folded away by
-    /// default, which is most of the way to admitting it should not be a
-    /// section at all. The header still counts those sessions as tracked, so
-    /// nothing has stopped being watched; the panel has stopped listing them.
-    ///
-    /// Destinations starts folded too, and for a different reason. Expanded, it
-    /// listed every machine that could not take the work — and a list of
-    /// reasons nobody asked for reads as the app complaining that it needs
-    /// something, which is how the first person to see it read it. Where a
-    /// session could go is a question you ask, so the header asks it and the
-    /// answers are one click away.
+    /// Nothing starts folded any more. Finished was the only group that did,
+    /// and it is not a group here at all: it was the majority of what a probe
+    /// returns and the least useful thing on screen. The header still counts
+    /// those sessions as tracked, so nothing has stopped being watched — the
+    /// panel has stopped listing them.
     @State private var collapsed: Set<AgentPanelSection> = []
 
     private var layout: AgentPanelLayout {
@@ -56,7 +46,6 @@ struct AIAgentsView: View {
                     compactionThresholds: compactionThresholds,
                     agentCPU: agentCPU,
                     agentCompactedAt: agentCompactedAt,
-                    hoveredAgentID: $hoveredAgentID,
                     collapsed: $collapsed,
                     onSelectMachine: onSelectMachine
                 )
@@ -64,9 +53,6 @@ struct AIAgentsView: View {
             // Was `.hidden`, which is why a list taller than the panel gave no
             // sign that it continued.
             .scrollIndicators(.automatic)
-            .onDisappear {
-                hoveredAgentID = nil
-            }
         }
     }
 
@@ -87,7 +73,6 @@ struct AIAgentPanelContent: View {
     var compactionThresholds = AgentCompactionThresholds()
     var agentCPU: [String: Double] = [:]
     var agentCompactedAt: [String: Date] = [:]
-    @Binding var hoveredAgentID: MachineAgentSession.ID?
     @Binding var collapsed: Set<AgentPanelSection>
     var onSelectMachine: ((MachineID) -> Void)?
 
@@ -152,13 +137,9 @@ struct AIAgentPanelContent: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .onHover { isHovered in
-                if isHovered {
-                    hoveredAgentID = row.id
-                } else if hoveredAgentID == row.id {
-                    hoveredAgentID = nil
-                }
-            }
+            // The pointer says the row answers a click. It replaces a header
+            // that used to rewrite itself as you moved across the list.
+            .pointerStyle(.link)
 
             // Inset to where the titles begin, so the dividers, the section
             // headers and the titles share one vertical line.
@@ -268,147 +249,6 @@ nonisolated enum AgentRowMetrics {
         if elapsed < 3_600 { return "\(Int(elapsed / 60))m" }
         if elapsed < 86_400 { return "\(Int(elapsed / 3_600))h" }
         return "\(Int(elapsed / 86_400))d"
-    }
-}
-
-struct HoveredAgentHeader: View {
-    let machineSession: MachineAgentSession
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HoveredAgentIdentityRow(machineSession: machineSession)
-
-            HoveredAgentProgressRow(session: machineSession.session)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 4)
-    }
-}
-
-private struct HoveredAgentIdentityRow: View {
-    let machineSession: MachineAgentSession
-
-    var body: some View {
-        HStack(spacing: 5) {
-            AgentProviderIcon(
-                provider: machineSession.session.provider,
-                size: 15
-            )
-
-            Text(machineSession.session.projectName)
-                .font(.caption.weight(.semibold))
-                .lineLimit(1)
-
-            Spacer(minLength: 5)
-
-            Image(systemName: machineSession.machineSymbolName)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-
-            Text(machineSession.machineName)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-
-            AgentSessionStatusIndicator(
-                state: machineSession.session.state,
-                includesLabel: true
-            )
-        }
-    }
-}
-
-private struct HoveredAgentProgressRow: View {
-    let session: AgentSession
-
-    var body: some View {
-        HStack(spacing: 7) {
-            if let progress = session.progress {
-                AgentProgressRing(progress: progress, state: session.state)
-
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(progress.currentStep)
-                        .font(.caption.weight(.medium))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-
-                    Text(
-                        "Step \(progress.currentStepIndex) of \(progress.totalStepCount)"
-                    )
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                }
-            } else {
-                Image(systemName: session.state == .waiting ? "clock" : "waveform.path")
-                    .foregroundStyle(statusColor)
-                    .frame(width: 27)
-
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(progressUnavailableLabel)
-                        .font(.caption.weight(.medium))
-
-                    Text(session.updatedAt, style: .relative)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var progressUnavailableLabel: LocalizedStringResource {
-        switch session.state {
-        case .active: "Working — no structured plan"
-        case .completed: "Finished — no structured plan"
-        case .waiting: "Waiting — no structured plan"
-        case .stalled: "Stopped part-way — no structured plan"
-        }
-    }
-
-    private var statusColor: Color {
-        switch session.state {
-        case .active: .green
-        case .completed, .stalled: .blue
-        case .waiting: .orange
-        }
-    }
-}
-
-private struct AgentProgressRing: View {
-    let progress: AgentSessionProgress
-    let state: AgentSessionState
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.secondary.opacity(0.16), lineWidth: 2.5)
-
-            Circle()
-                .trim(from: 0, to: progress.fractionCompleted)
-                .stroke(
-                    ringColor,
-                    style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-
-            Text("\(progress.currentStepIndex)/\(progress.totalStepCount)")
-                .font(.system(.caption2, design: .rounded).weight(.semibold))
-                .minimumScaleFactor(0.65)
-        }
-        .frame(width: 30, height: 30)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Agent progress")
-        .accessibilityValue(
-            "Step \(progress.currentStepIndex) of \(progress.totalStepCount)"
-        )
-    }
-
-    private var ringColor: Color {
-        switch state {
-        case .active: .green
-        case .completed, .stalled: .blue
-        case .waiting: .orange
-        }
     }
 }
 
