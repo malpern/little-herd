@@ -1559,6 +1559,14 @@ it; the files survived only because the directory had not been reaped yet.
     as a recreation and the numbers are invented. **If the real panel changes
     shape, this is a second place that has to change with it.**
 
+    **The site no longer shows the hovered header, because the app no longer
+    has it.** The section built around it is gone, so is its screenshot, and
+    the live panel now demonstrates the thing that replaced it: click a machine
+    to open it, with the metric picker coming along so a lens change keeps you
+    on that machine. A third instance opens on a machine's Disk page, volumes
+    and all, including the shared-container row. **The README is still stale on
+    this** — it says hovering a machine in any overview replaces the header.
+
     **Screenshots are still not taken, and the obstacle is TCC.**
     `screencapture -l` (which `scripts/capture_app_window.swift` uses) and
     `screencapture -R` are both refused outright on this machine — "could not
