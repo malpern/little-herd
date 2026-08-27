@@ -32,7 +32,7 @@ struct CPUOverviewView: View {
     /// The width this is laid out in. A constant here would go on dividing the
     /// old window into columns after the window grew, quietly leaving the
     /// right-hand margin twice the left.
-    var width: CGFloat = 324
+    var width: CGFloat = DashboardMetrics.overviewContent.width
 
     /// A drag to draw instead of a real one. Only the render harness sets
     /// this: a drag lives in `@State`, so without a seam the only frames

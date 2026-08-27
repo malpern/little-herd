@@ -236,11 +236,11 @@ struct DashboardView: View {
             // they are surfaces with things resting on them, and a surface
             // that touches the window edge reads as a rendering mistake rather
             // than a place.
-            return NSSize(width: 324, height: 312)
+            return DashboardMetrics.overviewContent
         }
         return model.selection.isMetricFocus
-            ? NSSize(width: 400, height: 330)
-            : NSSize(width: 420, height: 340)
+            ? DashboardMetrics.metricFocusContent
+            : DashboardMetrics.machineContent
     }
 
     private var shouldPresentNetworkVolumeOnboarding: Bool {
