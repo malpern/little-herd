@@ -614,7 +614,8 @@ struct MachineStatusLabel: View {
             // The pad is drawn whenever there is something on it or a drag is
             // asking where things could go. At rest under an idle machine it
             // would be a permanent empty box.
-            if activity != nil || agents.padState != .idle {
+            if DashboardChrome.showsAgentTokens,
+               activity != nil || agents.padState != .idle {
                 MachineAgentPad(state: agents.padState, height: avatarSize * 0.64 + 10) {
                     if let activity {
                         MachineAgentToken(

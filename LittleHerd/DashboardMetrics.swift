@@ -9,7 +9,11 @@ import CoreGraphics
 /// margin twice the left and as nothing at all in a build log.
 nonisolated enum DashboardMetrics {
     /// The overview: four columns of thermometers with a pad under each.
-    static let overviewContent = CGSize(width: 324, height: 312)
+    /// Its height is the herd plus the metric tabs under it, and it changed
+    /// when the tabs replaced the header's pull-down: the agent pads that used
+    /// to occupy this band are hidden, and the tab row is taller than they
+    /// were.
+    static let overviewContent = CGSize(width: 324, height: 296)
     /// One machine through the current metric's lens.
     static let metricFocusContent = CGSize(width: 400, height: 330)
     /// Everything about one machine.

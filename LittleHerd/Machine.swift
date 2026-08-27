@@ -11,7 +11,7 @@ nonisolated enum OverviewMetric: String, CaseIterable, Equatable, Identifiable, 
     var title: LocalizedStringResource {
         switch self {
         case .cpu: "CPU"
-        case .memory: "RAM"
+        case .memory: "Memory"
         case .disk: "Disk"
         case .ai: "AI"
         }

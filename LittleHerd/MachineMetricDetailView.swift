@@ -81,7 +81,9 @@ struct MachineDetailBar: View {
 
             Spacer(minLength: 8)
 
-            AIUsageLimitsSummary(model: aiUsageLimits)
+            if DashboardChrome.showsUsageMarksInHeader {
+                AIUsageLimitsSummary(model: aiUsageLimits)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)

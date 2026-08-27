@@ -62,6 +62,7 @@
 		89745750651E4D9FC15DE448 /* AgentDropEligibilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86994D7297949A526B17050E /* AgentDropEligibilityTests.swift */; };
 		8B754FF26AB9016DAD7BB6A5 /* AgentAuthVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDC2B520609D94117FF51336 /* AgentAuthVerification.swift */; };
 		908AC8A727784963D66AAC6C /* MachineAgentActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F32D4B7CE84B3F6870AC568 /* MachineAgentActivity.swift */; };
+		920B95435D7A332B3733C090 /* DashboardChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75AEA2BD4FDDBC0DB466CF07 /* DashboardChrome.swift */; };
 		93C91DDDFDDCDFA4E993CC6B /* SynologyDSM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95D3E317CB51DFD9180687CF /* SynologyDSM.swift */; };
 		9518D7315550E85D906DB85B /* FolderBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E03AE4CBF5FB2BD804CB5B3 /* FolderBrowserView.swift */; };
 		9712E66E3210EFD7244E0C4D /* MachineAgentPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C0E9354B762F8C407715028 /* MachineAgentPad.swift */; };
@@ -74,6 +75,7 @@
 		A3B86273DEF5E8F43616CE18 /* HerdWorkloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD1898FFA14E2C7BC9A924C2 /* HerdWorkloadTests.swift */; };
 		A673853D135FCA0E042DEBE8 /* PanelRenderHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A0DC0F7A6B9443E5F6E450 /* PanelRenderHarness.swift */; };
 		A75BF90DF86C9F46EB1FC29C /* FullDiskAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 902F116974B1C2D720ED2B18 /* FullDiskAccess.swift */; };
+		A905B8C981F44D19D61DDDBF /* OverviewMetricTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E82FFCE473CDBD3EFDA6F5D /* OverviewMetricTabs.swift */; };
 		ADFBD220A565C255B252322A /* Machine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90FE8216081F585ED580AE1C /* Machine.swift */; };
 		AE7E668C1245F5127C1E588D /* NetworkVolumeOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */; };
 		B270CF7B1257E519C16B1B71 /* CodexRolloutUsageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29F273B61D78B7B84881FE18 /* CodexRolloutUsageTests.swift */; };
@@ -148,6 +150,7 @@
 		48E107D7CC3B01B621E4483E /* RemoteUnavailability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteUnavailability.swift; sourceTree = "<group>"; };
 		4A9878F0A2B20756EBC9C5CF /* AgentDestination.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDestination.swift; sourceTree = "<group>"; };
 		4B675E6E28982CA80D968D2E /* LocalProcessRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalProcessRunner.swift; sourceTree = "<group>"; };
+		4E82FFCE473CDBD3EFDA6F5D /* OverviewMetricTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewMetricTabs.swift; sourceTree = "<group>"; };
 		4F29F16289B54BBD5DC8DE5A /* MetricRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricRow.swift; sourceTree = "<group>"; };
 		4F32D4B7CE84B3F6870AC568 /* MachineAgentActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineAgentActivity.swift; sourceTree = "<group>"; };
 		52D5157BE29095D9CF3FED86 /* FolderSizeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSizeTests.swift; sourceTree = "<group>"; };
@@ -165,6 +168,7 @@
 		74631ABBC0DF62E9034B91B7 /* StorageVolume.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageVolume.swift; sourceTree = "<group>"; };
 		758130364CC3DF20E47E3A56 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		75816BB07A0EFE6F81C52052 /* StreamingProcessRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingProcessRunner.swift; sourceTree = "<group>"; };
+		75AEA2BD4FDDBC0DB466CF07 /* DashboardChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardChrome.swift; sourceTree = "<group>"; };
 		76F86234553E6FA795BAE88C /* DashboardWindowBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardWindowBridge.swift; sourceTree = "<group>"; };
 		79D386671F3A56A3353C18AF /* WindowPlacementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowPlacementTests.swift; sourceTree = "<group>"; };
 		7A22449665459CDACD6F0410 /* LittleHerdTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LittleHerdTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -263,6 +267,7 @@
 				EA5375CFAE79B5E5C9087378 /* CompactionThresholdSeeder.swift */,
 				965A795B156AE46A3D239AFB /* CPUOverviewHeaderView.swift */,
 				133A808E3BA4EEA2AF234D6E /* CPUOverviewView.swift */,
+				75AEA2BD4FDDBC0DB466CF07 /* DashboardChrome.swift */,
 				BDDCBAEF57EA2A52D3B1C3E1 /* DashboardMetrics.swift */,
 				199544A93AE05F23B93D38E4 /* DashboardTransition.swift */,
 				D833CE2704E28207ED01D856 /* DashboardView.swift */,
@@ -300,6 +305,7 @@
 				A8E7D7B96F3C77459C1DD141 /* MetricsSampler.swift */,
 				BC4ED33139998C97ECB4C77A /* MonitorModel.swift */,
 				3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */,
+				4E82FFCE473CDBD3EFDA6F5D /* OverviewMetricTabs.swift */,
 				A5BBA732DB8512138D7F61E0 /* RemoteMetricsSampler.swift */,
 				48E107D7CC3B01B621E4483E /* RemoteUnavailability.swift */,
 				EBD5EAFC1911B210500E6BD9 /* SecretCache.swift */,
@@ -497,6 +503,7 @@
 				B503079BC74767A615F0B400 /* CodexBarSource.swift in Sources */,
 				124EC8E304AB0B9091583921 /* CodexRolloutUsage.swift in Sources */,
 				09F5F84F794C80AF6513274F /* CompactionThresholdSeeder.swift in Sources */,
+				920B95435D7A332B3733C090 /* DashboardChrome.swift in Sources */,
 				CFE44C170EDC1D59BF3059B4 /* DashboardMetrics.swift in Sources */,
 				F45BA889DF0A918F2B8A1CE7 /* DashboardTransition.swift in Sources */,
 				094E80A6E07234899B305A38 /* DashboardView.swift in Sources */,
@@ -533,6 +540,7 @@
 				4DECA6731350AC1B325E372D /* MetricsSampler.swift in Sources */,
 				27726ED927D36757C9A9BF67 /* MonitorModel.swift in Sources */,
 				AE7E668C1245F5127C1E588D /* NetworkVolumeOnboardingView.swift in Sources */,
+				A905B8C981F44D19D61DDDBF /* OverviewMetricTabs.swift in Sources */,
 				F0C018891D4F81D70E48139C /* RemoteMetricsSampler.swift in Sources */,
 				E659D1A1902120A9C526DA65 /* RemoteUnavailability.swift in Sources */,
 				82A07AE2F03229E9AD644A1F /* SSHHostName.swift in Sources */,

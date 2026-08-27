@@ -44,8 +44,7 @@ struct DashboardView: View {
                             machines: model.overviewMachines,
                             agentSessions: agentSessions,
                             aiUsageLimits: model.aiUsageLimits,
-                            metric: model.overviewMetric,
-                            onSelect: model.selectOverviewMetric
+                            metric: model.overviewMetric
                         )
                     } else if let selectedMachine = model.selectedMachine {
                         MachineDetailBar(
@@ -58,8 +57,7 @@ struct DashboardView: View {
                             machines: model.overviewMachines,
                             agentSessions: agentSessions,
                             aiUsageLimits: model.aiUsageLimits,
-                            metric: model.overviewMetric,
-                            onSelect: model.selectOverviewMetric
+                            metric: model.overviewMetric
                         )
                     }
 
@@ -113,6 +111,15 @@ struct DashboardView: View {
                         .id(model.overviewMetric)
                         .transition(.opacity)
                     }
+
+                    // Under every dashboard screen, not only the overview:
+                    // the metric picker it replaces stayed visible while a
+                    // single machine was in focus, and re-lensed that machine
+                    // rather than throwing you back to the herd.
+                    OverviewMetricTabs(
+                        selection: model.overviewMetric,
+                        onSelect: model.selectOverviewMetric
+                    )
                 }
             }
             .opacity(isLaunchOverlayVisible ? 0 : 1)

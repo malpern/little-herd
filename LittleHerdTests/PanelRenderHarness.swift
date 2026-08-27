@@ -684,6 +684,26 @@ extension PanelRenderHarness {
             named: "overview-agent-badges"
         )
 
+        // The whole dashboard as the design has it: a header that says one
+        // thing, the herd, and the metric row along the bottom. None of these
+        // three scroll, so `ImageRenderer` can lay the composition out and
+        // somebody can judge the proportions without launching anything.
+        try render(
+            VStack(spacing: 0) {
+                CPUOverviewHeaderArea(
+                    machines: machines,
+                    agentSessions: [],
+                    aiUsageLimits: AIUsageLimitsModel(),
+                    metric: .cpu
+                )
+                Divider().padding(.horizontal, 14)
+                CPUOverviewView(machines: machines, metric: .cpu)
+                OverviewMetricTabs(selection: .cpu, onSelect: { _ in })
+            },
+            size: DashboardMetrics.overviewContent,
+            named: "overview-with-tabs"
+        )
+
         // What the pointer gets, which used to be a `.help` string. Three
         // sessions, deliberately unlike each other: one reporting a long tool
         // call that has to wrap, one reporting nothing at all and falling back
