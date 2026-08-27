@@ -265,6 +265,30 @@ Both sit inside `prefers-reduced-motion: no-preference`. Scroll-reveals, fades
 and parallax were left out: they are what a generated page looks like, and this
 page has a real mark and real toys to spend motion on instead.
 
+---
+
+## The live panel
+
+Two sections carry a working miniature of the app window instead of a
+screenshot: the CPU overview in section 1, and the AI panel in section 2 —
+which had no picture at all, because the only shots on hand were CPU and
+memory and pairing either with it would have illustrated a claim it does not
+make.
+
+It earns the space by teaching. Hovering a machine puts that machine in the
+header, which is the app's central idea and the one thing a still can never
+show. The metric tabs walk through all four views. Sessions arrive, wait and
+finish on their own, which is what the AI panel actually looks like over a
+minute.
+
+**It is labelled "A working recreation".** Everything it does is something the
+app does — the same metrics, the same segmented bars, the same colour ramp,
+the same green-for-live and red-for-unreachable — but the numbers are invented,
+and the caption says so rather than letting anyone take it for a screenshot.
+
+Keyboard users get the same thing: every machine and every session row is
+focusable and responds to focus exactly as it does to hover.
+
 ## Still needed
 
 Fresh screenshots, and one of the AI view — the section that names the thing

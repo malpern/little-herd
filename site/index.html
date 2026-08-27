@@ -175,12 +175,81 @@ footer { --dot: var(--green); }
   .cta:hover { transform: translateY(-1px); }
 }
 
+/* ------------------------------------------------------- the live miniature
+   A recreation of the app window, laid out to match the real one: cream
+   ground, segmented vertical bars, avatar and name under each, and the header
+   swapping to whichever machine you point at. Labelled on the page as a demo,
+   because it is one -- the numbers are invented. */
+.lh {
+  width: 300px; background: var(--cream); color: var(--ink);  /* HerdBackground, the app's own window colour */
+  border: 1px solid var(--card-edge); border-radius: 14px; padding: 12px 14px 10px;
+  box-shadow: 0 2px 6px rgba(29,28,26,.10), 0 18px 44px rgba(29,28,26,.14);
+  font-size: 13px; line-height: 1.35; user-select: none;
+}
+:root[data-theme="dark"] .lh, 
+:root:not([data-theme="light"]) .lh { color: var(--ink); }
+.lh, .lh * { -webkit-font-smoothing: antialiased; }
+.lh-chrome { display: flex; gap: 6px; margin-bottom: 12px; }
+.lh-chrome i { width: 11px; height: 11px; border-radius: 50%; background: #DDD8CE; }
+.lh-chrome .r { background: #F0645C; } .lh-chrome .y { background: #F2BC3F; } .lh-chrome .g { background: #DDD8CE; }
+
+/* the header area is a fixed height so a hover cannot resize the window */
+.lh-head { min-height: 54px; border-bottom: 1px solid rgba(29,28,26,.10); padding-bottom: 9px; margin-bottom: 12px; }
+.lh-metric { font-size: 18px; font-weight: 700; letter-spacing: -.02em; color: #1D1C1A; }
+.lh-sub { display: block; font-size: 11.5px; color: #6B665E; margin-top: 1px; }
+.lh-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #1F9E52; margin-right: 5px; vertical-align: middle; }
+.lh-dot.down { background: #E84A29; } .lh-dot.running { background: #1F9E52; }
+.lh-dot.waiting { background: #F2A03F; } .lh-dot.done { background: #3B82D6; }
+.lh-hover-top { display: flex; align-items: center; gap: 5px; font-size: 12.5px; }
+.lh-hover-top img { width: 17px; height: 17px; }
+.lh-hover-top b { font-weight: 600; }
+.lh-tag { margin-left: auto; font-size: 10.5px; color: #6B665E; text-transform: uppercase; letter-spacing: .05em; }
+.lh-tag em { font-style: normal; color: #1F9E52; font-weight: 600; }
+.lh-hover-rows { display: flex; gap: 12px; margin-top: 5px; flex-wrap: wrap; }
+.lh-hover-rows span { font-size: 11px; }
+.lh-hover-rows b { display: block; font-weight: 600; font-size: 11.5px; }
+.lh-hover-rows i { font-style: normal; color: #6B665E; }
+
+.lh-cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.lh-col { display: flex; flex-direction: column; align-items: center; gap: 5px; border-radius: 8px; padding: 4px 2px; outline: none; }
+.lh-col:hover, .lh-col:focus-visible { background: rgba(26,156,138,.10); }
+.lh-pct { font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
+.lh-pct.hot { color: #E84A29; }
+.lh-bar { display: flex; flex-direction: column; gap: 2.5px; width: 30px; }
+.lh-bar i { height: 7px; border-radius: 2px; background: rgba(29,28,26,.09); transition: background .5s ease; }
+.lh-bar i.green { background: #1F9E52; } .lh-bar i.yellow { background: #E8C13F; }
+.lh-bar i.orange { background: #EE8B33; } .lh-bar i.red { background: #E84A29; }
+.lh-col img { width: 30px; height: 30px; }
+.lh-name { font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.lh-free { font-size: 10px; color: #6B665E; }
+
+.lh-rows { display: flex; flex-direction: column; gap: 2px; }
+.lh-agent { display: flex; align-items: center; gap: 7px; padding: 6px 6px; border-radius: 8px; outline: none; }
+.lh-agent:hover, .lh-agent:focus-visible { background: rgba(26,156,138,.10); }
+.lh-agent-name { flex: 1; min-width: 0; }
+.lh-agent-name b { display: block; font-size: 12px; font-weight: 600; }
+.lh-agent-name i { font-style: normal; font-size: 10.5px; color: #6B665E; }
+.lh-step { font-size: 10.5px; color: #6B665E; font-variant-numeric: tabular-nums; }
+
+.lh-tabs { display: flex; gap: 2px; margin-top: 11px; border-top: 1px solid rgba(29,28,26,.10); padding-top: 9px; }
+.lh-tabs button {
+  flex: 1; font: inherit; font-size: 11px; font-weight: 600; letter-spacing: .01em;
+  border: 0; background: none; color: #6B665E; padding: 4px 0; border-radius: 6px; cursor: pointer;
+}
+.lh-tabs button[aria-selected="true"] { background: rgba(26,156,138,.14); color: #14624E; }
+.lh-tabs button:hover { color: #14624E; }
+
+.demo-note { font-size: .85rem; color: var(--muted); margin-top: .9rem; text-align: center; max-width: 300px; }
+
 /* -------------------------------------------------------------- sections */
 section { padding-block: clamp(4rem, 9vw, 7rem); }
 section + section { border-block-start: 1px solid var(--rule); }
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: center; }
 .split .shot { justify-self: center; }
-.shot img {
+/* Direct child only. As `.shot img` this also matched every avatar inside the
+   live demo, giving each one the screenshot's rounded corners and drop shadow
+   -- which on a transparent PNG draws a little white plate behind the animal. */
+.shot > img {
   border-radius: 14px;
   box-shadow: 0 2px 6px rgba(29,28,26,.10), 0 18px 44px rgba(29,28,26,.14);
   width: 300px;
@@ -298,16 +367,20 @@ footer a { color: var(--muted); }
         isn’t. One glance answers the question you actually have: which machine
         is busy, and is anything down?</p>
     </div>
-    <div class="shot"><img src="images/shot-cpu.png" width="600" height="656"
-      alt="Little Herd’s CPU overview: four machines side by side as segmented bars, each with an animal avatar, name and status dot."></div>
+    <div class="shot">
+      <div class="lh" data-lh-demo data-view="cpu"></div>
+      <p class="demo-note">A working recreation &mdash; hover a machine, or switch metric.</p>
+    </div>
   </div>
 </section>
 
-<!-- No screenshot here on purpose: the only shots on hand are CPU and memory,
-     and pairing this section with the memory panel would illustrate a claim it
-     does not show. Restore the two-column .split when an AI-view shot exists. -->
+<!-- This section had no picture: the only shots on hand were CPU and memory,
+     and pairing either with it would illustrate a claim it does not show. The
+     live panel solves it properly -- sessions arriving and finishing is motion,
+     which a still could never have carried anyway. -->
 <section>
-  <div class="wrap">
+  <div class="wrap split">
+    <div>
     <h2>See which agent is working, and where.</h2>
     <p class="lede">Claude Code and Codex sessions across every machine in the
       herd: the project each one is in, whether it’s running, waiting for you,
@@ -315,6 +388,11 @@ footer a { color: var(--muted); }
     <p class="note">Little Herd reads session metadata only — never your
       prompts, your responses, your command lines, or your keys. Nothing is
       sent anywhere.</p>
+    </div>
+    <div class="shot">
+      <div class="lh" data-lh-demo data-view="ai"></div>
+      <p class="demo-note">Sessions arrive, wait and finish. Hover a row.</p>
+    </div>
   </div>
 </section>
 
@@ -475,5 +553,6 @@ footer a { color: var(--muted); }
   </div>
 </footer>
 
+<script src="demo.js"></script>
 </body>
 </html>

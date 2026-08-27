@@ -1529,6 +1529,13 @@ it; the files survived only because the directory had not been reaped yet.
     can stay dry. Whimsical art plus whimsical writing is twee, and the
     audience that owns four computers leaves.
 
+    **Two sections now run a live recreation of the window rather than a
+    screenshot** (`site/demo.js`): the CPU overview, and the AI panel that had
+    no picture at all. Hover puts a machine in the header, the tabs walk the
+    four metrics, and sessions arrive and finish on their own. It is captioned
+    as a recreation and the numbers are invented. **If the real panel changes
+    shape, this is a second place that has to change with it.**
+
     **Screenshots are still not taken, and the obstacle is TCC.**
     `screencapture -l` (which `scripts/capture_app_window.swift` uses) and
     `screencapture -R` are both refused outright on this machine — "could not
