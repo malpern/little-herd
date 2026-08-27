@@ -1182,12 +1182,26 @@ it; the files survived only because the directory had not been reaped yet.
 
 ## Next
 
-1. **P-core/E-core awareness is blocked, not pending.** Per-core utilisation
+1. **The drag has an interface and no destination — `canAccept` is the seam.**
+   `CPUOverviewView.canAccept` currently says yes to every machine but the one
+   the token came from, so the `refused` pad state and the shake behind it are
+   designed and unreachable. `DestinationEligibility` already answers exactly
+   this question, is tested, and is uncalled: wiring it in is the first thing
+   the transfer work should do rather than the last, and it lights the refusal
+   path for free. Until then nothing moves on drop — `endDrag` computes the
+   outcome and discards it, deliberately, so the decision is visible where it
+   can be argued with rather than absent until the day it matters.
+
+   Two things are unverified because this was built with the screen
+   unavailable: whether a drag still leaves the click-to-open-machine button
+   working, and how a token grabbed again mid-spring behaves in practice.
+   Both need someone at the machine.
+2. **P-core/E-core awareness is blocked, not pending.** Per-core utilisation
    needs root on a remote Mac — `powermetrics` refuses without it, and neither
    `top` nor `iostat` exposes per-core lines. It would work on this Mac and no
    other, which in an app about a herd is an inconsistency rather than a
    feature. Reopen only if a way to get it without root appears.
-2. **Say once, at herd level, that names are not resolving — but not yet.**
+3. **Say once, at herd level, that names are not resolving — but not yet.**
    When a machine is unreachable the summary line says only `3 of 4 live`:
    `MenuBarStatusSelector.headline` returns `.unavailable(live:total:)`, and
    `MenuBarMachineSnapshot` carries no reason, so the rollup cannot tell "the
@@ -1203,7 +1217,7 @@ it; the files survived only because the directory had not been reaped yet.
    rule would collapse to "Linux failed to resolve", which is what the tooltip
    already says. Build it when a second machine becomes reachable only over the
    tailnet, and not before.
-3. **Destination eligibility is measured and deliberately has no interface.**
+4. **Destination eligibility is measured and deliberately has no interface.**
    Every account reports which agents it can run and where, and which
    repositories it has checked out keyed by the origin remote's slug.
    `DestinationEligibility` answers with one of six things, `AgentAuthProbe`
@@ -1247,7 +1261,7 @@ it; the files survived only because the directory had not been reaped yet.
    rather than "no agent", because Little Herd runs no probe on it and never
    asking is not the same as being told no.
 
-4. **Transfer a session between machines, at the session level.** Not process
+5. **Transfer a session between machines, at the session level.** Not process
    migration, which is not possible and not wanted: stop the session, have it
    write full context, start a successor on the target that has the repo. It is
    the same thing this file does by hand between sessions, which is the reason
@@ -1297,7 +1311,7 @@ it; the files survived only because the directory had not been reaped yet.
    CodexBar's scrape, and eligibility gains one probe: capability parity, since
    the tools a session leaned on may not exist on the other vendor.
 
-5. **iOS, scoped to the herd rather than to sessions.** Do not rebuild session
+6. **iOS, scoped to the herd rather than to sessions.** Do not rebuild session
    steering; Remote Control and the Claude app already do it, with the local
    filesystem and MCP servers attached. What has no answer today is the herd:
    which machine is hot, what is waiting on you, what the budget looks like,
@@ -1309,7 +1323,7 @@ it; the files survived only because the directory had not been reaped yet.
    `MachinePresentation` exists precisely because display decisions were pulled
    out of the view bodies.
 
-6. **Agent versions are shown; the herd-level view of skew is not.**
+7. **Agent versions are shown; the herd-level view of skew is not.**
    A machine's AI page now lists what it has installed, above the sessions,
    with the path it was found at and — when another account has a newer copy —
    which one and what version. Skew is marked rather than announced, because
@@ -1322,7 +1336,7 @@ it; the files survived only because the directory had not been reaped yet.
    builds is this herd running". Worth doing only if the answer would change
    something.
 
-7. **Attribute a session's CPU to its whole process tree, not its agent
+8. **Attribute a session's CPU to its whole process tree, not its agent
    binary.** The measurement is in the facts above: 1.0% against 101.2% for the
    same session in the same window. Today the panel can say a machine is at
    94% and cannot say which session is doing it, which is the question the
@@ -1344,7 +1358,7 @@ it; the files survived only because the directory had not been reaped yet.
    caught `swift-frontend` at 97% CPU with a parent that was not `xcodebuild`,
    and the process was gone before it could be traced to a root.
 
-8. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
+9. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
    18 August. Show cloud work beside the machines (the Herdware set already
    holds an unused `owl-cloud.png`) and move it down with the vendors' own
    commands, never our protocol: `codex cloud apply` and `claude --teleport`.
@@ -1358,7 +1372,7 @@ it; the files survived only because the directory had not been reaped yet.
    it from here. Say so in the interface rather than pretending parity.
    Local→cloud stays out entirely — that is the vendors' own button.
 
-9. **Local models are blocked, not pending.** Considered and deferred
+10. **Local models are blocked, not pending.** Considered and deferred
     18 August. No herd machine runs a model server; the linux box is an AMD
     APU with integrated graphics; the best local-model host owned is the M5
     Air — the machine transfers exist to unload. A briefing written for a
@@ -1368,7 +1382,7 @@ it; the files survived only because the directory had not been reaped yet.
     concrete reason — offline or privacy, not symmetry. Frame it then as a
     degraded park, not a peer destination.
 
-10. **The website — free for now, and the plan is settled.** Decided
+11. **The website — free for now, and the plan is settled.** Decided
     26 August, which unblocks everything below it. The question the last
     handoff called the one a website cannot be written without — charge or
     not — is answered **free for now, paid later**. The page gets a download
@@ -1513,7 +1527,7 @@ it; the files survived only because the directory had not been reaped yet.
     `FSL-1.1-MIT`, source-available, MIT after two years — and a badge will
     not do it. One sentence in plain words, on the page and in the README.
 
-11. **Swap is read on two machines of four.** This Mac and Linux report it;
+12. **Swap is read on two machines of four.** This Mac and Linux report it;
     a remote Mac is not asked, and the Synology is not either. The remote-Mac
     half is a line in `macOSCommandTemplate` plus a parser for the string form
     of `vm.swapusage`, which unlike the local struct has an `M`-or-`G` suffix
@@ -1523,7 +1537,7 @@ it; the files survived only because the directory had not been reaped yet.
     mentions swap only while swap is being written, so a machine that is not
     asked simply says nothing, which is what it should say.
 
-12. **The verifier is ahead of the thing that needs it, and the I/O half of it
+13. **The verifier is ahead of the thing that needs it, and the I/O half of it
     has no tests.** Written 25 August, and worth being honest about. Its pure
     parts — `AgentAuthProbe`, the eligibility states, the presentation — are
     covered and were verified by breaking them. `AgentAuthVerifier`,
