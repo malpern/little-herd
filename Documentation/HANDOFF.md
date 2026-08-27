@@ -1,27 +1,33 @@
 # Little Herd — handoff
 
-**State:** `v0.1.48` is released and `main` carries nothing beyond it. 502
+**State:** `v0.1.50` is released and `main` carries nothing beyond it. 502
 tests pass. Roadmap item 6 is done — each machine's agent versions. Item 4 is
 measured and deliberately has no interface; see its entry below, which is the
 one to read before drawing a new one.
 
-**The CPU screen is a dashboard now, and the drag is designed before there is
-anything to drag.** A machine running Claude Code or Codex carries a token
-under its name, on a pad; point at it for a card naming the sessions and what
-each is doing, click it for that machine's AI page, and pick it up to carry it
-across the herd, where every machine says whether it could take it. Which machine can take it is a
-measurement — agent installed, repository checked out, credentials not refused
-— so the refusal states are reachable from the running app for the first time.
-**Nothing moves on drop, deliberately**: `endDrag` computes the outcome and
-discards it.
+**The dashboard follows the website's miniature of it: four metric tabs along
+the bottom, and a header that says one thing.** The pull-down they replace is
+gone, and so is the AppKit machinery behind it. `Memory` is what `RAM` is
+called now.
 
-**A session that starts announces itself**, by opening that machine's card for
-four seconds with the new session on top — held until the dashboard is the
-window being looked at, and dropped after forty-five seconds rather than
-calling something "just started" that started while you were away. Hover is
-kept alongside it on purpose: an announcement you missed is otherwise gone.
-Cards open beside their token, right for a machine in the herd's first half and
-left for one in its second, so the avatars and names stay visible.
+**The agent tokens are built, working, and switched off** — along with the
+per-provider usage marks in both headers. Both are flags in `DashboardChrome`,
+hidden pending a decision about where the agents belong on this screen, and
+everything behind them still runs and is still tested. Turning either back on
+is one word. What is switched off, in full:
+
+- a token per machine that is running something, on a pad, sized and lifted
+- a card on hover naming the sessions and what each is doing, opening beside
+  the token — right in the herd's first half, left in its second
+- a click that opens that machine's AI page
+- the drag that carries a token across the herd, where every machine says
+  whether it could take it, as a **measurement**: agent installed, repository
+  checked out, credentials not refused
+- an announcement when a session starts, held until the dashboard is the
+  window being looked at and dropped after forty-five seconds
+
+**Nothing moved on drop even when it was visible**, deliberately: `endDrag`
+computes the outcome and discards it.
 
 **Asking permission is a setting, off by default.** See item 1.
 
@@ -71,6 +77,8 @@ and four on 26 August:
     0.1.46  a session that starts says so — which fired essentially never
     0.1.47  the fix for 0.1.46: it now waits for somebody to be looking
     0.1.48  cards open beside their token, and can be dismissed
+    0.1.49  the metrics move to tabs along the bottom; agent tokens hidden
+    0.1.50  the fix for 0.1.49: the tabs were clipped by the titlebar band
 
 **0.1.33 shipped a bug that could take a machine off the dashboard entirely** —
 an empty directory aborting the probe under zsh. Nothing in this herd tripped
@@ -1144,6 +1152,31 @@ here reported dead code that was never written: the count was zero because the
 name matched nothing at all, and it read as "declared and unreferenced". Check
 that a symbol exists before reporting it as unused.
 
+**The window draws under its own titlebar, and SwiftUI still insets the content
+by 32 points.** Both are true at once, which is the trap: `fullSizeContentView`
+makes the frame height equal the content height, so nothing in the window code
+adds a titlebar — and the view inside is pushed down regardless, with whatever
+does not fit cut off the bottom. It has clipped this dashboard twice, first
+taking the machine names off the overview and then the metric tabs. It is
+`DashboardMetrics.titlebarInset` now, and the overview's height is written as
+its content plus that band.
+
+**`ImageRenderer` has no safe area, so a render can fit perfectly while the
+window clips.** That is how the tabs shipped cut in half: the height was
+measured from a picture that could not lose the 32 points the window loses. The
+composite render applies the inset itself now. **A render is a model of the
+window, not the window.**
+
+**A size that was arrived at by looking at the running app already contains the
+band.** Adding the inset to the two machine screens would have made them both
+32 points too tall — the same mistake in the opposite direction, avoided only
+because their provenance was written down.
+
+**`str.replace` on a pattern that no longer matches is a silent no-op.** An
+edit to hide the agent tokens did nothing at all, because a refactor had
+renamed the property it matched on, and the build stayed green because the code
+was untouched. The render caught it. **Assert the match before editing.**
+
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -1274,7 +1307,13 @@ it; the files survived only because the directory had not been reaped yet.
 
 ## Next
 
-1. **The drag asks a real question now; nothing acts on the answer.**
+1. **Where the agent tokens belong is the open question, and the drag is
+   waiting behind it.** The tokens are switched off in `DashboardChrome` while
+   the dashboard follows the site's design; the machinery below is untouched
+   and still tested, so this item is about placement rather than about
+   rebuilding anything.
+
+   **The drag asks a real question; nothing acts on the answer.**
    `CPUOverviewView.canAccept` goes through `AgentDropEligibility`, so a
    machine offers itself only when it has an agent this account can run, a
    checkout of the repository the work is in, and credentials its provider has
