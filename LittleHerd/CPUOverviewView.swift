@@ -549,12 +549,18 @@ struct OverviewMetricValue: View {
             value: value,
             memoryPressure: memoryPressure
         ) {
+        // A figure and a warning symbol are different kinds of thing, so
+        // moving between them is the one place in this column that cross-fades
+        // rather than animating a value. Everything else — the digits, the
+        // bars, the capacity lines — travels.
         case .pressure(let level):
             MemoryPressureSymbol(level: level, explanation: memoryExplanation)
                 .font(.title3.weight(.semibold))
+                .transition(.opacity)
         case .percent(let percent):
             CPUPercentage(value: percent)
                 .font(.title3.weight(.semibold).monospacedDigit())
+                .transition(.opacity)
 
         // Neither reaches the overview: it has no network column, and a metric
         // with nothing behind it falls through to the same dash.

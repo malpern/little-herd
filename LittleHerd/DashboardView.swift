@@ -108,7 +108,17 @@ struct DashboardView: View {
                             // card anyway.
                             announcesArrivals: true
                         )
-                        .id(model.overviewMetric)
+                        // **Identity changes between the herd and the list,
+                        // and nowhere else.** Keying this on the metric itself
+                        // threw the whole overview away and built a new one on
+                        // every tab press, then cross-faded the two — which is
+                        // the flash. CPU, Memory and Disk are the same four
+                        // columns showing different numbers, so the columns
+                        // stay and the numbers move: the thermometers slide,
+                        // the figures roll, and the capacity lines fade in
+                        // where Disk has them. Only AI is a different shape
+                        // and has to be swapped for.
+                        .id(model.overviewMetric == .ai)
                         .transition(.opacity)
                     }
 
@@ -118,7 +128,16 @@ struct DashboardView: View {
                     // rather than throwing you back to the herd.
                     OverviewMetricTabs(
                         selection: model.overviewMetric,
-                        onSelect: model.selectOverviewMetric
+                        // The animation belongs to the press rather than to
+                        // any one view: it is what makes the figures roll and
+                        // the bars travel instead of cutting. Slightly faster
+                        // than the samplers' own 0.45s, so changing metric
+                        // feels like an answer rather than a measurement.
+                        onSelect: { metric in
+                            withAnimation(.smooth(duration: 0.3)) {
+                                model.selectOverviewMetric(metric)
+                            }
+                        }
                     )
                 }
             }
