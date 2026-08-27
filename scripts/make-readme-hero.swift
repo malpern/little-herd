@@ -118,13 +118,15 @@ wordmark.draw(
 )
 cursor -= 44
 
+// The same line the app opens with and the website leads on. Three places
+// saying one thing, rather than three products.
 drawText(
-    "A menu-bar monitor for every machine you run.",
+    "Put your herd to work.",
     size: 38, weight: .semibold, alpha: 1, gap: 22
 )
 drawText(
-    "Macs, Linux boxes, and a Synology \u{2014} and the AI agents working on them.",
-    size: 25, weight: .regular, alpha: 0.78, gap: 0
+    "See the load across your machines and the AI sessions running on them \u{2014} then pick the right one for the next job.",
+    size: 23, weight: .regular, alpha: 0.78, gap: 0
 )
 
 NSGraphicsContext.restoreGraphicsState()

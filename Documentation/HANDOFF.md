@@ -1307,6 +1307,32 @@ it; the files survived only because the directory had not been reaped yet.
 
 ## Next
 
+**The website now promises "Put your herd to work", and the app does not yet
+let you.** That headline was adopted deliberately on 27 August, with the
+knowledge that it runs within a sentence of the site's own rule against
+claiming what the app does not do — what keeps it honest today is the clause
+beside it, *"Little Herd watches; choosing the machine is still yours."*
+**Until the app can do it, that clause is load-bearing and must not be trimmed
+for length.**
+
+Three of the items below are that work, and they unblock each other in this
+order — the numbering is the file's, not a priority:
+
+- **Item 1, the tokens and their drag.** Switched off, and the gesture already
+  built. Nothing can be moved by hand until they are on screen.
+- **Item 4, what a destination has to be asked.** Eligibility is measured and
+  the drop consults it; what is missing is the account-level answer, the
+  setter for the permission, and binding a grant to a host rather than to a
+  `MachineID` that can be re-pointed.
+- **Item 5, the transfer itself.** The seven-step move: quiesce, summarise,
+  verify the artifact, start the successor, verify it behaviourally, and only
+  then retire the source.
+
+A fourth is worth naming even though it is not on the critical path:
+**a session that fails to arrive has to say so, and leave you where you
+started.** The order in item 5 is a safety property and only half of one until
+a half-finished move is visible in the interface rather than in a log.
+
 1. **Where the agent tokens belong is the open question, and the drag is
    waiting behind it.** The tokens are switched off in `DashboardChrome` while
    the dashboard follows the site's design; the machinery below is untouched

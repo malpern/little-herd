@@ -20,11 +20,17 @@
 
 # Little Herd
 
-Little Herd is a compact, native macOS system monitor for a configurable group
-of Macs, Linux computers, GPU workstations, and mounted network storage. A new
-install begins with the current Mac and can discover or manually add several
-machines at once. It also surfaces the Claude Code and Codex sessions running
-across the herd, so the machine that is busy tells you what is making it busy.
+**Put your herd to work.** See the load across your Macs, your Linux boxes,
+your NAS and the AI sessions running on them — from the menu bar. Little Herd
+watches; choosing the machine is still yours.
+
+It is a compact, native macOS system monitor for a configurable group of Macs,
+Linux computers, GPU workstations, and mounted network storage. A new install
+begins with the current Mac and can discover or manually add several machines
+at once. It also surfaces the Claude Code and Codex sessions running across the
+herd, so the machine that is busy tells you what is making it busy.
+
+![The AI panel, listing the sessions running across the herd](Documentation/Screenshots/ai-panel.png)
 
 The website has screenshots, the story, and the download:
 **<https://malpern.github.io/little-herd/>**
@@ -117,11 +123,12 @@ skipping anything too small to round to a tenth of a core. Memory overview uses 
 and critical pressure state—shown as check, warning, and critical symbols—instead
 of treating intentionally occupied cache as a problem. Its memory page lists that machine's largest user-app families with their
 approximate resident memory and their own application icons, making likely apps
-to quit immediately visible. Hovering a machine in any overview replaces the
-header with that machine's own — what it is running, what is holding its
-memory, or how full its disks are.
+to quit immediately visible. Clicking a machine's thermometer opens that
+machine through the current metric — what it is running, what is holding its
+memory, or how full its disks are — and pointing at a column explains what its
+reading means without opening anything.
 
-![Hovering a machine replaces the header with that machine's memory detail](Documentation/Screenshots/memory-hover.png) App names are the only bold text in these compact
+App names are the only bold text in these compact
 details; memory amounts use the same small, secondary treatment as the overview
 status line. Little Herd keeps a tiny rolling history of those existing samples. After at least 90 seconds and seven distinct readings, a red dot marks
 an app whose memory has grown substantially and consistently. Hovering the dot
