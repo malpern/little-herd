@@ -1399,8 +1399,14 @@ it; the files survived only because the directory had not been reaped yet.
     laptop screen are in `little-herd-site-hero-prompt.md`. Generated art gets
     looked at at full size before it goes near the page.
 
-    Still missing and not yet drawn: a wordmark and a favicon. The favicon is
-    a reduction of the existing app icon rather than new art.
+    **The wordmark is drawn** — "Little Herd" in Gabarito 600, outlined to SVG
+    paths so no webfont ships, with the tittle of the *i* replaced by the app's
+    green status dot. That is the one place the mark says what the product
+    does, and the letter already had a dot. `scripts/make-wordmark.swift`
+    reproduces it byte-for-byte; the reasoning, the five faces that were
+    compared, and the generated alternative that lost are in
+    `DesignAssets/little-herd-wordmark.md`. Still not drawn: a favicon, which
+    is a reduction of the existing app icon rather than new art.
 
     **The copy is drafted and lives in `site/COPY.md`.** It is the source the
     page quotes rather than a suggestion — headline, six sections, both CTAs,
