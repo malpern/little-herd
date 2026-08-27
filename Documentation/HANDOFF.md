@@ -1371,6 +1371,29 @@ it; the files survived only because the directory had not been reaped yet.
     Still missing and not yet drawn: a wordmark and a favicon. The favicon is
     a reduction of the existing app icon rather than new art.
 
+    **The copy is drafted and lives in `site/COPY.md`.** It is the source the
+    page quotes rather than a suggestion — headline, six sections, both CTAs,
+    and the reasoning for each, including which alternatives lost and why. The
+    facts in it were checked against the app rather than against the README:
+    macOS 15.0 and a universal binary come from `project.yml` and `lipo`. Its
+    voice section is four rules, each one a thing the first draft got wrong;
+    the load-bearing one is that the animals supply the warmth, so the prose
+    can stay dry. Whimsical art plus whimsical writing is twee, and the
+    audience that owns four computers leaves.
+
+    **Screenshots are still not taken, and the obstacle is TCC.**
+    `screencapture -l` (which `scripts/capture_app_window.swift` uses) and
+    `screencapture -R` are both refused outright on this machine — "could not
+    create image from window" and "could not create image from rect" — while a
+    plain full-screen `screencapture` succeeds and returns real content. So
+    the fallback is a full grab cropped to the window rect, and **that crop
+    came back solid black with the diagnosis unfinished**: the full frame had
+    content, so it is the crop that is wrong, most likely the scale factor,
+    since `NSScreen.screens[0]` need not be the display that was captured and
+    this Air runs a scaled resolution. Anyone picking this up should verify by
+    looking at the cropped image, not at its dimensions — the first attempt
+    reported a perfectly plausible 600x656 at 2x and was entirely black.
+
     **Two things stand between here and a site, and neither is a feature.**
     Confirm whether the certificate fix is still unreleased, and **take fresh
     screenshots** — both files in `Documentation/Screenshots` are from
