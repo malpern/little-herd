@@ -35,7 +35,11 @@ nonisolated enum DashboardMetrics {
 
     /// The overview: four columns of thermometers, with the metric tabs under
     /// them.
-    static let overviewContent = CGSize(width: 324, height: 296)
+    /// Tall enough for **Disk**, which is the tallest of the four: it stacks
+    /// a capacity and the word "free" between the bar and the machine's name.
+    /// The other three sit in the same window with room to spare, and that
+    /// space is the price of the window not resizing as you change metric.
+    static let overviewContent = CGSize(width: 324, height: 328)
     /// The metric row along the bottom of every dashboard screen.
     /// What the metric tabs cost the two machine screens, over and above what
     /// they already had.
