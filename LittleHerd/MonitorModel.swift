@@ -240,6 +240,17 @@ final class MonitorModel {
         }
     }
 
+    /// Open one machine's AI page.
+    ///
+    /// Two changes, not one: the machine detail screens are lensed through the
+    /// current overview metric, so selecting the machine without also moving
+    /// the lens to AI lands on whichever metric happened to be showing. That
+    /// is how a token on the CPU screen used to open a page about CPU.
+    func showAgents(on machine: MachineID) {
+        overviewMetric = .ai
+        selection = .machineMetric(machine)
+    }
+
     func applyConfigurations(_ configurations: [MachineConfiguration]) {
         guard !configurations.isEmpty else { return }
         // A destination preference changes nothing about how a machine is

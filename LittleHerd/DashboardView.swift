@@ -101,7 +101,8 @@ struct DashboardView: View {
                             agentCompactedAt: model.agentCompactedAt,
                             namespace: machineTransition,
                             onSelectMetric: { model.selection = .machineMetric($0) },
-                            onSelectMachine: { model.selection = .machine($0) }
+                            onSelectMachine: { model.selection = .machine($0) },
+                            onSelectAgents: { model.showAgents(on: $0) }
                         )
                         .id(model.overviewMetric)
                         .transition(.opacity)
@@ -209,8 +210,12 @@ struct DashboardView: View {
         }
         if model.selection == .overview {
             // Disk stacks a volume name, bar, and capacity above the machine
-            // name, so it needs more room than the other three.
-            return NSSize(width: 300, height: 296)
+            // name, so it needs more room than the other three. The extra
+            // width and height over the original 300 x 296 are the agent pads:
+            // they are surfaces with things resting on them, and a surface
+            // that touches the window edge reads as a rendering mistake rather
+            // than a place.
+            return NSSize(width: 324, height: 312)
         }
         return model.selection.isMetricFocus
             ? NSSize(width: 400, height: 330)
@@ -560,6 +565,9 @@ private struct OverviewMetricContent: View {
     var namespace: Namespace.ID?
     var onSelectMetric: ((MachineID) -> Void)?
     var onSelectMachine: ((MachineID) -> Void)?
+    /// Opens a machine's AI page — what an agent token on the overview points
+    /// at, which is neither the machine's summary nor the current metric.
+    var onSelectAgents: ((MachineID) -> Void)?
 
     var body: some View {
         if metric == .ai {
@@ -585,6 +593,8 @@ private struct OverviewMetricContent: View {
                 namespace: namespace,
                 onSelectMetric: onSelectMetric,
                 onSelectMachine: onSelectMachine,
+                onSelectAgents: onSelectAgents,
+                agentCPU: agentCPU
             )
         }
     }

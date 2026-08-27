@@ -679,8 +679,59 @@ extension PanelRenderHarness {
                 metric: .cpu,
                 agentCPU: ["a": 61, "b": 4, "c": 38]
             ),
-            size: CGSize(width: 300, height: 240),
+            size: CGSize(width: 324, height: 222),
             named: "overview-agent-badges"
+        )
+
+        // What the pointer gets, which used to be a `.help` string. Three
+        // sessions, deliberately unlike each other: one reporting a long tool
+        // call that has to wrap, one reporting nothing at all and falling back
+        // to what it costs, and one with a name long enough to truncate.
+        func detailed(
+            _ id: String,
+            _ title: String,
+            _ activity: AgentActivity?
+        ) -> AgentSession {
+            AgentSession(
+                id: id,
+                provider: .claude,
+                projectName: "little-herd",
+                state: .active,
+                updatedAt: .now,
+                progress: nil,
+                title: title,
+                activity: activity,
+                model: "claude-opus-5"
+            )
+        }
+
+        try render(
+            MachineAgentCard(
+                activity: MachineAgentActivity(
+                    provider: .claude,
+                    sessions: [
+                        detailed(
+                            "a",
+                            "Synology TLS sign-in",
+                            AgentActivity(
+                                tool: "Bash",
+                                detail: "Running the full test suite against a "
+                                    + "clean derived data directory"
+                            )
+                        ),
+                        detailed("b", "Panel redesign", nil),
+                        detailed(
+                            "c",
+                            "Destination eligibility and the transfer spike",
+                            AgentActivity(tool: "Read", detail: "CPUOverviewView.swift")
+                        ),
+                    ]
+                ),
+                machineName: "Air",
+                agentCPU: ["a": 61, "b": 4, "c": 12]
+            ),
+            size: CGSize(width: 268, height: 260),
+            named: "agent-hover-card"
         )
 
         // Every frame of the drag, which is the part that cannot be judged by
@@ -706,7 +757,7 @@ extension PanelRenderHarness {
                     agentCPU: ["a": 61, "b": 4, "c": 38],
                     previewDrag: drag
                 ),
-                size: CGSize(width: 300, height: 240),
+                size: CGSize(width: 324, height: 222),
                 named: name
             )
         }

@@ -6,7 +6,12 @@ struct CPUOverviewView: View {
     var namespace: Namespace.ID?
     var onSelectMetric: ((MachineID) -> Void)?
     var onSelectMachine: ((MachineID) -> Void)?
+    var onSelectAgents: ((MachineID) -> Void)?
     var agentCPU: [String: Double] = [:]
+    /// The width this is laid out in. A constant here would go on dividing the
+    /// old window into columns after the window grew, quietly leaving the
+    /// right-hand margin twice the left.
+    var width: CGFloat = 324
 
     /// A drag to draw instead of a real one. Only the render harness sets
     /// this: a drag lives in `@State`, so without a seam the only frames
@@ -39,6 +44,7 @@ struct CPUOverviewView: View {
                     onSelectMachine: onSelectMachine,
                     agentCPU: agentCPU,
                     padState: padState(for: machine.machine),
+                    onSelectAgents: onSelectAgents,
                     isCarried: activeDrag?.origin == machine.machine,
                     wasRefused: refusal?.origin == machine.machine,
                     onDragChanged: { activity, dx in
@@ -55,7 +61,8 @@ struct CPUOverviewView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, horizontalPadding)
-        .padding(.vertical, 10)
+        .padding(.top, 10)
+        .padding(.bottom, 16)
     }
 
     /// Which machines could take what is in hand.
@@ -123,10 +130,13 @@ struct CPUOverviewView: View {
     }
 
     private var machineCount: CGFloat { CGFloat(max(machines.count, 1)) }
-    private var columnSpacing: CGFloat { machines.count <= 3 ? 10 : 4 }
-    private var horizontalPadding: CGFloat { machines.count <= 3 ? 16 : 8 }
+    private var columnSpacing: CGFloat { machines.count <= 3 ? 10 : 6 }
+    /// The pads reach the full width of their column, so this is the margin
+    /// between a surface and the window edge rather than between text and the
+    /// edge — it has to look like a deliberate inset.
+    private var horizontalPadding: CGFloat { machines.count <= 3 ? 18 : 14 }
     private var columnWidth: CGFloat {
-        let available = 300 - horizontalPadding * 2
+        let available = width - horizontalPadding * 2
             - columnSpacing * CGFloat(max(machines.count - 1, 0))
         return min(68, max(40, available / machineCount))
     }
@@ -153,6 +163,7 @@ private struct CPUThermometerColumn: View {
     var onSelectMachine: ((MachineID) -> Void)?
     var agentCPU: [String: Double] = [:]
     var padState: AgentPadState = .idle
+    var onSelectAgents: ((MachineID) -> Void)?
     var isCarried = false
     var wasRefused = false
     var onDragChanged: ((MachineAgentActivity, CGFloat) -> Void)?
@@ -220,6 +231,7 @@ private struct CPUThermometerColumn: View {
                     namespace: namespace,
                     agentCPU: agentCPU,
                     padState: padState,
+                    onSelectAgents: onSelectAgents,
                     isCarried: isCarried,
                     wasRefused: wasRefused,
                     onDragChanged: onDragChanged,
@@ -338,6 +350,7 @@ struct MachineStatusLabel: View {
     /// from merely open.
     var agentCPU: [String: Double] = [:]
     var padState: AgentPadState = .idle
+    var onSelectAgents: ((MachineID) -> Void)?
     /// Whether the drag in progress started here. Told rather than inferred:
     /// the offset below is this view's business, but *being carried* is a fact
     /// about the drag, and deriving it twice is how the two disagree.
@@ -350,6 +363,10 @@ struct MachineStatusLabel: View {
     @State private var carried: CGSize = .zero
     @State private var isReady = false
     @State private var isDragging = false
+    @State private var isShowingCard = false
+    /// The pending "the pointer has settled, show the card" work, kept so
+    /// crossing the token on the way somewhere else cancels it.
+    @State private var hoverIntent: Task<Void, Never>?
     /// Sideways jitter after a refused drop.
     @State private var shake: CGFloat = 0
 
@@ -426,7 +443,28 @@ struct MachineStatusLabel: View {
                         // jump at exactly the moment the person is watching.
                         .animation(homeward, value: carried)
                         .zIndex(1)
-                        .onHover { isReady = $0 }
+                        .onHover { hovering in
+                            isReady = hovering
+                            cardHover(hovering)
+                        }
+                        // Says the token is a target in its own right, not a
+                        // decoration on the button underneath it.
+                        .pointerStyle(.link)
+                        .popover(isPresented: $isShowingCard, arrowEdge: .bottom) {
+                            MachineAgentCard(
+                                activity: activity,
+                                machineName: machine.shortName,
+                                agentCPU: agentCPU
+                            )
+                        }
+                        // Before the drag, so a click on the token opens the
+                        // AI page instead of falling through to the button
+                        // that opens the machine's summary. They are different
+                        // destinations and the token points at the nearer one.
+                        .onTapGesture {
+                            isShowingCard = false
+                            onSelectAgents?(machine.machine)
+                        }
                         .gesture(dragGesture(for: activity))
                     }
                 }
@@ -437,6 +475,26 @@ struct MachineStatusLabel: View {
         .animation(.spring(duration: 0.32), value: activity)
         .onChange(of: wasRefused) { _, refused in
             if refused { shakeOff() }
+        }
+    }
+
+    /// Shows the card once the pointer has settled, and takes it away at once
+    /// when the pointer leaves.
+    ///
+    /// Asymmetric on purpose: the delay exists so that crossing the token on
+    /// the way to something else does not throw a panel over the herd, and a
+    /// matching delay on the way out would leave the card sitting over the
+    /// machine you were actually reaching for.
+    private func cardHover(_ hovering: Bool) {
+        hoverIntent?.cancel()
+        guard hovering else {
+            isShowingCard = false
+            return
+        }
+        hoverIntent = Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            guard !Task.isCancelled else { return }
+            isShowingCard = true
         }
     }
 
@@ -480,6 +538,10 @@ struct MachineStatusLabel: View {
         DragGesture(minimumDistance: 4, coordinateSpace: .local)
             .onChanged { value in
                 isDragging = true
+                // The card is anchored to a token that is now moving, and it
+                // is answering a question the person has stopped asking.
+                isShowingCard = false
+                hoverIntent?.cancel()
                 // One to one with the pointer, and deliberately not animated:
                 // a token that eased toward the cursor would be following it
                 // rather than being held.

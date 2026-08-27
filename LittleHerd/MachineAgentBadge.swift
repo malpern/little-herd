@@ -65,8 +65,10 @@ struct MachineAgentToken: View {
             .shadow(color: .black.opacity(shadowOpacity), radius: shadowRadius, y: shadowY)
             .animation(.spring(duration: 0.22), value: lift)
             .onAppear { isPulsing = true }
-            .help(summary)
+            // No `.help`. A tooltip and a hover card are two answers to one
+            // gesture, and macOS would decide which arrived first.
             .accessibilityLabel(Text(summary))
+            .accessibilityAddTraits(.isButton)
     }
 
     @ViewBuilder
