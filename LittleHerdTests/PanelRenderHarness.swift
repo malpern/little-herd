@@ -598,3 +598,89 @@ extension PanelRenderHarness {
         )
     }
 }
+
+// MARK: - The CPU screen as a dashboard
+
+extension PanelRenderHarness {
+    /// The overview with agent badges under the machines that are working.
+    ///
+    /// The whole point of the mark is that it is absent most of the time, so
+    /// the fixture has both: two machines running something and two not.
+    @Test
+    func renderOverviewWithAgentBadges() throws {
+        func machine(
+            _ id: String,
+            _ name: String,
+            _ avatar: HerdwareAvatar,
+            cpu: Double,
+            sessions: [AgentSession]
+        ) -> MachineMonitorModel {
+            let model = MachineMonitorModel(
+                configuration: MachineConfiguration(
+                    id: MachineID(id),
+                    name: name,
+                    shortName: name,
+                    hostname: "\(id).local",
+                    hardwareSummary: name,
+                    platform: .macOS,
+                    connection: .ssh,
+                    avatar: avatar,
+                    identityFile: nil,
+                    serverNames: [],
+                    supportsGPU: false
+                )
+            )
+            model.apply(
+                SystemSnapshot(
+                    timestamp: .now,
+                    readings: [.cpu: MetricReading(value: cpu)],
+                    agentSessions: sessions
+                )
+            )
+            return model
+        }
+
+        func session(
+            _ id: String,
+            _ provider: AgentTaskProvider,
+            _ title: String,
+            _ state: AgentSessionState
+        ) -> AgentSession {
+            AgentSession(
+                id: id,
+                provider: provider,
+                projectName: "little-herd",
+                state: state,
+                updatedAt: .now,
+                progress: nil,
+                title: title,
+                activity: nil,
+                model: "claude-opus-5"
+            )
+        }
+
+        let machines = [
+            machine("air", "Air", .chickLaptop, cpu: 51, sessions: [
+                session("a", .claude, "Synology TLS sign-in", .active),
+                session("b", .claude, "Panel redesign", .active),
+            ]),
+            machine("mini", "Mini", .calfMini, cpu: 22, sessions: [
+                session("c", .codex, "Daily snapshot", .active),
+            ]),
+            machine("linux", "Linux", .ponyTower, cpu: 3, sessions: [
+                session("d", .claude, "Finished earlier", .completed),
+            ]),
+            machine("nas", "Synology", .pigletNAS, cpu: 6, sessions: []),
+        ]
+
+        try render(
+            CPUOverviewView(
+                machines: machines,
+                metric: .cpu,
+                agentCPU: ["a": 61, "b": 4, "c": 38]
+            ),
+            size: CGSize(width: 300, height: 240),
+            named: "overview-agent-badges"
+        )
+    }
+}

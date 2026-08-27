@@ -6,6 +6,7 @@ struct CPUOverviewView: View {
     var namespace: Namespace.ID?
     var onSelectMetric: ((MachineID) -> Void)?
     var onSelectMachine: ((MachineID) -> Void)?
+    var agentCPU: [String: Double] = [:]
 
     var body: some View {
         HStack(alignment: .top, spacing: columnSpacing) {
@@ -17,7 +18,8 @@ struct CPUOverviewView: View {
                     avatarSize: avatarSize,
                     namespace: namespace,
                     onSelectMetric: onSelectMetric,
-                    onSelectMachine: onSelectMachine
+                    onSelectMachine: onSelectMachine,
+                    agentCPU: agentCPU
                 )
             }
         }
@@ -51,6 +53,7 @@ private struct CPUThermometerColumn: View {
     var namespace: Namespace.ID?
     var onSelectMetric: ((MachineID) -> Void)?
     var onSelectMachine: ((MachineID) -> Void)?
+    var agentCPU: [String: Double] = [:]
 
     var body: some View {
         // A real Button, not a tap gesture: the window is movable by its
@@ -111,7 +114,8 @@ private struct CPUThermometerColumn: View {
                 MachineStatusLabel(
                     machine: machine,
                     avatarSize: avatarSize,
-                    namespace: namespace
+                    namespace: namespace,
+                    agentCPU: agentCPU
                 )
                 .contentShape(Rectangle())
             }
@@ -222,6 +226,9 @@ struct MachineStatusLabel: View {
     let machine: MachineMonitorModel
     var avatarSize: CGFloat = 32
     var namespace: Namespace.ID?
+    /// Share of the whole machine per session, so the badge can tell working
+    /// from merely open.
+    var agentCPU: [String: Double] = [:]
 
     var body: some View {
         VStack(spacing: 1) {
@@ -262,7 +269,30 @@ struct MachineStatusLabel: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.65)
             }
+
+            // Appears when work starts and leaves when it stops, rather than
+            // holding a slot that is empty most of the time. The column is
+            // thirty points wide; a permanent gap under every name would cost
+            // more than the mark is worth.
+            if let activity {
+                MachineAgentBadge(
+                    activity: activity,
+                    machineName: machine.shortName
+                )
+                .padding(.top, 2)
+                .transition(.scale(scale: 0.6).combined(with: .opacity))
+            }
         }
+        .animation(.spring(duration: 0.32), value: activity)
+    }
+
+    /// What this machine's agents are doing, or nothing when they are not.
+    private var activity: MachineAgentActivity? {
+        guard machine.state == .live else { return nil }
+        return MachineAgentActivityReader.activity(
+            for: machine.agentSessions,
+            cpuBySession: agentCPU
+        )
     }
 
     /// One definition of "storage is in trouble", shared with the machine's
