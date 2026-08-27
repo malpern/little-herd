@@ -432,6 +432,7 @@ struct PanelRenderHarness {
         try render(
             VStack(alignment: .leading, spacing: 6) {
                 MachineAgentRows(
+                    machine: linux,
                     sessions: linux.agentSessions,
                     versions: reports
                 )
@@ -448,7 +449,7 @@ struct PanelRenderHarness {
         // on the sessions alone, and an earlier version hid everything.
         try render(
             VStack(alignment: .leading, spacing: 6) {
-                MachineAgentRows(sessions: [], versions: reports)
+                MachineAgentRows(machine: linux, sessions: [], versions: reports)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 14)

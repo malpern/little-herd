@@ -45,6 +45,7 @@
 		6B236EB580089736F35DAC08 /* MetricModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4669068113CB4027D57F9535 /* MetricModel.swift */; };
 		6D0AF35A5767BC690DEB78FC /* MetricRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F29F16289B54BBD5DC8DE5A /* MetricRow.swift */; };
 		7AAAA02496228EAADA51973E /* TemporaryDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = 324EEBC4BC470AA0BD558877 /* TemporaryDefaults.swift */; };
+		7CD343F90C80DE97ED0AFF18 /* AgentRename.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB6E9A3241016B85217BA671 /* AgentRename.swift */; };
 		81EA61F13900B92BB091C44D /* AddMachinesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 542ADA4729226F9EBB0D48D6 /* AddMachinesView.swift */; };
 		82A07AE2F03229E9AD644A1F /* SSHHostName.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F112CE5D8A49060A44E52A /* SSHHostName.swift */; };
 		87E0B8B33DB2D36F04840F41 /* MetricHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C6082944C3057004428EA4 /* MetricHistory.swift */; };
@@ -183,6 +184,7 @@
 		F82C710E619943CBDCBE3355 /* HerdWorkload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdWorkload.swift; sourceTree = "<group>"; };
 		F92F0519C69CB99B932A38ED /* FolderBrowserModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderBrowserModel.swift; sourceTree = "<group>"; };
 		F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteUnavailabilityTests.swift; sourceTree = "<group>"; };
+		FB6E9A3241016B85217BA671 /* AgentRename.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRename.swift; sourceTree = "<group>"; };
 		FBD2A66D13D5D677C68BF37D /* MachineConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineConfiguration.swift; sourceTree = "<group>"; };
 		FD201A3C46AB062F71E564EF /* AIUsageLimits.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIUsageLimits.swift; sourceTree = "<group>"; };
 		FF6E8B58BFECC711998639C6 /* SynologyDSMTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyDSMTests.swift; sourceTree = "<group>"; };
@@ -209,6 +211,7 @@
 				BDC2B520609D94117FF51336 /* AgentAuthVerification.swift */,
 				F36A1B0B40C57B621213124F /* AgentCompaction.swift */,
 				4A9878F0A2B20756EBC9C5CF /* AgentDestination.swift */,
+				FB6E9A3241016B85217BA671 /* AgentRename.swift */,
 				A17B5AEB7ADED71EAF3397A2 /* AgentSession.swift */,
 				B7CBE63E8ADD9F25EE628DF4 /* AIActivePanelView.swift */,
 				34DDECFA904FEB7B9E48B369 /* AIAgentsView.swift */,
@@ -428,6 +431,7 @@
 				8B754FF26AB9016DAD7BB6A5 /* AgentAuthVerification.swift in Sources */,
 				E4114033EB3F74C949F3DE63 /* AgentCompaction.swift in Sources */,
 				3FA91D8360F75C9F60C66F1C /* AgentDestination.swift in Sources */,
+				7CD343F90C80DE97ED0AFF18 /* AgentRename.swift in Sources */,
 				45C4B87B06C248B32DE821B4 /* AgentSession.swift in Sources */,
 				58521A8BB8088855A0F9DA8D /* BonjourMachineDiscovery.swift in Sources */,
 				231FCA9BBB2F8387C363203F /* CPUOverviewView.swift in Sources */,

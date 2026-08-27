@@ -103,6 +103,12 @@ struct MetricDetailRow<Accessory: View>: View {
     /// When this resolves to an installed app, its icon leads the row instead
     /// of `symbolName`.
     var bundlePath: String?
+    /// A larger leading mark, when the row has one of its own. Sessions use
+    /// the provider's icon at the size the summary panel uses, so a session
+    /// reads the same on both screens.
+    var leadingIconSize: CGFloat?
+    /// Draws the provider's own icon instead of a symbol or a bundle icon.
+    var provider: AgentTaskProvider?
     let title: Text
     var subtitle: Text?
     var value: Text?
@@ -110,12 +116,26 @@ struct MetricDetailRow<Accessory: View>: View {
 
     var body: some View {
         HStack(spacing: 7) {
-            ApplicationIcon(
-                bundlePath: bundlePath,
-                fallbackSymbol: symbolName,
-                tint: tint,
-                size: 14
-            )
+            if let provider {
+                Image(nsImage: AgentProviderIcons.icon(for: provider))
+                    .resizable()
+                    .scaledToFit()
+                    .frame(
+                        width: leadingIconSize ?? 14,
+                        height: leadingIconSize ?? 14
+                    )
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: (leadingIconSize ?? 14) * 0.22)
+                    )
+                    .accessibilityLabel(Text(provider.displayName))
+            } else {
+                ApplicationIcon(
+                    bundlePath: bundlePath,
+                    fallbackSymbol: symbolName,
+                    tint: tint,
+                    size: leadingIconSize ?? 14
+                )
+            }
 
             VStack(alignment: .leading, spacing: 0) {
                 title
@@ -153,6 +173,8 @@ extension MetricDetailRow where Accessory == EmptyView {
         symbolName: String,
         tint: Color = .secondary,
         bundlePath: String? = nil,
+        leadingIconSize: CGFloat? = nil,
+        provider: AgentTaskProvider? = nil,
         title: Text,
         subtitle: Text? = nil,
         value: Text? = nil
@@ -161,6 +183,8 @@ extension MetricDetailRow where Accessory == EmptyView {
             symbolName: symbolName,
             tint: tint,
             bundlePath: bundlePath,
+            leadingIconSize: leadingIconSize,
+            provider: provider,
             title: title,
             subtitle: subtitle,
             value: value,

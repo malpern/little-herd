@@ -1147,7 +1147,11 @@ private struct MachineAgentPane: View {
             emptyMessage: sessions.isEmpty ? agentEmptyMessage : nil,
             emptyAction: onSignIn
         ) {
-            MachineAgentRows(sessions: sessions, versions: versions)
+            MachineAgentRows(
+                machine: machine,
+                sessions: sessions,
+                versions: versions
+            )
         }
     }
 
@@ -1171,39 +1175,31 @@ private struct MachineAgentPane: View {
 /// and the first render of this pane produced a header over an empty box and
 /// reported success. Exactly what `AIAgentPanelContent` exists to avoid.
 struct MachineAgentRows: View {
+    let machine: MachineMonitorModel
     let sessions: [AgentSession]
     var versions: [AgentVersionReport] = []
 
-    /// The path most of the time, and what is newer when something is.
-    ///
-    /// Which copy answered is worth knowing — no machine in this herd has an
-    /// agent on the PATH ssh sees, so the absolute path is the whole story of
-    /// where it came from — but being behind the rest of the herd outranks it.
-    static func subtitle(for report: AgentVersionReport) -> String {
-        guard let newer = report.newer else { return report.shortPath() }
-        return "\(newer.accountName) has \(newer.version)"
-    }
+    /// Which session is being renamed, and what has been typed so far.
+    @State private var renaming: String?
+    @State private var draft = ""
+    @FocusState private var isEditing: Bool
+
+    /// The size the summary panel leads its rows with, so a session looks the
+    /// same wherever you meet it.
+    private static let iconSize: CGFloat = 26
 
     var body: some View {
-        // What the machine has comes before what it is doing with it, and that
-        // order was chosen by looking rather than by taste. Underneath the
-        // list, on a Mac with twenty-four sessions, the versions were as
-        // invisible as they had been before there was anywhere to put them —
-        // which was the whole complaint. Pinning them below the scroll would
-        // be better still and is not worth what it costs: the pane, the window
-        // and the detail frame all have to agree about height, and three
-        // attempts at it each left the last line cut off by the window edge.
         if !versions.isEmpty {
             InstalledAgentsHeader()
 
             ForEach(versions) { report in
+                // No second line. It carried the path most of the time and a
+                // skew note the rest, and neither is what you came to this
+                // list for — which agent, and which version.
                 MetricDetailRow(
                     symbolName: "shippingbox",
-                    tint: report.installation.provider == .codex
-                        ? .green
-                        : .orange,
+                    tint: report.installation.provider == .codex ? .green : .orange,
                     title: Text(report.installation.providerName),
-                    subtitle: Text(Self.subtitle(for: report)),
                     value: Text(report.installation.version)
                 )
             }
@@ -1214,15 +1210,90 @@ struct MachineAgentRows: View {
         }
 
         ForEach(sessions) { session in
-            MetricDetailRow(
-                symbolName: "sparkles",
-                tint: session.provider == .codex ? .green : .orange,
-                // The same three things the overview panel shows, so a
-                // session reads the same on both screens: its own name, what
-                // it is doing, and how long since it moved.
-                title: Text(session.displayTitle),
-                subtitle: session.statusLine.map(Text.init),
-                value: Text(AgentRowMetrics.compactAge(of: session.updatedAt))
+            sessionRow(session)
+        }
+    }
+
+    @ViewBuilder
+    private func sessionRow(_ session: AgentSession) -> some View {
+        MetricDetailRow(
+            symbolName: "sparkles",
+            tint: session.provider == .codex ? .green : .orange,
+            leadingIconSize: Self.iconSize,
+            provider: session.provider,
+            title: Text(session.displayTitle),
+            subtitle: session.statusLine.map(Text.init),
+            value: Text(AgentRowMetrics.compactAge(of: session.updatedAt))
+        )
+        .overlay(alignment: .leading) {
+            if renaming == session.id {
+                renameField(for: session)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { beginRenaming(session) }
+        // The pointer says which rows will answer a click. Only Codex will:
+        // Claude Code has no supported way to rename a session from outside
+        // it, so offering the gesture there would be a control that lies.
+        .pointerStyle(canRename(session) ? .link : nil)
+        .help(
+            canRename(session)
+                ? "Click to rename this session in Codex."
+                : "Renaming is only supported for Codex sessions."
+        )
+    }
+
+    private func renameField(for session: AgentSession) -> some View {
+        TextField("", text: $draft)
+            .textFieldStyle(.roundedBorder)
+            .font(.caption)
+            .focused($isEditing)
+            .padding(.leading, Self.iconSize + 7)
+            .onSubmit { commitRename(session) }
+            .onExitCommand { cancelRename() }
+            .onAppear { isEditing = true }
+    }
+
+    private func canRename(_ session: AgentSession) -> Bool {
+        session.provider == .codex && codexInstall != nil
+    }
+
+    private var codexInstall: AgentInstallation? {
+        machine.destinationReport?.installations
+            .first { $0.provider == .codex }
+    }
+
+    private func beginRenaming(_ session: AgentSession) {
+        guard canRename(session) else { return }
+        draft = session.displayTitle
+        renaming = session.id
+    }
+
+    private func cancelRename() {
+        renaming = nil
+        draft = ""
+    }
+
+    private func commitRename(_ session: AgentSession) {
+        let name = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        cancelRename()
+        guard !name.isEmpty, name != session.displayTitle,
+              let install = codexInstall
+        else {
+            return
+        }
+        Task {
+            // The result is not surfaced yet. The next probe re-reads the
+            // name from Codex, so a rename that failed simply does not appear
+            // to have happened — which is honest, if terse, and better than
+            // showing a name the provider never accepted.
+            _ = await AgentRenamer.rename(
+                threadID: session.id,
+                to: name,
+                using: install,
+                isLocal: machine.isLocal,
+                host: machine.hostname,
+                identityFile: machine.identityFile
             )
         }
     }
