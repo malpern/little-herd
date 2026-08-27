@@ -6,3 +6,6 @@ Documentation/QA/
 tmp/
 *.xcuserstate
 xcuserdata/
+
+# local preview server config
+.claude/launch.json
