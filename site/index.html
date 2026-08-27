@@ -149,6 +149,32 @@ footer { --dot: var(--green); }
    stranded "silicon and Intel" on its own line under "Apple". */
 .fine > span { white-space: nowrap; }
 
+/* ------------------------------------------------------------------ motion
+   Two animations, both of which mean something. Anything decorative was left
+   out on purpose: scattered scroll-reveals are what a generated page looks
+   like, and this one has a real mark and real toys to spend motion on. */
+
+/* The dot in the wordmark is a status light, so it behaves like one. It lives
+   inside the <use> shadow tree where no selector reaches it, so the colour is
+   animated through the custom property instead -- which needs @property to be
+   registered as a colour, or it would jump rather than fade. Browsers without
+   @property simply get a steady dot. */
+@property --dot { syntax: "<color>"; inherits: true; initial-value: #1F9E52; }
+@keyframes herd-live { 0%, 100% { --dot: #34C46F; } 50% { --dot: #2C8C57; } }
+
+.avatars img { transition: transform .3s cubic-bezier(.2,.7,.3,1), filter .3s ease; }
+.cta { transition: background .18s ease, transform .18s ease, box-shadow .18s ease; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .top { animation: herd-live 4.5s ease-in-out infinite; }
+  /* the avatars read as toys; they should feel like you could pick one up */
+  .avatars li:hover img {
+    transform: translateY(-7px) scale(1.045);
+    filter: drop-shadow(0 8px 12px rgba(29,28,26,.20));
+  }
+  .cta:hover { transform: translateY(-1px); }
+}
+
 /* -------------------------------------------------------------- sections */
 section { padding-block: clamp(4rem, 9vw, 7rem); }
 section + section { border-block-start: 1px solid var(--rule); }
@@ -192,6 +218,19 @@ section + section { border-block-start: 1px solid var(--rule); }
 }
 .card h3 { margin-block-end: .45rem; }
 .card p { margin: 0; font-size: .985rem; color: var(--muted); line-height: 1.55; }
+
+/* ----------------------------------------------------------- coming soon
+   Given its own ground so nobody mistakes it for what ships today. */
+.soon { background: rgba(26,156,138,.07); }
+:root[data-theme="dark"] .soon { background: rgba(26,156,138,.10); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .soon { background: rgba(26,156,138,.10); } }
+.pill {
+  display: inline-block; font-size: .76rem; font-weight: 600;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--teal); border: 1px solid currentColor;
+  padding: .2rem .6rem; border-radius: 999px; margin-block-end: 1.1rem;
+}
+.soon .split + .split { margin-block-start: clamp(2.5rem, 5vw, 4rem); }
 
 /* --------------------------------------------------------------- licence */
 .licence { background: var(--licence-bg); color: #EAF3EC; }
@@ -366,6 +405,40 @@ footer a { color: var(--muted); }
         <p>Developer ID and Apple notarization, with automatic updates.</p>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- Not shipped. Every claim in here is future tense and the pill says so;
+     the detail comes from HANDOFF item 4 (transfer) and item 8 (cloud). -->
+<section class="soon">
+  <div class="wrap">
+    <span class="pill">Coming soon</span>
+    <h2>Move a session to the machine that&rsquo;s free.</h2>
+    <p class="lede">Your laptop is compiling and the mini is idle. Little Herd
+      will stop a Claude or Codex session on one machine and start its
+      successor on another, with the work intact.</p>
+    <p>Not process migration &mdash; that isn&rsquo;t possible and isn&rsquo;t
+      wanted. The session writes its full context, and a transfer branch
+      carries that plus anything uncommitted, so the destination checks out one
+      ref and has all of it at once.</p>
+    <p class="note">Your machines share one account, so a move rebalances
+      silicon, not tokens. Little Herd will say so rather than let you move a
+      session for a reason it cannot deliver. Machine to machine only: your
+      phone can start a transfer and watch it, but is never a destination.</p>
+  </div>
+</section>
+
+<section class="soon">
+  <div class="wrap">
+    <span class="pill">Coming soon</span>
+    <h2>Cloud work, in the same window.</h2>
+    <p class="lede">Codex cloud tasks listed beside your machines, so the herd
+      is everything working for you rather than everything you own.</p>
+    <p class="note">Moving cloud work down to a machine will use each
+      vendor&rsquo;s own command, never a protocol of Little Herd&rsquo;s. The
+      two are honestly different and the interface will say so: Codex cloud
+      tasks can be listed, while Claude sessions can only be pulled by id,
+      because nothing can enumerate them from here.</p>
   </div>
 </section>
 

@@ -1542,6 +1542,20 @@ it; the files survived only because the directory had not been reaped yet.
     looking at the cropped image, not at its dimensions — the first attempt
     reported a perfectly plausible 600x656 at 2x and was entirely black.
 
+    **The page describes items 4 and 8 as Coming soon.** Decided 26 August,
+    on the grounds that the site is published but not announced. Each sits on
+    its own tinted ground behind a "Coming soon" pill, every sentence is future
+    tense, and both carry the constraints rather than only the upside —
+    "silicon, not tokens", the phone never being a destination, the vendors'
+    own commands. Those limits are the most credible thing in the section; a
+    roadmap that lists only upside reads as a wish. **If either item changes
+    shape, the page is now a second place that has to change with it.**
+
+    When transfer ships, watching stays the headline and moving becomes a
+    strong section rather than the thesis — watching is the everyday use and
+    the reason it lives in the menu bar, and the product should not collapse if
+    a transfer proves finicky in practice.
+
     **Two things stand between here and a site, and neither is a feature.**
     Confirm whether the certificate fix is still unreleased, and **take fresh
     screenshots** — both files in `Documentation/Screenshots` are from

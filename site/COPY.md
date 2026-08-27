@@ -202,6 +202,69 @@ The layout keeps a slot between section 5 and the licence for a price block,
 so pricing can arrive without a redesign. Nothing goes in it now, and the hero
 does not hint at it beyond "while in development."
 
+---
+
+## Coming soon — labelled, not implied
+
+Two sections describe work that is **not built**. Each carries a "Coming soon"
+pill and sits on its own tinted ground, and every sentence in them is future
+tense. That is what makes them honest: the copy rule is never to claim what the
+app does not do, and a plainly labelled intention is not a claim.
+
+> **Move a session to the machine that's free.**
+>
+> Your laptop is compiling and the mini is idle. Little Herd will stop a Claude
+> or Codex session on one machine and start its successor on another, with the
+> work intact.
+>
+> Not process migration — that isn't possible and isn't wanted. The session
+> writes its full context, and a transfer branch carries that plus anything
+> uncommitted, so the destination checks out one ref and has all of it at once.
+>
+> Your machines share one account, so a move rebalances silicon, not tokens.
+> Little Herd will say so rather than let you move a session for a reason it
+> cannot deliver. Machine to machine only: your phone can start a transfer and
+> watch it, but is never a destination.
+
+> **Cloud work, in the same window.**
+>
+> Codex cloud tasks listed beside your machines, so the herd is everything
+> working for you rather than everything you own.
+>
+> Moving cloud work down to a machine will use each vendor's own command, never
+> a protocol of Little Herd's. The two are honestly different and the interface
+> will say so: Codex cloud tasks can be listed, while Claude sessions can only
+> be pulled by id, because nothing can enumerate them from here.
+
+Both are compressed from `HANDOFF.md` items 4 and 8, including the constraints
+— "silicon, not tokens", the phone never being a destination, the vendors' own
+commands. Those limits are the most credible thing in the section. A roadmap
+that lists only upside reads as a wish; one that states what it will refuse to
+do reads as a plan.
+
+**When transfer ships, watching stays the headline.** Moving becomes a strong
+section and not the thesis, because watching is the everyday use and the reason
+it lives in the menu bar, while moving is occasional. It also means the product
+does not collapse if the transfer proves finicky in practice.
+
+---
+
+## Motion
+
+Two animations, both meaning something, and nothing decorative.
+
+**The wordmark's dot breathes** on a 4.5s cycle, because it *is* a status
+light. It sits inside the `<use>` shadow tree where no selector reaches it, so
+the colour animates through the `--dot` custom property — which has to be
+registered with `@property` as a `<color>`, or it steps instead of fading.
+
+**The Herdware avatars lift on hover.** They read as toys; they should feel
+like you could pick one up.
+
+Both sit inside `prefers-reduced-motion: no-preference`. Scroll-reveals, fades
+and parallax were left out: they are what a generated page looks like, and this
+page has a real mark and real toys to spend motion on instead.
+
 ## Still needed
 
 Fresh screenshots, and one of the AI view — the section that names the thing
