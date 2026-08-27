@@ -398,6 +398,15 @@ private struct CPUThermometerColumn: View {
                         fillsHeight: true
                     )
                     .padding(.vertical, 1)
+                    // Room under the bars for the agent deck to peek into.
+                    // Held for every machine, so the bars are one height across
+                    // the herd whether or not a machine is working.
+                    .padding(
+                        .bottom,
+                        DashboardChrome.showsAgentTokens
+                            ? MachineAgentStack.clearance(forAvatar: avatarSize)
+                            : 0
+                    )
                     .matchedThermometer(namespace, machine: machine.machine)
 
                     // **Only where there is a capacity to write.** This block
@@ -609,6 +618,13 @@ struct MachineStatusLabel: View {
         VStack(spacing: HerdAvatarSize.captionSpacing) {
             MachineAvatarView(avatar: machine.avatar, size: avatarSize)
                 .matchedAvatar(namespace, machine: machine.machine)
+                // Behind the animal, and drawn as a background so the animal
+                // occludes it — the deck is being carried, not worn.
+                .background(alignment: .top) {
+                    if DashboardChrome.showsAgentTokens, let activity {
+                        MachineAgentStack(activity: activity, avatarSize: avatarSize)
+                    }
+                }
                 // A drive in trouble is worth seeing under every metric, not
                 // only Disk: the machine is reachable and its volumes may look
                 // fine while the hardware underneath is failing.
@@ -658,85 +674,6 @@ struct MachineStatusLabel: View {
                 }
             }
 
-            // Appears when work starts and leaves when it stops, rather than
-            // holding a slot that is empty most of the time. The column is
-            // thirty points wide; a permanent gap under every name would cost
-            // more than the mark is worth.
-            // The pad is drawn whenever there is something on it or a drag is
-            // asking where things could go. At rest under an idle machine it
-            // would be a permanent empty box.
-            if DashboardChrome.showsAgentTokens,
-               activity != nil || agents.padState != .idle {
-                MachineAgentPad(state: agents.padState, height: avatarSize * 0.64 + 10) {
-                    if let activity {
-                        MachineAgentToken(
-                            activity: activity,
-                            machineName: machine.shortName,
-                            // Derived, so the hierarchy survives a herd of two
-                            // and a herd of six alike — and big enough to grab
-                            // comfortably, because this is a thing you pick up.
-                            size: avatarSize * 0.64,
-                            lift: lift
-                        )
-                        .offset(x: carried.width, y: carried.height)
-                        // Implicit, and keyed on the offset, so a token grabbed
-                        // again while it is still flying home retargets from
-                        // where it is on screen. `withAnimation` around the
-                        // release animates *toward* a value the next gesture
-                        // then overwrites, which is the classic way to get a
-                        // jump at exactly the moment the person is watching.
-                        .animation(homeward, value: carried)
-                        .keyframeAnimator(
-                            initialValue: CGFloat.zero,
-                            trigger: refusals
-                        ) { token, jitter in
-                            token.offset(x: jitter)
-                        } keyframes: { _ in
-                            // Five stops in a little over a quarter second,
-                            // each smaller than the last: a refusal, not a
-                            // wobble.
-                            CubicKeyframe(-5, duration: 0.055)
-                            CubicKeyframe(4, duration: 0.055)
-                            CubicKeyframe(-3, duration: 0.055)
-                            CubicKeyframe(2, duration: 0.055)
-                            CubicKeyframe(0, duration: 0.055)
-                        }
-                        .zIndex(1)
-                        .onHover { hovering in
-                            isReady = hovering
-                            // Immediately on the way out, and after a pause on
-                            // the way in — the delay exists so that crossing
-                            // the token on the way to something else does not
-                            // throw a panel over the herd, and a matching
-                            // delay leaving would leave the card sitting over
-                            // the machine you were actually reaching for.
-                            if !hovering { card.hover(false) }
-                        }
-                        // Says the token is a target in its own right, not a
-                        // decoration on the button underneath it.
-                        .pointerStyle(.link)
-                        .popover(isPresented: showsCard, arrowEdge: cardEdge) {
-                            MachineAgentCard(
-                                activity: activity,
-                                machineName: machine.shortName,
-                                agentCPU: agents.agentCPU,
-                                leading: card.isHovering ? nil : agents.announcing
-                            )
-                        }
-                        // Before the drag, so a click on the token opens the
-                        // AI page instead of falling through to the button
-                        // that opens the machine's summary. They are different
-                        // destinations and the token points at the nearer one.
-                        .onTapGesture {
-                            card.dismiss(announcing: agents.announcing)
-                            agents.onSelectAgents?(machine.machine)
-                        }
-                        .gesture(dragGesture(for: activity))
-                    }
-                }
-                .padding(.top, 7)
-                .transition(.scale(scale: 0.6).combined(with: .opacity))
-            }
         }
         .animation(.spring(duration: 0.32), value: activity)
         // A refusal shakes the token on its way back. Guarded here rather than
@@ -807,10 +744,6 @@ struct MachineStatusLabel: View {
             : .spring(duration: 0.34, bounce: 0.35)
     }
 
-    private var lift: MachineAgentToken.TokenLift {
-        if agents.isCarried || carried != .zero { return .carried }
-        return isReady ? .ready : .resting
-    }
 
     /// Picking up, carrying, and letting go.
     ///

@@ -19,7 +19,7 @@ nonisolated enum DashboardChrome {
     /// They occupied the band the tab row now sits above, and the two together
     /// made the bottom third of a 324-point window three stacked surfaces.
     /// Where they should live instead is the open question.
-    static let showsAgentTokens = false
+    static let showsAgentTokens = true
 
     /// The per-provider usage marks in the top-right of the header.
     ///
