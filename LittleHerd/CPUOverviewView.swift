@@ -24,8 +24,26 @@ struct CPUOverviewView: View {
     /// nobody sees and a timer nobody can replay.
     @Environment(\.controlActiveState) private var windowActivity
 
-    /// The machine whose deck is fanned out, if any.
+    /// The machine whose deck is raised, and why it went up.
+    ///
+    /// **Two reasons, and they differ in one visible way.** Pointing at a
+    /// machine is a question about that machine, so the rest of the herd steps
+    /// back to answer it. A session *arriving* is news, and dimming three
+    /// machines to deliver it would be the herd flinching every time work
+    /// starts somewhere.
     @State private var fanned: MachineID?
+    @State private var fanIsAnswerToAPointer = true
+    /// Clears an arrival's raise after it has been seen.
+    @State private var arrivalRaise: Task<Void, Never>?
+
+    /// An agent in hand, and the machine the pointer is over.
+    @State private var carrying: CarriedAgent?
+
+    struct CarriedAgent: Equatable {
+        let session: AgentSession
+        let from: MachineID
+        var over: MachineID?
+    }
 
     @State private var arrivals = AgentArrivalWatch()
     /// Noticed, waiting for somebody to be looking.
@@ -104,15 +122,22 @@ struct CPUOverviewView: View {
                 // a fan spanning the whole window still reads as belonging to
                 // one animal. The alternative was a tail or a tray, which is
                 // chrome for a job the herd can do itself.
-                .opacity(fanned == nil || fanned == machine.machine ? 1 : 0.35)
+                .opacity(dimming(machine.machine) ? 0.35 : 1)
+                // An animal that could take what is being carried lifts to
+                // meet it; one that could not simply does not answer, which is
+                // a quieter no than a mark and needs no surface to paint on.
+                .offset(y: welcomes(machine.machine) ? -5 : 0)
+                .animation(.spring(duration: 0.24), value: carrying)
                 .onHover { hovering in
                     guard DashboardChrome.showsAgentTokens else { return }
                     withAnimation(.smooth(duration: 0.22)) {
                         if hovering {
-                            fanned = agentActivity(on: machine) == nil
-                                ? nil
-                                : machine.machine
-                        } else if fanned == machine.machine {
+                            guard agentActivity(on: machine) != nil else { return }
+                            // A pointer outranks an arrival: you have asked.
+                            arrivalRaise?.cancel()
+                            fanIsAnswerToAPointer = true
+                            fanned = machine.machine
+                        } else if fanned == machine.machine, fanIsAnswerToAPointer {
                             fanned = nil
                         }
                     }
@@ -208,6 +233,45 @@ struct CPUOverviewView: View {
         withAnimation(.easeOut(duration: 0.25)) { refusal = nil }
     }
 
+    /// Whether this machine is the one an agent is being held over, and would
+    /// take it.
+    private func welcomes(_ machine: MachineID) -> Bool {
+        guard let carrying, carrying.over == machine else { return false }
+        return AgentDropEligibility.canAccept(
+            machine,
+            carrying: MachineAgentActivity(
+                provider: carrying.session.provider,
+                sessions: [carrying.session]
+            ),
+            from: carrying.from,
+            in: herd,
+            requiresApproval: requiresDestinationApproval
+        )
+    }
+
+    /// Whether a machine steps back so another can be read.
+    private func dimming(_ machine: MachineID) -> Bool {
+        guard let fanned, fanIsAnswerToAPointer else { return false }
+        return fanned != machine
+    }
+
+    /// Raises a machine's deck because something just started on it, for long
+    /// enough to be read and no longer.
+    private func raise(forArrival machine: MachineID) {
+        arrivalRaise?.cancel()
+        withAnimation(.spring(duration: 0.34, bounce: 0.22)) {
+            fanIsAnswerToAPointer = false
+            fanned = machine
+        }
+        arrivalRaise = Task {
+            try? await Task.sleep(for: .seconds(2.6))
+            guard !Task.isCancelled else { return }
+            // A pointer may have arrived meanwhile and taken it over.
+            guard !fanIsAnswerToAPointer else { return }
+            withAnimation(.smooth(duration: 0.28)) { fanned = nil }
+        }
+    }
+
     /// The fanned deck, drawn over the herd rather than inside a column.
     @ViewBuilder
     private var fanOverlay: some View {
@@ -219,7 +283,15 @@ struct CPUOverviewView: View {
                 animalCentre: centreOfColumn(for: fanned),
                 width: width,
                 tile: avatarSize * 0.62,
-                onOpenAll: { onSelectAgents?(fanned) }
+                onOpenAll: { onSelectAgents?(fanned) },
+                onCarry: { session, x in
+                    carrying = CarriedAgent(
+                        session: session,
+                        from: fanned,
+                        over: columns.machine(atX: x, leadingInset: horizontalPadding)
+                    )
+                },
+                onDrop: { carrying = nil }
             )
             // Level with the band the resting deck peeks into, so the icons
             // rise straight up out of the animal rather than travelling

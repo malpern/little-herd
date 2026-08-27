@@ -14,6 +14,22 @@ nonisolated struct HerdColumns: Equatable, Sendable {
     /// Column width plus the gap between columns.
     let stride: CGFloat
 
+    /// Which machine's column a point falls in, measured from the window's
+    /// leading edge.
+    ///
+    /// The drag that carries an agent between animals asks this rather than
+    /// the displacement question below: it begins at an icon floating above
+    /// the herd, not at a token sitting in a column, so there is no "from
+    /// here" to measure against — only where the pointer is now.
+    ///
+    /// - Parameter leadingInset: the padding before the first column.
+    func machine(atX x: CGFloat, leadingInset: CGFloat) -> MachineID? {
+        guard stride > 0 else { return nil }
+        let index = Int(floor((x - leadingInset) / stride))
+        guard ids.indices.contains(index) else { return nil }
+        return ids[index]
+    }
+
     /// - Parameter dx: how far the token has been carried sideways from where
     ///   it started, which is the only quantity that is the same in every
     ///   coordinate space anyone might hand us.

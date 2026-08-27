@@ -92,3 +92,38 @@ struct AgentCardSideTests {
         #expect(AgentCardSide.side(forMachineAt: 9, inHerdOf: 4) == .trailing)
     }
 }
+
+/// Which column a point falls in, for a drag that carries an agent across the
+/// herd rather than nudging a token sideways.
+struct HerdColumnHitTests {
+    private let columns = HerdColumns(
+        ids: [MachineID("air"), MachineID("mini"), MachineID("linux"), MachineID("nas")],
+        stride: 72
+    )
+    private let inset: CGFloat = 14
+
+    /// The middle of each column answers with that column's machine.
+    @Test
+    func eachColumnAnswersForItsOwnMiddle() {
+        for (index, id) in [MachineID("air"), MachineID("mini"),
+                            MachineID("linux"), MachineID("nas")].enumerated() {
+            let centre = inset + CGFloat(index) * 72 + 36
+            #expect(columns.machine(atX: centre, leadingInset: inset) == id)
+        }
+    }
+
+    /// The boundary belongs to the column it starts, so no point falls in two.
+    @Test
+    func theBoundaryBelongsToTheColumnItStarts() {
+        #expect(columns.machine(atX: inset + 71.9, leadingInset: inset) == MachineID("air"))
+        #expect(columns.machine(atX: inset + 72, leadingInset: inset) == MachineID("mini"))
+    }
+
+    /// Outside the herd is nobody, rather than the nearest machine — carrying
+    /// an agent into the margin is not carrying it to the edge machine.
+    @Test
+    func outsideTheHerdIsNobody() {
+        #expect(columns.machine(atX: inset - 1, leadingInset: inset) == nil)
+        #expect(columns.machine(atX: inset + 4 * 72 + 1, leadingInset: inset) == nil)
+    }
+}
