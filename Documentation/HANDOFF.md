@@ -1033,6 +1033,33 @@ a moving target.
 Native subscription needs a scope this token does not have; `gh auth refresh -h
 github.com -s notifications` once, then subscribing, would do it hands-free.
 
+**An empty `MachineAgentPad` rendered nothing at all, and the code looked
+right.** `EmptyView` produces no layout and silently discards the frame
+modifiers applied to it, so a pad with no token on it had no size — which meant
+that during a drag the machines with *nothing running*, the most interesting
+answer to "where could this go", were the only ones that drew no target. A
+`Color.clear` behind the content fixes it. Nothing in the source hinted at this;
+a render did, after three passes of re-reading correct-looking conditions.
+
+**`DragGesture`'s `location` is in the dragged view's own coordinate space, not
+the screen's.** Hit-testing which column a token is over used it as though it
+were a displacement, so a token sitting perfectly still already read as twenty
+points along and the column under the pointer disagreed with the column being
+offered for the entire gesture. Use `translation`, which is the same quantity in
+every coordinate space. `HerdColumns` now owns that arithmetic and is tested.
+
+**`withAnimation` around a drag's release is the classic source of a jump.** It
+animates *toward* a target that the next gesture immediately overwrites, so a
+token grabbed again while it is still springing home snaps. An implicit
+`.animation(_:value:)` on the offset retargets from the on-screen value instead,
+which is what interruptibility actually means.
+
+**A dashed edge means "something could go here", so a refusal must not have
+one.** The first pass gave `available` and `refused` the same dashed grey
+silhouette and tried to separate them with fill opacity. The two states a person
+most needs to tell apart looked like the same box, and no colour tuning fixes
+that while the shape still says yes.
+
 ## Method notes
 
 **Four bugs in one afternoon, none of them findable by the suite, all of them

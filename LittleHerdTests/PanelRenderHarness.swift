@@ -682,5 +682,115 @@ extension PanelRenderHarness {
             size: CGSize(width: 300, height: 240),
             named: "overview-agent-badges"
         )
+
+        // Every frame of the drag, which is the part that cannot be judged by
+        // reading it. A gesture is four or five pictures, and the ones in the
+        // middle — a herd offering itself, one machine refusing — are the ones
+        // that decide whether the thing feels like it works.
+        let carrying = AgentDragSession(
+            origin: MachineID("air"),
+            activity: try #require(
+                MachineAgentActivityReader.activity(
+                    for: machines[0].agentSessions,
+                    cpuBySession: ["a": 61, "b": 4]
+                )
+            ),
+            over: nil
+        )
+
+        func frame(_ drag: AgentDragSession, named name: String) throws {
+            try render(
+                CPUOverviewView(
+                    machines: machines,
+                    metric: .cpu,
+                    agentCPU: ["a": 61, "b": 4, "c": 38],
+                    previewDrag: drag
+                ),
+                size: CGSize(width: 300, height: 240),
+                named: name
+            )
+        }
+
+        // Lifted, nothing chosen: every other machine says whether it could
+        // take this.
+        try frame(carrying, named: "overview-drag-lifted")
+
+        // Over a machine that will take it.
+        var overMini = carrying
+        overMini.over = MachineID("mini")
+        try frame(overMini, named: "overview-drag-over-target")
+
+        // Over the machine it came from, which is a no-op rather than a
+        // refusal — the pad stays quiet and the token has somewhere to fall
+        // back to.
+        var overHome = carrying
+        overHome.over = MachineID("air")
+        try frame(overHome, named: "overview-drag-over-origin")
+    }
+}
+
+// MARK: - The drag vocabulary
+
+extension PanelRenderHarness {
+    /// Every pad state and every token lift, side by side.
+    ///
+    /// The overview frames show these in context, which is where they have to
+    /// work — but in context each frame contains at most two of them, and the
+    /// question "do these four read as four different answers" can only be
+    /// asked with all four in one picture.
+    @Test
+    func renderTheDragVocabulary() throws {
+        let activity = MachineAgentActivity(
+            provider: .claude,
+            sessions: [
+                AgentSession(
+                    id: "a",
+                    provider: .claude,
+                    projectName: "little-herd",
+                    state: .active,
+                    updatedAt: .now,
+                    progress: nil,
+                    title: "Panel redesign",
+                    activity: nil,
+                    model: "claude-opus-5"
+                ),
+            ]
+        )
+
+        func pad(_ state: AgentPadState, token: Bool, lift: MachineAgentToken.TokenLift) -> some View {
+            MachineAgentPad(state: state, height: 32) {
+                if token {
+                    MachineAgentToken(
+                        activity: activity,
+                        machineName: "Air",
+                        size: 22,
+                        lift: lift
+                    )
+                }
+            }
+            .frame(width: 62)
+        }
+
+        try render(
+            VStack(spacing: 14) {
+                // Occupied: what a machine that is working looks like, and how
+                // the token answers being pointed at and picked up.
+                HStack(spacing: 8) {
+                    pad(.idle, token: true, lift: .resting)
+                    pad(.idle, token: true, lift: .ready)
+                    pad(.idle, token: true, lift: .carried)
+                    pad(.idle, token: false, lift: .resting)
+                }
+                // Empty, mid-drag: the three answers a machine can give.
+                HStack(spacing: 8) {
+                    pad(.available, token: false, lift: .resting)
+                    pad(.targeted, token: false, lift: .resting)
+                    pad(.refused, token: false, lift: .resting)
+                    pad(.idle, token: false, lift: .resting)
+                }
+            },
+            size: CGSize(width: 300, height: 120),
+            named: "drag-vocabulary"
+        )
     }
 }

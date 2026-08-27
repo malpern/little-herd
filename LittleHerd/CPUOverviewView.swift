@@ -8,6 +8,24 @@ struct CPUOverviewView: View {
     var onSelectMachine: ((MachineID) -> Void)?
     var agentCPU: [String: Double] = [:]
 
+    /// A drag to draw instead of a real one. Only the render harness sets
+    /// this: a drag lives in `@State`, so without a seam the only frames
+    /// anyone could ever look at are the two ends of the gesture — and the
+    /// states worth arguing about are all in the middle.
+    var previewDrag: AgentDragSession?
+
+    /// The drag in progress, owned here because a drag spans columns and no
+    /// column can see its neighbours.
+    @State private var drag: AgentDragSession?
+
+    /// The drag that was just refused, held briefly so the refusal is visible
+    /// after the pointer has let go. The whole session rather than the machine
+    /// that said no, because a refusal has two halves: the target tints, and
+    /// the token that came back shakes.
+    @State private var refusal: AgentDragSession?
+
+    private var activeDrag: AgentDragSession? { drag ?? previewDrag }
+
     var body: some View {
         HStack(alignment: .top, spacing: columnSpacing) {
             ForEach(machines) { machine in
@@ -19,13 +37,89 @@ struct CPUOverviewView: View {
                     namespace: namespace,
                     onSelectMetric: onSelectMetric,
                     onSelectMachine: onSelectMachine,
-                    agentCPU: agentCPU
+                    agentCPU: agentCPU,
+                    padState: padState(for: machine.machine),
+                    isCarried: activeDrag?.origin == machine.machine,
+                    wasRefused: refusal?.origin == machine.machine,
+                    onDragChanged: { activity, dx in
+                        beginOrUpdate(from: machine.machine, activity: activity, by: dx)
+                    },
+                    onDragEnded: endDrag
                 )
+                // The token being carried has to draw over the pads it is
+                // passing across. Without this its own column stacks in
+                // source order and a neighbour's lit pad covers the thing in
+                // hand exactly when it is closest to landing.
+                .zIndex(activeDrag?.origin == machine.machine ? 1 : 0)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, horizontalPadding)
         .padding(.vertical, 10)
+    }
+
+    /// Which machines could take what is in hand.
+    ///
+    /// Every machine but the one it came from, for now. This is the seam
+    /// `DestinationEligibility` belongs in — it already answers exactly this
+    /// question and is tested and uncalled — and wiring it here is the first
+    /// thing the transfer work should do rather than the last.
+    private func canAccept(_ machine: MachineID) -> Bool {
+        guard let drag = activeDrag else { return false }
+        return machine != drag.origin
+    }
+
+    private func padState(for machine: MachineID) -> AgentPadState {
+        guard let drag = activeDrag else {
+            // A refusal outlives the gesture that caused it. Letting go is the
+            // moment a person looks up for an answer, and if the pads all went
+            // dark on release then dropping on a machine that will not take it
+            // would look exactly like changing your mind.
+            return machine == refusal?.over ? .refused : .idle
+        }
+        return drag.padState(for: machine, canAccept: canAccept)
+    }
+
+    private func beginOrUpdate(
+        from origin: MachineID,
+        activity: MachineAgentActivity,
+        by dx: CGFloat
+    ) {
+        var session = drag ?? AgentDragSession(origin: origin, activity: activity, over: nil)
+        session.over = columns.machine(draggedFrom: origin, displacedBy: dx)
+        drag = session
+    }
+
+    /// Which column the pointer is over, worked out from the drag's own
+    /// translation rather than from a preference key.
+    ///
+    /// The columns are equal width and evenly spaced, so the arithmetic is
+    /// exact and needs no geometry reader — and a reader here would have to
+    /// publish four frames on every frame of a drag.
+    private var columns: HerdColumns {
+        HerdColumns(ids: machines.map(\.machine), stride: columnWidth + columnSpacing)
+    }
+
+    private func endDrag() {
+        // Nothing moves yet, and the token springs home. The outcome is
+        // computed all the same, because it is the thing the transfer work
+        // will act on and it is better to have it wrong here, where it can be
+        // seen, than absent until the day it matters.
+        let ending = drag
+        let outcome = drag?.outcome(canAccept: canAccept)
+        drag = nil
+
+        guard case .refused = outcome else {
+            refusal = nil
+            return
+        }
+        withAnimation(.easeOut(duration: 0.15)) { refusal = ending }
+        // Long enough to read as an answer, short enough that it is not a
+        // state the person has to dismiss.
+        Task {
+            try? await Task.sleep(for: .milliseconds(600))
+            withAnimation(.easeOut(duration: 0.25)) { refusal = nil }
+        }
     }
 
     private var machineCount: CGFloat { CGFloat(max(machines.count, 1)) }
@@ -58,6 +152,11 @@ private struct CPUThermometerColumn: View {
     var onSelectMetric: ((MachineID) -> Void)?
     var onSelectMachine: ((MachineID) -> Void)?
     var agentCPU: [String: Double] = [:]
+    var padState: AgentPadState = .idle
+    var isCarried = false
+    var wasRefused = false
+    var onDragChanged: ((MachineAgentActivity, CGFloat) -> Void)?
+    var onDragEnded: (() -> Void)?
 
     var body: some View {
         // A real Button, not a tap gesture: the window is movable by its
@@ -119,7 +218,12 @@ private struct CPUThermometerColumn: View {
                     machine: machine,
                     avatarSize: avatarSize,
                     namespace: namespace,
-                    agentCPU: agentCPU
+                    agentCPU: agentCPU,
+                    padState: padState,
+                    isCarried: isCarried,
+                    wasRefused: wasRefused,
+                    onDragChanged: onDragChanged,
+                    onDragEnded: onDragEnded
                 )
                 .contentShape(Rectangle())
             }
@@ -233,6 +337,23 @@ struct MachineStatusLabel: View {
     /// Share of the whole machine per session, so the badge can tell working
     /// from merely open.
     var agentCPU: [String: Double] = [:]
+    var padState: AgentPadState = .idle
+    /// Whether the drag in progress started here. Told rather than inferred:
+    /// the offset below is this view's business, but *being carried* is a fact
+    /// about the drag, and deriving it twice is how the two disagree.
+    var isCarried = false
+    /// Whether the drop this token just came back from was refused.
+    var wasRefused = false
+    var onDragChanged: ((MachineAgentActivity, CGFloat) -> Void)?
+    var onDragEnded: (() -> Void)?
+
+    @State private var carried: CGSize = .zero
+    @State private var isReady = false
+    @State private var isDragging = false
+    /// Sideways jitter after a refused drop.
+    @State private var shake: CGFloat = 0
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         // Two points between the animal and its name, seven before the agent
@@ -281,22 +402,98 @@ struct MachineStatusLabel: View {
             // holding a slot that is empty most of the time. The column is
             // thirty points wide; a permanent gap under every name would cost
             // more than the mark is worth.
-            if let activity {
-                MachineAgentBadge(
-                    activity: activity,
-                    machineName: machine.shortName,
-                    // Derived, so the hierarchy survives a herd of two and a
-                    // herd of six alike. Two thirds rather than a third: this
-                    // is a thing you will one day pick up and drop on another
-                    // machine, and a mark too small to grab comfortably would
-                    // have to be redrawn the day that gesture arrives.
-                    size: avatarSize * 0.64
-                )
+            // The pad is drawn whenever there is something on it or a drag is
+            // asking where things could go. At rest under an idle machine it
+            // would be a permanent empty box.
+            if activity != nil || padState != .idle {
+                MachineAgentPad(state: padState, height: avatarSize * 0.64 + 10) {
+                    if let activity {
+                        MachineAgentToken(
+                            activity: activity,
+                            machineName: machine.shortName,
+                            // Derived, so the hierarchy survives a herd of two
+                            // and a herd of six alike — and big enough to grab
+                            // comfortably, because this is a thing you pick up.
+                            size: avatarSize * 0.64,
+                            lift: lift
+                        )
+                        .offset(x: carried.width + shake, y: carried.height)
+                        // Implicit, and keyed on the offset, so a token grabbed
+                        // again while it is still flying home retargets from
+                        // where it is on screen. `withAnimation` around the
+                        // release animates *toward* a value the next gesture
+                        // then overwrites, which is the classic way to get a
+                        // jump at exactly the moment the person is watching.
+                        .animation(homeward, value: carried)
+                        .zIndex(1)
+                        .onHover { isReady = $0 }
+                        .gesture(dragGesture(for: activity))
+                    }
+                }
                 .padding(.top, 7)
                 .transition(.scale(scale: 0.6).combined(with: .opacity))
             }
         }
         .animation(.spring(duration: 0.32), value: activity)
+        .onChange(of: wasRefused) { _, refused in
+            if refused { shakeOff() }
+        }
+    }
+
+    /// Nothing while it is in hand — the token belongs to the pointer then —
+    /// and a spring on the way back. Reduced motion keeps the return but drops
+    /// the bounce, which is the part that is decoration rather than answer.
+    private var homeward: Animation? {
+        if isDragging { return nil }
+        return reduceMotion
+            ? .easeOut(duration: 0.2)
+            : .spring(duration: 0.34, bounce: 0.35)
+    }
+
+    /// A refused drop shakes the token on its way back.
+    ///
+    /// The target machine tinting says *which* one said no; this says the drop
+    /// itself was rejected. Without it a refusal and a change of mind are the
+    /// same picture — the token returns home either way.
+    private func shakeOff() {
+        guard !reduceMotion else { return }
+        let steps: [CGFloat] = [-5, 4, -3, 2, 0]
+        Task {
+            for step in steps {
+                withAnimation(.easeOut(duration: 0.055)) { shake = step }
+                try? await Task.sleep(for: .milliseconds(55))
+            }
+        }
+    }
+
+    private var lift: MachineAgentToken.TokenLift {
+        if isCarried || carried != .zero { return .carried }
+        return isReady ? .ready : .resting
+    }
+
+    /// Picking up, carrying, and letting go.
+    ///
+    /// A minimum distance so a click on the token is still a click: without
+    /// one, every press became a one-pixel drag and the token twitched under
+    /// the pointer instead of behaving like a button.
+    private func dragGesture(for activity: MachineAgentActivity) -> some Gesture {
+        DragGesture(minimumDistance: 4, coordinateSpace: .local)
+            .onChanged { value in
+                isDragging = true
+                // One to one with the pointer, and deliberately not animated:
+                // a token that eased toward the cursor would be following it
+                // rather than being held.
+                carried = value.translation
+                onDragChanged?(activity, value.translation.width)
+            }
+            .onEnded { _ in
+                onDragEnded?()
+                isDragging = false
+                // Home with a spring, always. Nothing moves yet, and a token
+                // that stayed where it was dropped would be claiming something
+                // had happened.
+                carried = .zero
+            }
     }
 
     /// What this machine's agents are doing, or nothing when they are not.
