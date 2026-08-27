@@ -717,12 +717,12 @@ extension PanelRenderHarness {
                 OverviewMetricTabs(selection: .cpu, onSelect: { _ in })
                 OverviewMetricTabs(
                     selection: .cpu,
-                    alarms: [.disk, .memory],
+                    alarms: [.disk: .critical, .memory: .warning],
                     onSelect: { _ in }
                 )
                 OverviewMetricTabs(
                     selection: .disk,
-                    alarms: [.disk],
+                    alarms: [.disk: .critical],
                     onSelect: { _ in }
                 )
             },

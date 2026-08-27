@@ -1,7 +1,7 @@
 import Testing
 @testable import LittleHerd
 
-/// When a tab earns its red dot.
+/// When a tab earns a mark, and which colour.
 struct MetricAlarmTests {
     private func reading(
         _ value: Double?,
@@ -14,38 +14,61 @@ struct MetricAlarmTests {
         )
     }
 
-    /// The dot follows the bar. Ninety-one fills the tenth block, which the
+    /// The mark follows the bar. Ninety-one fills the tenth block, which the
     /// scale paints red; ninety fills nine and is orange.
     @Test
-    func theDotAgreesWithWhatTheThermometerPaints() {
-        #expect(MetricAlarm.isInTheRed(reading(91)))
-        #expect(!MetricAlarm.isInTheRed(reading(90)))
-        #expect(!MetricAlarm.isInTheRed(reading(63)))
+    func aBarInTheRedIsCritical() {
+        #expect(MetricAlarm.severity(reading(91)) == .critical)
+        #expect(MetricAlarm.severity(reading(90)) == nil)
     }
 
-    /// Critical memory pressure is trouble whatever the percentage says — it
-    /// is why that column shows a symbol rather than a figure.
+    /// **A bar in its orange band raises nothing.** A disk at eighty per cent
+    /// is a fact about a disk; a mark lit most of the time is a mark nobody
+    /// reads.
     @Test
-    func criticalMemoryPressureIsInTheRedAtAnyPercentage() {
-        #expect(MetricAlarm.isInTheRed(reading(40, pressure: .critical)))
-        #expect(!MetricAlarm.isInTheRed(reading(40, pressure: .warning)))
+    func aBarMerelyInItsOrangeBandRaisesNothing() {
+        #expect(MetricAlarm.severity(reading(80)) == nil)
+        #expect(MetricAlarm.severity(reading(63)) == nil)
     }
 
-    /// A machine that is not answering is not a machine in trouble. It has no
-    /// reading at all, and a dot would send you to look at nothing.
+    /// Memory is the exception, and deliberately: its percentage is not the
+    /// signal, which is why elevated pressure takes over that column.
+    @Test
+    func elevatedMemoryPressureRaisesAMarkAtAnyPercentage() {
+        #expect(MetricAlarm.severity(reading(30, pressure: .warning)) == .warning)
+        #expect(MetricAlarm.severity(reading(30, pressure: .critical)) == .critical)
+        #expect(MetricAlarm.severity(reading(30, pressure: .normal)) == nil)
+    }
+
+    /// A full disk on a machine under mere memory warning is still critical:
+    /// the worse of the two decides.
+    @Test
+    func theWorseOfTheTwoReadingsDecides() {
+        #expect(MetricAlarm.severity(reading(97, pressure: .warning)) == .critical)
+    }
+
+    /// A machine that is not answering has no reading, and a mark would send
+    /// you to look at nothing.
     @Test
     func aMachineWithNoReadingRaisesNothing() {
-        #expect(!MetricAlarm.isInTheRed(reading(nil)))
-        #expect(!MetricAlarm.isInTheRed(.nothingToShow))
+        #expect(MetricAlarm.severity(reading(nil)) == nil)
+        #expect(MetricAlarm.severity(.nothingToShow) == nil)
     }
 
-    /// One machine in the red is enough for the herd.
+    /// Across a herd: one machine is enough, and the worst decides the colour.
     @Test
-    func oneMachineIsEnough() {
+    func theHerdTakesItsMarkFromItsWorstMachine() {
         #expect(
-            MetricAlarm.isInTheRed(across: [reading(10), reading(20), reading(97)])
+            MetricAlarm.severity(across: [
+                reading(10), reading(30, pressure: .warning),
+            ]) == .warning
         )
-        #expect(!MetricAlarm.isInTheRed(across: [reading(10), reading(20)]))
-        #expect(!MetricAlarm.isInTheRed(across: []))
+        #expect(
+            MetricAlarm.severity(across: [
+                reading(30, pressure: .warning), reading(97),
+            ]) == .critical
+        )
+        #expect(MetricAlarm.severity(across: [reading(10), reading(20)]) == nil)
+        #expect(MetricAlarm.severity(across: []) == nil)
     }
 }

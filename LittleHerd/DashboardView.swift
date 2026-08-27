@@ -229,18 +229,19 @@ struct DashboardView: View {
         isShowingLaunchSplash || isShowingNetworkVolumeOnboarding
     }
 
-    /// Which metrics have a machine in the red, for the marks on the tabs.
+    /// Which metrics have a machine worth looking at, for the marks on the
+    /// tabs, and how badly.
     ///
     /// Asked of every machine on every metric rather than only the one being
     /// shown, which is the entire point: the tab row is how you learn that
     /// something is wrong on a screen you are not looking at.
-    private var metricsInTheRed: Set<OverviewMetric> {
-        var alarms: Set<OverviewMetric> = []
+    private var metricsInTheRed: [OverviewMetric: MetricAlarm.Severity] {
+        var alarms: [OverviewMetric: MetricAlarm.Severity] = [:]
         for metric in OverviewMetric.allCases {
             let readings = model.overviewMachines.map {
                 $0.metricPresentation(for: metric, isReporting: $0.state == .live)
             }
-            if MetricAlarm.isInTheRed(across: readings) { alarms.insert(metric) }
+            alarms[metric] = MetricAlarm.severity(across: readings)
         }
         return alarms
     }

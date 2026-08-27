@@ -10,8 +10,8 @@ import SwiftUI
 /// while nobody was defending the pull-down.
 struct OverviewMetricTabs: View {
     let selection: OverviewMetric
-    /// The metrics with a machine in the red, which get a mark.
-    var alarms: Set<OverviewMetric> = []
+    /// The metrics with a machine worth looking at, and how badly.
+    var alarms: [OverviewMetric: MetricAlarm.Severity] = [:]
     let onSelect: (OverviewMetric) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -36,6 +36,18 @@ struct OverviewMetricTabs: View {
         }
     }
 
+    /// Said in the label rather than as a hint: a hint is offered once, and
+    /// this is the reason to press the tab at all. The levels are named,
+    /// because a colour is not a thing VoiceOver can read.
+    private func label(for metric: OverviewMetric) -> Text {
+        let name = String(localized: metric.title)
+        switch alarms[metric] {
+        case .critical: return Text("\(name), critical")
+        case .warning: return Text("\(name), warning")
+        case nil: return Text(name)
+        }
+    }
+
     private func tab(_ metric: OverviewMetric) -> some View {
         let isSelected = metric == selection
         return Button {
@@ -55,9 +67,9 @@ struct OverviewMetricTabs: View {
                 // tab is already a small target, and a mark that overlaps its
                 // edge reads as damage to the control rather than as news
                 // about what is behind it.
-                if alarms.contains(metric) {
+                if let severity = alarms[metric] {
                     Circle()
-                        .fill(Color.red)
+                        .fill(severity.tint)
                         .frame(width: 5, height: 5)
                         .transition(.scale.combined(with: .opacity))
                 }
@@ -83,13 +95,7 @@ struct OverviewMetricTabs: View {
             value: selection
         )
         .animation(.smooth(duration: 0.25), value: alarms)
-        .accessibilityLabel(
-            alarms.contains(metric)
-                // Said in the label rather than as a hint: a hint is offered
-                // once and this is the reason to press the tab at all.
-                ? Text("\(String(localized: metric.title)), needs attention")
-                : Text(metric.title)
-        )
+        .accessibilityLabel(label(for: metric))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }
