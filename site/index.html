@@ -198,7 +198,7 @@ footer { --dot: var(--green); }
    finishes -- it sits inline in the page, so any growth shoves the reader's
    place on the page. */
 .lh-head { height: 56px; border-bottom: 1px solid rgba(29,28,26,.10); padding-bottom: 9px; margin-bottom: 12px; overflow: hidden; }
-.lh-stage { height: 168px; }
+.lh-stage { height: 176px; }
 /* `hidden` sets display:none from the UA stylesheet, which ANY author display
    rule outranks -- so `.lh-rows { display: grid }` kept the AI rows painting
    underneath the CPU view, as a column of stray status dots below the window.
@@ -211,32 +211,54 @@ footer { --dot: var(--green); }
   margin-right: 5px; vertical-align: middle; transition: background-color .45s ease; }
 .lh-dot.down { background: #E84A29; } .lh-dot.running { background: #1F9E52; }
 .lh-dot.waiting { background: #F2A03F; } .lh-dot.done { background: #3B82D6; }
-.lh-focus { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+/* A machine's own page. The app puts the bar you clicked on the left, grown,
+   with the metric value above it and the avatar and name below -- and makes
+   that whole column the way back, alongside the chevron. The detail sits to
+   its right behind a divider under a small caps title. */
+.lh-focus { display: flex; align-items: center; height: 100%; }
 .lh-back {
-  border: 0; background: none; font: inherit; font-size: 19px; line-height: 1;
-  color: #6B665E; cursor: pointer; padding: 0 4px 2px 0;
+  display: flex; align-items: center; gap: 4px;
+  border: 0; background: none; font: inherit; color: inherit;
+  cursor: pointer; padding: 3px 4px; border-radius: 6px;
 }
-.lh-back:hover { color: #14624E; }
-.lh-focus img { width: 20px; height: 20px; }
-.lh-focus b { font-weight: 600; font-size: 14px; }
-.lh-focus-metric {
-  margin-left: auto; font-size: 10.5px; color: #6B665E;
-  text-transform: uppercase; letter-spacing: .06em;
-}
+.lh-back:hover { background: rgba(26,156,138,.10); }
+.lh-chev { font-size: 19px; line-height: 1; color: #6B665E; }
+.lh-back b { font-weight: 700; font-size: 16px; letter-spacing: -.02em; }
 
-/* a machine's own page: volumes under Disk, processes under the others */
-.lh-detail { display: flex; flex-direction: column; gap: 9px; padding-top: 2px; }
-.lh-line { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
+.lh-detail { display: flex; gap: 10px; height: 100%; }
+.lh-sum {
+  flex: 0 0 92px; display: flex; flex-direction: column; align-items: center; gap: 5px;
+  border: 0; background: none; font: inherit; color: inherit; cursor: pointer;
+  /* square on the divider side, or the radius bends the rule into an arc */
+  border-radius: 8px 0 0 8px; padding: 2px 0;
+  border-right: 1px solid rgba(29,28,26,.10);
+}
+.lh-sum:hover { background: rgba(26,156,138,.10); }
+.lh-sum-pct { font-size: 17px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.lh-sum-pct.hot { color: #E84A29; }
+/* the grown bar: wider blocks than the overview's, which is the whole point */
+.lh-sum-bar { display: flex; flex-direction: column; gap: 2px; width: 38px; }
+.lh-sum-bar i { height: 7px; border-radius: 2px; background: rgba(29,28,26,.09);
+  transition: background-color .45s cubic-bezier(.4,0,.2,1); }
+.lh-sum-bar i.green { background: #1F9E52; } .lh-sum-bar i.yellow { background: #E8C13F; }
+.lh-sum-bar i.orange { background: #EE8B33; } .lh-sum-bar i.red { background: #E84A29; }
+.lh-sum img { width: 28px; height: 28px; }
+.lh-sum-name { font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+
+.lh-pane { flex: 1; min-width: 0; overflow: hidden; }
+.lh-pane-title { font-size: 9.5px; letter-spacing: .08em; color: #8A857C; margin-bottom: 6px; }
+.lh-line { display: flex; align-items: baseline; gap: 8px; font-size: 12px; margin-bottom: 5px; }
 .lh-line b { font-weight: 600; }
 .lh-line span { margin-left: auto; color: #6B665E; font-size: 11px; font-variant-numeric: tabular-nums; }
+.lh-vol { margin-bottom: 8px; }
 .lh-vol-top { display: flex; align-items: baseline; font-size: 12px; }
 .lh-vol-top b { font-weight: 600; }
 .lh-vol-top span { margin-left: auto; color: #6B665E; font-size: 11px; font-variant-numeric: tabular-nums; }
-.lh-vol-bar { height: 7px; border-radius: 3px; background: rgba(29,28,26,.09); margin: 4px 0 3px; overflow: hidden; }
+.lh-vol-bar { height: 6px; border-radius: 3px; background: rgba(29,28,26,.09); margin: 3px 0 2px; overflow: hidden; }
 .lh-vol-bar i { display: block; height: 100%; border-radius: 3px; transition: width .5s ease, background-color .45s ease; }
 .lh-vol-bar i.green { background: #1F9E52; } .lh-vol-bar i.yellow { background: #E8C13F; }
 .lh-vol-bar i.orange { background: #EE8B33; } .lh-vol-bar i.red { background: #E84A29; }
-.lh-vol-sub { font-size: 10.5px; color: #6B665E; }
+.lh-vol-sub { font-size: 10px; color: #6B665E; }
 
 .lh-cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .lh-col { display: flex; flex-direction: column; align-items: center; gap: 5px; border-radius: 8px;
@@ -447,8 +469,8 @@ footer a { color: var(--muted); }
     </div>
     <div class="shot">
       <div class="lh" data-lh-demo data-view="disk" data-focus="Mini"></div>
-      <p class="demo-note">Also a working recreation &mdash; click a machine, or
-        use the back arrow.</p>
+      <p class="demo-note">Also a working recreation &mdash; switch metric to
+        re-lens this machine, or go back to the herd.</p>
     </div>
   </div>
 </section>

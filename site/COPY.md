@@ -272,10 +272,18 @@ page has a real mark and real toys to spend motion on instead.
 Three sections carry a working miniature of the app window instead of a
 screenshot: the CPU overview, the AI panel, and a machine's own Disk page.
 
-It earns the space by teaching. Clicking a machine opens that machine, and the
-metric picker comes with it, so switching lens keeps you where you are — which
-is the interaction the app is actually built around and the one a still cannot
-show. Sessions arrive, wait and finish on their own, which is what the AI panel
+It earns the space by teaching, and it has to match the app move for move.
+Clicking a bar opens that machine through the current metric; the bar travels
+out of the overview and **grows**, staying on the left with the value above it
+and the avatar and name below, and that whole column is a second way back
+beside the chevron. The detail sits to its right behind a divider, under the
+app's own titles — WHAT'S RUNNING, WHAT'S USING MEMORY, VOLUMES. The metric
+picker comes along, so switching lens re-lenses the machine you are on rather
+than returning you to the herd.
+
+The first version of this got it wrong by keeping only the list: the grown bar
+vanished, the avatar moved into the header, and the detail filled the width.
+It read as a plausible drill-in and was not the app's. Sessions arrive, wait and finish on their own, which is what the AI panel
 looks like over a minute.
 
 **It used to demonstrate hovering a machine to put it in the header. The app
