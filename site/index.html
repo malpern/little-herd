@@ -139,6 +139,9 @@ img { max-width: 100%; height: auto; display: block; }
 .cta:hover { background: #24B25D; }
 .fine { font-size: .93rem; color: rgba(244,248,244,.66); margin-block-start: .9rem; max-width: 38rem; }
 .fine b { font-weight: 600; color: rgba(244,248,244,.82); }
+/* Break between the dot-separated facts, never inside one — the default wrap
+   stranded "silicon and Intel" on its own line under "Apple". */
+.fine > span { white-space: nowrap; }
 
 /* -------------------------------------------------------------- sections */
 section { padding-block: clamp(4rem, 9vw, 7rem); }
@@ -204,10 +207,13 @@ footer a { color: var(--muted); }
   .split .shot { order: -1; }
   .hero { min-height: 0; }
   .hero .wrap { padding-block: 7.5rem 3.5rem; }
+  /* The desktop scrim is horizontal because the art's calm space is on the
+     left. Stacked at phone width that went nearly opaque and buried the
+     characters, so narrow screens get one vertical gradient instead, and the
+     art is centred rather than pinned right. */
+  .hero { background-position: 58% center; }
   .hero::before {
-    background:
-      linear-gradient(rgba(7,32,26,.62), rgba(7,32,26,.88) 62%),
-      linear-gradient(96deg, rgba(7,32,26,.8), rgba(7,32,26,.35));
+    background: linear-gradient(rgba(7,32,26,.42), rgba(7,32,26,.80) 66%);
   }
 }
 </style>
@@ -227,7 +233,7 @@ footer a { color: var(--muted); }
        NAS from the menu bar — CPU, memory, disk, and which AI agents are
        running where.</p>
     <a class="cta" href="https://github.com/malpern/little-herd/releases/latest">Download for macOS</a>
-    <p class="fine"><b>Free while in development</b> · macOS 15 or later · Apple silicon and Intel</p>
+    <p class="fine"><span><b>Free while in development</b></span> · <span>macOS 15 or later</span> · <span>Apple silicon and Intel</span></p>
   </div>
 </div>
 
@@ -372,7 +378,7 @@ footer a { color: var(--muted); }
   <div class="wrap">
     <h2>Point it at your herd.</h2>
     <a class="cta" href="https://github.com/malpern/little-herd/releases/latest">Download for macOS</a>
-    <p class="fine" style="color:var(--muted)">Free while in development · macOS 15 or later</p>
+    <p class="fine" style="color:var(--muted)"><span>Free while in development</span> · <span>macOS 15 or later</span></p>
   </div>
 </section>
 
