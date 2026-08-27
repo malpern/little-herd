@@ -100,9 +100,9 @@
           <span class="lh-sub"><span class="lh-dot live"></span><span class="lh-sub-text"></span></span>
         </div>
         <div class="lh-focus" hidden>
-          <button class="lh-back" type="button" aria-label="Back to the herd">&#8249;</button>
-          <img alt=""><span class="lh-dot live"></span><b></b>
-          <span class="lh-focus-metric"></span>
+          <button class="lh-back" type="button" aria-label="Back to the overview">
+            <span class="lh-chev">&#8249;</span><b></b>
+          </button>
         </div>
       </div>
       <div class="lh-stage">
@@ -115,8 +115,7 @@
     const $ = (s) => root.querySelector(s);
     const idle = $(".lh-idle"), focusBox = $(".lh-focus");
     const metricEl = $(".lh-metric"), subText = $(".lh-sub-text"), subDot = $(".lh-sub .lh-dot");
-    const fDot = focusBox.querySelector(".lh-dot"), fImg = focusBox.querySelector("img");
-    const fName = focusBox.querySelector("b"), fMetric = focusBox.querySelector(".lh-focus-metric");
+    const fName = focusBox.querySelector(".lh-back b");
     const back = focusBox.querySelector(".lh-back");
     const cols = $(".lh-cols"), rows = $(".lh-rows"), detail = $(".lh-detail"), tabs = $(".lh-tabs");
     back.addEventListener("click", () => { focus = null; switchView(); });
@@ -189,12 +188,7 @@
           : `${liveCount} of ${machines.length} live`;
         return;
       }
-      fDot.className = "lh-dot " + (focus.live ? "live" : "down");
-      fImg.src = asset(focus.avatar);
       fName.textContent = focus.name;
-      // the metric picker stays live on a machine's page, so this says which
-      // lens you are looking through rather than offering a way back
-      fMetric.textContent = METRICS.find((m) => m.key === view).label;
     }
 
     function paintCols() {
@@ -223,20 +217,37 @@
       });
     }
 
+    const PANE_TITLE = { cpu: "WHAT\u2019S RUNNING", mem: "WHAT\u2019S USING MEMORY", disk: "VOLUMES" };
+
     function paintDetail() {
       if (!focus || view === "ai") return;
-      if (view === "disk") {
-        detail.innerHTML = focus.volumes.map((v) => `
-          <div class="lh-vol">
-            <div class="lh-vol-top"><b>${v.name}</b><span>${v.free} free</span></div>
-            <div class="lh-vol-bar"><i style="width:${v.pct}%" class="${tone(v.pct)}"></i></div>
-            <div class="lh-vol-sub">${v.note ? v.note + " &middot; " : ""}${v.total} total</div>
-          </div>`).join("");
-        return;
-      }
-      const list = focus.procs[view] || [];
-      detail.innerHTML = list.map(([n, val]) => `
-        <div class="lh-line"><b>${n}</b><span>${val}</span></div>`).join("");
+      const v = Math.round(focus.shown[view]);
+      const filled = focus.live ? Math.round((v / 100) * SEGMENTS) : 0;
+      const t = tone(v);
+      // The left column is the bar you clicked, grown -- and it is also the way
+      // back, exactly as in the app, where the whole thing is one button.
+      const summary = `
+        <button class="lh-sum" type="button" aria-label="Back to the overview">
+          <span class="lh-sum-pct ${v >= 90 ? "hot" : ""}">${focus.live ? v + "%" : "&ndash;"}</span>
+          <span class="lh-sum-bar">${Array.from({ length: SEGMENTS }, (_, i) =>
+            `<i class="${SEGMENTS - i <= filled ? t : ""}"></i>`).join("")}</span>
+          <img src="${asset(focus.avatar)}" alt="">
+          <span class="lh-sum-name"><span class="lh-dot ${focus.live ? "live" : "down"}"></span>${focus.name}</span>
+        </button>`;
+
+      const body = view === "disk"
+        ? focus.volumes.map((vol) => `
+            <div class="lh-vol">
+              <div class="lh-vol-top"><b>${vol.name}</b><span>${vol.pct}%</span></div>
+              <div class="lh-vol-bar"><i style="width:${vol.pct}%" class="${tone(vol.pct)}"></i></div>
+              <div class="lh-vol-sub">${vol.free} free of ${vol.total}${vol.note ? " &middot; " + vol.note : ""}</div>
+            </div>`).join("")
+        : (focus.procs[view] || []).map(([n, val]) =>
+            `<div class="lh-line"><b>${n}</b><span>${val}</span></div>`).join("");
+
+      detail.innerHTML =
+        summary + `<div class="lh-pane"><div class="lh-pane-title">${PANE_TITLE[view]}</div>${body}</div>`;
+      detail.querySelector(".lh-sum").addEventListener("click", () => { focus = null; switchView(); });
     }
 
     // A tick only moves the targets; this loop walks the shown values towards
