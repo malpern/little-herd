@@ -51,7 +51,7 @@ few with `git log` before writing one.
 ## Commands
 
 ```sh
-xcodebuild test -scheme LittleHerd -destination 'platform=macOS'   # 264 tests
+xcodebuild test -scheme LittleHerd -destination 'platform=macOS'   # 465 tests
 scripts/release <version> --notes-file <path>                      # from clean main
 ```
 

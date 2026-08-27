@@ -1,9 +1,23 @@
 # Little Herd — handoff
 
-**State:** `v0.1.41` is released and `main` carries nothing beyond it. 440
-tests pass. Roadmap item 6 is done — each machine's agent versions. Item 3 is
+**State:** `v0.1.44` is released and `main` carries nothing beyond it. 465
+tests pass. Roadmap item 6 is done — each machine's agent versions. Item 4 is
 measured and deliberately has no interface; see its entry below, which is the
 one to read before drawing a new one.
+
+**The CPU screen is a dashboard now, and the drag is designed before there is
+anything to drag.** A machine running Claude Code or Codex carries a token
+under its name, on a pad; point at it for a card naming the sessions and what
+each is doing, click it for that machine's AI page, and pick it up to carry it
+across the herd, where every machine says whether it could take it. **Nothing
+moves on drop, deliberately** — `endDrag` computes the outcome and discards it.
+Wiring `DestinationEligibility` into `CPUOverviewView.canAccept` is the next
+step and lights the refusal states, which are built and currently unreachable.
+
+**The website is live** at <https://malpern.github.io/little-herd/>, and the
+README is a front door that matches it — the hero is baked from the site's own
+art, scrim, and wordmark by `scripts/make-readme-hero.swift`, because a README
+has no CSS.
 
 **Four releases went out on 25 August.** 0.1.38, memory pressure: the warning
 explains itself and names the application worth quitting, swap is measured on
@@ -18,12 +32,8 @@ vanishes the moment it answers you — and the removal of the destination
 interface, which was a permission and a placement decision for a move that
 cannot happen.
 
-**The website is unblocked and nothing is built.** Little Herd is **free for
-now, paid later**; the site is hand-written static HTML in `site/` on GitHub
-Pages, dark hero over a light body, built from the app's own colour tokens. The
-paid shape stays recorded and unbuilt. See *The website* below — it is also the
-material review, and it says what the assets already have and what the words
-do not.
+**Little Herd is free for now, paid later.** The paid shape stays recorded and
+unbuilt; see *The website* below, which is also the material review.
 
 Five releases went out on 20 August, and three of them were fixes for things
 the first two shipped:
@@ -40,6 +50,12 @@ and one on 25 August:
     0.1.39  a destination says whether it can actually sign in
     0.1.40  the AI panel is rebuilt around what is running
     0.1.41  a session stays visible after it answers; destination UI removed
+
+and four on 26 August:
+
+    0.1.42  Codex sessions renameable; hovered headers removed from every panel
+    0.1.43  agent tokens on the CPU screen, and the drag that carries them
+    0.1.44  a hover card on a token, and a click that opens the AI page
 
 **0.1.33 shipped a bug that could take a machine off the dashboard entirely** —
 an empty directory aborting the probe under zsh. Nothing in this herd tripped
@@ -1060,6 +1076,32 @@ silhouette and tried to separate them with fill opacity. The two states a person
 most needs to tell apart looked like the same box, and no colour tuning fixes
 that while the shape still says yes.
 
+**A `.help` string was the wrong container for the most interesting thing on
+the dashboard.** A tooltip is one run of plain text, so a session's name and
+what it is doing had to be flattened into one line at one weight, several
+sessions became a bulleted list nobody could scan, and macOS decided when it
+appeared. `MachineAgentCard` is a real view in a popover instead. Its hover
+timing is deliberately asymmetric — a delay in, none out — because a matching
+delay on the way out parks a card over the machine you were reaching for.
+
+**A view that lays out columns from a hard-coded window width goes on carving
+up the old window after the window grows.** `CPUOverviewView` divided a literal
+`300`; widening the window to 324 would have left the right margin twice the
+left, and nothing would have failed. Its width is a parameter now.
+
+**Opening a machine's AI page takes two changes, not one.** The machine detail
+screens are lensed through whichever overview metric is current, so setting
+`selection = .machineMetric(id)` alone lands on a page about CPU. `showAgents`
+moves the lens as well, and is tested from another machine's page — the case
+that would break if it only nudged the metric.
+
+**Sizing a window for its content is arithmetic, and the extra height all lands
+in one place.** `CPUOverviewView` fills its frame with `.top` alignment, so
+every point added to the window's height becomes a gap under the pads rather
+than being shared out. The first guess added 32 points and left a visible
+trough; the answer was the amount the pads actually cost minus the slack that
+was already there.
+
 ## Method notes
 
 **Four bugs in one afternoon, none of them findable by the suite, all of them
@@ -1192,10 +1234,13 @@ it; the files survived only because the directory had not been reaped yet.
    outcome and discards it, deliberately, so the decision is visible where it
    can be argued with rather than absent until the day it matters.
 
-   Two things are unverified because this was built with the screen
-   unavailable: whether a drag still leaves the click-to-open-machine button
-   working, and how a token grabbed again mid-spring behaves in practice.
-   Both need someone at the machine.
+   **What is unverified, because all of this was built with the screen
+   unavailable:** how a token grabbed again mid-spring behaves in practice, and
+   whether the hover card's 350ms delay is right when a pointer is actually
+   moving over it. Both need someone at the machine; the delay is one number in
+   `CPUOverviewView.cardHover`. The click question that used to sit here is
+   settled — a tap on the token opens the AI page and no longer falls through
+   to the button underneath.
 2. **P-core/E-core awareness is blocked, not pending.** Per-core utilisation
    needs root on a remote Mac — `powermetrics` refuses without it, and neither
    `top` nor `iostat` exposes per-core lines. It would work on this Mac and no
@@ -1382,8 +1427,16 @@ it; the files survived only because the directory had not been reaped yet.
     concrete reason — offline or privacy, not symmetry. Frame it then as a
     degraded park, not a peer destination.
 
-11. **The website — free for now, and the plan is settled.** Decided
-    26 August, which unblocks everything below it. The question the last
+11. **The website is built and live** at <https://malpern.github.io/little-herd/>,
+    served from `main` by GitHub Pages, with a wordmark, hero art, and a
+    download. The README carries the same hero, baked into a single file by
+    `scripts/make-readme-hero.swift` because a README has no CSS. **The one
+    piece still stale is the dashboard screenshot in the README**, which
+    predates the agent tokens; recapturing it needs the app running plus
+    screen-capture access. What follows is the decision record behind the site,
+    kept because the paid shape is still unbuilt.
+
+    **Free for now, and the plan is settled.** Decided 26 August. The question the last
     handoff called the one a website cannot be written without — charge or
     not — is answered **free for now, paid later**. The page gets a download
     button and tells the truth today; it does not promise a purchase that
