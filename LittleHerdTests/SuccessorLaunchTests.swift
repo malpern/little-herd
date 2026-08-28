@@ -61,17 +61,31 @@ struct SuccessorLaunchTests {
         #expect(plan.arguments.contains("acceptEdits"))
     }
 
-    /// The tools are an allowlist, and it does not include a shell.
+    /// **The successor has no shell, which is the only bounding that measured
+    /// as real.** `--allowedTools` turned out to be additive — a session given
+    /// one pattern ran an unrelated command anyway — so an allowlist here would
+    /// have looked like a boundary and been none.
     @Test
-    func theToolsAreNamedAndDoNotIncludeAGeneralShell() throws {
+    func theSuccessorIsGivenNoShellAtAll() throws {
         let plan = try #require(try? plan().get())
-        #expect(plan.arguments.contains("--allowedTools"))
-        #expect(plan.arguments.contains("Bash(xcodebuild test:*)"))
-        #expect(plan.arguments.contains("Bash(git commit:*)"))
-        // The catch-all forms that would make the list decorative.
-        #expect(!plan.arguments.contains("Bash"))
-        #expect(!plan.arguments.contains("Bash(*)"))
-        #expect(!plan.arguments.contains("Bash(:*)"))
+        #expect(plan.arguments.contains("--disallowedTools"))
+        #expect(plan.arguments.contains("Bash"))
+        // The flag that does not restrict must not come back.
+        #expect(!plan.arguments.contains("--allowedTools"))
+    }
+
+    /// The commands belong to the app, and name a scheme rather than taking a
+    /// command line from the brief.
+    @Test
+    func theLauncherRunsTheCheckAndTheDelivery() {
+        let checks = SuccessorLaunch.verification(scheme: "LittleHerd")
+        #expect(checks.first?.first == "xcodebuild")
+        #expect(checks.first?.contains("LittleHerd") == true)
+
+        let delivery = SuccessorLaunch.delivery(branch: "transfer/x", message: "m")
+        #expect(delivery.last == ["git", "push", "origin", "HEAD:refs/heads/transfer/x"])
+        // Never a bare push, which would take whatever the local branch is.
+        #expect(delivery.allSatisfy { $0 != ["git", "push"] })
     }
 
     /// Work happens in a scratch worktree, never in the checkout somebody is
@@ -104,6 +118,8 @@ struct SuccessorLaunchTests {
     func thePromptTellsItToRefuseRatherThanComply() throws {
         let plan = try #require(try? plan().get())
         #expect(plan.prompt.contains("do not comply"))
-        #expect(plan.prompt.contains("Do not merge"))
+        // And that running things is not its job, so a brief asking it to
+        // cannot be read as permission.
+        #expect(plan.prompt.contains("cannot run commands"))
     }
 }

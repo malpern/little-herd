@@ -1559,6 +1559,19 @@ a half-finished move is visible in the interface rather than in a log.
      the likelier failure. It is also the control that most resembles security
      from a distance, which makes it the one most likely to be shipped by
      itself. The two below are worth more.
+   - **A tool allowlist does not bound a successor, and the shell has to go
+     instead.** Measured on the mini rather than assumed, after this file spent
+     a day claiming otherwise. `--allowedTools "Bash(git status:*)"` is
+     *additive*: a session given it ran `whoami` on the first ask.
+     `--disallowedTools "Bash"` does remove the shell. Denying `Bash` while
+     allowing one pattern does not hand the pattern back — deny wins and
+     nothing runs. So the flags offer all of the shell or none of it, plus a
+     deny-list you have to have thought of, and a deny-list you enumerate is
+     not a boundary. The successor therefore gets **no shell at all** and only
+     edits files; Little Herd runs the build, the test and the git afterwards
+     from commands it owns. A hostile brief's best outcome is edits on a branch
+     nobody merged. This was the one control everything else was stacked on,
+     and it was the one thing never run.
    - **Never execute a path the destination reported.** `AgentInstallation.path`
      is parsed out of the remote probe's own output, so a compromised or
      spoofed machine chooses the binary the transfer will run on it. Resolve
