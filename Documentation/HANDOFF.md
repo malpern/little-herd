@@ -1570,16 +1570,25 @@ a half-finished move is visible in the interface rather than in a log.
      Every unit test passed while this was broken; nothing but a real run
      could have found it.
 
-   - **The destination's check is not hermetic, and that is a design problem,
-     not a flake.** `machineCanBeRemovedFromTheHerd` and
-     `machineConfigurationStorePersistsDynamicMachines` pass on the Air and
-     fail on the mini, on a pristine worktree with no agent edits at all —
-     they depend on that machine's persisted configuration. A transfer whose
-     check goes red for reasons unrelated to the work reports `checkFailed`
-     and refuses delivery, which blames the successor for the destination's
-     local state. **Before transfers can be trusted, either those tests must
-     be made hermetic or the check must compare against a baseline run on the
-     destination first.**
+   - **A test can be green on every machine you run it on and red on the one
+     that matters.** `machineCanBeRemovedFromTheHerd` and
+     `machineConfigurationStorePersistsDynamicMachines` passed here and failed
+     on the mini, on a pristine checkout. The cause: an empty
+     `MachineConfigurationStore` seeds itself with
+     `MachineConfiguration.local()`, whose default name is **the computer's
+     own**, and `add` treats a same-named machine as a duplicate. The mini's
+     ComputerName is literally "Mac mini", so the fixture named "Mac mini" was
+     deduped away and never added. This laptop is called "air".
+
+     Fixed: the seeded machine is injectable and every test store now takes
+     `.testLocal`, a fixture with a name nothing else uses. Verified by running
+     the suite on the mini — 579 passing there, where two failed before.
+
+     **Why this one is worth remembering.** The destination's test run is what
+     decides whether transferred work is delivered, so a check that fails for
+     a reason belonging to the machine rather than the work would refuse good
+     work and blame the successor for the name of the Mac it landed on.
+     Anything host-derived in a fixture is a test that only happens to pass.
 
    - **A transfer carries the whole dirty tree, including scaffolding.** The
      first run sent a temporary test harness to the mini along with the work,
@@ -1699,8 +1708,8 @@ a half-finished move is visible in the interface rather than in a log.
      pin verified on the destination, the agent did exactly the brief **with no
      shell**, and when the check went red the delivery correctly did not run —
      the remote branch stayed where the departure left it. **The happy path
-     through delivery has still never run**, because the check has not yet been
-     green on the mini.
+     through delivery has still never run** — but the reason it could not (the
+     non-hermetic check) is now fixed and verified on the mini, so it is next.
    - Verifying the successor behaviourally before retiring the source, and what
      a half-finished move looks like on screen.
 
