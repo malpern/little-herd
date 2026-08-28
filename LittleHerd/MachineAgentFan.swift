@@ -114,11 +114,18 @@ struct MachineAgentFan: View {
                     .offset(
                         x: stackedX(index) + (rect.minX - stackedX(index)) * spread
                             + (carrying == index ? carried.width : 0),
-                        y: rise * (1 - spread) + (carrying == index ? carried.height : 0)
+                        y: stackedY(index) * (1 - spread)
+                            + (carrying == index ? carried.height : 0)
                     )
                     // Lifted while it is in hand, and above its neighbours.
                     .scaleEffect(carrying == index ? 1.12 : 1)
-                    .zIndex(carrying == index ? 1 : 0)
+                    // The resting deck draws its top card in front; so must
+                    // this, or the hand-over between them restacks the icons.
+                    .zIndex(
+                        carrying == index
+                            ? Double(sessions.count + 1)
+                            : Double(sessions.count - index)
+                    )
                     // Nothing while it is in hand — it belongs to the pointer
                     // then — and a heavier spring on the way home, because it
                     // is being put down rather than snapped back.
@@ -158,9 +165,10 @@ struct MachineAgentFan: View {
             // above. Setting the value is enough.
             spread = 1
         }
+        // Both directions, so a deck caught on its way down goes back up
+        // rather than finishing its descent and having to be asked again.
         .onChange(of: lowering) { _, isLowering in
-            guard isLowering else { return }
-            spread = reduceMotion ? 0 : 0
+            spread = isLowering ? 0 : 1
         }
     }
 
@@ -187,11 +195,38 @@ struct MachineAgentFan: View {
 
     /// Where an icon sits before it rises: stacked at the animal, leaning the
     /// way the resting deck leans, so the two states are the same object.
+    /// **Where the deck actually is when it is not raised.**
+    ///
+    /// These used to be invented here — a lean of 0.22 and a drop of 1.15
+    /// tiles — while `MachineAgentStack` drew the resting deck with a lean of
+    /// 0.11 and sat it `peek` above the animal. Two descriptions of the same
+    /// object, and they disagreed, so the hand-over between them was a jump:
+    /// the fan appeared to snap into being, and on the way back it sank about
+    /// a third of a tile too far and vanished into the animal instead of
+    /// coming to rest on its shoulder.
+    ///
+    /// They are one description now. Everything below is the stack's own
+    /// geometry converted from avatar units into tile units, so the first and
+    /// last frame of the rise *are* the resting deck rather than something
+    /// that looks nearly like it.
+    private var avatarSize: CGFloat { tile / Self.raisedScale }
+
     private func stackedX(_ index: Int) -> CGFloat {
-        animalCentre - tile / 2 + CGFloat(index) * tile * 0.22
+        animalCentre - tile / 2
+            + CGFloat(index) * avatarSize * MachineAgentStack.lean
     }
 
-    /// How far below its place each icon starts — roughly the distance from
-    /// the fan's row down to the animal's back.
-    private var rise: CGFloat { tile * 1.15 }
+    /// Each card behind the top one sits very slightly higher, as it does at
+    /// rest.
+    private func stackedY(_ index: Int) -> CGFloat {
+        rise - CGFloat(index) * avatarSize * MachineAgentStack.stagger
+    }
+
+    /// The distance from the fan's row down to where the deck rests.
+    ///
+    /// The counterpart of `CPUOverviewView.fanY`, which places that row by
+    /// leaving exactly this much space above the animal. The two are the same
+    /// measurement seen from either end, and they have to stay that way or the
+    /// deck lands somewhere other than where it lives.
+    private var rise: CGFloat { avatarSize * CPUOverviewView.deckDrop }
 }

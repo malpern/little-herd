@@ -160,8 +160,7 @@ struct CPUOverviewView: View {
                             // Catch a deck that is already on its way down, so
                             // coming back to a machine picks it up again
                             // rather than waiting for it to land first.
-                            lowerAfterDescent?.cancel()
-                            lowering = false
+                            keepFanUp()
                             fanIsAnswerToAPointer = true
                             fanned = machine.machine
                         } else if fanned == machine.machine, fanIsAnswerToAPointer {
@@ -299,15 +298,34 @@ struct CPUOverviewView: View {
     /// view mid-air, so the icons vanish instead of returning behind the
     /// animal and the resting stack appears from nowhere.
     private func lowerFan() {
-        guard !lowering else { return }
         lowerAfterDescent?.cancel()
-        lowering = true
         lowerAfterDescent = Task {
+            // **A moment before it starts down.** Without this the deck is put
+            // away by the smallest movement off an animal — including the
+            // movement towards the deck itself — and reaching for an agent
+            // became a thing you had to be accurate about. Short enough not to
+            // feel sticky, long enough to cross a gap on the way somewhere —
+            // and long enough that a hand moving across the herd does not set
+            // a deck going down and then have to haul it back up.
+            try? await Task.sleep(for: .milliseconds(340))
+            guard !Task.isCancelled else { return }
+            lowering = true
             try? await Task.sleep(for: MachineAgentFan.descent)
             guard !Task.isCancelled else { return }
             fanned = nil
             lowering = false
         }
+    }
+
+    /// Catches a deck that is on its way down, or about to be.
+    ///
+    /// The pointer moving onto the agents *is* interest in them, and the fan
+    /// sits outside the machine's own column, so without this the act of
+    /// reaching for one was what dismissed it.
+    private func keepFanUp() {
+        lowerAfterDescent?.cancel()
+        lowerAfterDescent = nil
+        lowering = false
     }
 
     /// The fanned deck, drawn over the herd rather than inside a column.
@@ -374,8 +392,16 @@ struct CPUOverviewView: View {
     /// and clear of the row of names underneath them.
     private var fanY: CGFloat {
         10 + DashboardMetrics.thermometerColumnHeight
-            - avatarSize * 0.62 - MachineAgentStack.clearance(forAvatar: avatarSize)
+            - avatarSize * Self.deckDrop
+            - MachineAgentStack.clearance(forAvatar: avatarSize)
     }
+
+    /// How far the fan's row sits above the resting deck, as a share of the
+    /// avatar. `MachineAgentFan` reads this to know how far it has to come
+    /// down, so the two cannot drift apart — which they had, by about a third
+    /// of a tile, which is the difference between landing on an animal's
+    /// shoulder and disappearing inside it.
+    static let deckDrop: CGFloat = 0.62
 
     private func agentActivity(on machine: MachineMonitorModel) -> MachineAgentActivity? {
         guard machine.state == .live else { return nil }

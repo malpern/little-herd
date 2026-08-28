@@ -170,6 +170,8 @@ struct DashboardView: View {
             width: windowContentSize.width,
             height: windowContentSize.height
         )
+        // Over the window, not in it — see DevelopmentBanner.
+        .overlay(alignment: .top) { DevelopmentBanner() }
         .sheet(item: $signingInMachine) { machine in
             SynologyCredentialsView(machine: machine) { updated in
                 machineStore?.update(updated)

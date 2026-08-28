@@ -19,10 +19,28 @@ struct MachineAgentStack: View {
     /// against it rather than against a constant.
     let avatarSize: CGFloat
 
+    /// **This view must not animate its own appearance, and it used to.**
+    ///
+    /// It is unmounted whenever the fan is raised and mounted again when the
+    /// fan comes down, so `onAppear` is not "an agent arrived" — it is also
+    /// "the deck just finished landing". An arrival animation here therefore
+    /// fired at the end of every descent, fading the deck in a second time
+    /// over the movement that had just put it there. That is the cross-fade:
+    /// one animation down, then another one in.
+    ///
+    /// Announcing a genuine arrival belongs where a genuine arrival is known
+    /// about — `CPUOverviewView.raise(forArrival:)`, which lifts the deck for
+    /// long enough to be read.
+
     /// What is drawn at rest, before anything is hovered or arriving.
     static func iconSize(forAvatar avatar: CGFloat) -> CGFloat { avatar * 0.44 }
     /// How far each card behind the top one leans, as a share of the avatar.
-    private static let lean: CGFloat = 0.11
+    ///
+    /// Not private: the fan starts and ends in this arrangement, and it used
+    /// to keep its own idea of what that was.
+    static let lean: CGFloat = 0.11
+    /// And how much higher each one sits.
+    static let stagger: CGFloat = 0.03
     /// The deck at rest shows about this much of itself above the animal.
     static let peek: CGFloat = 0.62
 
@@ -52,7 +70,7 @@ struct MachineAgentStack: View {
                     .shadow(color: .black.opacity(0.22), radius: icon * 0.12, y: 1)
                     .offset(
                         x: CGFloat(index) * avatarSize * Self.lean,
-                        y: -CGFloat(index) * avatarSize * 0.03
+                        y: -CGFloat(index) * avatarSize * Self.stagger
                     )
                     // The ones behind sit back a little, so the deck has depth
                     // without needing an outline to describe it.
