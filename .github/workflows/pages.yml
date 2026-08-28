@@ -30,6 +30,10 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # The pages are generated from site/_src. Refuse to publish one that was
+      # edited by hand, which would be silently overwritten by the next build.
+      - name: Pages are in step with their source
+        run: python3 site/_src/build.py --check
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

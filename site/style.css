@@ -720,3 +720,68 @@ kbd {
 /* --- the closing note: adjacent to the payoff, so it takes no tint of its own */
 .aside-note .lede { max-width: 42rem; }
 .aside-note .note { max-width: 42rem; margin-block-start: 1rem; }
+
+/* The tool's mark sits left of its name. Three are real brand marks and the
+   rest are drawn to match; both take currentColor, so a card themes as one
+   thing rather than a logo pasted onto a card. */
+.tool { grid-template-columns: auto 1fr auto; }
+.tool-logo {
+  grid-column: 1; grid-row: 1 / span 2; align-self: center;
+  width: 26px; height: 26px; color: var(--forest); margin-inline-end: .2rem;
+}
+.tool-name { grid-column: 2; }
+.tool-note { grid-column: 2; }
+.tool-go   { grid-column: 3; }
+
+/* ------------------------------------------------------- guide: three acts
+   Eight steps in one column read as eight identical blocks. They are three
+   acts, and the page now says so. */
+.act { padding-block: clamp(2.5rem, 5vw, 4rem) 0; max-width: 74rem; }
+.act-n {
+  display: block; font-size: .74rem; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--teal); margin-block-end: .4rem;
+}
+.act h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); }
+.act p { color: var(--muted); max-width: 38rem; margin-block-start: .5rem; }
+.steps + .act { border-block-start: 1px solid var(--rule); }
+
+/* ------------------------------------------------------------ guide: contents
+   Eight anchors already existed and nothing on the page offered them. Someone
+   arriving from a search for one step should not have to scroll for it. */
+.toc {
+  display: grid; gap: 1.6rem 2.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  padding-block: 1.5rem 0; margin-block-start: 1rem;
+  border-block-start: 1px solid var(--rule);
+}
+.toc h3 { font-size: .78rem; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.toc ol { list-style: none; margin: .7rem 0 0; padding: 0; display: grid; gap: .45rem; }
+.toc a {
+  display: flex; gap: .6rem; text-decoration: none; color: var(--fg);
+  font-size: .97rem; line-height: 1.35;
+}
+.toc a b { color: var(--teal); font-variant-numeric: tabular-nums; min-width: .9em; }
+.toc a:hover { color: var(--forest); }
+.toc a:hover b { color: var(--forest); }
+
+/* --------------------------------------------- guide: prose left, picture right
+   The one-column step put the figure and the tool card inside a 640px measure
+   and left 336px of every row empty at desktop. */
+/* The body may use the full row now, but the lines that sit above the two
+   columns must not: at 1280 the promise ran past 100 characters. */
+.step-body { max-width: none; }
+.step-body > h2 { max-width: 30ch; }
+.step-body > .what { max-width: 42rem; }
+.step-cols {
+  display: grid; grid-template-columns: minmax(0, 36rem) minmax(0, 21rem);
+  gap: clamp(1.5rem, 3vw, 3rem); align-items: start; margin-block-start: 1.2rem;
+}
+.step-main > *:first-child { margin-block-start: 0; }
+.step-side { position: sticky; top: 1.5rem; }
+.step-side .fig { margin-block: 0 2.2rem; max-width: 100%; }
+.step-side .tool { margin-block-end: 0; }
+@media (max-width: 62rem) {
+  .step-cols { grid-template-columns: minmax(0, 1fr); }
+  .step-side { position: static; }
+  .step-side .fig { max-width: 420px; }
+}

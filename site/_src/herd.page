@@ -1,0 +1,57 @@
+
+<main class="guide">
+
+<section class="guide-intro">
+  <div class="wrap">
+    <span class="pill">The guide</span>
+    <h1>Start a herd.</h1>
+    <p class="lede">Eight things turn a pile of computers into a herd. They go in
+      this order, because each one assumes the last. None of them needs Little
+      Herd, and no single one of them is a big job.</p>
+    <p class="promise"><b>When you are done</b>, the mini under the desk is as
+      easy to work on as the laptop in your hands, from anywhere, without
+      thinking about it. The machines stop being places you visit one at a time
+      and become one pool of capacity you use. That is the whole point of the
+      word.</p>
+    <p class="note">Everything here is built into macOS, free, or open source. Reckon on an afternoon, most of it spent waiting for installers.
+      Where there is one mistake that costs an evening, it is called out — most
+      of these look like they worked right up until the moment they matter.</p>
+  </div>
+</section>
+
+{{steps}}
+<section class="aside-note">
+  <div class="wrap">
+    <h2>A herd member can also just do a job.</h2>
+    <p class="lede">Once a machine is reachable, kept current and watched, it
+      can be given something to run for the whole house rather than for you.
+      <a href="https://pi-hole.net">Pi-hole</a> answers DNS for every device on
+      the network and drops the ad and tracker domains before they resolve. A
+      media server does the same trick for films. A spare machine with a fast
+      disk makes a good build cache.</p>
+    <p class="note">None of those are in this guide, because each is its own
+      afternoon and none of them is about running machines <em>together</em>.
+      They are simply the sort of thing you can do once you have somewhere to
+      put them.</p>
+  </div>
+</section>
+
+<section class="payoff">
+  <div class="wrap">
+    <h2>You have a herd.</h2>
+    <p class="lede">Every machine reachable by name from anywhere. One command
+      onto any of them. The same tools waiting when you arrive, work that
+      outlives your connection, a screen when you need one, agents you can walk
+      away from, one place holding every backup, and something that will tell
+      you when any of it stops.</p>
+    <p class="payoff-last">The last thing missing is being able to see it all
+      at once &mdash; which is the one part we make.</p>
+    <div class="cta-row payoff-cta">
+      <a class="cta" href="https://github.com/malpern/little-herd/releases/latest">Download Little Herd</a>
+      <a class="cta ghost" href="./">What it does</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
