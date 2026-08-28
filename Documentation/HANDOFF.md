@@ -1225,6 +1225,36 @@ peeking and once above. The deck *is* what rose.
 hover looked broken under synthetic events because the window had not been
 clicked first. Click, then move, before concluding an `onHover` is wrong.
 
+**A session was moved between machines by hand, and it worked.** Transfer spike
+1, 27 August: a brief written on the Air, carried on a branch, picked up by a
+successor started non-interactively on the mini, completed, verified, committed
+and pushed back with no person in the loop. The brief is kept at
+`Documentation/transfers/spike-1.md` and the work it produced is in `main`.
+Three of the design's assumptions now have evidence rather than argument.
+
+**A written brief is enough.** No transcript, no serialised session: the
+successor read one markdown file, found the right test file, matched the shape
+of an existing test and wrote a correct one — and its commit message is in this
+codebase's voice because the brief told it to read `git log` first. This is the
+bet the whole design rests on and it holds.
+
+**But delivery is gated by permissions, and the gate is invisible until you hit
+it.** Started with `--permission-mode acceptEdits`, the successor did the work
+and then could not finish: every form of `xcodebuild test`, and `git add`,
+`git log`, even `/bin/ls`, returned "requires approval", while reads were
+allowed and no interactive approver existed. It stalled having silently done
+the work. **A successor must be started with permission to build, test and
+push, or the move cannot complete** — and a transfer feature that starts them
+the obvious way will look like a hang. Re-run with `bypassPermissions` it
+finished in one turn, which is a decision the design has to make deliberately:
+that flag is an agent running unrestricted commands on another machine.
+
+**Two smaller things the spike measured.** The mini has no `timeout` binary —
+zsh with no coreutils — so any wrapper shelling out with one fails there. And
+`/opt/homebrew/bin/codex` is broken under a non-interactive shell
+(`env: node: No such file`) while `~/.local/bin/codex` works, which is the
+"absolute paths, never the PATH" rule the app already follows, confirmed again.
+
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -1475,7 +1505,15 @@ a half-finished move is visible in the interface rather than in a log.
    the configuration, which costs the published `transfer.json` contract
    nothing since `MachineID` wraps a `String`.
 
-5. **Transfer a session between machines, at the session level.** Not process
+5. **Transfer a session between machines, at the session level.** **A spike
+   has now done this by hand — see the facts above — so the open questions are
+   narrower than they were.** What it did not touch: quiescing a running
+   session, carrying uncommitted work, verifying the successor behaviourally
+   before retiring the source, and what a half-finished move looks like in the
+   interface. What it settled: a written brief is enough, and the successor
+   needs permission to build and push.
+
+   Not process
    migration, which is not possible and not wanted: stop the session, have it
    write full context, start a successor on the target that has the repo. It is
    the same thing this file does by hand between sessions, which is the reason
