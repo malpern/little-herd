@@ -1593,6 +1593,19 @@ a half-finished move is visible in the interface rather than in a log.
      from an allowlist of known locations on the destination and check the
      signature. The app only displays this today; a transfer makes it an
      execution primitive handed over by the destination.
+
+   - **Signing was replaced by a pinned commit, and the parameter that stood
+     in for it is gone.** `plan()` now takes `expectedCommit` — the full sha
+     the source machine has just pushed — and refuses anything that is not
+     forty hex characters, because a ref name is not a pin: "main" is
+     satisfied by whatever main happens to be when the fetch lands. The
+     destination checks `rev-parse FETCH_HEAD` against it before an agent
+     reads a line, and builds the worktree from the sha rather than from
+     FETCH_HEAD so a race between the two commands substitutes nothing.
+     Verified against real git: correct sha proceeds, wrong sha refuses and
+     leaves no worktree behind. What this answers is not *who wrote this* but
+     *is this the thing I was just sent* — the branch is data, and the drag,
+     arriving over authenticated ssh, is the instruction.
    - **Run in a fresh worktree**, not the user's working copy, so a bad brief
      cannot quietly amend real work.
    - **Every agent-reported string is display data forever.** Session titles,

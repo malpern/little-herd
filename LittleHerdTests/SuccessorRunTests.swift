@@ -23,7 +23,7 @@ struct SuccessorRunTests {
             scratchRoot: "/tmp/herd",
             provider: .claude,
             reportedAgentPath: "/Users/malpern/.local/bin/claude",
-            briefIsVerified: true
+            expectedCommit: String(repeating: "a", count: 40)
         ).get()
         return SuccessorRun.steps(
             plan: plan!,
@@ -91,6 +91,24 @@ struct SuccessorRunTests {
         #expect(last.purpose == .cleanup)
         #expect(!last.isFatal)
         #expect(last.command.contains("worktree remove"))
+    }
+
+    /// **What arrives over the network has to be what was sent.** The fetch
+    /// is checked against the sha the source pushed before an agent reads a
+    /// line of it, and the worktree is built from that sha rather than from
+    /// FETCH_HEAD, so even a race between the two commands substitutes
+    /// nothing.
+    @Test
+    func theFetchMustMatchTheCommitTheSourcePushed() throws {
+        let worktree = try #require(
+            steps().first { $0.purpose == .worktree }
+        )
+        let commit = String(repeating: "a", count: 40)
+        #expect(worktree.command.contains("rev-parse FETCH_HEAD"))
+        #expect(worktree.command.contains("= '\(commit)'"))
+        #expect(worktree.command.contains("worktree add --detach"))
+        // Built from the sha, never from the ref that was just checked.
+        #expect(!worktree.command.hasSuffix("FETCH_HEAD"))
     }
 
     /// The push names the branch it was given and never takes whatever the

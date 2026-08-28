@@ -65,16 +65,26 @@ nonisolated struct SuccessorRun: Equatable {
 
         var steps: [Step] = []
 
-        // Fetch and work from a detached head. Creating a local branch on the
-        // destination would leave a name behind that collides with the next
-        // transfer on the same ref, and there is nothing here that needs one.
+        // Fetch, prove it is what we were told to expect, and work from a
+        // detached head. Creating a local branch on the destination would
+        // leave a name behind that collides with the next transfer on the
+        // same ref, and there is nothing here that needs one.
+        //
+        // The `test` is the pin: what arrives over the network has to match
+        // the sha the source machine pushed, or the run stops before an agent
+        // has read a single line of it. The worktree is then made from the
+        // sha rather than from FETCH_HEAD, so even a race between the two
+        // commands cannot substitute anything.
+        let commit = RemoteShell.quoted(plan.expectedCommit)
         steps.append(
             Step(
                 purpose: .worktree,
                 command: "git -C \(repository) fetch origin "
                     + "\(RemoteShell.quoted(branch)) "
+                    + "&& test \"$(git -C \(repository) rev-parse FETCH_HEAD)\" "
+                    + "= \(commit) "
                     + "&& git -C \(repository) worktree add --detach "
-                    + "\(scratch) FETCH_HEAD",
+                    + "\(scratch) \(commit)",
                 isFatal: true
             )
         )

@@ -11,7 +11,7 @@ struct SuccessorLaunchTests {
         branch: String = "transfer/spike-1",
         provider: AgentTaskProvider = .claude,
         agentPath: String = "/Users/malpern/.local/bin/claude",
-        verified: Bool = true,
+        commit: String = String(repeating: "a", count: 40),
         briefText: String = "Add a test to AgentFanLayoutTests."
     ) -> Result<SuccessorLaunch.Plan, SuccessorLaunch.Refusal> {
         SuccessorLaunch.plan(
@@ -22,15 +22,25 @@ struct SuccessorLaunchTests {
             scratchRoot: "/Users/malpern/.little-herd/transfers",
             provider: provider,
             reportedAgentPath: agentPath,
-            briefIsVerified: verified
+            expectedCommit: commit
         )
     }
 
-    /// **A pushed branch is not an instruction.** Without a verified brief
-    /// there is no plan at all — not a plan with a warning on it.
+    /// **A pushed branch is not an instruction**, so the destination has to
+    /// be told exactly which commit it is being sent — and a ref name is not
+    /// a pin. "main" would be satisfied by whatever main happens to be when
+    /// the fetch lands, which is the substitution this exists to prevent.
     @Test
-    func anUnverifiedBriefIsRefused() {
-        #expect(plan(verified: false) == .failure(.briefNotVerified))
+    func aBranchWithoutAPinnedCommitIsRefused() {
+        #expect(plan(commit: "main") == .failure(.commitNotPinned))
+        #expect(plan(commit: "") == .failure(.commitNotPinned))
+        // An abbreviation is ambiguous, and git will happily resolve it.
+        #expect(plan(commit: "a1b2c3d") == .failure(.commitNotPinned))
+        // Forty characters, but not a sha.
+        #expect(
+            plan(commit: String(repeating: "z", count: 40))
+                == .failure(.commitNotPinned)
+        )
     }
 
     /// The destination does not get to choose what runs on it.

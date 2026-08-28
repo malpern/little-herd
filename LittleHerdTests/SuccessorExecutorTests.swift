@@ -8,6 +8,7 @@ struct SuccessorExecutorTests {
     private func steps() -> [SuccessorRun.Step] {
         SuccessorRun.steps(
             plan: SuccessorLaunch.Plan(
+                expectedCommit: String(repeating: "a", count: 40),
                 workingDirectory: "/tmp/herd/work",
                 executable: "/Users/malpern/.local/bin/claude",
                 arguments: ["-p"],

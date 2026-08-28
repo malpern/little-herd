@@ -14,6 +14,8 @@ import Foundation
 nonisolated enum SuccessorLaunch {
     /// Everything needed to start one, once it has been decided that we should.
     struct Plan: Equatable {
+        /// The commit the destination must find, or stop.
+        let expectedCommit: String
         /// A scratch worktree — never the user's own checkout, so a brief that
         /// is wrong cannot quietly amend work in progress.
         let workingDirectory: String
@@ -28,9 +30,16 @@ nonisolated enum SuccessorLaunch {
     /// Why we would not start one. Each of these is a refusal to act, not a
     /// warning to be clicked past.
     enum Refusal: Equatable, Error {
-        /// The commit carrying the brief is not signed by a key this herd
-        /// knows. **A pushed branch is not an instruction.**
-        case briefNotVerified
+        /// We were not told which commit to expect, or not told properly.
+        ///
+        /// **A pushed branch is not an instruction** — the drag is, arriving
+        /// over an authenticated connection. So what the destination has to
+        /// establish is not *who wrote this* but *is this the thing I was
+        /// just sent*: between the source pushing and the destination
+        /// fetching, a force-push or a compromised remote can serve something
+        /// else entirely. The source knows the sha it pushed, so it says so,
+        /// and the destination refuses anything else.
+        case commitNotPinned
         /// The destination offered a binary we have not measured working.
         case agentNotRecognised
         /// There is no branch to work on, or it is the branch everything else
@@ -81,11 +90,10 @@ nonisolated enum SuccessorLaunch {
     }
 
     /// - Parameters:
-    ///   - briefIsVerified: whether the commit carrying the brief was signed by
-    ///     a key in the herd's allowed signers. **Decided by the launcher and
-    ///     passed in, never by the agent**: a successor asked to check its own
-    ///     brief will be told by an unsigned brief not to bother, and will
-    ///     comply, because the file is the instruction.
+    ///   - expectedCommit: the full sha the source machine has just pushed.
+    ///     **Decided by the launcher and passed in, never read out of the
+    ///     branch**: asking the branch what it should be is asking the thing
+    ///     under suspicion to vouch for itself.
     ///   - reportedAgentPath: what the destination said its agent is. Checked
     ///     rather than trusted — see `SuccessorBinary`.
     static func plan(
@@ -96,9 +104,14 @@ nonisolated enum SuccessorLaunch {
         scratchRoot: String,
         provider: AgentTaskProvider,
         reportedAgentPath: String,
-        briefIsVerified: Bool
+        expectedCommit: String
     ) -> Result<Plan, Refusal> {
-        guard briefIsVerified else { return .failure(.briefNotVerified) }
+        // A full sha, and only that. An abbreviation can be ambiguous and a
+        // ref name is not a pin at all — "main" would satisfy a check against
+        // whatever main happens to be when the fetch lands.
+        let isFullSHA = expectedCommit.count == 40
+            && expectedCommit.allSatisfy(\.isHexDigit)
+        guard isFullSHA else { return .failure(.commitNotPinned) }
         guard branch.hasPrefix("transfer/"), branch.count > "transfer/".count else {
             return .failure(.notATransferBranch)
         }
@@ -107,6 +120,7 @@ nonisolated enum SuccessorLaunch {
 
         return .success(
             Plan(
+                expectedCommit: expectedCommit,
                 workingDirectory: "\(scratchRoot)/\(branch.replacingOccurrences(of: "/", with: "-"))",
                 executable: executable,
                 arguments: [
