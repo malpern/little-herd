@@ -38,6 +38,7 @@
 		45BC186C83BEC7696C68B73B /* MachinePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2364561D7CD692AC3FC1471A /* MachinePresentation.swift */; };
 		45C4B87B06C248B32DE821B4 /* AgentSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17B5AEB7ADED71EAF3397A2 /* AgentSession.swift */; };
 		49F8A1AE82B4B9FE4314C6E9 /* MachineAgentCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FBB2F3F34A9A75B25E30D87 /* MachineAgentCard.swift */; };
+		4DC56E8FD77CAB8BE9A23BFB /* TransferCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C9493E32EF1E74685B2C637 /* TransferCoordinator.swift */; };
 		4DECA6731350AC1B325E372D /* MetricsSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8E7D7B96F3C77459C1DD141 /* MetricsSampler.swift */; };
 		4F24CDD27DEBD6E140685C00 /* StreamingProcessRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75816BB07A0EFE6F81C52052 /* StreamingProcessRunner.swift */; };
 		504FBEFADC2C468C7A9BB2D8 /* HerdByteCountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2ACEE7A3A10D1A9CE3D0F22 /* HerdByteCountTests.swift */; };
@@ -130,7 +131,9 @@
 		F45BA889DF0A918F2B8A1CE7 /* DashboardTransition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199544A93AE05F23B93D38E4 /* DashboardTransition.swift */; };
 		F467C6257000BC6F266301BC /* TaskTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D047AA9280E8D79DC01E7EC3 /* TaskTransfer.swift */; };
 		F5AF3C4705C4B22FE0F843F8 /* AIActivePanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7CBE63E8ADD9F25EE628DF4 /* AIActivePanelView.swift */; };
+		F8216E4C4750D5A960F95A2E /* Transfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13A62AEDE179380F1817E463 /* Transfer.swift */; };
 		F8DC230A5264BA010CFBFFE0 /* AgentDestinationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D5DE0551F7DDD29BEEE08FE /* AgentDestinationTests.swift */; };
+		FF3559A5EB1DAC602C55582D /* TransferCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55CAB9D6F79EE9C1500E9440 /* TransferCoordinatorTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -149,6 +152,7 @@
 		0B5E191C740CEFB9F0FE06A2 /* AgentFanLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentFanLayout.swift; sourceTree = "<group>"; };
 		114C1DCAE7973C5472BD9796 /* AIUsageLimitsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIUsageLimitsView.swift; sourceTree = "<group>"; };
 		133A808E3BA4EEA2AF234D6E /* CPUOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUOverviewView.swift; sourceTree = "<group>"; };
+		13A62AEDE179380F1817E463 /* Transfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transfer.swift; sourceTree = "<group>"; };
 		199544A93AE05F23B93D38E4 /* DashboardTransition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardTransition.swift; sourceTree = "<group>"; };
 		1C0E9354B762F8C407715028 /* MachineAgentPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineAgentPad.swift; sourceTree = "<group>"; };
 		221BEA80E8AB4A9863BC90B4 /* AgentDropEligibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDropEligibility.swift; sourceTree = "<group>"; };
@@ -182,6 +186,7 @@
 		51F953CB0925E1D06878BAB6 /* AgentFanLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentFanLayoutTests.swift; sourceTree = "<group>"; };
 		52D5157BE29095D9CF3FED86 /* FolderSizeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSizeTests.swift; sourceTree = "<group>"; };
 		542ADA4729226F9EBB0D48D6 /* AddMachinesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMachinesView.swift; sourceTree = "<group>"; };
+		55CAB9D6F79EE9C1500E9440 /* TransferCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferCoordinatorTests.swift; sourceTree = "<group>"; };
 		5F2409153C594416FF09B3E1 /* MachineAgentActivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineAgentActivityTests.swift; sourceTree = "<group>"; };
 		60B1C3B57A90EE8805729A1B /* FolderSizeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSizeStore.swift; sourceTree = "<group>"; };
 		6125192CA7CFE81311C048BC /* MachineMonitorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineMonitorModel.swift; sourceTree = "<group>"; };
@@ -214,6 +219,7 @@
 		994A0D0BCDDCAE35789476F8 /* SuccessorSSHTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessorSSHTests.swift; sourceTree = "<group>"; };
 		9964820C13B89705570C2A79 /* SecretCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretCacheTests.swift; sourceTree = "<group>"; };
 		9B1E4988B07342992D546101 /* SynologyDSMClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyDSMClient.swift; sourceTree = "<group>"; };
+		9C9493E32EF1E74685B2C637 /* TransferCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferCoordinator.swift; sourceTree = "<group>"; };
 		9D5DE0551F7DDD29BEEE08FE /* AgentDestinationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDestinationTests.swift; sourceTree = "<group>"; };
 		9EDDF10F2439122730B9A0F7 /* FolderSizes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSizes.swift; sourceTree = "<group>"; };
 		A1103648FA974B1ED81962ED /* SuccessorRun.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessorRun.swift; sourceTree = "<group>"; };
@@ -374,6 +380,8 @@
 				AF5116683456A747005BF658 /* SynologyMetricsSampler.swift */,
 				D047AA9280E8D79DC01E7EC3 /* TaskTransfer.swift */,
 				E5C36AC033CCD76A2AA262A9 /* TaskTransferView.swift */,
+				13A62AEDE179380F1817E463 /* Transfer.swift */,
+				9C9493E32EF1E74685B2C637 /* TransferCoordinator.swift */,
 			);
 			path = LittleHerd;
 			sourceTree = "<group>";
@@ -436,6 +444,7 @@
 				3C57E556B607FDBFC533B251 /* SynologyTrustTests.swift */,
 				E3A27FA19E2D234113937C21 /* SynologyWiringTests.swift */,
 				324EEBC4BC470AA0BD558877 /* TemporaryDefaults.swift */,
+				55CAB9D6F79EE9C1500E9440 /* TransferCoordinatorTests.swift */,
 				79D386671F3A56A3353C18AF /* WindowPlacementTests.swift */,
 			);
 			path = LittleHerdTests;
@@ -630,6 +639,8 @@
 				E34C872CCF5F2022113E97AF /* SynologyMetricsSampler.swift in Sources */,
 				F467C6257000BC6F266301BC /* TaskTransfer.swift in Sources */,
 				182FDB3CF702DD3D6820FBA3 /* TaskTransferView.swift in Sources */,
+				F8216E4C4750D5A960F95A2E /* Transfer.swift in Sources */,
+				4DC56E8FD77CAB8BE9A23BFB /* TransferCoordinator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -673,6 +684,7 @@
 				9EBFA43128EEF75AFFDC4C3F /* SynologyTrustTests.swift in Sources */,
 				DED22012974A8B709BB6B12D /* SynologyWiringTests.swift in Sources */,
 				7AAAA02496228EAADA51973E /* TemporaryDefaults.swift in Sources */,
+				FF3559A5EB1DAC602C55582D /* TransferCoordinatorTests.swift in Sources */,
 				97ABDF19EE954232A1A9D5D5 /* WindowPlacementTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
