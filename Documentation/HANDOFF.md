@@ -1457,6 +1457,24 @@ a half-finished move is visible in the interface rather than in a log.
    rather than "no agent", because Little Herd runs no probe on it and never
    asking is not the same as being told no.
 
+   **The grant is bound to a host now, and that half is done.** A permission
+   used to be keyed on `MachineID` alone — minted at discovery and never
+   changing — while `hostname` beside it is an ordinary editable field, so an
+   entry re-pointed at another box carried an approval given to the old one.
+   The host it was granted for is recorded, a mismatch reads as not permitted,
+   and a grant made before this existed is honoured as it stands, because
+   invalidating every permission somebody already gave would be a worse answer
+   than trusting them.
+
+   **What is still missing is the account.** A destination is an account and
+   the herd stores machines: `MachineConfiguration` refuses a second entry with
+   the same hostname, so the mini's `clawd` and `malpern` cannot both be in the
+   herd, and everything that decides whether a session can land is per-user —
+   the home directory and so which repositories exist, the agent install, the
+   credentials. That needs an account-qualified `MachineID` and an ssh user in
+   the configuration, which costs the published `transfer.json` contract
+   nothing since `MachineID` wraps a `String`.
+
 5. **Transfer a session between machines, at the session level.** Not process
    migration, which is not possible and not wanted: stop the session, have it
    write full context, start a successor on the target that has the repo. It is

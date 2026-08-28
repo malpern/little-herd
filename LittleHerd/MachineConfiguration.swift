@@ -62,6 +62,23 @@ nonisolated struct MachineConfiguration: Codable, Equatable, Identifiable,
     /// app asks.
     var mayHostSessionsPreference: Bool?
 
+    /// The host the permission above was granted for.
+    ///
+    /// **A permission is about a machine, and `id` is not one.** The id is
+    /// minted at discovery and never changes, while `hostname` is an ordinary
+    /// editable field — so a herd entry can be re-pointed at a different box
+    /// while carrying an approval somebody gave to the old one. Nothing about
+    /// that is exotic: renaming a machine, or repurposing an entry after
+    /// replacing hardware, is enough.
+    ///
+    /// Recording what the grant was for turns that from a silent inheritance
+    /// into an expired permission, which is the safe direction: the worst case
+    /// is being asked again.
+    ///
+    /// Optional for the same reason as the preference above — a new
+    /// non-optional key empties everyone's saved herd on first launch.
+    var mayHostSessionsGrantedFor: String?
+
     /// Intent, and only intent.
     ///
     /// Off until someone says otherwise, because the consequence of a wrong
@@ -69,9 +86,22 @@ nonisolated struct MachineConfiguration: Codable, Equatable, Identifiable,
     /// invites work to be moved somewhere it will fail, and a machine wrongly
     /// withheld costs one toggle. Whether the machine *could* host anything is
     /// a separate, measured question — see `DestinationEligibility`.
+    ///
+    /// **Reads false once the host it was granted for has changed**, and
+    /// setting it records the host it is being granted for. A grant made
+    /// before this existed has no host recorded and is honoured as it stands:
+    /// invalidating every existing permission on upgrade would be a worse
+    /// answer than trusting one the user gave.
     var mayHostSessions: Bool {
-        get { mayHostSessionsPreference ?? false }
-        set { mayHostSessionsPreference = newValue }
+        get {
+            guard mayHostSessionsPreference == true else { return false }
+            guard let grantedFor = mayHostSessionsGrantedFor else { return true }
+            return grantedFor == hostname
+        }
+        set {
+            mayHostSessionsPreference = newValue
+            mayHostSessionsGrantedFor = newValue ? hostname : nil
+        }
     }
 
     var isStorage: Bool {

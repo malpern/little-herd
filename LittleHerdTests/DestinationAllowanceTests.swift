@@ -130,3 +130,80 @@ struct DestinationAllowanceTests {
         #expect(mini.mayHostSessionsPreference == nil)
     }
 }
+
+/// A permission is about a machine, and an id is not one.
+@MainActor
+struct DestinationGrantBindingTests {
+    private func configuration(
+        _ id: String,
+        hostname: String
+    ) -> MachineConfiguration {
+        MachineConfiguration(
+            id: MachineID(id),
+            name: id,
+            shortName: id,
+            hostname: hostname,
+            hardwareSummary: id,
+            platform: .macOS,
+            connection: .ssh,
+            avatar: .calfMini,
+            identityFile: nil,
+            serverNames: [],
+            supportsGPU: false
+        )
+    }
+
+    /// **The point of the whole thing.** `id` is minted at discovery and never
+    /// changes; `hostname` is an ordinary editable field. Re-pointing an entry
+    /// at another box must not carry an approval given to the old one.
+    @Test
+    func aGrantDoesNotFollowTheEntryToAnotherHost() {
+        var mini = configuration("mini", hostname: "mini.local")
+        mini.mayHostSessions = true
+        #expect(mini.mayHostSessions)
+
+        mini.hostname = "someone-elses-box.local"
+        #expect(!mini.mayHostSessions)
+    }
+
+    /// And it comes back if the entry is pointed home again, because the grant
+    /// was never withdrawn — only suspended by the mismatch.
+    @Test
+    func itHoldsAgainWhenThePointerReturns() {
+        var mini = configuration("mini", hostname: "mini.local")
+        mini.mayHostSessions = true
+        mini.hostname = "elsewhere.local"
+        mini.hostname = "mini.local"
+        #expect(mini.mayHostSessions)
+    }
+
+    /// Withdrawing clears the record as well, so a later re-grant is a fresh
+    /// decision rather than a revival of an old one.
+    @Test
+    func withdrawingForgetsWhatItWasGrantedFor() {
+        var mini = configuration("mini", hostname: "mini.local")
+        mini.mayHostSessions = true
+        mini.mayHostSessions = false
+        #expect(mini.mayHostSessionsGrantedFor == nil)
+        #expect(!mini.mayHostSessions)
+    }
+
+    /// **A grant made before this existed is honoured as it stands.**
+    /// Invalidating every permission somebody already gave, on the first launch
+    /// after an update, is a worse answer than trusting them.
+    @Test
+    func aGrantFromBeforeThisExistedStillHolds() {
+        var mini = configuration("mini", hostname: "mini.local")
+        mini.mayHostSessionsPreference = true
+        mini.mayHostSessionsGrantedFor = nil
+        #expect(mini.mayHostSessions)
+    }
+
+    /// A machine that was never allowed is not allowed by a matching host.
+    @Test
+    func aMatchingHostIsNotItselfPermission() {
+        var mini = configuration("mini", hostname: "mini.local")
+        mini.mayHostSessionsGrantedFor = "mini.local"
+        #expect(!mini.mayHostSessions)
+    }
+}
