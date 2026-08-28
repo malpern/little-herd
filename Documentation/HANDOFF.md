@@ -1559,6 +1559,18 @@ a half-finished move is visible in the interface rather than in a log.
      the likelier failure. It is also the control that most resembles security
      from a distance, which makes it the one most likely to be shipped by
      itself. The two below are worth more.
+   - **The departure must not touch the working copy, and every obvious way
+     of doing it does.** `checkout -b` moves the checkout somebody is looking
+     at. `git add -A` rewrites their index — measured: a tree with a modified
+     tracked file, a staged addition and an untracked file comes back with all
+     three staged, so a deliberate staged/unstaged split is destroyed as a
+     side effect of dragging an icon. `stash` mutates a stack shared with
+     every worktree of that repository. The version that works assembles the
+     tree in a scratch index — `GIT_INDEX_FILE` + `read-tree HEAD` + `add -A`
+     + `write-tree` + `commit-tree` + `branch -f` — and was verified against
+     real git: `git status` byte-identical afterwards, HEAD unmoved, and the
+     branch carrying all three files. Git objects are immutable, so every step
+     is an addition and a failure half-way leaves only unreferenced objects.
    - **Cancelling a transfer only reaches the other machine because of
      `-tt`.** Measured both ways on the mini: a remote `sleep` started over
      `ssh -tt` is gone four seconds after SIGTERM to the local `ssh`; the same
