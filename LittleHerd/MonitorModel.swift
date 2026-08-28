@@ -13,6 +13,31 @@ final class MonitorModel {
     private(set) var diskMachines: [MachineMonitorModel] = []
     let aiUsageLimits = AIUsageLimitsModel()
 
+    /// Transfers in flight, held here rather than in a view because one
+    /// outlives the panel that started it by a long way.
+    /// `@ObservationIgnored` because the reference never changes — views
+    /// observe the coordinator itself, which is `@Observable` in its own
+    /// right, and the macro cannot see through a `lazy` stored property.
+    @ObservationIgnored
+    lazy var transfers = TransferCoordinator { [weak self] transfer in
+        self?.arrivalRunner(for: transfer.destination) ?? { _ in
+            .init(text: "", succeeded: false)
+        }
+    }
+
+    /// How to run the destination's half. Same shape as the departure's, on
+    /// the other machine.
+    private func arrivalRunner(
+        for machine: MachineID
+    ) -> SuccessorExecutor.Run? {
+        guard let model = machines.first(where: { $0.machine == machine }),
+              !model.isLocal
+        else { return nil }
+        let host = model.hostname
+        let identity = model.identityFile
+        return SuccessorSSH.runner(host: host, identityFile: identity)
+    }
+
     /// What each model has been seen to hold before compacting. Observed as
     /// samples arrive rather than by reading transcripts, and persisted so a
     /// limit learned once survives a restart.

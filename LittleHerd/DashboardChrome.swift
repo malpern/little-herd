@@ -14,6 +14,18 @@ import Foundation
 /// thing removed "for now" is a thing rewritten from memory later. Turning
 /// either back on is one word, and the tests for what they draw still run.
 nonisolated enum DashboardChrome {
+    /// **Whether a drop actually starts a transfer.** Off, and this one is
+    /// not a design question: everything behind it works and has run end to
+    /// end on real machines, but there is nothing on screen yet to say a
+    /// transfer is happening, how far it has got, or to call it off.
+    ///
+    /// A drag is a small gesture and easily made by accident. Starting an
+    /// agent on another Mac, and pushing a branch, with no visible answer is
+    /// the kind of thing that is only discovered later — so the wiring is
+    /// complete and this stays false until the progress and cancel controls
+    /// exist. It is one word to turn on.
+    static let startsTransfers = false
+
     /// The agent tokens and their pads, under each machine on the overview.
     ///
     /// They occupied the band the tab row now sits above, and the two together

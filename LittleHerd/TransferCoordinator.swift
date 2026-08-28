@@ -33,12 +33,27 @@ final class TransferCoordinator {
     ///   all and `SuccessorRun` turns it into commands, both of them pure, and
     ///   folding either in here would put the refusals somewhere they cannot
     ///   be tested without a machine.
-    func begin(_ transfer: Transfer, steps: [SuccessorRun.Step]) {
-        guard tasks[transfer] == nil else { return }
-
+    /// Marks a transfer as under way before the destination has anything to
+    /// do. The source's half — quiescing, writing the brief, pushing — happens
+    /// first and takes real time, and a drop that shows nothing until the far
+    /// machine starts looks like a drop that did nothing.
+    func prepare(_ transfer: Transfer) {
+        guard transfers[transfer] == nil else { return }
         transfers[transfer] = .preparing
         order.removeAll { $0 == transfer }
         order.insert(transfer, at: 0)
+    }
+
+    /// Ends one that never reached the destination.
+    func fail(_ transfer: Transfer, _ outcome: SuccessorOutcome) {
+        guard transfers[transfer]?.isCancellable == true else { return }
+        transfers[transfer] = .finished(outcome)
+    }
+
+    func begin(_ transfer: Transfer, steps: [SuccessorRun.Step]) {
+        guard tasks[transfer] == nil else { return }
+
+        prepare(transfer)
 
         let run = makeRunner(transfer)
         tasks[transfer] = Task { [weak self] in

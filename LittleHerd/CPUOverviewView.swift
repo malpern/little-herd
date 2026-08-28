@@ -7,6 +7,13 @@ struct CPUOverviewView: View {
     var onSelectMetric: ((MachineID) -> Void)?
     var onSelectMachine: ((MachineID) -> Void)?
     var onSelectAgents: ((MachineID) -> Void)?
+    /// A session was dropped on a machine that will take it.
+    ///
+    /// The view reports the drop and does not act on it. Deciding whether a
+    /// transfer is possible needs the checkouts and agents of every machine,
+    /// and running one outlives this window — neither belongs in a gesture
+    /// handler.
+    var onTransfer: ((AgentSession, MachineID, MachineID) -> Void)?
     var agentCPU: [String: Double] = [:]
     /// Every account, so a drag can ask what each machine could actually take.
     var herd: [DestinationAccount] = []
@@ -322,7 +329,15 @@ struct CPUOverviewView: View {
                         over: columns.machine(atX: x, leadingInset: horizontalPadding)
                     )
                 },
-                onDrop: { carrying = nil },
+                onDrop: {
+                    if let carried = carrying,
+                       let over = carried.over,
+                       over != carried.from,
+                       canCarry(to: over, carried.session) {
+                        onTransfer?(carried.session, carried.from, over)
+                    }
+                    carrying = nil
+                },
                 lowering: lowering
             )
             // Level with the band the resting deck peeks into, so the icons
@@ -388,6 +403,23 @@ struct CPUOverviewView: View {
         )
     }
 
+    /// Whether a single carried session may be dropped here. The deck drag
+    /// asks `canAccept`, which is phrased in terms of a whole activity; one
+    /// icon carries one session, so it is wrapped in the activity the rest of
+    /// the eligibility code expects.
+    private func canCarry(to machine: MachineID, _ session: AgentSession) -> Bool {
+        AgentDropEligibility.canAccept(
+            machine,
+            carrying: MachineAgentActivity(
+                provider: session.provider,
+                sessions: [session]
+            ),
+            from: carrying?.from ?? machine,
+            in: herd,
+            requiresApproval: requiresDestinationApproval
+        )
+    }
+
     private func padState(for machine: MachineID) -> AgentPadState {
         guard let drag = activeDrag else {
             // A refusal outlives the gesture that caused it. Letting go is the
@@ -420,13 +452,18 @@ struct CPUOverviewView: View {
     }
 
     private func endDrag() {
-        // Nothing moves yet, and the token springs home. The outcome is
-        // computed all the same, because it is the thing the transfer work
-        // will act on and it is better to have it wrong here, where it can be
-        // seen, than absent until the day it matters.
         let ending = drag
         let outcome = drag?.outcome(canAccept: canAccept)
         drag = nil
+
+        if case .accepted(let destination) = outcome, let ending {
+            // The busiest session, which is the one the badge was already
+            // showing — dragging a deck of several means moving the one it
+            // is standing for, not all of them.
+            if let session = ending.activity.sessions.first {
+                onTransfer?(session, ending.origin, destination)
+            }
+        }
 
         guard case .refused = outcome else {
             refusal = nil

@@ -92,6 +92,7 @@
 		A23B343EAFCC59009DBBB951 /* DashboardWindowBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F86234553E6FA795BAE88C /* DashboardWindowBridge.swift */; };
 		A3B86273DEF5E8F43616CE18 /* HerdWorkloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD1898FFA14E2C7BC9A924C2 /* HerdWorkloadTests.swift */; };
 		A673853D135FCA0E042DEBE8 /* PanelRenderHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A0DC0F7A6B9443E5F6E450 /* PanelRenderHarness.swift */; };
+		A6A4579A4635CC653D663CDE /* MonitorModel+Transfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDB4D2062B7AF22AE79268DF /* MonitorModel+Transfer.swift */; };
 		A75BF90DF86C9F46EB1FC29C /* FullDiskAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 902F116974B1C2D720ED2B18 /* FullDiskAccess.swift */; };
 		A905B8C981F44D19D61DDDBF /* OverviewMetricTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E82FFCE473CDBD3EFDA6F5D /* OverviewMetricTabs.swift */; };
 		A94B63BDDB38DD1C02C21A4B /* AgentFanLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B5E191C740CEFB9F0FE06A2 /* AgentFanLayout.swift */; };
@@ -273,6 +274,7 @@
 		D833CE2704E28207ED01D856 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		D9F4B2F575C858F9882D9B53 /* RemoteShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteShell.swift; sourceTree = "<group>"; };
 		DD2759DDB72F3A36D70A071D /* TestLocalMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestLocalMachine.swift; sourceTree = "<group>"; };
+		DDB4D2062B7AF22AE79268DF /* MonitorModel+Transfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MonitorModel+Transfer.swift"; sourceTree = "<group>"; };
 		E37B21B22B4948B6336D6258 /* LittleHerdBranding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LittleHerdBranding.swift; sourceTree = "<group>"; };
 		E3A27FA19E2D234113937C21 /* SynologyWiringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyWiringTests.swift; sourceTree = "<group>"; };
 		E4F112CE5D8A49060A44E52A /* SSHHostName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHHostName.swift; sourceTree = "<group>"; };
@@ -374,6 +376,7 @@
 				4F29F16289B54BBD5DC8DE5A /* MetricRow.swift */,
 				A8E7D7B96F3C77459C1DD141 /* MetricsSampler.swift */,
 				BC4ED33139998C97ECB4C77A /* MonitorModel.swift */,
+				DDB4D2062B7AF22AE79268DF /* MonitorModel+Transfer.swift */,
 				3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */,
 				4E82FFCE473CDBD3EFDA6F5D /* OverviewMetricTabs.swift */,
 				A5BBA732DB8512138D7F61E0 /* RemoteMetricsSampler.swift */,
@@ -640,6 +643,7 @@
 				6B236EB580089736F35DAC08 /* MetricModel.swift in Sources */,
 				6D0AF35A5767BC690DEB78FC /* MetricRow.swift in Sources */,
 				4DECA6731350AC1B325E372D /* MetricsSampler.swift in Sources */,
+				A6A4579A4635CC653D663CDE /* MonitorModel+Transfer.swift in Sources */,
 				27726ED927D36757C9A9BF67 /* MonitorModel.swift in Sources */,
 				AE7E668C1245F5127C1E588D /* NetworkVolumeOnboardingView.swift in Sources */,
 				A905B8C981F44D19D61DDDBF /* OverviewMetricTabs.swift in Sources */,

@@ -102,6 +102,13 @@ struct DashboardView: View {
                             onSelectMetric: { model.selection = .machineMetric($0) },
                             onSelectMachine: { model.selection = .machine($0) },
                             onSelectAgents: { model.showAgents(on: $0) },
+                            onTransfer: { session, origin, destination in
+                                model.beginTransfer(
+                                    of: session,
+                                    from: origin,
+                                    to: destination
+                                )
+                            },
                             herd: model.machines.map(\.destinationAccount),
                             // Only here. The menu bar draws its own rows and
                             // is dismissed by the click that would read the
@@ -390,6 +397,8 @@ private struct OverviewMetricContent: View {
     /// Opens a machine's AI page — what an agent token on the overview points
     /// at, which is neither the machine's summary nor the current metric.
     var onSelectAgents: ((MachineID) -> Void)?
+    /// A session was dropped on a machine that will take it.
+    var onTransfer: ((AgentSession, MachineID, MachineID) -> Void)?
     var herd: [DestinationAccount] = []
     var announcesArrivals = false
 
@@ -418,6 +427,7 @@ private struct OverviewMetricContent: View {
                 onSelectMetric: onSelectMetric,
                 onSelectMachine: onSelectMachine,
                 onSelectAgents: onSelectAgents,
+                onTransfer: onTransfer,
                 agentCPU: agentCPU,
                 herd: herd,
                 announcesArrivals: announcesArrivals
