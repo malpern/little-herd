@@ -28,6 +28,10 @@ struct MachineAgentFan: View {
     /// destination reads as a popover, which is the one thing this design is
     /// trying not to be.
     @State private var spread: CGFloat = 0
+    /// Set while the deck is on its way back down. The view stays alive until
+    /// it has arrived; removing it any earlier is what made the rise look
+    /// one-directional.
+    var lowering: Bool = false
     @State private var carrying: Int?
     @State private var carried: CGSize = .zero
 
@@ -36,6 +40,21 @@ struct MachineAgentFan: View {
     /// off an animal's back, and something weightless arriving instantly reads
     /// as a menu opening.
     static let rising = Animation.spring(duration: 0.46, bounce: 0.30)
+
+    /// Going back down.
+    ///
+    /// **The deck used to be removed rather than lowered**, so the rise had no
+    /// answering movement: the icons appeared to be plucked away and the
+    /// resting stack popped back in their place. Coming down is now a real
+    /// movement, and a different one from going up — less bounce, because a
+    /// thing settling onto a surface does not overshoot the way a thing being
+    /// lifted off one does, and a little quicker, since nobody is waiting to
+    /// read it any more.
+    static let settling = Animation.spring(duration: 0.34, bounce: 0.12)
+
+    /// How long the descent takes altogether, delays included, so a caller
+    /// knows when the deck may actually be taken away.
+    static let descent: Duration = .milliseconds(460)
 
     /// How big a raised icon is, against the animal it came from. Larger than
     /// the deck it rose from — it is the thing being read now, and the growth
@@ -86,7 +105,10 @@ struct MachineAgentFan: View {
                     // glass does not. The delay is small enough to read as
                     // heft rather than as a queue.
                     .animation(
-                        reduceMotion ? nil : Self.rising.delay(Double(index) * 0.04),
+                        reduceMotion
+                            ? nil
+                            : (spread == 0 ? Self.settling : Self.rising)
+                                .delay(Double(index) * 0.04),
                         value: spread
                     )
                     .offset(
@@ -135,6 +157,10 @@ struct MachineAgentFan: View {
             // No `withAnimation` here: each icon animates on its own delay,
             // above. Setting the value is enough.
             spread = 1
+        }
+        .onChange(of: lowering) { _, isLowering in
+            guard isLowering else { return }
+            spread = reduceMotion ? 0 : 0
         }
     }
 

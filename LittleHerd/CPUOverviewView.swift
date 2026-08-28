@@ -41,6 +41,10 @@ struct CPUOverviewView: View {
     @State private var arrivalRaise: Task<Void, Never>?
 
     /// An agent in hand, and the machine the pointer is over.
+    /// The deck is on its way down. Kept apart from `fanned` because the view
+    /// has to outlive the decision to dismiss it by exactly one animation.
+    @State private var lowering = false
+    @State private var lowerAfterDescent: Task<Void, Never>?
     @State private var carrying: CarriedAgent?
 
     struct CarriedAgent: Equatable {
@@ -146,10 +150,15 @@ struct CPUOverviewView: View {
                             guard agentActivity(on: machine) != nil else { return }
                             // A pointer outranks an arrival: you have asked.
                             arrivalRaise?.cancel()
+                            // Catch a deck that is already on its way down, so
+                            // coming back to a machine picks it up again
+                            // rather than waiting for it to land first.
+                            lowerAfterDescent?.cancel()
+                            lowering = false
                             fanIsAnswerToAPointer = true
                             fanned = machine.machine
                         } else if fanned == machine.machine, fanIsAnswerToAPointer {
-                            fanned = nil
+                            lowerFan()
                         }
                     }
                 }
@@ -273,7 +282,24 @@ struct CPUOverviewView: View {
             guard !Task.isCancelled else { return }
             // A pointer may have arrived meanwhile and taken it over.
             guard !fanIsAnswerToAPointer else { return }
-            withAnimation(.easeIn(duration: 0.3)) { fanned = nil }
+            lowerFan()
+        }
+    }
+
+    /// Sends the deck back down, and only then takes it away.
+    ///
+    /// The wait is the whole point: clearing `fanned` immediately removes the
+    /// view mid-air, so the icons vanish instead of returning behind the
+    /// animal and the resting stack appears from nowhere.
+    private func lowerFan() {
+        guard !lowering else { return }
+        lowerAfterDescent?.cancel()
+        lowering = true
+        lowerAfterDescent = Task {
+            try? await Task.sleep(for: MachineAgentFan.descent)
+            guard !Task.isCancelled else { return }
+            fanned = nil
+            lowering = false
         }
     }
 
@@ -296,7 +322,8 @@ struct CPUOverviewView: View {
                         over: columns.machine(atX: x, leadingInset: horizontalPadding)
                     )
                 },
-                onDrop: { carrying = nil }
+                onDrop: { carrying = nil },
+                lowering: lowering
             )
             // Level with the band the resting deck peeks into, so the icons
             // rise straight up out of the animal rather than travelling
