@@ -723,6 +723,75 @@ nonisolated enum SSHCommandRunner {
         }.value
     }
 
+    /// Output *and* exit status, with the process killed if the surrounding
+    /// task is cancelled.
+    ///
+    /// The two runners above each drop half of what a transfer needs.
+    /// `runCapturingAll` keeps everything a command said but not whether it
+    /// worked, which is right for a probe reading a refusal and useless for a
+    /// test suite. `run` throws on failure and keeps only standard error,
+    /// which discards the compiler output that is the entire reason anybody
+    /// wants to look at a red run.
+    ///
+    /// **Cancellation has to reach the other machine, not just this one.**
+    /// Killing the local `ssh` is what a naive implementation does and it
+    /// leaves the agent running on somebody else's Mac, spending tokens on
+    /// work nobody is waiting for any more — the same measurement that put
+    /// `-tt` on the authentication probe, where a SIGTERM left a remote loop
+    /// alive and writing twenty-one seconds later. The forced terminal is what
+    /// makes the remote command die with the connection, so it is not optional
+    /// here either.
+    static func runReportingStatus(
+        host: String,
+        command: String,
+        identityFile: String? = nil,
+        timeout: TimeInterval
+    ) async -> (output: String, succeeded: Bool) {
+        guard SSHHostName.isValid(host) else {
+            return ("", false)
+        }
+
+        let process = Process()
+        let pipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
+        process.arguments = Self.arguments(
+            host: host,
+            command: command,
+            identityFile: identityFile,
+            allocateTerminal: true
+        )
+        // One pipe for both streams, as above: two would have to be drained
+        // concurrently to avoid the 64 KiB deadlock, and a person reading a
+        // failed build wants them interleaved anyway.
+        process.standardOutput = pipe
+        process.standardError = pipe
+        process.standardInput = FileHandle.nullDevice
+
+        return await withTaskCancellationHandler {
+            await Task.detached(priority: .utility) {
+                do {
+                    try process.run()
+                } catch {
+                    return ("", false)
+                }
+
+                let watchdog = ProbeWatchdog(process: process, after: timeout)
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                process.waitUntilExit()
+                let timedOut = watchdog.finish()
+
+                return (
+                    String(decoding: data, as: UTF8.self),
+                    process.terminationStatus == 0 && !timedOut
+                )
+            }.value
+        } onCancel: {
+            // Safe before `run()` too: terminating a process that has not
+            // started does nothing.
+            process.terminate()
+        }
+    }
+
     static func run(
         host: String,
         command: String,

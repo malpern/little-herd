@@ -1559,6 +1559,14 @@ a half-finished move is visible in the interface rather than in a log.
      the likelier failure. It is also the control that most resembles security
      from a distance, which makes it the one most likely to be shipped by
      itself. The two below are worth more.
+   - **Cancelling a transfer only reaches the other machine because of
+     `-tt`.** Measured both ways on the mini: a remote `sleep` started over
+     `ssh -tt` is gone four seconds after SIGTERM to the local `ssh`; the same
+     command over `ssh -T` is still running with the same pid. Without the
+     forced terminal, calling off a transfer kills the local end and leaves the
+     agent working on somebody else's Mac, spending tokens on an answer nobody
+     is waiting for. This is the same finding that put `-tt` on the
+     authentication probe, and it is now load-bearing in a second place.
    - **A tool allowlist does not bound a successor, and the shell has to go
      instead.** Measured on the mini rather than assumed, after this file spent
      a day claiming otherwise. `--allowedTools "Bash(git status:*)"` is
