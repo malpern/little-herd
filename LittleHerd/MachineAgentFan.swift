@@ -31,6 +31,12 @@ struct MachineAgentFan: View {
     @State private var carrying: Int?
     @State private var carried: CGSize = .zero
 
+    /// **A spring with some mass in it.** Longer and looser than the app's
+    /// usual 0.22s, and allowed to overshoot: these are objects being lifted
+    /// off an animal's back, and something weightless arriving instantly reads
+    /// as a menu opening.
+    static let rising = Animation.spring(duration: 0.46, bounce: 0.30)
+
     /// How big a raised icon is, against the animal it came from. Larger than
     /// the deck it rose from — it is the thing being read now, and the growth
     /// is what makes the rise feel like a rise rather than a slide.
@@ -74,6 +80,15 @@ struct MachineAgentFan: View {
                     // Each icon starts where the deck was — stacked at the
                     // animal, smaller and lower — and travels to its place.
                     .scaleEffect(restingShare + (1 - restingShare) * spread)
+                    // **Each icon carries its own weight.** They leave the
+                    // animal a beat apart and settle a beat apart, which is
+                    // what a handful of objects does and what one sheet of
+                    // glass does not. The delay is small enough to read as
+                    // heft rather than as a queue.
+                    .animation(
+                        reduceMotion ? nil : Self.rising.delay(Double(index) * 0.04),
+                        value: spread
+                    )
                     .offset(
                         x: stackedX(index) + (rect.minX - stackedX(index)) * spread
                             + (carrying == index ? carried.width : 0),
@@ -82,7 +97,13 @@ struct MachineAgentFan: View {
                     // Lifted while it is in hand, and above its neighbours.
                     .scaleEffect(carrying == index ? 1.12 : 1)
                     .zIndex(carrying == index ? 1 : 0)
-                    .animation(carrying == index ? nil : .spring(duration: 0.3), value: carried)
+                    // Nothing while it is in hand — it belongs to the pointer
+                    // then — and a heavier spring on the way home, because it
+                    // is being put down rather than snapped back.
+                    .animation(
+                        carrying == index ? nil : .spring(duration: 0.42, bounce: 0.34),
+                        value: carried
+                    )
                     .gesture(carry(sessions[index], index: index, restingAt: rect.midX))
                     .help(Text(sessions[index].displayTitle))
                     .accessibilityLabel(Text(sessions[index].displayTitle))
@@ -111,7 +132,9 @@ struct MachineAgentFan: View {
         .frame(width: width, height: tile, alignment: .topLeading)
         .onAppear {
             guard !reduceMotion else { spread = 1; return }
-            withAnimation(.spring(duration: 0.34, bounce: 0.22)) { spread = 1 }
+            // No `withAnimation` here: each icon animates on its own delay,
+            // above. Setting the value is enough.
+            spread = 1
         }
     }
 

@@ -132,10 +132,16 @@ struct CPUOverviewView: View {
                 // meet it; one that could not simply does not answer, which is
                 // a quieter no than a mark and needs no surface to paint on.
                 .offset(y: welcomes(machine.machine) ? -5 : 0)
-                .animation(.spring(duration: 0.24), value: carrying)
+                .animation(.spring(duration: 0.34, bounce: 0.38), value: carrying)
                 .onHover { hovering in
                     guard DashboardChrome.showsAgentTokens else { return }
-                    withAnimation(.smooth(duration: 0.26)) {
+                    // Rising is sprung; falling accelerates. A thing settling
+                    // back onto an animal does not ease to a stop in the air.
+                    withAnimation(
+                        hovering
+                            ? MachineAgentFan.rising
+                            : .easeIn(duration: 0.26)
+                    ) {
                         if hovering {
                             guard agentActivity(on: machine) != nil else { return }
                             // A pointer outranks an arrival: you have asked.
@@ -258,7 +264,7 @@ struct CPUOverviewView: View {
     /// enough to be read and no longer.
     private func raise(forArrival machine: MachineID) {
         arrivalRaise?.cancel()
-        withAnimation(.spring(duration: 0.34, bounce: 0.22)) {
+        withAnimation(MachineAgentFan.rising) {
             fanIsAnswerToAPointer = false
             fanned = machine
         }
@@ -267,7 +273,7 @@ struct CPUOverviewView: View {
             guard !Task.isCancelled else { return }
             // A pointer may have arrived meanwhile and taken it over.
             guard !fanIsAnswerToAPointer else { return }
-            withAnimation(.smooth(duration: 0.28)) { fanned = nil }
+            withAnimation(.easeIn(duration: 0.3)) { fanned = nil }
         }
     }
 
