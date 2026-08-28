@@ -1629,11 +1629,38 @@ a half-finished move is visible in the interface rather than in a log.
    acceptable trade for a measurement on machines we own, and it is not an
    acceptable shape for the feature.
 
- What it did not touch: quiescing a running
-   session, carrying uncommitted work, verifying the successor behaviourally
-   before retiring the source, and what a half-finished move looks like in the
-   interface. What it settled: a written brief is enough, and the successor
-   needs permission to build and push.
+ What it settled: a written brief is enough, and the
+   successor needs permission to build and push.
+
+   **Since then the machinery has been built, and none of it has run as one
+   motion.** Keep those two sentences together — every piece below is measured
+   on its own, and no transfer has yet gone source → destination → branch end
+   to end. Treat "tested" here as "each part was broken on purpose and the
+   suite noticed", not as "this works".
+
+   Built and individually verified:
+
+   - `TransferEligibility` — whether a session can be lifted at all. Waiting is
+     ready; active is waited for rather than refused; finished has nothing in
+     flight; **stalled is refused loudly**, because a session that stopped
+     inside a tool call is exactly the one that cannot say where it got to.
+   - `TransferDeparture` — brief (via `--resume`, so it is the session's own
+     account of itself) then a branch built in a scratch index. See the
+     working-copy fact above.
+   - `TransferPilot` — the join. One value crosses: the sha the source pushed.
+   - `SuccessorLaunch` → `SuccessorRun` → `SuccessorExecutor` → `SuccessorSSH`
+     — plan, commands, ordering under failure, and the wire.
+   - `TransferCoordinator` — lifecycle, and finished transfers survive a closed
+     panel so a red run is not lost silently.
+
+   Still open:
+
+   - `endDrag()` does not call any of it. Everything it needs now exists.
+   - The interface: per-step progress, the diff, calling one off mid-flight.
+   - **The first real end-to-end run.** This is the one that matters, and it is
+     the one thing no amount of further building substitutes for.
+   - Verifying the successor behaviourally before retiring the source, and what
+     a half-finished move looks like on screen.
 
    Not process
    migration, which is not possible and not wanted: stop the session, have it
