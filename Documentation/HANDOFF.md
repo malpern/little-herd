@@ -1507,7 +1507,50 @@ a half-finished move is visible in the interface rather than in a log.
 
 5. **Transfer a session between machines, at the session level.** **A spike
    has now done this by hand — see the facts above — so the open questions are
-   narrower than they were.** What it did not touch: quiescing a running
+   narrower than they were.**
+
+   **Read this before building any of it: the shape the spike used is unsafe,
+   and it is the obvious shape.** The successor was told *"read this file and
+   carry out the work it describes"*, and then given permission to run
+   anything. That converts repository content into commands on another machine,
+   which moves the trust boundary from *who can ssh to my machines* to *what is
+   in a branch* — and not only the brief, since a successor reads `CLAUDE.md`,
+   source comments and fixtures while working. Anyone who can write to the
+   repository can run commands on every machine that starts a successor. On a
+   private repo with one writer that is theoretical; as a shipped feature it is
+   the whole security model.
+
+   Six constraints, each answering a specific way the spike could have been
+   turned against the herd:
+
+   - **No `bypassPermissions` in the product.** The default (`acceptEdits`) is
+     too tight to finish a move and the bypass is too loose to ship; the
+     product has to define the middle — the build command, and `git` limited to
+     the transfer branch.
+   - **The brief carries data; Little Herd supplies the imperatives.** A fixed
+     schema — task, repository, branch, verification command — rendered into a
+     prompt the app owns, rather than prose a successor is told to obey.
+   - **Authenticate the brief**, so a pushed branch is not automatically an
+     instruction. It should be verifiable as having been written by Little Herd
+     on the source machine.
+   - **Never execute a path the destination reported.** `AgentInstallation.path`
+     is parsed out of the remote probe's own output, so a compromised or
+     spoofed machine chooses the binary the transfer will run on it. Resolve
+     from an allowlist of known locations on the destination and check the
+     signature. The app only displays this today; a transfer makes it an
+     execution primitive handed over by the destination.
+   - **Run in a fresh worktree**, not the user's working copy, so a bad brief
+     cannot quietly amend real work.
+   - **Every agent-reported string is display data forever.** Session titles,
+     project names and activity phrases come from transcripts on machines that
+     may have been reading untrusted material. They already reach a person's
+     eye; they must never reach a prompt undelimited.
+
+   **The spike demonstrated the injection path by using it.** That was an
+   acceptable trade for a measurement on machines we own, and it is not an
+   acceptable shape for the feature.
+
+ What it did not touch: quiescing a running
    session, carrying uncommitted work, verifying the successor behaviourally
    before retiring the source, and what a half-finished move looks like in the
    interface. What it settled: a written brief is enough, and the successor
