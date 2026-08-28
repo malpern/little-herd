@@ -62,11 +62,14 @@ struct SuccessorRunTests {
     /// Break this by interpolating the prompt directly and the test above
     /// fails immediately — which is how we know it covers anything.
     @Test
-    func theAgentReadsThePromptFromAFileRatherThanAnArgument() throws {
+    func theAgentReadsThePromptFromStdinRatherThanAnArgument() throws {
         let agent = steps().first { $0.purpose == .agent }
         let command = try #require(agent).command
-        #expect(command.contains("\"$(cat "))
-        #expect(command.contains("/tmp/herd/prompt"))
+        #expect(command.contains("cat '/tmp/herd/prompt' |"))
+        // Measured on a real transfer: --disallowedTools is variadic and eats
+        // a trailing prompt argument, so the prompt must not be one.
+        #expect(!command.contains("$(cat"))
+        #expect(command.hasSuffix("'WebSearch'"))
     }
 
     /// A failed check must not be followed by a push.

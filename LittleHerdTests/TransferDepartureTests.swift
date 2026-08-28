@@ -72,6 +72,9 @@ struct TransferDepartureTests {
         // And it writes one file; it gets no shell either.
         #expect(brief.command.contains("--disallowedTools"))
         #expect(brief.command.contains("Bash"))
+        // And the prompt is piped, never trailing — see SuccessorRun.
+        #expect(brief.command.contains("cat '/tmp/herd/prompt' |"))
+        #expect(!brief.command.contains("$(cat"))
     }
 
     /// The sha is what the destination is pinned to, so it has to come back.

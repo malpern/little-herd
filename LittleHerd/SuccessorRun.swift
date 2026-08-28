@@ -98,16 +98,27 @@ nonisolated struct SuccessorRun: Equatable {
             )
         )
 
-        // `"$(cat …)"` is a quoted expansion: the shell substitutes the file's
-        // contents and does not re-parse them, so the prompt reaches the agent
-        // as one argument however it is punctuated.
+        // **The prompt goes in on standard input, not as an argument.**
+        //
+        // The first version passed it as the trailing argument, which looked
+        // right and failed on the first real transfer with "Input must be
+        // provided either through stdin or as a prompt argument". The cause is
+        // that `--disallowedTools` takes a *list*: it swallowed `Bash`,
+        // `WebFetch`, `WebSearch` and then the prompt as well, leaving no
+        // positional argument at all. Reordering would only move the problem
+        // to whatever ended up last.
+        //
+        // Piping is better than a fix for that anyway — it takes the brief off
+        // the command line entirely, which is a stronger version of the
+        // property the base64 staging was already reaching for. The pipe also
+        // reaches EOF, which is what the agent needs; an inherited stdin is
+        // what it waits on for ever.
         steps.append(
             Step(
                 purpose: .agent,
-                command: "cd \(scratch) && "
+                command: "cd \(scratch) && cat \(promptFile) | "
                     + "\(RemoteShell.quoted(plan.executable)) "
-                    + "\(RemoteShell.quoted(plan.arguments)) "
-                    + "\"$(cat \(promptFile))\"",
+                    + "\(RemoteShell.quoted(plan.arguments))",
                 isFatal: true
             )
         )

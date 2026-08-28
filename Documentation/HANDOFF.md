@@ -1559,6 +1559,40 @@ a half-finished move is visible in the interface rather than in a log.
      the likelier failure. It is also the control that most resembles security
      from a distance, which makes it the one most likely to be shipped by
      itself. The two below are worth more.
+   - **`--disallowedTools` is variadic and ate the prompt.** The first real
+     transfer failed instantly with *"Input must be provided either through
+     stdin or as a prompt argument"* — the flag consumed `Bash`, `WebFetch`,
+     `WebSearch` **and** the trailing prompt, leaving no positional argument.
+     Reordering only moves the problem to whatever ends up last, so the prompt
+     now goes in on **standard input**, which is better anyway: the brief is
+     off the command line entirely, a stronger form of what the base64 staging
+     was reaching for. A pipe also reaches EOF, which is what the agent needs.
+     Every unit test passed while this was broken; nothing but a real run
+     could have found it.
+
+   - **The destination's check is not hermetic, and that is a design problem,
+     not a flake.** `machineCanBeRemovedFromTheHerd` and
+     `machineConfigurationStorePersistsDynamicMachines` pass on the Air and
+     fail on the mini, on a pristine worktree with no agent edits at all —
+     they depend on that machine's persisted configuration. A transfer whose
+     check goes red for reasons unrelated to the work reports `checkFailed`
+     and refuses delivery, which blames the successor for the destination's
+     local state. **Before transfers can be trusted, either those tests must
+     be made hermetic or the check must compare against a baseline run on the
+     destination first.**
+
+   - **A transfer carries the whole dirty tree, including scaffolding.** The
+     first run sent a temporary test harness to the mini along with the work,
+     and it was that file which turned the check red. This is the intended
+     behaviour — uncommitted work travels — but it means whatever is lying
+     around in the checkout goes too, and it will be somebody's stray notes or
+     a scratch file with a token in it eventually.
+
+   - **`-tt` makes git narrate.** The forced terminal that gives us
+     cancellation also makes `fetch` emit its progress meter, so a transcript
+     is mostly `Receiving objects: 51%…`. Pass `--quiet` on the fetch before
+     showing a transcript to anybody.
+
    - **The departure must not touch the working copy, and every obvious way
      of doing it does.** `checkout -b` moves the checkout somebody is looking
      at. `git add -A` rewrites their index — measured: a tree with a modified
@@ -1657,8 +1691,16 @@ a half-finished move is visible in the interface rather than in a log.
 
    - `endDrag()` does not call any of it. Everything it needs now exists.
    - The interface: per-step progress, the diff, calling one off mid-flight.
-   - **The first real end-to-end run.** This is the one that matters, and it is
-     the one thing no amount of further building substitutes for.
+   - ~~The first real end-to-end run.~~ **Done, twice, on 27 August.** It
+     found four things, all above: the variadic flag that ate the prompt (a
+     real bug, now fixed), the non-hermetic check (a real design problem, open),
+     the whole-tree capture, and the git narration. What worked: the departure
+     built a branch from a dirty tree and left the source byte-identical, the
+     pin verified on the destination, the agent did exactly the brief **with no
+     shell**, and when the check went red the delivery correctly did not run —
+     the remote branch stayed where the departure left it. **The happy path
+     through delivery has still never run**, because the check has not yet been
+     green on the mini.
    - Verifying the successor behaviourally before retiring the source, and what
      a half-finished move looks like on screen.
 

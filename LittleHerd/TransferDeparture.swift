@@ -79,12 +79,13 @@ nonisolated struct TransferDeparture: Equatable {
         steps.append(
             Step(
                 purpose: .brief,
-                command: "cd \(repository) && "
+                // On standard input, for the reason given in `SuccessorRun`:
+                // `--disallowedTools` is variadic and eats a trailing prompt.
+                command: "cd \(repository) && cat \(promptFile) | "
                     + "\(RemoteShell.quoted(agentExecutable)) "
                     + "\(RemoteShell.quoted(resume)) "
                     + "--disallowedTools "
-                    + "\(RemoteShell.quoted(SuccessorLaunch.deniedTools)) "
-                    + "\"$(cat \(promptFile))\"",
+                    + "\(RemoteShell.quoted(SuccessorLaunch.deniedTools))",
                 isFatal: true
             )
         )
