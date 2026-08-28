@@ -32,6 +32,17 @@ struct AgentFanLayoutTests {
         }
     }
 
+    /// Clamping recomputes the positions from the edge, not the centre; the gap
+    /// has to survive that second origin just as it does the first.
+    @Test
+    func theGapSurvivesBeingClampedToAnEdge() {
+        let fan = lay(4, centre: 40)
+        #expect(fan.icons.first?.minX == 10)
+        for (left, right) in zip(fan.icons, fan.icons.dropFirst()) {
+            #expect(abs(right.minX - left.maxX - gap) < 0.001)
+        }
+    }
+
     /// Centring on the leftmost machine would push it off the window, so the
     /// margin stops it instead.
     @Test
