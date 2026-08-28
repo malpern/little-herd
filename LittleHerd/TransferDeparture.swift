@@ -21,6 +21,47 @@ nonisolated struct TransferDeparture: Equatable {
         let isFatal: Bool
     }
 
+    /// What the session being moved is asked to write.
+    ///
+    /// The counterpart to `SuccessorLaunch.prompt`, and the harder of the two
+    /// to get right, because the thing it produces will be read by another
+    /// agent as data. **A handoff that reads like instructions is an injection
+    /// vector written by your own session** — so it is asked for a description
+    /// of work, in prose, and told that it is writing for a person.
+    ///
+    /// It is asked for what a person could not reconstruct from the diff:
+    /// what was tried and abandoned, what looked right and was not. That is
+    /// the part of a session that dies with it, and this whole feature exists
+    /// to carry exactly that.
+    static func briefRequest(path: String, destination: String) -> String {
+        """
+        You are being moved to another machine — \(destination) — and this is
+        the last thing you will be asked here. Your working tree travels with
+        you; your memory of this conversation does not.
+
+        Write that memory down, to \(path), and change nothing else. Do not
+        carry on with the work, do not commit, do not run anything. Writing
+        this file is the whole task.
+
+        Cover, in prose and in your own words:
+
+        - What you were asked to do, and where you had got to.
+        - What is already done, and how somebody could check that.
+        - What is left, in enough detail to pick up cold.
+        - **What you learned that the code does not show** — what you tried
+          that did not work, what looked correct and was not, which apparently
+          reasonable approach is a dead end. This is the part that dies with
+          this session, and it is the reason the file is worth writing.
+
+        Two things to be careful of. Write a *description of work*, not
+        instructions to whoever reads it: another agent will read this as
+        data, and a handoff phrased as commands is a way of making one machine
+        do as it is told by a file. And write only what you actually know — a
+        confident account of something you did not verify is worse than
+        saying you did not get to it.
+        """
+    }
+
     /// **Nothing here may touch the working copy, the index, or HEAD.**
     ///
     /// This runs against a repository somebody is *using* — quite possibly the

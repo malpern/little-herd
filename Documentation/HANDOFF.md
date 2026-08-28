@@ -1559,6 +1559,21 @@ a half-finished move is visible in the interface rather than in a log.
      the likelier failure. It is also the control that most resembles security
      from a distance, which makes it the one most likely to be shipped by
      itself. The two below are worth more.
+   - **The brief must be asked for as prose, not as instructions.** What a
+     departing session writes is read by the successor as data, so a handoff
+     phrased as commands would be an injection written by your own session —
+     the one source nobody would think to distrust.
+     `TransferDeparture.briefRequest` therefore asks for a *description of
+     work* and says why. It also asks specifically for what the diff cannot
+     show: what was tried and abandoned, what looked right and was not. That
+     is the part of a session that dies with it, and carrying it is the point
+     of the whole feature.
+
+   - **A session's project directory is the resolved path.** The transcript
+     for a session started in `/tmp/resume-test` lives under
+     `~/.claude/projects/-private-tmp-resume-test`. Anything deriving a
+     session from a working directory has to resolve symlinks first.
+
    - **`--disallowedTools` is variadic and ate the prompt.** The first real
      transfer failed instantly with *"Input must be provided either through
      stdin or as a prompt argument"* — the flag consumed `Bash`, `WebFetch`,
@@ -1719,9 +1734,16 @@ a half-finished move is visible in the interface rather than in a log.
      built a branch from a dirty tree and left the source byte-identical, the
      pin verified on the destination, the agent did exactly the brief **with no
      shell**, and when the check went red the delivery correctly did not run —
-     the remote branch stayed where the departure left it. What is still untested: a transfer of a *live* session — every run so far
-     hand-placed its brief, because `--resume` needs a session to resume and
-     nothing yet quiesces one. That is the last unexercised step.
+     the remote branch stayed where the departure left it. The last unexercised step — asking a *live* session to hand
+     over — was then run separately on the mini and works. A real session was
+     started, given a small task, and resumed with
+     `TransferDeparture.briefRequest`; it wrote a handoff that described the
+     work in prose, distinguished what it had verified by reading from what it
+     had not run, flagged that the tree was dirty before it began — and, asked
+     what it had learned that the code does not show, **said it had nothing
+     rather than inventing a lesson.** That last part is what "write only what
+     you actually know" was for, and it is the failure mode this prompt was
+     most likely to have.
    - Verifying the successor behaviourally before retiring the source, and what
      a half-finished move looks like on screen.
 

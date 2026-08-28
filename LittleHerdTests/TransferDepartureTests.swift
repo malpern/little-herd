@@ -95,3 +95,40 @@ struct TransferDepartureTests {
         #expect(last.command.contains("/tmp/herd/index"))
     }
 }
+
+@Suite("Brief request")
+struct BriefRequestTests {
+    private var request: String {
+        TransferDeparture.briefRequest(
+            path: "Documentation/transfers/fan.md",
+            destination: "the Mac mini"
+        )
+    }
+
+    /// **It must not ask for instructions.** What comes back is read by
+    /// another agent as data, so a handoff phrased as commands would be an
+    /// injection written by your own session — the one source a person would
+    /// never think to distrust.
+    @Test
+    func itAsksForADescriptionRatherThanInstructions() {
+        #expect(request.contains("description of work"))
+        #expect(request.contains("not\ninstructions to whoever reads it"))
+        #expect(request.contains("read this as"))
+    }
+
+    /// The point of the exercise: the part that dies with the session.
+    @Test
+    func itAsksForWhatTheCodeCannotShow() {
+        #expect(request.contains("the code does not show"))
+        #expect(request.contains("dead end"))
+    }
+
+    /// Writing the file is the whole task — it must not carry on working, or
+    /// the tree it is about to hand over changes underneath the capture.
+    @Test
+    func itIsToldToStopWorking() {
+        #expect(request.contains("do not commit"))
+        #expect(request.contains("Writing\nthis file is the whole task"))
+        #expect(request.contains("Documentation/transfers/fan.md"))
+    }
+}
