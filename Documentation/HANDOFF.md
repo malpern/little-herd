@@ -1700,16 +1700,28 @@ a half-finished move is visible in the interface rather than in a log.
 
    - `endDrag()` does not call any of it. Everything it needs now exists.
    - The interface: per-step progress, the diff, calling one off mid-flight.
-   - ~~The first real end-to-end run.~~ **Done, twice, on 27 August.** It
+   - ~~The first real end-to-end run.~~ **Done. A full transfer completed
+     green on 27 August**, source → mini → branch → back:
+
+     ```
+     departure   dirty tree captured, source byte-identical, pushed a763e35
+     worktree    pin verified on the mini
+     agent       one file, 11 lines, exactly the brief — with no shell
+     check       580 tests passed on the mini
+     delivery    a763e35..2037752 pushed to the transfer branch
+     cleanup     worktree gone, prompt gone
+     ```
+
+     The earlier runs on the same day** It
      found four things, all above: the variadic flag that ate the prompt (a
      real bug, now fixed), the non-hermetic check (a real design problem, open),
      the whole-tree capture, and the git narration. What worked: the departure
      built a branch from a dirty tree and left the source byte-identical, the
      pin verified on the destination, the agent did exactly the brief **with no
      shell**, and when the check went red the delivery correctly did not run —
-     the remote branch stayed where the departure left it. **The happy path
-     through delivery has still never run** — but the reason it could not (the
-     non-hermetic check) is now fixed and verified on the mini, so it is next.
+     the remote branch stayed where the departure left it. What is still untested: a transfer of a *live* session — every run so far
+     hand-placed its brief, because `--resume` needs a session to resume and
+     nothing yet quiesces one. That is the last unexercised step.
    - Verifying the successor behaviourally before retiring the source, and what
      a half-finished move looks like on screen.
 
