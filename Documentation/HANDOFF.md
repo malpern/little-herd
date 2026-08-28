@@ -1,33 +1,35 @@
 # Little Herd — handoff
 
-**State:** `v0.1.50` is released and `main` carries nothing beyond it. 502
-tests pass. Roadmap item 6 is done — each machine's agent versions. Item 4 is
-measured and deliberately has no interface; see its entry below, which is the
-one to read before drawing a new one.
+**State:** `v0.1.55` is released and `main` carries nothing beyond it. 523
+tests pass. Roadmap item 6 is done — each machine's agent versions.
 
 **The dashboard follows the website's miniature of it: four metric tabs along
 the bottom, and a header that says one thing.** The pull-down they replace is
 gone, and so is the AppKit machinery behind it. `Memory` is what `RAM` is
 called now.
 
-**The agent tokens are built, working, and switched off** — along with the
-per-provider usage marks in both headers. Both are flags in `DashboardChrome`,
-hidden pending a decision about where the agents belong on this screen, and
-everything behind them still runs and is still tested. Turning either back on
-is one word. What is switched off, in full:
+**The agents ride the animals, and the design is built.** Decided by drawing it
+rather than arguing about it — seven placement studies, in
+`~/Desktop/little-herd-explorations` on the mini. What ships:
 
-- a token per machine that is running something, on a pad, sized and lifted
-- a card on hover naming the sessions and what each is doing, opening beside
-  the token — right in the herd's first half, left in its second
-- a click that opens that machine's AI page
-- the drag that carries a token across the herd, where every machine says
-  whether it could take it, as a **measurement**: agent installed, repository
-  checked out, credentials not refused
-- an announcement when a session starts, held until the dashboard is the
-  window being looked at and dropped after forty-five seconds
+- a deck of agent icons behind each working machine, leaning so more than one
+  is visible, with a count when the deck is deeper than three
+- **no card around them.** An application icon is already a rounded,
+  self-contained mark; a frame around it frames a frame, and a fan of six
+  became eighteen edges
+- pointing at a machine raises its deck into a row above the herd, and the
+  other machines step back to a third — which is what says whose fan it is
+- a session starting raises the deck on its own for a couple of seconds
+  *without* dimming the herd: an arrival is news, a pointer is a question
+- an agent can be picked up and carried across the herd; an animal that could
+  take it lifts to meet you, one that could not does not answer
+- more agents than the window holds end on a round `+` that opens that
+  machine's AI page
 
-**Nothing moved on drop even when it was visible**, deliberately: `endDrag`
-computes the outcome and discards it.
+**Nothing moves on drop**, deliberately: the outcome is computed and discarded.
+The rise, the arrival raise and the carry have never been watched — the screen
+locked before they could be — so their three constants are unjudged: the rise
+spring, the arrival's hold, and how far a welcoming animal lifts.
 
 **Asking permission is a setting, off by default.** See item 1.
 
@@ -1199,6 +1201,30 @@ last good release, then simply run it again.** A half-run also leaves
 `LittleHerd/Info.plist` stamped at the new version, which the next run's
 preflight rejects as a dirty tree: `git checkout` it first.
 
+**A deck stacked squarely behind an animal has no depth, and there was nowhere
+for it to peek.** Two things the sketches could not show, because in a sketch
+nothing is behind anything and there is always space above. Squared up, the
+animal hides every card but the top one and one session looks like four — the
+cards have to lean. And the thermometer runs down to the animal's head, so the
+first build sat the deck on the lowest blocks, the ones that are always lit;
+the bars now give up that clearance for every machine, so they stay one height
+across the herd.
+
+**A fan cannot live inside the column it belongs to.** A column is sixty-odd
+points and a fan of six is most of the window, so drawn inside one it is
+clipped by its own machine and the arithmetic that keeps it on screen has
+nothing to measure against. It is an overlay on the herd — which is also the
+only place that knows which machine is being pointed at, and so the only place
+that can dim the others.
+
+**A raised deck has to hide its resting copy.** Obvious once seen and invisible
+until then: the first build drew both, so the same agent appeared twice, once
+peeking and once above. The deck *is* what rose.
+
+**Hover does not fire in this app unless its window is active.** Twice working
+hover looked broken under synthetic events because the window had not been
+clicked first. Click, then move, before concluding an `onHover` is wrong.
+
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -1355,73 +1381,16 @@ A fourth is worth naming even though it is not on the critical path:
 started.** The order in item 5 is a safety property and only half of one until
 a half-finished move is visible in the interface rather than in a log.
 
-1. **Where the agent tokens belong is the open question, and the drag is
-   waiting behind it.** The tokens are switched off in `DashboardChrome` while
-   the dashboard follows the site's design; the machinery below is untouched
-   and still tested, so this item is about placement rather than about
-   rebuilding anything.
+1. **The agents' design is built; what is left is judging how it feels.** The
+   deck, the rise, the fan, the arrival raise and the carry all ship in
+   `v0.1.55`. Only the hover fan has been watched working — the screen locked
+   before the rest could be — so three constants are unjudged: the rise spring
+   (`MachineAgentFan`, 0.34s at bounce 0.22), the arrival's hold
+   (`CPUOverviewView.raise(forArrival:)`, 2.6s), and how far a welcoming animal
+   lifts (5pt). Watch them, move them, and this item is done.
 
-   **The drag asks a real question; nothing acts on the answer.**
-   `CPUOverviewView.canAccept` goes through `AgentDropEligibility`, so a
-   machine offers itself only when it has an agent this account can run, a
-   checkout of the repository the work is in, and credentials its provider has
-   not refused. The repository is named by matching the carried session's
-   working directory against the *origin's* own checkouts, since nothing in a
-   session says which repository it belongs to.
-
-   **Whether intent is asked at all is a setting, off by default** — *Ask
-   before a machine can take work*, decided 26 August. Off, every machine that
-   could run the work will take it. The reasoning is that Little Herd reaches
-   these machines over the user's own SSH keys, so a transfer starts nothing
-   they could not already start from a shell: the switch is an accident
-   boundary, not a security one, and copy that dressed it as the latter would
-   overclaim. On, each machine has to be allowed once on its own AI page.
-
-   **The setting and its setter had to ship together.** `mayHostSessions`
-   defaults to off, so turning the switch on with nothing able to set it would
-   refuse the whole herd and leave no way back — a default outliving its
-   control. The allowance control appears only while the switch is on.
-
-   **The first version of that control was forgotten on relaunch**, which for a
-   permission is worse than not having one. It called
-   `MachineMonitorModel.setMayHostSessions`, which changes memory and nothing
-   else — persistence flows the other way, from the stored configuration down.
-   The write now lives on `MachineConfigurationStore`, where the thing that can
-   actually save it is, and a test fails if it stops saving. Left undone: the
-   grant is keyed on `MachineID` while `hostname` is a mutable field on the
-   same record, so re-pointing a machine carries its permission to a host
-   nobody approved. **Bind the grant to host and ssh user before a transfer can
-   act on it.**
-
-   **The older note, still true:** `DestinationEligibility.resolve` gates on
-   `mayHostSessions`, which defaults to *off* and whose only setter — the
-   Settings checkbox — was removed on 25 August. Asking the full question today
-   returns `.excluded` for the whole herd and refuses every drag with no way
-   for anyone to say otherwise; that is the default outliving its control
-   rather than a safety posture. `AgentDropEligibility` passes `isAllowed:
-   true` and says so, and a test named for the regression fails the moment
-   somebody "fixes" it. **Restoring the setter is part of building the new
-   destination interface**, and when it exists this becomes one line.
-
-   What is still missing is the move itself: `endDrag` computes the outcome and
-   discards it. See item 5.
-
-   **A refusal gives no reason.** The pad turns and that is all; the
-   eligibility answer has a written `detail` for exactly this and nothing shows
-   it. A tooltip will not do — they do not appear mid-drag — so it wants a line
-   somewhere in the frame while a drag is live.
-
-   **What is unverified, because all of this was built with the screen
-   unavailable:** how a token grabbed again mid-spring behaves; whether the
-   hover delay is right when a pointer is really moving; and **where the cards
-   actually land** — `ImageRenderer` cannot lay out a popover, so the placement
-   rule has tests and no picture. Hover a token in each half of the herd and
-   check they open in opposite directions.
-
-   One behaviour changed in passing and is worth knowing: a drag that ends with
-   the pointer still resting on its token can now raise the card after the
-   hover delay, where the cancelled intent used to stay cancelled until you
-   re-hovered.
+   **Nothing moves on a drop**, and that is the whole of what remains between
+   this and the promise on the website. See items 4 and 5.
 
 2. **P-core/E-core awareness is blocked, not pending.** Per-core utilisation
    needs root on a remote Mac — `powermetrics` refuses without it, and neither
