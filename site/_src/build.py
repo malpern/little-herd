@@ -82,11 +82,14 @@ def render_toc() -> str:
 
 
 def render_step(step: dict) -> str:
-    """Heading and promise full width, then prose left and picture right.
+    """One column, in reading order: what you can do, then a picture of it,
+    then the tool, then how, then the trap.
 
-    In one column the figure and the tool card sat inside a 640px measure and
-    left a third of every row empty at desktop width — 336px of nothing, down
-    the whole page. They belong beside the prose, not under it.
+    This was briefly two columns, with the figure and tool card in a sidebar,
+    to use the width that a 40rem measure leaves empty at desktop. That was
+    optimising for the wrong thing. A guide is read rather than scanned, and a
+    single column means the reader never has to decide where to look next; the
+    empty right-hand side is the cost of a comfortable measure, not a defect.
     """
     tool = step["tool"]
     return (
@@ -95,20 +98,14 @@ def render_step(step: dict) -> str:
         f'    <div class="step-body">\n'
         f'      <h2>{step["heading"]}</h2>\n'
         f'      <p class="what">{step["what"]}</p>\n'
-        f'      <div class="step-cols">\n'
-        f'        <div class="step-main">\n'
-        f'{step["body"]}\n'
-        f'        </div>\n'
-        f'        <aside class="step-side">\n'
         f'{step["figure"]}\n'
-        f'          <a class="tool" href="{tool["url"]}">\n'
-        f'            {logo(step["logo"])}\n'
-        f'            <span class="tool-name">{tool["name"]}</span>\n'
-        f'            <span class="tool-note">{tool["note"]}</span>\n'
-        f'            <span class="tool-go">{tool["go"]}</span>\n'
-        f'          </a>\n'
-        f'        </aside>\n'
-        f'      </div>\n'
+        f'      <a class="tool" href="{tool["url"]}">\n'
+        f'        {logo(step["logo"])}\n'
+        f'        <span class="tool-name">{tool["name"]}</span>\n'
+        f'        <span class="tool-note">{tool["note"]}</span>\n'
+        f'        <span class="tool-go">{tool["go"]}</span>\n'
+        f'      </a>\n'
+        f'{step["body"]}\n'
         f'    </div>\n'
         f'  </li>\n\n'
     )
