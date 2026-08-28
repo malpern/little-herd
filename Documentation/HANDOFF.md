@@ -1521,7 +1521,9 @@ a half-finished move is visible in the interface rather than in a log.
    the whole security model.
 
    Six constraints, each answering a specific way the spike could have been
-   turned against the herd:
+   turned against the herd. **Two of them carry most of the weight — never
+   auto-merging, and bounding what a successor may run — because those survive
+   the cases the others do not cover.**
 
    - **No `bypassPermissions` in the product.** The default (`acceptEdits`) is
      too tight to finish a move and the bypass is too loose to ship; the
@@ -1530,9 +1532,29 @@ a half-finished move is visible in the interface rather than in a log.
    - **The brief carries data; Little Herd supplies the imperatives.** A fixed
      schema — task, repository, branch, verification command — rendered into a
      prompt the app owns, rather than prose a successor is told to obey.
-   - **Authenticate the brief**, so a pushed branch is not automatically an
-     instruction. It should be verifiable as having been written by Little Herd
-     on the source machine.
+   - **Authenticate the brief with git's own SSH commit signing**, so a pushed
+     branch is not automatically an instruction. `gpg.format=ssh`, sign the
+     commit that introduces the brief, verify it on the destination against an
+     allowed-signers file. Every machine already has a per-link ssh key and a
+     documented way to distribute one, so this needs no new secret and no new
+     format — a bespoke HMAC would mean another key in sops and another thing
+     to get wrong.
+
+     **The launcher verifies, not the agent.** This inversion is the whole
+     difference between security and the appearance of it: a successor asked to
+     check its own brief will be told by an unsigned brief not to bother, and
+     will comply, because the file *is* the instruction. Verification happens
+     before the agent starts and an unverified brief means it never starts.
+
+     **And signing alone is the trap.** It answers *who wrote this* and answers
+     it well; it says nothing about *what this can do*. It does not cover the
+     repository the successor reads while working — `CLAUDE.md`, source
+     comments, fixtures, none of which are in the brief — it authenticates
+     origin rather than intent, so a compromised source machine signs hostile
+     briefs perfectly, and a signed brief can still simply be wrong, which is
+     the likelier failure. It is also the control that most resembles security
+     from a distance, which makes it the one most likely to be shipped by
+     itself. The two below are worth more.
    - **Never execute a path the destination reported.** `AgentInstallation.path`
      is parsed out of the remote probe's own output, so a compromised or
      spoofed machine chooses the binary the transfer will run on it. Resolve
