@@ -463,7 +463,7 @@ struct ListPositionTests {
     @Test
     func theArithmeticMatchesWhatTheStoreActuallyDoes() {
         let storage = InMemoryConfigurationStorage()
-        let store = MachineConfigurationStore(storage: storage)
+        let store = MachineConfigurationStore(storage: storage, localMachine: .testLocal)
         store.add([herdMember("alpha"), herdMember("beta"), herdMember("gamma")])
         #expect(store.machines.map(\.id.rawValue) == ["local", "alpha", "beta", "gamma"])
 

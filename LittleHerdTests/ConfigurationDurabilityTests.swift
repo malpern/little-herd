@@ -12,7 +12,7 @@ struct ConfigurationDurabilityTests {
         seededWith json: String
     ) -> (MachineConfigurationStore, InMemoryConfigurationStorage) {
         let storage = InMemoryConfigurationStorage(seededWith: json)
-        return (MachineConfigurationStore(storage: storage), storage)
+        return (MachineConfigurationStore(storage: storage, localMachine: .testLocal), storage)
     }
 
     private func storedJSON(_ storage: InMemoryConfigurationStorage) -> String {
@@ -134,7 +134,7 @@ struct MachineOrderTests {
 
     private func store() -> (MachineConfigurationStore, InMemoryConfigurationStorage) {
         let storage = InMemoryConfigurationStorage()
-        let store = MachineConfigurationStore(storage: storage)
+        let store = MachineConfigurationStore(storage: storage, localMachine: .testLocal)
         store.add([machine("alpha"), machine("beta"), machine("gamma")])
         return (store, storage)
     }
@@ -157,7 +157,7 @@ struct MachineOrderTests {
         let (store, storage) = store()
 
         store.move(fromOffsets: IndexSet(integer: 3), toOffset: 0)
-        let reloaded = MachineConfigurationStore(storage: storage)
+        let reloaded = MachineConfigurationStore(storage: storage, localMachine: .testLocal)
         #expect(reloaded.machines.map(\.id.rawValue) == ["gamma", "local", "alpha", "beta"])
     }
 

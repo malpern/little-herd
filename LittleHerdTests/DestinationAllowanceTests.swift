@@ -33,14 +33,14 @@ struct DestinationAllowanceTests {
     @Test
     func anAllowanceSurvivesARelaunch() throws {
         let storage = InMemoryConfigurationStorage()
-        let store = MachineConfigurationStore(storage: storage)
+        let store = MachineConfigurationStore(storage: storage, localMachine: .testLocal)
         store.replace(with: [configuration("mini"), configuration("linux")])
 
         // The same call the control makes, so the test covers the path the
         // view actually takes rather than one that merely resembles it.
         store.setMayHostSessions(true, on: MachineID("mini"))
 
-        let relaunched = MachineConfigurationStore(storage: storage)
+        let relaunched = MachineConfigurationStore(storage: storage, localMachine: .testLocal)
         #expect(
             relaunched.machines.first { $0.id == MachineID("mini") }?
                 .mayHostSessions == true
@@ -57,14 +57,14 @@ struct DestinationAllowanceTests {
     @Test
     func withdrawingAnAllowancePersistsAsWell() throws {
         let storage = InMemoryConfigurationStorage()
-        let store = MachineConfigurationStore(storage: storage)
+        let store = MachineConfigurationStore(storage: storage, localMachine: .testLocal)
         var mini = configuration("mini")
         mini.mayHostSessions = true
         store.replace(with: [mini])
 
         store.setMayHostSessions(false, on: MachineID("mini"))
 
-        let relaunched = MachineConfigurationStore(storage: storage)
+        let relaunched = MachineConfigurationStore(storage: storage, localMachine: .testLocal)
         #expect(
             relaunched.machines.first { $0.id == MachineID("mini") }?
                 .mayHostSessions == false
@@ -105,7 +105,7 @@ struct DestinationAllowanceTests {
         // the fixture cannot drift from the shape the app actually saves —
         // a hand-typed one missed a field and decoded to nothing at all.
         let saved = InMemoryConfigurationStorage()
-        MachineConfigurationStore(storage: saved)
+        MachineConfigurationStore(storage: saved, localMachine: .testLocal)
             .replace(with: [configuration("mini")])
         var entries = try #require(
             JSONSerialization.jsonObject(

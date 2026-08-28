@@ -197,7 +197,7 @@ struct MetricsSamplerTests {
     @Test
     func machineCanBeRemovedFromTheHerd() throws {
         let storage = InMemoryConfigurationStorage()
-        let store = MachineConfigurationStore(storage: storage)
+        let store = MachineConfigurationStore(storage: storage, localMachine: .testLocal)
         let remote = testMachineConfigurations[1]
         store.add([remote])
         #expect(store.machines.contains(remote))
@@ -205,13 +205,13 @@ struct MetricsSamplerTests {
         store.remove(remote.id)
 
         #expect(!store.machines.contains(remote))
-        #expect(!MachineConfigurationStore(storage: storage).machines.contains(remote))
+        #expect(!MachineConfigurationStore(storage: storage, localMachine: .testLocal).machines.contains(remote))
     }
 
     @Test
     func theLocalMacIsNeverRemoved() throws {
         let storage = InMemoryConfigurationStorage()
-        let store = MachineConfigurationStore(storage: storage)
+        let store = MachineConfigurationStore(storage: storage, localMachine: .testLocal)
         let local = try #require(store.machines.first { $0.connection == .local })
 
         #expect(!store.canRemove(local.id))
@@ -926,11 +926,11 @@ struct MetricsSamplerTests {
     @MainActor
     func machineConfigurationStorePersistsDynamicMachines() throws {
         let storage = InMemoryConfigurationStorage()
-        let store = MachineConfigurationStore(storage: storage)
+        let store = MachineConfigurationStore(storage: storage, localMachine: .testLocal)
         let remote = testMachineConfigurations[1]
         store.add([remote])
 
-        let reloaded = MachineConfigurationStore(storage: storage)
+        let reloaded = MachineConfigurationStore(storage: storage, localMachine: .testLocal)
         #expect(reloaded.machines.contains(remote))
         #expect(reloaded.machines.first?.connection == .local)
     }
@@ -1521,7 +1521,7 @@ struct MetricsSamplerTests {
     private func testMachineStore(
         _ storage: InMemoryConfigurationStorage
     ) -> MachineConfigurationStore {
-        MachineConfigurationStore(storage: storage)
+        MachineConfigurationStore(storage: storage, localMachine: .testLocal)
     }
 
     private var discoveredMachineSamples: [DiscoveredMachine] {

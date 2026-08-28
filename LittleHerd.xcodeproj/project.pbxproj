@@ -72,6 +72,7 @@
 		81EA61F13900B92BB091C44D /* AddMachinesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 542ADA4729226F9EBB0D48D6 /* AddMachinesView.swift */; };
 		82A07AE2F03229E9AD644A1F /* SSHHostName.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F112CE5D8A49060A44E52A /* SSHHostName.swift */; };
 		851D9FB479D50461CA448596 /* SuccessorLaunch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FC003F47CCA3FB6AB3A3992 /* SuccessorLaunch.swift */; };
+		876E52A1C8D09FBEB1D38C44 /* TestLocalMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD2759DDB72F3A36D70A071D /* TestLocalMachine.swift */; };
 		87E0B8B33DB2D36F04840F41 /* MetricHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C6082944C3057004428EA4 /* MetricHistory.swift */; };
 		88873018BA18973DB4643815 /* MetricsSamplerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE23C778660407B336F50BA0 /* MetricsSamplerTests.swift */; };
 		8935F6CCBD6DFA02BEC41FA3 /* RemoteUnavailabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */; };
@@ -269,6 +270,7 @@
 		D56F2E897732951FB02B9B7F /* HerdwareAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdwareAvatar.swift; sourceTree = "<group>"; };
 		D833CE2704E28207ED01D856 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		D9F4B2F575C858F9882D9B53 /* RemoteShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteShell.swift; sourceTree = "<group>"; };
+		DD2759DDB72F3A36D70A071D /* TestLocalMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestLocalMachine.swift; sourceTree = "<group>"; };
 		E37B21B22B4948B6336D6258 /* LittleHerdBranding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LittleHerdBranding.swift; sourceTree = "<group>"; };
 		E3A27FA19E2D234113937C21 /* SynologyWiringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyWiringTests.swift; sourceTree = "<group>"; };
 		E4F112CE5D8A49060A44E52A /* SSHHostName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHHostName.swift; sourceTree = "<group>"; };
@@ -459,6 +461,7 @@
 				3C57E556B607FDBFC533B251 /* SynologyTrustTests.swift */,
 				E3A27FA19E2D234113937C21 /* SynologyWiringTests.swift */,
 				324EEBC4BC470AA0BD558877 /* TemporaryDefaults.swift */,
+				DD2759DDB72F3A36D70A071D /* TestLocalMachine.swift */,
 				55CAB9D6F79EE9C1500E9440 /* TransferCoordinatorTests.swift */,
 				B0A25D8E05197294CF85F80D /* TransferDepartureTests.swift */,
 				F08728BB291BD559EB4D267B /* TransferEligibilityTests.swift */,
@@ -705,6 +708,7 @@
 				9EBFA43128EEF75AFFDC4C3F /* SynologyTrustTests.swift in Sources */,
 				DED22012974A8B709BB6B12D /* SynologyWiringTests.swift in Sources */,
 				7AAAA02496228EAADA51973E /* TemporaryDefaults.swift in Sources */,
+				876E52A1C8D09FBEB1D38C44 /* TestLocalMachine.swift in Sources */,
 				FF3559A5EB1DAC602C55582D /* TransferCoordinatorTests.swift in Sources */,
 				5A2C47ED93339214F65ADD11 /* TransferDepartureTests.swift in Sources */,
 				719F7048B9365DAC539DF931 /* TransferEligibilityTests.swift in Sources */,

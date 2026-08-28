@@ -211,12 +211,27 @@ final class MachineConfigurationStore {
         self.init(storage: defaults)
     }
 
-    init(storage: MachineConfigurationStorage) {
+    /// - Parameter localMachine: the Mac this is running on, used to seed an
+    ///   empty store.
+    ///
+    ///   **Injectable because its default reads the computer's own name, and
+    ///   that leaked into the tests.** `add` treats a same-named machine as a
+    ///   duplicate, so on a Mac actually called "Mac mini" the fixture named
+    ///   "Mac mini" was silently deduped against the seeded local machine and
+    ///   two tests failed — on that machine only. They passed on a laptop
+    ///   called "air" and would have passed anywhere else, which is the worst
+    ///   version of the bug: green everywhere it was run, red on the one
+    ///   machine it was about to matter on. Found by running the suite on the
+    ///   mini during the first real transfer.
+    init(
+        storage: MachineConfigurationStorage,
+        localMachine: MachineConfiguration = .local()
+    ) {
         self.storage = storage
 
         guard let data = storage.loadConfigurationData() else {
             // Genuinely nothing saved: a first launch, so seed the local Mac.
-            machines = [.local()]
+            machines = [localMachine]
             persist()
             return
         }
@@ -229,7 +244,7 @@ final class MachineConfigurationStore {
         // again: a machine reached over a VPN advertises no Bonjour service, so
         // nothing will ever rediscover it. A read that failed is not a reason to
         // destroy the thing that failed to read.
-        machines = decoded.isEmpty ? [.local()] : decoded
+        machines = decoded.isEmpty ? [localMachine] : decoded
     }
 
     /// Decodes machine by machine rather than all at once.
