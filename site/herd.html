@@ -83,8 +83,20 @@
     <div class="step-body">
       <h2>Reach any machine from anywhere</h2>
       <p class="what">One name per machine that works from the sofa, from a hotel, and from another machine in the herd &mdash; with nothing exposed to the open internet.</p>
-      <div class="step-cols">
-        <div class="step-main">
+      <figure class="fig fig-ring">
+        <img class="f1" src="images/herdware/chick-laptop.png" alt=""><img class="f2" src="images/herdware/calf-mini.png" alt=""><img class="f3" src="images/herdware/ox-gpu.png" alt="">
+        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid meet">
+          <path class="s-route" d="M210 22 C 350 22, 400 128, 210 128 C 20 128, 70 22, 210 22 Z"/>
+          <path class="s-pulse" d="M210 22 C 350 22, 400 128, 210 128 C 20 128, 70 22, 210 22 Z"/>
+        </svg>
+        <figcaption>One name each, reachable from anywhere.</figcaption>
+      </figure>
+      <a class="tool" href="https://tailscale.com">
+        <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="currentColor" d="M24 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm-9 9a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm0-9a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm6-6a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0-.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM3 24a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0-.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm18 .5a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0-.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM6 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm9-9a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm-3 2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM6 3a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM3 5.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></svg>
+        <span class="tool-name">Tailscale</span>
+        <span class="tool-note">Free for personal use</span>
+        <span class="tool-go">tailscale.com &#8599;</span>
+      </a>
       <p>This one is first because everything below it assumes you can reach
         the machine at all. Install on each one, sign in with the same account,
         turn on MagicDNS, and you are done &mdash; no port forwarding, no static
@@ -99,24 +111,6 @@
         at home and nowhere else, so a setup tested only on the sofa looks
         finished and fails the first time you leave the house. Use the tailnet
         name everywhere, including in scripts.</p>
-        </div>
-        <aside class="step-side">
-      <figure class="fig fig-ring">
-        <img class="f1" src="images/herdware/chick-laptop.png" alt=""><img class="f2" src="images/herdware/calf-mini.png" alt=""><img class="f3" src="images/herdware/ox-gpu.png" alt="">
-        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid meet">
-          <path class="s-route" d="M210 22 C 350 22, 400 128, 210 128 C 20 128, 70 22, 210 22 Z"/>
-          <path class="s-pulse" d="M210 22 C 350 22, 400 128, 210 128 C 20 128, 70 22, 210 22 Z"/>
-        </svg>
-        <figcaption>One name each, reachable from anywhere.</figcaption>
-      </figure>
-          <a class="tool" href="https://tailscale.com">
-            <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="currentColor" d="M24 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm-9 9a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm0-9a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm6-6a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0-.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM3 24a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0-.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm18 .5a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0-.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM6 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm9-9a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm-3 2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM6 3a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM3 5.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></svg>
-            <span class="tool-name">Tailscale</span>
-            <span class="tool-note">Free for personal use</span>
-            <span class="tool-go">tailscale.com &#8599;</span>
-          </a>
-        </aside>
-      </div>
     </div>
   </li>
 
@@ -125,8 +119,24 @@
     <div class="step-body">
       <h2>Get onto any machine with one short command</h2>
       <p class="what"><code>ssh mini</code> instead of an address you have to remember, and a new machine that inherits the whole herd rather than being set up by hand.</p>
-      <div class="step-cols">
-        <div class="step-main">
+      <figure class="fig fig-fan">
+        <img class="f1" src="images/herdware/chick-laptop.png" alt=""><img class="f2" src="images/herdware/calf-mini.png" alt=""><img class="f3" src="images/herdware/ox-gpu.png" alt=""><img class="f4" src="images/herdware/piglet-nas.png" alt="">
+        <svg class="s-wire" viewBox="0 0 420 210" preserveAspectRatio="xMidYMid meet">
+          <path class="s-route" d="M92 96 C 170 62, 240 42, 320 36"/>
+          <path class="s-pulse" d="M92 96 C 170 62, 240 42, 320 36"/>
+          <path class="s-route" d="M92 96 C 170 100, 240 104, 320 105"/>
+          <path class="s-pulse d1" d="M92 96 C 170 100, 240 104, 320 105"/>
+          <path class="s-route" d="M92 96 C 170 136, 240 166, 320 174"/>
+          <path class="s-pulse d2" d="M92 96 C 170 136, 240 166, 320 174"/>
+        </svg>
+        <figcaption>One command, every machine.</figcaption>
+      </figure>
+      <a class="tool" href="https://www.ssh.com/academy/ssh/config">
+        <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="4" width="21" height="16" rx="3"/><path d="M6.5 10.5 9.5 13l-3 2.5"/><path d="M12.5 16h5"/></svg>
+        <span class="tool-name">SSH and <code>~/.ssh/config</code></span>
+        <span class="tool-note">Already on every Mac and Linux machine</span>
+        <span class="tool-go">ssh.com/academy &#8599;</span>
+      </a>
       <p>Generate a key, copy it over with <code>ssh-copy-id</code>, then write
         the machine down in <code>~/.ssh/config</code> once:</p>
       <pre><code>Host mini
@@ -147,28 +157,6 @@
         says &ldquo;permissions&rdquo; &mdash; they produce
         <code>Permission denied (publickey)</code>, which sends you off
         debugging the key instead. <code>chmod 600</code>.</p>
-        </div>
-        <aside class="step-side">
-      <figure class="fig fig-fan">
-        <img class="f1" src="images/herdware/chick-laptop.png" alt=""><img class="f2" src="images/herdware/calf-mini.png" alt=""><img class="f3" src="images/herdware/ox-gpu.png" alt=""><img class="f4" src="images/herdware/piglet-nas.png" alt="">
-        <svg class="s-wire" viewBox="0 0 420 210" preserveAspectRatio="xMidYMid meet">
-          <path class="s-route" d="M92 96 C 170 62, 240 42, 320 36"/>
-          <path class="s-pulse" d="M92 96 C 170 62, 240 42, 320 36"/>
-          <path class="s-route" d="M92 96 C 170 100, 240 104, 320 105"/>
-          <path class="s-pulse d1" d="M92 96 C 170 100, 240 104, 320 105"/>
-          <path class="s-route" d="M92 96 C 170 136, 240 166, 320 174"/>
-          <path class="s-pulse d2" d="M92 96 C 170 136, 240 166, 320 174"/>
-        </svg>
-        <figcaption>One command, every machine.</figcaption>
-      </figure>
-          <a class="tool" href="https://www.ssh.com/academy/ssh/config">
-            <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="4" width="21" height="16" rx="3"/><path d="M6.5 10.5 9.5 13l-3 2.5"/><path d="M12.5 16h5"/></svg>
-            <span class="tool-name">SSH and <code>~/.ssh/config</code></span>
-            <span class="tool-note">Already on every Mac and Linux machine</span>
-            <span class="tool-go">ssh.com/academy &#8599;</span>
-          </a>
-        </aside>
-      </div>
     </div>
   </li>
 
@@ -177,8 +165,19 @@
     <div class="step-body">
       <h2>Arrive on a machine and find your tools already there</h2>
       <p class="what">Every machine carries the same kit, so the one you connect to is somewhere you can work rather than somewhere you have to set up first.</p>
-      <div class="step-cols">
-        <div class="step-main">
+      <figure class="fig fig-kit">
+        <img class="f1" src="images/herdware/chick-laptop.png" alt=""><img class="f2" src="images/herdware/calf-mini.png" alt=""><img class="f3" src="images/herdware/ox-gpu.png" alt="">
+        <span class="kit k1"><i></i><i></i><i></i></span>
+        <span class="kit k2"><i></i><i></i><i></i></span>
+        <span class="kit k3"><i></i><i></i><i></i></span>
+        <figcaption>The same kit, wherever you land.</figcaption>
+      </figure>
+      <a class="tool" href="https://brew.sh">
+        <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="currentColor" d="M7.938 0a.214.214 0 0 0-.206.156c-.316 1.104.179 2.15.838 2.935.153.181.313.347.476.501a2.039 2.039 0 0 0-.665.02c-1.184.233-2.193.985-2.74 2.532a3.893 3.893 0 0 0-.2 1.466 1.565 1.565 0 0 0-1.156 1.504 1.59 1.59 0 0 0 1.227 1.541l.026 12.046c0 .195.1.377.264.482a.214.214 0 0 0 .008.005c.537.31 2.047.812 5.21.812 3.238 0 4.7-.678 5.181-1.04a.214.214 0 0 0 .008-.007.571.571 0 0 0 .206-.439c.002-.344.002-1.136.002-1.604a.143.143 0 0 1 .147-.144c.397.006.869.006 1.318.005a1.826 1.826 0 0 0 1.832-1.825v-5.804a1.826 1.826 0 0 0-1.825-1.826H16.56a.14.14 0 0 1-.143-.144V10.6h.007v-.001a1.573 1.573 0 0 0 1.356-1.556c0-.816-.627-1.489-1.424-1.563-.025-1.438-.437-2.126-.736-2.58a.214.214 0 0 0-.005-.007c-.364-.51-1.193-1.282-2.275-1.316-.503-.016-.842.124-1.125.254-.217.1-.42.177-.67.22.002-1.286.945-1.981.945-1.981a.214.214 0 0 0 .05-.298s-.087-.122-.21-.26c-.121-.136-.269-.294-.47-.378a.214.214 0 0 0-.079-.017.214.214 0 0 0-.145.055 4.308 4.308 0 0 0-.875 1.101 3.42 3.42 0 0 0-.133.273 3.497 3.497 0 0 0-.381-.846C9.794.978 9.063.436 8.017.016A.214.214 0 0 0 7.939 0zm.156.524c.85.378 1.43.83 1.79 1.403.274.438.426.962.484 1.584a3.07 3.07 0 0 0-.012.462 6.897 6.897 0 0 1-.168-.052 5.487 5.487 0 0 1-1.29-1.106c-.551-.657-.935-1.46-.804-2.291zM11.8 1.618c.07.054.141.101.212.18.034.039.032.04.058.073-.332.308-1.07 1.144-.952 2.453a.214.214 0 0 0 .222.195c.469-.017.782-.172 1.056-.299.273-.126.508-.228.931-.214.875.027 1.639.715 1.939 1.134.295.449.65 1 .663 2.36a1.66 1.66 0 0 0-.41.142 1.938 1.938 0 0 0-1.77-1.16 1.94 1.94 0 0 0-1.87 1.448 1.783 1.783 0 0 0-1.356-.64c-.484 0-.91.205-1.233.517a1.873 1.873 0 0 0-1.85-1.625c-.649 0-1.218.335-1.552.84a3.1 3.1 0 0 1 .157-.735c.51-1.437 1.355-2.045 2.42-2.254.367-.073.664-.011.99.095.325.106.671.262 1.094.342a.214.214 0 0 0 .252-.245c-.112-.67.073-1.266.336-1.744a3.71 3.71 0 0 1 .663-.863zM7.44 6.611a1.442 1.442 0 0 1 1.363 1.925.214.214 0 0 0 .168.283h.005a.214.214 0 0 0 .238-.146 1.373 1.373 0 0 1 2.613-.01.214.214 0 0 0 .417-.09 1.509 1.509 0 0 1 1.504-1.664c.678 0 1.249.445 1.442 1.056a.214.214 0 0 0 .259.143l.15-.04a.214.214 0 0 0 .051-.02 1.139 1.139 0 0 1 1.702.995 1.14 1.14 0 0 1-.985 1.131.214.214 0 0 0-.001 0 2.215 2.215 0 0 0-.485.126 10.65 10.65 0 0 1-1.176.365.214.214 0 0 0-.162.186 1.276 1.276 0 0 1-.146.478 2.07 2.07 0 0 0-.239 1.111l.001.151a.438.438 0 0 1-.16.36.665.665 0 0 1-.43.14.586.586 0 0 1-.588-.59.803.803 0 0 0-.38-.681.214.214 0 0 0-.002-.002c-.24-.145-.43-.37-.532-.636a.214.214 0 0 0-.207-.138 19.469 19.469 0 0 1-5.37-.6l-.003-.002a9.007 9.007 0 0 0-.838-.194h.003a1.16 1.16 0 0 1-.937-1.134c0-.619.488-1.118 1.101-1.14a.214.214 0 0 0 .204-.176 1.443 1.443 0 0 1 1.42-1.187zm8.549 4.106v.455c0 .314.259.573.572.573h1.329a1.397 1.397 0 0 1 1.397 1.397v5.804a1.396 1.396 0 0 1-1.402 1.396.214.214 0 0 0-.002 0c-.448.002-.918 0-1.31-.005a.573.573 0 0 0-.584.573c0 .468 0 1.262-.002 1.603a.214.214 0 0 0 0 .001c0 .042-.019.08-.05.107-.346.26-1.75.95-4.915.95-3.107 0-4.587-.52-4.99-.752a.143.143 0 0 1-.065-.118l-.025-11.955c.145.033.288.07.431.11a.214.214 0 0 0 .003 0c.115.031.246.064.383.097v10.37c0 .129.069.247.18.31.453.217 1.767.732 4.071.732 2.32 0 3.595-.626 4.022-.884a.357.357 0 0 0 .164-.3l.001-10.21c.267-.075.531-.158.792-.254zm-7.99.894a.493.493 0 0 1 .494.493v8.578a.493.493 0 0 1-.493.493.493.493 0 0 1-.494-.493v-8.578A.493.493 0 0 1 8 11.611zm8.652 1.14a.663.663 0 0 0-.662.662v5.208a.663.663 0 0 0 .662.662h1.14a.663.663 0 0 0 .662-.662v-5.209a.663.663 0 0 0-.662-.662zm0 .428h1.14a.233.233 0 0 1 .233.233v5.21a.233.233 0 0 1-.233.232h-1.14a.233.233 0 0 1-.233-.233v-5.209a.233.233 0 0 1 .233-.233z"/></svg>
+        <span class="tool-name">Homebrew and a Brewfile</span>
+        <span class="tool-note">Free and open source</span>
+        <span class="tool-go">brew.sh &#8599;</span>
+      </a>
       <p>A herd whose members each have a different half of your toolkit is
         still a pile. Dump what you have into a list, keep the list in your
         dotfiles, and install from it on every machine:</p>
@@ -196,23 +195,6 @@ brew bundle --file ~/dotfiles/Brewfile</code></pre>
       <p class="trap"><b>And:</b> casks are GUI applications. Put them on the
         machine you sit in front of, not the headless one, where they are weight
         with nothing to show.</p>
-        </div>
-        <aside class="step-side">
-      <figure class="fig fig-kit">
-        <img class="f1" src="images/herdware/chick-laptop.png" alt=""><img class="f2" src="images/herdware/calf-mini.png" alt=""><img class="f3" src="images/herdware/ox-gpu.png" alt="">
-        <span class="kit k1"><i></i><i></i><i></i></span>
-        <span class="kit k2"><i></i><i></i><i></i></span>
-        <span class="kit k3"><i></i><i></i><i></i></span>
-        <figcaption>The same kit, wherever you land.</figcaption>
-      </figure>
-          <a class="tool" href="https://brew.sh">
-            <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="currentColor" d="M7.938 0a.214.214 0 0 0-.206.156c-.316 1.104.179 2.15.838 2.935.153.181.313.347.476.501a2.039 2.039 0 0 0-.665.02c-1.184.233-2.193.985-2.74 2.532a3.893 3.893 0 0 0-.2 1.466 1.565 1.565 0 0 0-1.156 1.504 1.59 1.59 0 0 0 1.227 1.541l.026 12.046c0 .195.1.377.264.482a.214.214 0 0 0 .008.005c.537.31 2.047.812 5.21.812 3.238 0 4.7-.678 5.181-1.04a.214.214 0 0 0 .008-.007.571.571 0 0 0 .206-.439c.002-.344.002-1.136.002-1.604a.143.143 0 0 1 .147-.144c.397.006.869.006 1.318.005a1.826 1.826 0 0 0 1.832-1.825v-5.804a1.826 1.826 0 0 0-1.825-1.826H16.56a.14.14 0 0 1-.143-.144V10.6h.007v-.001a1.573 1.573 0 0 0 1.356-1.556c0-.816-.627-1.489-1.424-1.563-.025-1.438-.437-2.126-.736-2.58a.214.214 0 0 0-.005-.007c-.364-.51-1.193-1.282-2.275-1.316-.503-.016-.842.124-1.125.254-.217.1-.42.177-.67.22.002-1.286.945-1.981.945-1.981a.214.214 0 0 0 .05-.298s-.087-.122-.21-.26c-.121-.136-.269-.294-.47-.378a.214.214 0 0 0-.079-.017.214.214 0 0 0-.145.055 4.308 4.308 0 0 0-.875 1.101 3.42 3.42 0 0 0-.133.273 3.497 3.497 0 0 0-.381-.846C9.794.978 9.063.436 8.017.016A.214.214 0 0 0 7.939 0zm.156.524c.85.378 1.43.83 1.79 1.403.274.438.426.962.484 1.584a3.07 3.07 0 0 0-.012.462 6.897 6.897 0 0 1-.168-.052 5.487 5.487 0 0 1-1.29-1.106c-.551-.657-.935-1.46-.804-2.291zM11.8 1.618c.07.054.141.101.212.18.034.039.032.04.058.073-.332.308-1.07 1.144-.952 2.453a.214.214 0 0 0 .222.195c.469-.017.782-.172 1.056-.299.273-.126.508-.228.931-.214.875.027 1.639.715 1.939 1.134.295.449.65 1 .663 2.36a1.66 1.66 0 0 0-.41.142 1.938 1.938 0 0 0-1.77-1.16 1.94 1.94 0 0 0-1.87 1.448 1.783 1.783 0 0 0-1.356-.64c-.484 0-.91.205-1.233.517a1.873 1.873 0 0 0-1.85-1.625c-.649 0-1.218.335-1.552.84a3.1 3.1 0 0 1 .157-.735c.51-1.437 1.355-2.045 2.42-2.254.367-.073.664-.011.99.095.325.106.671.262 1.094.342a.214.214 0 0 0 .252-.245c-.112-.67.073-1.266.336-1.744a3.71 3.71 0 0 1 .663-.863zM7.44 6.611a1.442 1.442 0 0 1 1.363 1.925.214.214 0 0 0 .168.283h.005a.214.214 0 0 0 .238-.146 1.373 1.373 0 0 1 2.613-.01.214.214 0 0 0 .417-.09 1.509 1.509 0 0 1 1.504-1.664c.678 0 1.249.445 1.442 1.056a.214.214 0 0 0 .259.143l.15-.04a.214.214 0 0 0 .051-.02 1.139 1.139 0 0 1 1.702.995 1.14 1.14 0 0 1-.985 1.131.214.214 0 0 0-.001 0 2.215 2.215 0 0 0-.485.126 10.65 10.65 0 0 1-1.176.365.214.214 0 0 0-.162.186 1.276 1.276 0 0 1-.146.478 2.07 2.07 0 0 0-.239 1.111l.001.151a.438.438 0 0 1-.16.36.665.665 0 0 1-.43.14.586.586 0 0 1-.588-.59.803.803 0 0 0-.38-.681.214.214 0 0 0-.002-.002c-.24-.145-.43-.37-.532-.636a.214.214 0 0 0-.207-.138 19.469 19.469 0 0 1-5.37-.6l-.003-.002a9.007 9.007 0 0 0-.838-.194h.003a1.16 1.16 0 0 1-.937-1.134c0-.619.488-1.118 1.101-1.14a.214.214 0 0 0 .204-.176 1.443 1.443 0 0 1 1.42-1.187zm8.549 4.106v.455c0 .314.259.573.572.573h1.329a1.397 1.397 0 0 1 1.397 1.397v5.804a1.396 1.396 0 0 1-1.402 1.396.214.214 0 0 0-.002 0c-.448.002-.918 0-1.31-.005a.573.573 0 0 0-.584.573c0 .468 0 1.262-.002 1.603a.214.214 0 0 0 0 .001c0 .042-.019.08-.05.107-.346.26-1.75.95-4.915.95-3.107 0-4.587-.52-4.99-.752a.143.143 0 0 1-.065-.118l-.025-11.955c.145.033.288.07.431.11a.214.214 0 0 0 .003 0c.115.031.246.064.383.097v10.37c0 .129.069.247.18.31.453.217 1.767.732 4.071.732 2.32 0 3.595-.626 4.022-.884a.357.357 0 0 0 .164-.3l.001-10.21c.267-.075.531-.158.792-.254zm-7.99.894a.493.493 0 0 1 .494.493v8.578a.493.493 0 0 1-.493.493.493.493 0 0 1-.494-.493v-8.578A.493.493 0 0 1 8 11.611zm8.652 1.14a.663.663 0 0 0-.662.662v5.208a.663.663 0 0 0 .662.662h1.14a.663.663 0 0 0 .662-.662v-5.209a.663.663 0 0 0-.662-.662zm0 .428h1.14a.233.233 0 0 1 .233.233v5.21a.233.233 0 0 1-.233.232h-1.14a.233.233 0 0 1-.233-.233v-5.209a.233.233 0 0 1 .233-.233z"/></svg>
-            <span class="tool-name">Homebrew and a Brewfile</span>
-            <span class="tool-note">Free and open source</span>
-            <span class="tool-go">brew.sh &#8599;</span>
-          </a>
-        </aside>
-      </div>
     </div>
   </li>
 
@@ -230,8 +212,20 @@ brew bundle --file ~/dotfiles/Brewfile</code></pre>
     <div class="step-body">
       <h2>Start something on another machine and walk away</h2>
       <p class="what">Close the lid, lose the connection, come back tomorrow &mdash; the work carries on, because it was never running on your laptop.</p>
-      <div class="step-cols">
-        <div class="step-main">
+      <figure class="fig fig-away">
+        <img class="f1" src="images/herdware/chick-laptop.png" alt=""><img class="f2" src="images/herdware/calf-mini.png" alt="">
+        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid meet">
+          <circle class="ring-track" cx="286" cy="70" r="30"/>
+          <circle class="ring-spin"  cx="286" cy="70" r="30"/>
+        </svg>
+        <figcaption>You leave. It carries on.</figcaption>
+      </figure>
+      <a class="tool" href="https://github.com/tmux/tmux/wiki/Getting-Started">
+        <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="currentColor" d="M24 2.251V10.5H12.45V0h9.3A2.251 2.251 0 0 1 24 2.251zM12.45 11.4H24v10.5h-.008A2.25 2.25 0 0 1 21.75 24H2.25a2.247 2.247 0 0 1-2.242-2.1H0V2.251A2.251 2.251 0 0 1 2.25 0h9.3v21.6h.9V11.4zm11.242 10.5H.308a1.948 1.948 0 0 0 1.942 1.8h19.5a1.95 1.95 0 0 0 1.942-1.8z"/></svg>
+        <span class="tool-name">tmux</span>
+        <span class="tool-note">Free and open source &middot; <code>brew install tmux</code></span>
+        <span class="tool-go">tmux wiki &#8599;</span>
+      </a>
       <p>The trick is that the session belongs to the far machine, not to your
         connection. You are attaching to something already running there:</p>
       <pre><code>ssh mini
@@ -244,24 +238,6 @@ tmux attach -t work   # come back, from anywhere</code></pre>
         machine</em>. Starting it in a local terminal and then SSH-ing from
         inside gives you a session that dies with your connection, which is the
         exact thing you were trying to prevent. SSH first, then tmux.</p>
-        </div>
-        <aside class="step-side">
-      <figure class="fig fig-away">
-        <img class="f1" src="images/herdware/chick-laptop.png" alt=""><img class="f2" src="images/herdware/calf-mini.png" alt="">
-        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid meet">
-          <circle class="ring-track" cx="286" cy="70" r="30"/>
-          <circle class="ring-spin"  cx="286" cy="70" r="30"/>
-        </svg>
-        <figcaption>You leave. It carries on.</figcaption>
-      </figure>
-          <a class="tool" href="https://github.com/tmux/tmux/wiki/Getting-Started">
-            <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="currentColor" d="M24 2.251V10.5H12.45V0h9.3A2.251 2.251 0 0 1 24 2.251zM12.45 11.4H24v10.5h-.008A2.25 2.25 0 0 1 21.75 24H2.25a2.247 2.247 0 0 1-2.242-2.1H0V2.251A2.251 2.251 0 0 1 2.25 0h9.3v21.6h.9V11.4zm11.242 10.5H.308a1.948 1.948 0 0 0 1.942 1.8h19.5a1.95 1.95 0 0 0 1.942-1.8z"/></svg>
-            <span class="tool-name">tmux</span>
-            <span class="tool-note">Free and open source &middot; <code>brew install tmux</code></span>
-            <span class="tool-go">tmux wiki &#8599;</span>
-          </a>
-        </aside>
-      </div>
     </div>
   </li>
 
@@ -270,8 +246,21 @@ tmux attach -t work   # come back, from anywhere</code></pre>
     <div class="step-body">
       <h2>See and use another machine&rsquo;s screen from this one</h2>
       <p class="what">The actual desktop of the box in the closet, for the things that only exist on a screen &mdash; a permission dialog, an installer, a first run.</p>
-      <div class="step-cols">
-        <div class="step-main">
+      <figure class="fig fig-screen">
+        <img class="f1" src="images/herdware/chick-laptop.png" alt="">
+        <span class="pane"><img src="images/herdware/calf-mini.png" alt=""></span>
+        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid meet">
+          <path class="s-route" d="M126 78 L 236 78"/>
+          <path class="s-pulse" d="M126 78 L 236 78"/>
+        </svg>
+        <figcaption>Its desktop, on your screen.</figcaption>
+      </figure>
+      <a class="tool" href="https://support.apple.com/guide/mac-help/screen-sharing-overview-mh14066/mac">
+        <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="3.5" width="21" height="14" rx="2.5"/><rect x="6" y="7" width="9" height="6.5" rx="1.2"/><path d="M8 20.5h8"/></svg>
+        <span class="tool-name">Screen Sharing</span>
+        <span class="tool-note">Built into macOS &mdash; nothing to install</span>
+        <span class="tool-go">Apple support &#8599;</span>
+      </a>
       <p>In Finder, <b>Go &rarr; Connect to Server</b> (<kbd>&#8984;K</kbd>) and
         enter <code>vnc://mini</code>. You get the actual desktop.</p>
       <p>Most of the time SSH is better &mdash; faster, scriptable, works on a
@@ -288,25 +277,6 @@ tmux attach -t work   # come back, from anywhere</code></pre>
         the operating system is up, neither SSH nor Screen Sharing can reach it,
         because both are software running inside the thing that has not started.
         That is what a hardware KVM is for, and it is the only thing that is.</p>
-        </div>
-        <aside class="step-side">
-      <figure class="fig fig-screen">
-        <img class="f1" src="images/herdware/chick-laptop.png" alt="">
-        <span class="pane"><img src="images/herdware/calf-mini.png" alt=""></span>
-        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid meet">
-          <path class="s-route" d="M126 78 L 236 78"/>
-          <path class="s-pulse" d="M126 78 L 236 78"/>
-        </svg>
-        <figcaption>Its desktop, on your screen.</figcaption>
-      </figure>
-          <a class="tool" href="https://support.apple.com/guide/mac-help/screen-sharing-overview-mh14066/mac">
-            <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="3.5" width="21" height="14" rx="2.5"/><rect x="6" y="7" width="9" height="6.5" rx="1.2"/><path d="M8 20.5h8"/></svg>
-            <span class="tool-name">Screen Sharing</span>
-            <span class="tool-note">Built into macOS &mdash; nothing to install</span>
-            <span class="tool-go">Apple support &#8599;</span>
-          </a>
-        </aside>
-      </div>
     </div>
   </li>
 
@@ -315,8 +285,19 @@ tmux attach -t work   # come back, from anywhere</code></pre>
     <div class="step-body">
       <h2>Run several agents at once and see which one is waiting on you</h2>
       <p class="what">Each agent in its own pane, marked working, blocked or done, on a session you can detach from and pick up later over SSH.</p>
-      <div class="step-cols">
-        <div class="step-main">
+      <figure class="fig fig-agents">
+        <img class="f1" src="images/herdware/calf-mini.png" alt="">
+        <span class="lanes">
+          <b class="run"></b><b class="wait"></b><b class="done"></b><b class="run2"></b>
+        </span>
+        <figcaption>Working, waiting, done &mdash; at a glance.</figcaption>
+      </figure>
+      <a class="tool" href="https://github.com/herdrdev/herdr">
+        <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="3.5" width="21" height="17" rx="2.5"/><path d="M9.5 3.5v17"/><path d="M9.5 12h13"/></svg>
+        <span class="tool-name">Herdr</span>
+        <span class="tool-note">Free and open source</span>
+        <span class="tool-go">github.com/herdrdev/herdr &#8599;</span>
+      </a>
       <p>Once coding agents are doing real work, the question stops being
         &ldquo;is it done&rdquo; and becomes &ldquo;which of these is waiting on
         me.&rdquo; tmux will happily keep four agents alive and tell you nothing
@@ -325,23 +306,6 @@ tmux attach -t work   # come back, from anywhere</code></pre>
       <p>It runs the agents on <em>one</em> machine, which is the natural
         complement to seeing them across all of them &mdash; and it is where
         Little Herd stops being optional.</p>
-        </div>
-        <aside class="step-side">
-      <figure class="fig fig-agents">
-        <img class="f1" src="images/herdware/calf-mini.png" alt="">
-        <span class="lanes">
-          <b class="run"></b><b class="wait"></b><b class="done"></b><b class="run2"></b>
-        </span>
-        <figcaption>Working, waiting, done &mdash; at a glance.</figcaption>
-      </figure>
-          <a class="tool" href="https://github.com/herdrdev/herdr">
-            <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="3.5" width="21" height="17" rx="2.5"/><path d="M9.5 3.5v17"/><path d="M9.5 12h13"/></svg>
-            <span class="tool-name">Herdr</span>
-            <span class="tool-note">Free and open source</span>
-            <span class="tool-go">github.com/herdrdev/herdr &#8599;</span>
-          </a>
-        </aside>
-      </div>
     </div>
   </li>
 
@@ -361,8 +325,27 @@ tmux attach -t work   # come back, from anywhere</code></pre>
       <p class="what">One destination that all of them write to, so the box in
         the closet stops being storage you own and becomes the machine that
         holds everything.</p>
-      <div class="step-cols">
-        <div class="step-main">
+      <figure class="fig fig-backup">
+        <img class="f1" src="images/herdware/chick-laptop.png" alt="">
+        <img class="f2" src="images/herdware/calf-mini.png" alt="">
+        <img class="f3" src="images/herdware/ox-gpu.png" alt="">
+        <img class="f4" src="images/herdware/piglet-nas.png" alt="">
+        <svg class="s-wire" viewBox="0 0 420 210" preserveAspectRatio="xMidYMid meet">
+          <path class="s-route" d="M60 60 C 140 70, 220 96, 300 112"/>
+          <path class="s-pulse" d="M60 60 C 140 70, 220 96, 300 112"/>
+          <path class="s-route" d="M60 118 C 140 120, 220 118, 300 116"/>
+          <path class="s-pulse d1" d="M60 118 C 140 120, 220 118, 300 116"/>
+          <path class="s-route" d="M60 176 C 140 166, 220 138, 300 122"/>
+          <path class="s-pulse d2" d="M60 176 C 140 166, 220 138, 300 122"/>
+        </svg>
+        <figcaption>Everything lands in one place.</figcaption>
+      </figure>
+      <a class="tool" href="https://support.apple.com/guide/mac-help/back-up-your-mac-with-time-machine-mh35860/mac">
+        <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+        <span class="tool-name">Time Machine</span>
+        <span class="tool-note">Built into macOS &middot; point it at a network volume</span>
+        <span class="tool-go">Apple support &#8599;</span>
+      </a>
       <p>Every Mac in the herd can back up over the network to the same NAS
         share &mdash; no cable, no swapping a drive between machines. For a Linux
         box, or for anything you would rather the NAS could not read,
@@ -379,31 +362,6 @@ tmux attach -t work   # come back, from anywhere</code></pre>
         with it. If the destination can be made append-only, do it; if it
         cannot, at least know that is the gap rather than assuming a copy
         somewhere is the same as a copy you cannot lose.</p>
-        </div>
-        <aside class="step-side">
-      <figure class="fig fig-backup">
-        <img class="f1" src="images/herdware/chick-laptop.png" alt="">
-        <img class="f2" src="images/herdware/calf-mini.png" alt="">
-        <img class="f3" src="images/herdware/ox-gpu.png" alt="">
-        <img class="f4" src="images/herdware/piglet-nas.png" alt="">
-        <svg class="s-wire" viewBox="0 0 420 210" preserveAspectRatio="xMidYMid meet">
-          <path class="s-route" d="M60 60 C 140 70, 220 96, 300 112"/>
-          <path class="s-pulse" d="M60 60 C 140 70, 220 96, 300 112"/>
-          <path class="s-route" d="M60 118 C 140 120, 220 118, 300 116"/>
-          <path class="s-pulse d1" d="M60 118 C 140 120, 220 118, 300 116"/>
-          <path class="s-route" d="M60 176 C 140 166, 220 138, 300 122"/>
-          <path class="s-pulse d2" d="M60 176 C 140 166, 220 138, 300 122"/>
-        </svg>
-        <figcaption>Everything lands in one place.</figcaption>
-      </figure>
-          <a class="tool" href="https://support.apple.com/guide/mac-help/back-up-your-mac-with-time-machine-mh35860/mac">
-            <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
-            <span class="tool-name">Time Machine</span>
-            <span class="tool-note">Built into macOS &middot; point it at a network volume</span>
-            <span class="tool-go">Apple support &#8599;</span>
-          </a>
-        </aside>
-      </div>
     </div>
   </li>
 
@@ -414,8 +372,25 @@ tmux attach -t work   # come back, from anywhere</code></pre>
       <p class="what">An unattended machine that dies is only a problem the
         moment you need it &mdash; which is always the worst moment. Have it
         tell you instead.</p>
-      <div class="step-cols">
-        <div class="step-main">
+      <figure class="fig fig-alert">
+        <img class="f1" src="images/herdware/calf-mini.png" alt="">
+        <img class="f2" src="images/herdware/ox-gpu.png" alt="">
+        <span class="beat b1"></span>
+        <span class="beat b2"></span>
+        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid meet">
+          <path class="s-route" d="M104 66 C 170 40, 230 40, 296 66"/>
+          <path class="s-pulse" d="M104 66 C 170 40, 230 40, 296 66"/>
+          <path class="s-route" d="M296 108 C 230 134, 170 134, 104 108"/>
+          <path class="s-pulse d1" d="M296 108 C 230 134, 170 134, 104 108"/>
+        </svg>
+        <figcaption>Each one checks on the other.</figcaption>
+      </figure>
+      <a class="tool" href="https://healthchecks.io">
+        <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 12h4.5l2.5-6 4 12 3-6h7"/></svg>
+        <span class="tool-name">Healthchecks.io</span>
+        <span class="tool-note">Free tier and open source</span>
+        <span class="tool-go">healthchecks.io &#8599;</span>
+      </a>
       <p>Or self-host
         <a href="https://github.com/louislam/uptime-kuma">Uptime Kuma</a> on a
         machine in the herd, with the caveat below. The shape that works either
@@ -434,29 +409,6 @@ tmux attach -t work   # come back, from anywhere</code></pre>
         Only something outside the house closes that, which is the argument for
         a hosted check over one you run at home &mdash; and the reason to know
         which of the two you have chosen.</p>
-        </div>
-        <aside class="step-side">
-      <figure class="fig fig-alert">
-        <img class="f1" src="images/herdware/calf-mini.png" alt="">
-        <img class="f2" src="images/herdware/ox-gpu.png" alt="">
-        <span class="beat b1"></span>
-        <span class="beat b2"></span>
-        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid meet">
-          <path class="s-route" d="M104 66 C 170 40, 230 40, 296 66"/>
-          <path class="s-pulse" d="M104 66 C 170 40, 230 40, 296 66"/>
-          <path class="s-route" d="M296 108 C 230 134, 170 134, 104 108"/>
-          <path class="s-pulse d1" d="M296 108 C 230 134, 170 134, 104 108"/>
-        </svg>
-        <figcaption>Each one checks on the other.</figcaption>
-      </figure>
-          <a class="tool" href="https://healthchecks.io">
-            <svg class="tool-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 12h4.5l2.5-6 4 12 3-6h7"/></svg>
-            <span class="tool-name">Healthchecks.io</span>
-            <span class="tool-note">Free tier and open source</span>
-            <span class="tool-go">healthchecks.io &#8599;</span>
-          </a>
-        </aside>
-      </div>
     </div>
   </li>
 
