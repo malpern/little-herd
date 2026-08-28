@@ -56,27 +56,82 @@ def fill(text: str, **slots: str) -> str:
 
 
 # --------------------------------------------------------------- the guide
+# Eight steps in one column read as eight identical blocks. They are really
+# three acts, and saying so gives the page a shape a reader can hold.
+ACTS = [
+    ("Get access", "Reaching every machine, and making each one worth arriving at.",
+     ("reach", "connect", "tools")),
+    ("Put them to work", "Running things you can walk away from, and seeing what a shell cannot show you.",
+     ("detach", "screen", "agents")),
+    ("Keep it alive", "The two that decide whether a herd survives being left alone.",
+     ("backup", "alerts")),
+]
+
+
+def render_toc() -> str:
+    """A contents list. People arrive here from a search for one step."""
+    by_id = {s["id"]: s for s in STEPS}
+    groups = []
+    for title, _, ids in ACTS:
+        items = "".join(
+            f'        <li><a href="#{i}"><b>{by_id[i]["n"]}</b>{by_id[i]["heading"]}</a></li>\n'
+            for i in ids)
+        groups.append(f'      <div>\n        <h3>{title}</h3>\n        <ol>\n{items}        </ol>\n      </div>\n')
+    return ('  <nav class="toc wrap" aria-label="The eight steps">\n'
+            + "".join(groups) + '  </nav>\n')
+
+
+def render_step(step: dict) -> str:
+    """Heading and promise full width, then prose left and picture right.
+
+    In one column the figure and the tool card sat inside a 640px measure and
+    left a third of every row empty at desktop width — 336px of nothing, down
+    the whole page. They belong beside the prose, not under it.
+    """
+    tool = step["tool"]
+    return (
+        f'  <li class="step" id="{step["id"]}">\n'
+        f'    <div class="step-n">{step["n"]}</div>\n'
+        f'    <div class="step-body">\n'
+        f'      <h2>{step["heading"]}</h2>\n'
+        f'      <p class="what">{step["what"]}</p>\n'
+        f'      <div class="step-cols">\n'
+        f'        <div class="step-main">\n'
+        f'{step["body"]}\n'
+        f'        </div>\n'
+        f'        <aside class="step-side">\n'
+        f'{step["figure"]}\n'
+        f'          <a class="tool" href="{tool["url"]}">\n'
+        f'            {logo(step["logo"])}\n'
+        f'            <span class="tool-name">{tool["name"]}</span>\n'
+        f'            <span class="tool-note">{tool["note"]}</span>\n'
+        f'            <span class="tool-go">{tool["go"]}</span>\n'
+        f'          </a>\n'
+        f'        </aside>\n'
+        f'      </div>\n'
+        f'    </div>\n'
+        f'  </li>\n\n'
+    )
+
+
 def render_steps() -> str:
-    out = []
-    for step in STEPS:
-        tool = step["tool"]
-        out.append(
-            f'  <li class="step" id="{step["id"]}">\n'
-            f'    <div class="step-n">{step["n"]}</div>\n'
-            f'    <div class="step-body">\n'
-            f'      <h2>{step["heading"]}</h2>\n'
-            f'      <p class="what">{step["what"]}</p>\n'
-            f'{step["figure"]}\n'
-            f'      <a class="tool" href="{tool["url"]}">\n'
-            f'        {logo(step["logo"])}\n'
-            f'        <span class="tool-name">{tool["name"]}</span>\n'
-            f'        <span class="tool-note">{tool["note"]}</span>\n'
-            f'        <span class="tool-go">{tool["go"]}</span>\n'
-            f'      </a>\n'
-            f'{step["body"]}\n'
-            f'    </div>\n'
-            f'  </li>\n\n'
-        )
+    by_id = {s["id"]: s for s in STEPS}
+    seen = set()
+    out = [render_toc()]
+    for n, (title, blurb, ids) in enumerate(ACTS, 1):
+        out.append(f'  <div class="act wrap">\n'
+                   f'    <span class="act-n">Act {n}</span>\n'
+                   f'    <h2>{title}</h2>\n'
+                   f'    <p>{blurb}</p>\n'
+                   f'  </div>\n\n'
+                   f'  <ol class="steps wrap">\n')
+        for i in ids:
+            out.append(render_step(by_id[i]))
+            seen.add(i)
+        out.append('  </ol>\n\n')
+    missing = [s["id"] for s in STEPS if s["id"] not in seen]
+    if missing:
+        sys.exit(f"build: steps missing from ACTS: {missing}")
     return "".join(out)
 
 

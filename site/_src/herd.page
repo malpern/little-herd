@@ -19,9 +19,7 @@
   </div>
 </section>
 
-<ol class="steps wrap">
-{{steps}}</ol>
-
+{{steps}}
 <section class="aside-note">
   <div class="wrap">
     <h2>A herd member can also just do a job.</h2>
