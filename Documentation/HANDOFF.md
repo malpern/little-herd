@@ -17,8 +17,12 @@ rather than arguing about it — seven placement studies, in
 - **no card around them.** An application icon is already a rounded,
   self-contained mark; a frame around it frames a frame, and a fan of six
   became eighteen edges
-- pointing at a machine raises its deck into a row above the herd, and the
-  other machines step back to a third — which is what says whose fan it is
+- pointing at a machine raises its deck into a row above the herd, larger than
+  it rested, and lowers it back to the deck's size when the pointer leaves.
+  **The herd used to dim while one machine was read, and no longer does** —
+  three animals fading every time the pointer crossed one was a large gesture
+  for a small question, and the rise turns out to say whose fan it is on its
+  own. Judged by looking, which is the only way this could have been settled
 - a session starting raises the deck on its own for a couple of seconds
   *without* dimming the herd: an arrival is news, a pointer is a question
 - an agent can be picked up and carried across the herd; an animal that could

@@ -31,9 +31,21 @@ struct MachineAgentFan: View {
     @State private var carrying: Int?
     @State private var carried: CGSize = .zero
 
+    /// How big a raised icon is, against the animal it came from. Larger than
+    /// the deck it rose from — it is the thing being read now, and the growth
+    /// is what makes the rise feel like a rise rather than a slide.
+    static let raisedScale: CGFloat = 0.78
+
     /// Clear space, and enough of it to read as separate objects rather than a
     /// strip. A quarter of a tile is the smallest gap that still does.
     private var gap: CGFloat { tile * 0.26 }
+
+    /// The size an icon starts and ends at, as a share of its raised size:
+    /// exactly the resting deck's, so the first frame of the rise and the last
+    /// frame of the fall match what is behind the animal.
+    private var restingShare: CGFloat {
+        MachineAgentStack.iconSize(forAvatar: tile / Self.raisedScale) / tile
+    }
 
     private var layout: AgentFanLayout {
         AgentFanLayout.lay(
@@ -61,7 +73,7 @@ struct MachineAgentFan: View {
                     )
                     // Each icon starts where the deck was — stacked at the
                     // animal, smaller and lower — and travels to its place.
-                    .scaleEffect(0.72 + 0.28 * spread)
+                    .scaleEffect(restingShare + (1 - restingShare) * spread)
                     .offset(
                         x: stackedX(index) + (rect.minX - stackedX(index)) * spread
                             + (carrying == index ? carried.width : 0),

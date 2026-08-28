@@ -32,6 +32,10 @@ struct CPUOverviewView: View {
     /// machines to deliver it would be the herd flinching every time work
     /// starts somewhere.
     @State private var fanned: MachineID?
+    /// Whether the raise answers a pointer or announces an arrival. They no
+    /// longer look different — the herd used to dim for the first — but they
+    /// still behave differently: an arrival takes itself away, and a pointer
+    /// outranks one that is still up.
     @State private var fanIsAnswerToAPointer = true
     /// Clears an arrival's raise after it has been seen.
     @State private var arrivalRaise: Task<Void, Never>?
@@ -118,11 +122,12 @@ struct CPUOverviewView: View {
                         onDragEnded: endDrag
                     )
                 )
-                // Everything but the machine being pointed at steps back, so
-                // a fan spanning the whole window still reads as belonging to
-                // one animal. The alternative was a tail or a tray, which is
-                // chrome for a job the herd can do itself.
-                .opacity(dimming(machine.machine) ? 0.35 : 1)
+                // **The herd no longer dims for a hover.** Three machines
+                // fading every time the pointer crossed one was a large
+                // gesture for a small question, and the rise turns out to be
+                // enough on its own — an icon lifting out of an animal is
+                // already unambiguous about whose it is. Kept out rather than
+                // tuned down: a subtler fade is the same idea, quieter.
                 // An animal that could take what is being carried lifts to
                 // meet it; one that could not simply does not answer, which is
                 // a quieter no than a mark and needs no surface to paint on.
@@ -130,7 +135,7 @@ struct CPUOverviewView: View {
                 .animation(.spring(duration: 0.24), value: carrying)
                 .onHover { hovering in
                     guard DashboardChrome.showsAgentTokens else { return }
-                    withAnimation(.smooth(duration: 0.22)) {
+                    withAnimation(.smooth(duration: 0.26)) {
                         if hovering {
                             guard agentActivity(on: machine) != nil else { return }
                             // A pointer outranks an arrival: you have asked.
@@ -249,12 +254,6 @@ struct CPUOverviewView: View {
         )
     }
 
-    /// Whether a machine steps back so another can be read.
-    private func dimming(_ machine: MachineID) -> Bool {
-        guard let fanned, fanIsAnswerToAPointer else { return false }
-        return fanned != machine
-    }
-
     /// Raises a machine's deck because something just started on it, for long
     /// enough to be read and no longer.
     private func raise(forArrival machine: MachineID) {
@@ -282,7 +281,7 @@ struct CPUOverviewView: View {
                 sessions: activity.sessions,
                 animalCentre: centreOfColumn(for: fanned),
                 width: width,
-                tile: avatarSize * 0.62,
+                tile: avatarSize * MachineAgentFan.raisedScale,
                 onOpenAll: { onSelectAgents?(fanned) },
                 onCarry: { session, x in
                     carrying = CarriedAgent(
@@ -297,7 +296,19 @@ struct CPUOverviewView: View {
             // rise straight up out of the animal rather than travelling
             // sideways on the way.
             .offset(y: fanY)
-            .transition(.opacity)
+            // **Down is the rise run backwards.** The icons grow as they come
+            // up, so a fan that simply faded at full size read as a thing
+            // being switched off rather than a thing settling back onto an
+            // animal. Going away it shrinks to the size of the deck it
+            // rejoins, and drops the distance it climbed.
+            .transition(
+                .asymmetric(
+                    insertion: .opacity,
+                    removal: .scale(scale: 0.55, anchor: .bottom)
+                        .combined(with: .offset(y: avatarSize * 0.5))
+                        .combined(with: .opacity)
+                )
+            )
             .allowsHitTesting(true)
         }
     }
