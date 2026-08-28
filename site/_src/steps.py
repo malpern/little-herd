@@ -5,7 +5,7 @@
 # Extracted from the shipped pages rather than retyped, so the builder
 # reproduces what was already live.
 
-STEPS = [{'id': 'reach',
+STEPS = [{'id': 'reach', 'logo': 'tailscale',
   'n': 1,
   'heading': 'Reach any machine from anywhere',
   'what': 'One name per machine that works from the sofa, from a hotel, and from another machine '
@@ -45,7 +45,7 @@ STEPS = [{'id': 'reach',
            'text': 'One name per machine that works from the sofa or a hotel, with nothing exposed '
                    'to the open internet.',
            'tool': 'Tailscale'}},
- {'id': 'connect',
+ {'id': 'connect', 'logo': 'ssh',
   'n': 2,
   'heading': 'Get onto any machine with one short command',
   'what': '<code>ssh mini</code> instead of an address you have to remember, and a new machine '
@@ -94,7 +94,7 @@ STEPS = [{'id': 'reach',
            'text': 'The same way in to every machine, and a new one inherits the herd instead of '
                    'being set up by hand.',
            'tool': 'SSH'}},
- {'id': 'tools',
+ {'id': 'tools', 'logo': 'homebrew',
   'n': 3,
   'heading': 'Arrive on a machine and find your tools already there',
   'what': 'Every machine carries the same kit, so the one you connect to is somewhere you can work '
@@ -133,7 +133,7 @@ STEPS = [{'id': 'reach',
            'text': 'The machine you connect to is somewhere you can work, not somewhere you have '
                    'to set up first.',
            'tool': 'Homebrew'}},
- {'id': 'detach',
+ {'id': 'detach', 'logo': 'tmux',
   'n': 4,
   'heading': 'Start something on another machine and walk away',
   'what': 'Close the lid, lose the connection, come back tomorrow &mdash; the work carries on, '
@@ -168,7 +168,7 @@ STEPS = [{'id': 'reach',
            'text': 'Close the lid and the work carries on, because it was never running on your '
                    'laptop.',
            'tool': 'tmux'}},
- {'id': 'screen',
+ {'id': 'screen', 'logo': 'screen',
   'n': 5,
   'heading': 'See and use another machine&rsquo;s screen from this one',
   'what': 'The actual desktop of the box in the closet, for the things that only exist on a screen '
@@ -207,7 +207,7 @@ STEPS = [{'id': 'reach',
            'text': 'For the things that only exist on a screen &mdash; a permission dialog, an '
                    'installer, a first run.',
            'tool': 'Screen Sharing'}},
- {'id': 'agents',
+ {'id': 'agents', 'logo': 'panes',
   'n': 6,
   'heading': 'Run several agents at once and see which one is waiting on you',
   'what': 'Each agent in its own pane, marked working, blocked or done, on a session you can '
@@ -236,7 +236,7 @@ STEPS = [{'id': 'reach',
            'text': 'And see at a glance which of them is working, which is done, and which is '
                    'waiting on you.',
            'tool': 'Herdr'}},
- {'id': 'backup',
+ {'id': 'backup', 'logo': 'backup',
   'n': 7,
   'heading': 'Back every machine up to one place',
   'what': 'One destination that all of them write to, so the box in\n'
@@ -282,7 +282,7 @@ STEPS = [{'id': 'reach',
            'text': 'One destination holding all of it, so the box in the closet becomes the '
                    'machine that matters.',
            'tool': 'Time Machine'}},
- {'id': 'alerts',
+ {'id': 'alerts', 'logo': 'beat',
   'n': 8,
   'heading': 'Find out when one of them stops',
   'what': 'An unattended machine that dies is only a problem the\n'

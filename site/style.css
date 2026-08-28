@@ -720,3 +720,15 @@ kbd {
 /* --- the closing note: adjacent to the payoff, so it takes no tint of its own */
 .aside-note .lede { max-width: 42rem; }
 .aside-note .note { max-width: 42rem; margin-block-start: 1rem; }
+
+/* The tool's mark sits left of its name. Three are real brand marks and the
+   rest are drawn to match; both take currentColor, so a card themes as one
+   thing rather than a logo pasted onto a card. */
+.tool { grid-template-columns: auto 1fr auto; }
+.tool-logo {
+  grid-column: 1; grid-row: 1 / span 2; align-self: center;
+  width: 26px; height: 26px; color: var(--forest); margin-inline-end: .2rem;
+}
+.tool-name { grid-column: 2; }
+.tool-note { grid-column: 2; }
+.tool-go   { grid-column: 3; }

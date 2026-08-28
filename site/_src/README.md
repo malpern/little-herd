@@ -38,3 +38,28 @@ dropped it, every page still rendered perfectly, and all three live panels were
 dead. Anything after `</footer>` has to be declared in the page's `scripts`
 slot. **Verify a build by comparing the rendered page, not the source**: the
 source diff looked like nothing but an entity and a moved `<link>`.
+
+## Where the tool marks come from
+
+`logos/` holds one 24×24 SVG per step, inlined by the builder so each takes
+`currentColor` and costs no request.
+
+**Tailscale, Homebrew and tmux are real brand marks** from
+[Simple Icons](https://simpleicons.org), which releases the icon files under
+**CC0 1.0**. The hardcoded fill is stripped so they theme with the page. The
+trademarks remain their owners'; naming a tool you are telling someone to
+install is referential use, which is what these are for.
+
+**The other five are drawn**, and deliberately so:
+
+- **OpenSSH has no mark.**
+- **Apple's would imply an endorsement nobody gave**, so Screen Sharing and
+  Time Machine get a display and a clock instead. Apple's guidelines are the
+  strictest of any vendor here; do not put the Apple logo on this site.
+- **Herdr's is Apache-2.0**, which grants no trademark rights, and it sits on a
+  solid background that will not theme.
+
+Vendor *marketing* images are a separate question and the answer is mostly no:
+Tailscale's press page states no usage terms at all, and a press kit is
+conventionally for editorial coverage rather than for illustrating another
+company's product site. Ask press@tailscale.com if you want them.

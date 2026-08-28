@@ -33,6 +33,19 @@ def partial(name: str) -> str:
     return SRC.joinpath("partials", name + ".html").read_text()
 
 
+def logo(name: str) -> str:
+    """The tool's mark, inlined so it takes currentColor and costs no request.
+
+    Three are real: Tailscale, Homebrew and tmux, from Simple Icons under CC0,
+    with the hardcoded fill stripped. The rest are drawn to match, because
+    OpenSSH has no mark, Apple's would imply an endorsement nobody gave, and
+    Herdr's is Apache-2.0 -- which grants no trademark rights -- over a solid
+    background that would not theme.
+    """
+    svg = SRC.joinpath("logos", name + ".svg").read_text().strip()
+    return svg.replace("<svg ", '<svg class="tool-logo" ', 1)
+
+
 def fill(text: str, **slots: str) -> str:
     for key, value in slots.items():
         text = text.replace("{{%s}}" % key, value)
@@ -55,6 +68,7 @@ def render_steps() -> str:
             f'      <p class="what">{step["what"]}</p>\n'
             f'{step["figure"]}\n'
             f'      <a class="tool" href="{tool["url"]}">\n'
+            f'        {logo(step["logo"])}\n'
             f'        <span class="tool-name">{tool["name"]}</span>\n'
             f'        <span class="tool-note">{tool["note"]}</span>\n'
             f'        <span class="tool-go">{tool["go"]}</span>\n'
