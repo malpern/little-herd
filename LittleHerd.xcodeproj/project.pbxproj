@@ -96,6 +96,7 @@
 		A905B8C981F44D19D61DDDBF /* OverviewMetricTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E82FFCE473CDBD3EFDA6F5D /* OverviewMetricTabs.swift */; };
 		A94B63BDDB38DD1C02C21A4B /* AgentFanLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B5E191C740CEFB9F0FE06A2 /* AgentFanLayout.swift */; };
 		AA379F39F4D7A9D720C6B505 /* MachineAgentStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0180D64F840CC482E396D1C /* MachineAgentStack.swift */; };
+		AA9EC3237639B039C1A07403 /* TransferAssembly.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4A6585252A6A695F2106B2 /* TransferAssembly.swift */; };
 		ADFBD220A565C255B252322A /* Machine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90FE8216081F585ED580AE1C /* Machine.swift */; };
 		AE7E668C1245F5127C1E588D /* NetworkVolumeOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */; };
 		B09394ED183529448EC7972E /* SectionLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23AD0B2D7F46C4487A7F96B3 /* SectionLabel.swift */; };
@@ -230,6 +231,7 @@
 		9B1E4988B07342992D546101 /* SynologyDSMClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyDSMClient.swift; sourceTree = "<group>"; };
 		9C9493E32EF1E74685B2C637 /* TransferCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferCoordinator.swift; sourceTree = "<group>"; };
 		9D5DE0551F7DDD29BEEE08FE /* AgentDestinationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDestinationTests.swift; sourceTree = "<group>"; };
+		9E4A6585252A6A695F2106B2 /* TransferAssembly.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferAssembly.swift; sourceTree = "<group>"; };
 		9EDDF10F2439122730B9A0F7 /* FolderSizes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSizes.swift; sourceTree = "<group>"; };
 		A1103648FA974B1ED81962ED /* SuccessorRun.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessorRun.swift; sourceTree = "<group>"; };
 		A17B5AEB7ADED71EAF3397A2 /* AgentSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSession.swift; sourceTree = "<group>"; };
@@ -395,6 +397,7 @@
 				D047AA9280E8D79DC01E7EC3 /* TaskTransfer.swift */,
 				E5C36AC033CCD76A2AA262A9 /* TaskTransferView.swift */,
 				13A62AEDE179380F1817E463 /* Transfer.swift */,
+				9E4A6585252A6A695F2106B2 /* TransferAssembly.swift */,
 				9C9493E32EF1E74685B2C637 /* TransferCoordinator.swift */,
 				A439B7E55FFC95CE4FB8B43B /* TransferDeparture.swift */,
 				F48867A7F46AAF10D8E460B4 /* TransferEligibility.swift */,
@@ -661,6 +664,7 @@
 				F467C6257000BC6F266301BC /* TaskTransfer.swift in Sources */,
 				182FDB3CF702DD3D6820FBA3 /* TaskTransferView.swift in Sources */,
 				F8216E4C4750D5A960F95A2E /* Transfer.swift in Sources */,
+				AA9EC3237639B039C1A07403 /* TransferAssembly.swift in Sources */,
 				4DC56E8FD77CAB8BE9A23BFB /* TransferCoordinator.swift in Sources */,
 				78162F614B6E3B95D282E7C4 /* TransferDeparture.swift in Sources */,
 				073E87415837B3480E41A92A /* TransferEligibility.swift in Sources */,

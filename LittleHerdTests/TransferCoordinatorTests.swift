@@ -11,7 +11,6 @@ struct TransferCoordinatorTests {
             origin: MachineID(rawValue: "air"),
             destination: MachineID(rawValue: "mini"),
             branch: "transfer/fan",
-            commit: String(repeating: "a", count: 40),
             title: title
         )
     }

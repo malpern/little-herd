@@ -11,9 +11,6 @@ nonisolated struct Transfer: Hashable, Sendable {
     let destination: MachineID
     /// The branch carrying the brief and any work in progress.
     let branch: String
-    /// What the source pushed, which the destination must find. See
-    /// `SuccessorLaunch.plan`.
-    let commit: String
     /// What the session was called, for the interface to say.
     let title: String
 }
