@@ -291,6 +291,11 @@ section { padding-block: clamp(4rem, 9vw, 7rem); }
 section + section { border-block-start: 1px solid var(--rule); }
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: center; }
 .split .shot { justify-self: center; }
+/* Three of these run back to back, and three identical text-left/panel-right
+   rows read as one long block rather than three points. The middle one puts
+   its panel on the left, which is enough to make a rhythm out of a repetition.
+   Only the middle: alternating all three is just a slower kind of uniform. */
+.split.flip .shot { order: -1; }
 /* Direct child only. As `.shot img` this also matched every avatar inside the
    live demo, giving each one the screenshot's rounded corners and drop shadow
    -- which on a transparent PNG draws a little white plate behind the animal. */
