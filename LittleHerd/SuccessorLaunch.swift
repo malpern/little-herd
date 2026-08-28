@@ -57,7 +57,11 @@ nonisolated enum SuccessorLaunch {
     /// **the launcher runs the build, the test and the git**, from a fixed list
     /// it owns. The successor cannot execute anything at all, so the worst a
     /// hostile brief achieves is edits on a branch nobody has merged.
-    static let deniedTools = ["Bash"]
+    /// `Bash` is not the only way out. `Read` plus `WebFetch` is an
+    /// exfiltration pair that needs no shell at all — read a key, fetch a URL
+    /// with it in the query string — so the network tools go too. A successor
+    /// working from a written brief has no reason to reach the internet.
+    static let deniedTools = ["Bash", "WebFetch", "WebSearch"]
 
     /// What the launcher runs after the successor has finished editing, in
     /// order, stopping at the first failure. These are the app's commands, not

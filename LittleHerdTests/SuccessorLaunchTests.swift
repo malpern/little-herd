@@ -70,6 +70,8 @@ struct SuccessorLaunchTests {
         let plan = try #require(try? plan().get())
         #expect(plan.arguments.contains("--disallowedTools"))
         #expect(plan.arguments.contains("Bash"))
+        // And the pair that exfiltrates without one.
+        #expect(plan.arguments.contains("WebFetch"))
         // The flag that does not restrict must not come back.
         #expect(!plan.arguments.contains("--allowedTools"))
     }

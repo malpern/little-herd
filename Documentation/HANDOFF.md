@@ -1572,6 +1572,13 @@ a half-finished move is visible in the interface rather than in a log.
      from commands it owns. A hostile brief's best outcome is edits on a branch
      nobody merged. This was the one control everything else was stacked on,
      and it was the one thing never run.
+
+     Denying the shell is also not enough on its own: `Read` plus `WebFetch`
+     exfiltrates without one. Both network tools are denied too — but note
+     that this is the enumerated deny-list again, one rung up, and it will be
+     wrong the same way the moment a tool is added. **The durable boundary is
+     environmental, not a flag**: a dedicated account that owns nothing, the
+     same shape as `linux-restic` on the NAS. Treat the flags as depth.
    - **Never execute a path the destination reported.** `AgentInstallation.path`
      is parsed out of the remote probe's own output, so a compromised or
      spoofed machine chooses the binary the transfer will run on it. Resolve
