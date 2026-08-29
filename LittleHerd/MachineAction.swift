@@ -15,6 +15,41 @@ nonisolated struct MachineAction: Equatable, Identifiable {
     var id: String { url.absoluteString }
 }
 
+/// Something to run on a machine rather than a URL to open.
+nonisolated struct MachineCommand: Equatable {
+    let title: String
+    let systemImage: String
+    /// Run over the ssh connection the app already holds.
+    let command: String
+    /// Said before it runs, because these change the machine.
+    let explanation: String
+}
+
+nonisolated enum MachineCommands {
+    /// **Screen sharing on a Linux box, when it can be started.**
+    ///
+    /// `wayvnc` is installed on this herd's Linux machine and not running, so
+    /// the port is closed and the menu would otherwise offer nothing. Starting
+    /// it is one command — but it is a real change to somebody else's machine,
+    /// which is why this carries an explanation and is not simply done.
+    static func startScreenSharing(
+        for machine: MachineConfiguration
+    ) -> MachineCommand? {
+        guard machine.platform == .linux, machine.connection == .ssh else {
+            return nil
+        }
+        return MachineCommand(
+            title: "Start Screen Sharing",
+            systemImage: "display",
+            // Backgrounded and detached, or it dies with the ssh connection —
+            // the same `-tt` behaviour that makes cancelling a transfer work.
+            command: "nohup wayvnc --render-cursor 0.0.0.0 >/dev/null 2>&1 &",
+            explanation: "Starts a VNC server on this machine so its screen "
+                + "can be reached. It runs until the machine restarts."
+        )
+    }
+}
+
 nonisolated enum MachineActions {
     static func actions(for machine: MachineConfiguration) -> [MachineAction] {
         // Nothing to open on the Mac this is running on: a shell here is a

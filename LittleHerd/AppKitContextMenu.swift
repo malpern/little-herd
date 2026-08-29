@@ -38,6 +38,12 @@ nonisolated struct AppKitMenuItem {
     var icon: Icon = .none
     /// A separator, drawn instead of a row.
     var isSeparator = false
+    /// **A row that cannot be chosen still says something.** A machine that
+    /// will not take this work is listed and disabled, with the reason beside
+    /// it — which is the thing a drag cannot do: it simply refuses, and
+    /// silence is what had somebody asking whether transfers were on at all.
+    var isEnabled = true
+    var submenu: [AppKitMenuItem] = []
     var action: (() -> Void)?
 
     static var separator: AppKitMenuItem {
@@ -68,8 +74,16 @@ final class ContextMenuHostView: NSView {
         }
     }
 
-    override func menu(for event: NSEvent) -> NSMenu? {
+    private static var submenuOwnerKey: UInt8 = 0
+
+    override func menu(for event: NSEvent) -> NSMenu? { buildMenu() }
+
+    func buildMenu() -> NSMenu {
         let menu = NSMenu()
+        // Items are enabled by what they say, not by whether a responder
+        // claims them: without this AppKit greys out every row whose target
+        // it cannot validate.
+        menu.autoenablesItems = false
         for item in items {
             guard !item.isSeparator else {
                 menu.addItem(.separator())
@@ -82,6 +96,17 @@ final class ContextMenuHostView: NSView {
             )
             entry.target = self
             entry.representedObject = item.action.map(ActionBox.init)
+            entry.isEnabled = item.isEnabled
+            if !item.submenu.isEmpty {
+                let child = ContextMenuHostView()
+                child.items = item.submenu
+                entry.submenu = child.buildMenu()
+                // The child view is retained by the menu it built, so the
+                // submenu's actions outlive this call.
+                objc_setAssociatedObject(
+                    entry, &Self.submenuOwnerKey, child, .OBJC_ASSOCIATION_RETAIN
+                )
+            }
             if let icon = image(for: item.icon) {
                 entry.image = icon
                 // **And in the title as well.** Setting `image` alone drew

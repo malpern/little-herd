@@ -2,7 +2,7 @@
 """Build site/index.html and site/herd.html.
 
 Why this exists rather than a framework: the site is two pages, and the only
-things that actually hurt were the chrome being copied into both and the eight
+things that actually hurt were the chrome being copied into both and the nine
 guide steps being hand-written HTML that the homepage cards had to be kept in
 step with by hand — which they twice were not. Both are fixed here, in a script
 with no dependencies, so the Pages deploy stays "upload a folder" and there is
@@ -123,13 +123,13 @@ def fill(text: str, **slots: str) -> str:
 
 
 # --------------------------------------------------------------- the guide
-# Eight steps in one column read as eight identical blocks. They are really
+# Nine steps in one column read as nine identical blocks. They are really
 # three acts, and saying so gives the page a shape a reader can hold.
 ACTS = [
     ("Get access", "Reaching every machine, and making each one worth arriving at.",
      ("reach", "connect", "tools")),
     ("Put them to work", "Running things you can walk away from, and seeing what a shell cannot show you.",
-     ("detach", "screen", "agents")),
+     ("detach", "screen", "control", "agents")),
     ("Keep it alive", "The two that decide whether a herd survives being left alone.",
      ("backup", "alerts")),
 ]
@@ -144,17 +144,17 @@ def render_toc() -> str:
             f'        <li><a href="#{i}"><b>{by_id[i]["n"]}</b>{by_id[i]["heading"]}</a></li>\n'
             for i in ids)
         groups.append(f'      <div>\n        <h3>{title}</h3>\n        <ol>\n{items}        </ol>\n      </div>\n')
-    return ('  <nav class="toc wrap" aria-label="The eight steps">\n'
+    return ('  <nav class="toc wrap" aria-label="The nine steps">\n'
             + "".join(groups) + '  </nav>\n')
 
 
 def render_rail() -> str:
-    """A sticky strip of the eight numbers, for the long scroll.
+    """A sticky strip of the nine numbers, for the long scroll.
 
     It ships `hidden` and is revealed by guide.js once the contents list above
     has scrolled away, then hides again past the last step. Sticky-in-flow was
     tried first: it needed no script to appear, but at rest it sat immediately
-    under the contents as a second, terser copy of the same eight items, and
+    under the contents as a second, terser copy of the same nine items, and
     looked like a mistake. Being script-only is the right trade here -- the
     contents list is the navigation that survives scripting being off, and this
     is an affordance for the twelve thousand pixels that follow it.
@@ -174,7 +174,7 @@ def render_rail() -> str:
             f'<span aria-hidden="true">{by_id[i]["n"]}</span></a></li>'
             for i in ids)
         groups.append(f'<ol data-act="{title}">{items}</ol>')
-    return ('  <nav class="rail" aria-label="The eight steps" hidden>\n'
+    return ('  <nav class="rail" aria-label="The nine steps" hidden>\n'
             '    <div class="rail-in wrap">\n'
             '      <span class="rail-act" aria-hidden="true">Get access</span>\n'
             '      <div class="rail-nums">' + "".join(groups) + '</div>\n'

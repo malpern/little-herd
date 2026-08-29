@@ -151,6 +151,9 @@ struct DashboardView: View {
                                         ? .succeeded : .failed
                                 }
                             },
+                            onRunCommand: { command, machine in
+                                model.run(command, on: machine)
+                            },
                             herd: model.machines.map(\.destinationAccount),
                             // Only here. The menu bar draws its own rows and
                             // is dismissed by the click that would read the
@@ -455,6 +458,7 @@ private struct OverviewMetricContent: View {
     var onTransfer: ((AgentSession, MachineID, MachineID) -> Void)?
     /// How that transfer is going, for the card making the journey.
     var transferState: ((AgentSession) -> TransitState?)?
+    var onRunCommand: ((MachineCommand, MachineID) -> Void)?
     var herd: [DestinationAccount] = []
     var announcesArrivals = false
 
@@ -485,6 +489,7 @@ private struct OverviewMetricContent: View {
                 onSelectAgents: onSelectAgents,
                 onTransfer: onTransfer,
                 transferState: transferState,
+                onRunCommand: onRunCommand,
                 agentCPU: agentCPU,
                 herd: herd,
                 announcesArrivals: announcesArrivals

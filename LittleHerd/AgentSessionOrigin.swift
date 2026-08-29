@@ -43,3 +43,23 @@ nonisolated enum AgentLiveRegistryParser {
         return origins
     }
 }
+
+/// Whether a Mac's Bluetooth is on, as the probe reported it.
+///
+/// Carried because it is the **one** readable precondition for a shared
+/// pointer between two Macs, and because "the pointer will not cross" is
+/// otherwise a silence with four possible causes.
+nonisolated enum BluetoothStateParser {
+    static func parse(_ output: String) -> Bool? {
+        for line in output.split(whereSeparator: \.isNewline)
+        where line.hasPrefix("bluetooth=") {
+            let value = line.dropFirst("bluetooth=".count)
+            if value == "On" { return true }
+            if value == "Off" { return false }
+            // "unknown" is not "off": a machine that could not be asked must
+            // not be reported as misconfigured.
+            return nil
+        }
+        return nil
+    }
+}

@@ -63,6 +63,8 @@ struct MachineAgentFan: View {
     /// view a right-click over that animal lands on. Without this, a machine
     /// with agents had no menu at all while one without agents did, because
     /// only the busy one had this column over it.
+    /// Where this session could go, and why not, for each machine.
+    var moveTo: (AgentSession) -> [AppKitMenuItem] = { _ in [] }
     var machineMenu: [AppKitMenuItem] = []
     /// Whether the deck has finished coming down.
     ///
@@ -386,6 +388,7 @@ struct MachineAgentFan: View {
                             for: card.session,
                             on: machine,
                             origin: origins[card.session.id],
+                            moveTo: moveTo(card.session),
                             onOpenAgents: onOpenAll
                         )
                     )

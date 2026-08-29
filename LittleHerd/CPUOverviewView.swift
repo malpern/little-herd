@@ -16,6 +16,8 @@ struct CPUOverviewView: View {
     var onTransfer: ((AgentSession, MachineID, MachineID) -> Void)?
     /// How the transfer of a given session is going, if one is running.
     var transferState: ((AgentSession) -> TransitState?)?
+    /// Something to run on a machine, which the model confirms first.
+    var onRunCommand: ((MachineCommand, MachineID) -> Void)?
     var agentCPU: [String: Double] = [:]
     /// Every account, so a drag can ask what each machine could actually take.
     var herd: [DestinationAccount] = []
@@ -192,7 +194,8 @@ struct CPUOverviewView: View {
                             for: machine.configuration,
                             onOpenPage: { onSelectMachine?(machine.machine) },
                             onOpenAgents: { onSelectAgents?(machine.machine) },
-                            open: { NSWorkspace.shared.open($0) }
+                            open: { NSWorkspace.shared.open($0) },
+                            run: { onRunCommand?($0, machine.machine) }
                         )
                     )
                 }
@@ -414,11 +417,29 @@ struct CPUOverviewView: View {
                             || returning == machine.machine,
                         rise: deckRise,
                         machine: machine.configuration,
+                        moveTo: { session in
+                            AgentMoveMenu.items(
+                                moving: session,
+                                from: machine.machine,
+                                in: herd,
+                                requiresApproval: requiresDestinationApproval,
+                                name: { id in
+                                    machines.first { $0.machine == id }?
+                                        .shortName ?? id.rawValue
+                                },
+                                move: { destination in
+                                    onTransfer?(
+                                        session, machine.machine, destination
+                                    )
+                                }
+                            )
+                        },
                         machineMenu: MachineMenuItems.items(
                             for: machine.configuration,
                             onOpenPage: { onSelectMachine?(machine.machine) },
                             onOpenAgents: { onSelectAgents?(machine.machine) },
-                            open: { NSWorkspace.shared.open($0) }
+                            open: { NSWorkspace.shared.open($0) },
+                            run: { onRunCommand?($0, machine.machine) }
                         )
                     )
                     .offset(y: fanY)

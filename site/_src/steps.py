@@ -1,4 +1,4 @@
-# The eight steps, and the homepage card for each.
+# The nine steps, and the homepage card for each.
 # ONE source: the guide renders from `heading`/`what`/`figure`/`tool`/`body`,
 # the homepage card from `card`, and both take the tool name and the anchor
 # from the same entry -- which is what stops the two pages drifting apart.
@@ -207,8 +207,46 @@ STEPS = [{'id': 'reach', 'video': ('Tailscale', 'How to get started with Tailsca
            'text': 'For the things that only exist on a screen &mdash; a permission dialog, an '
                    'installer, a first run.',
            'tool': 'Screen Sharing'}},
- {'id': 'agents', 'video': ('typecraft', 'I&rsquo;m ditching tmux for herdr!', 'yQDARWdrPeY'), 'ask': ('Herdr', 'Explain Herdr (github.com/herdrdev/herdr), a terminal multiplexer built for AI coding agents. How do I install it on macOS, how does it differ from tmux, how do I run several Claude Code or Codex agents in panes and see at a glance which one is working, blocked or waiting on me, and how do its sessions detach and reattach over SSH?'), 'logo': 'panes',
+ {'id': 'control', 'video': ('Apple Support', 'How to use Universal Control on Mac and iPad', '9tRzhE-wyNg'), 'ask': ('Universal Control', 'I have two Macs on the same desk and I want one keyboard and mouse to work across both, with copy and paste between them. Explain Universal Control and Universal Clipboard: what each one needs (same Apple Account with two-factor, Bluetooth, Wi-Fi and Handoff on, machines close together), how to link a second Mac from the add-display menu in Displays settings, how the two features differ, and the common reasons the pointer refuses to cross. Then tell me what to use instead when the other machine is in another room or another building.'), 'shot': ('universal-control.png', 'The add-display (+) menu in Displays settings, where a second Mac is linked.'), 'logo': 'screen',
   'n': 6,
+  'heading': 'Use one keyboard and mouse across two Macs',
+  'what': 'The pointer runs off the edge of one screen and onto the next machine, and copy on one '
+          'is paste on the other &mdash; with no software to install.',
+  'figure': '      <figure class="fig fig-screen">\n'
+            '        <img class="f1" src="images/herdware/chick-laptop.png" alt="">\n'
+            '        <span class="pane"><img src="images/herdware/calf-mini.png" alt=""></span>\n'
+            '        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid meet">\n'
+            '          <path class="s-route" d="M126 78 L 236 78"/>\n'
+            '          <path class="s-pulse" d="M126 78 L 236 78"/>\n'
+            '        </svg>\n'
+            '        <figcaption>One pointer, two machines.</figcaption>\n'
+            '      </figure>',
+  'tool': {'url': 'https://support.apple.com/en-us/102459',
+           'name': 'Universal Control',
+           'note': 'Built into macOS',
+           'go': 'support.apple.com &#8599;'},
+  'body': '      <p>Two Macs on one desk do not need screen sharing. Sign both into the\n'
+          '        same Apple Account with two-factor turned on, leave Bluetooth, Wi-Fi\n'
+          '        and Handoff on, and link the second one from the add-display\n'
+          '        (<b>+</b>) menu in <b>Displays</b> settings. The pointer then runs off\n'
+          '        the edge of one screen onto the other, the keyboard follows it, and\n'
+          '        Universal Clipboard means copy here is paste there.</p>\n'
+          '      <p class="trap"><b>The trap:</b> this is a <em>same-desk</em> feature. It\n'
+          '        needs the machines within about ten metres, because the handshake is\n'
+          '        over Bluetooth. The headless box in the closet is not a candidate\n'
+          '        however good your network is &mdash; that is what the step above is\n'
+          '        for.</p>\n'
+          '      <p class="trap"><b>And:</b> nothing tells you <em>which</em> condition\n'
+          '        failed. A pointer that will not cross is the same silence whether the\n'
+          '        second Mac is on a different Apple Account, has Handoff off, or is\n'
+          '        simply too far away. Check them in that order; the account is the one\n'
+          '        people get wrong.</p>',
+  'card': {'heading': 'One keyboard across two Macs',
+           'text': 'The pointer runs onto the next machine and copy here is paste there, with '
+                   'nothing to install.',
+           'tool': 'Universal Control'}},
+ {'id': 'agents', 'video': ('typecraft', 'I&rsquo;m ditching tmux for herdr!', 'yQDARWdrPeY'), 'ask': ('Herdr', 'Explain Herdr (github.com/herdrdev/herdr), a terminal multiplexer built for AI coding agents. How do I install it on macOS, how does it differ from tmux, how do I run several Claude Code or Codex agents in panes and see at a glance which one is working, blocked or waiting on me, and how do its sessions detach and reattach over SSH?'), 'logo': 'panes',
+  'n': 7,
   'heading': 'Run several agents at once and see which one is waiting on you',
   'what': 'Each agent in its own pane, marked working, blocked or done, on a session you can '
           'detach from and pick up later over SSH.',
@@ -237,7 +275,7 @@ STEPS = [{'id': 'reach', 'video': ('Tailscale', 'How to get started with Tailsca
                    'waiting on you.',
            'tool': 'Herdr'}},
  {'id': 'backup', 'video': ('SpaceRex', 'Back up macOS to a Synology NAS with Time Machine', 'yQFuJJqqWbc'), 'ask': ('Time Machine and restic', 'Show me how to back up several Macs over the network to one NAS with Time Machine, and how to back up a Linux machine to the same NAS with restic so the destination only ever stores encrypted data. Cover choosing the destination, scheduling, actually testing a restore, and why append-only or immutable backups matter if a machine is compromised. Exact commands.'), 'logo': 'backup',
-  'n': 7,
+  'n': 8,
   'heading': 'Back every machine up to one place',
   'what': 'One destination that all of them write to, so the box in\n'
           '        the closet stops being storage you own and becomes the machine that\n'
@@ -283,7 +321,7 @@ STEPS = [{'id': 'reach', 'video': ('Tailscale', 'How to get started with Tailsca
                    'machine that matters.',
            'tool': 'Time Machine'}},
  {'id': 'alerts', 'video': ('Techno Tim', 'Meet Uptime Kuma, an open source uptime monitor', 'r_A5NKkAqZM'), 'ask': ('Healthchecks.io', 'Teach me to find out when an unattended machine or a scheduled backup stops running. Explain dead man\'s switch monitoring with Healthchecks.io, how to ping a check from a cron job or a launchd agent on macOS, how to alert on a job that has not reported rather than only on a machine that is down, why a machine should not be the thing that monitors itself, and what a hosted check catches that a self-hosted one cannot.'), 'logo': 'beat',
-  'n': 8,
+  'n': 9,
   'heading': 'Find out when one of them stops',
   'what': 'An unattended machine that dies is only a problem the\n'
           '        moment you need it &mdash; which is always the worst moment. Have it\n'

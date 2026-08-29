@@ -47,3 +47,23 @@ struct AgentSessionOriginTests {
         #expect(origins["ghi-789"]?.label == "Dispatched")
     }
 }
+
+@Suite("Bluetooth, the one readable precondition")
+struct BluetoothStateTests {
+    @Test
+    func itReadsOnAndOff() {
+        #expect(BluetoothStateParser.parse("bluetooth=On") == true)
+        #expect(BluetoothStateParser.parse("bluetooth=Off") == false)
+    }
+
+    /// **Unknown is not off.** A machine that could not be asked — a Linux box,
+    /// or a Mac where the probe failed — must not be reported as
+    /// misconfigured, because the whole point of carrying this is to explain a
+    /// silence rather than add to it.
+    @Test
+    func unknownIsNotOff() {
+        #expect(BluetoothStateParser.parse("bluetooth=unknown") == nil)
+        #expect(BluetoothStateParser.parse("") == nil)
+        #expect(BluetoothStateParser.parse("agent_live=x\ty\tz") == nil)
+    }
+}

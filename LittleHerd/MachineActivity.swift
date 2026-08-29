@@ -745,6 +745,24 @@ nonisolated enum AgentTaskProbe {
     # and which cost a green suite the moment this loop was written the
     # obvious way: every test that expected any session at all went red,
     # because the probe had stopped before reaching them.
+    # Whether this Mac's Bluetooth is on.
+    #
+    # **The only precondition for Universal Control that can actually be
+    # read.** The others — the same Apple Account, Handoff, being within
+    # Bluetooth range — are not: the Handoff domain does not exist on either
+    # Mac in this herd, and MobileMeAccounts.plist is present on one and absent
+    # on the other, so its absence cannot be told from "signed out". A
+    # checklist built on those would say "all set" when it is not.
+    #
+    # `system_profiler` rather than a defaults read, because the plist key for
+    # controller power moved and this one answers on both machines. It costs
+    # about a tenth of a second and only runs on macOS.
+    if [ "$(uname -s)" = "Darwin" ]; then
+      little_herd_bt=$(system_profiler SPBluetoothDataType 2>/dev/null \
+        | awk '/State:/ {print $2; exit}')
+      printf "bluetooth=%s\n" "${little_herd_bt:-unknown}"
+    fi
+
     little_herd_live_ids=""
     little_herd_reg_list=$(find "$HOME/.claude/sessions" -maxdepth 1 -name '*.json' 2>/dev/null)
     for little_herd_reg in $little_herd_reg_list; do

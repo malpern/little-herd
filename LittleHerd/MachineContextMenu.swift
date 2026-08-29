@@ -6,7 +6,9 @@ nonisolated enum MachineMenuItems {
         for machine: MachineConfiguration,
         onOpenPage: (() -> Void)?,
         onOpenAgents: (() -> Void)?,
-        open: @escaping (URL) -> Void
+        open: @escaping (URL) -> Void,
+        run: ((MachineCommand) -> Void)? = nil,
+        bluetooth: Bool? = nil
     ) -> [AppKitMenuItem] {
         var items: [AppKitMenuItem] = []
 
@@ -43,6 +45,44 @@ nonisolated enum MachineMenuItems {
             }
         }
 
+        // Things that change the machine, kept apart from things that merely
+        // open a window on it.
+        if let start = MachineCommands.startScreenSharing(for: machine),
+           let run {
+            items.append(.separator)
+            items.append(
+                AppKitMenuItem(
+                    title: start.title,
+                    icon: .symbol(start.systemImage),
+                    action: { run(start) }
+                )
+            )
+        }
+
+        // **Universal Control cannot be checked, only pointed at.** Whether
+        // two Macs share a pointer depends on the same Apple Account, Handoff,
+        // and being within Bluetooth range — and of those, only Bluetooth is
+        // readable. A checklist built on the rest would say "all set" when it
+        // is not, which is worse than saying nothing. So this opens the pane
+        // where it is turned on and claims to know nothing.
+        if machine.platform == .macOS,
+           let settings = URL(
+               string: "x-apple.systempreferences:com.apple.Displays-Settings.extension"
+           ) {
+            items.append(
+                AppKitMenuItem(
+                    // The one thing that *is* known is said in the title,
+                    // because a pointer that will not cross is a silence with
+                    // four possible causes and this rules one of them out.
+                    title: bluetooth == false
+                        ? "Set Up Universal Control… — Bluetooth is off"
+                        : "Set Up Universal Control…",
+                    icon: .symbol("rectangle.on.rectangle"),
+                    action: { open(settings) }
+                )
+            )
+        }
+
         items.append(.separator)
         items.append(
             AppKitMenuItem(
@@ -68,6 +108,7 @@ enum AgentMenuItems {
         for session: AgentSession,
         on machine: MachineConfiguration,
         origin: AgentSessionOrigin?,
+        moveTo: [AppKitMenuItem] = [],
         onOpenAgents: (() -> Void)?
     ) -> [AppKitMenuItem] {
         var items: [AppKitMenuItem] = [
@@ -92,6 +133,17 @@ enum AgentMenuItems {
         if let label = origin?.label {
             items.append(
                 AppKitMenuItem(title: label, icon: .symbol("questionmark.circle"))
+            )
+        }
+
+        if !moveTo.isEmpty {
+            items.append(.separator)
+            items.append(
+                AppKitMenuItem(
+                    title: "Move To",
+                    icon: .symbol("arrow.right.circle"),
+                    submenu: moveTo
+                )
             )
         }
 
