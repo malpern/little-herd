@@ -59,6 +59,15 @@ install is referential use, which is what these are for.
 - **Herdr's is Apache-2.0**, which grants no trademark rights, and it sits on a
   solid background that will not theme.
 
+**OpenAI's mark is the one exception to the caution above**, and it is a
+considered one. `logos/openai.svg` is the knot from the Wikimedia ChatGPT SVG —
+one petal rotated six times — recoloured to `currentColor`. OpenAI's brand
+guidelines permit third-party referential use on two conditions, and the button
+meets both: it must not imply endorsement, and it must not be more prominent
+than your own mark. It is a 17px glyph in a button that says what it does, on a
+page led by the Little Herd wordmark. Do not grow it, and do not put it
+anywhere that reads as a badge of partnership.
+
 Vendor *marketing* images are a separate question and the answer is mostly no:
 Tailscale's press page states no usage terms at all, and a press kit is
 conventionally for editorial coverage rather than for illustrating another
