@@ -6,7 +6,7 @@
 # reproduces what was already live.
 
 STEPS = [{'id': 'control',
-  'video': ('Apple Support', 'How to use Universal Control on Mac and iPad', '9tRzhE-wyNg'),
+  'video': ('BarTech TV', 'Seamlessly Share One Keyboard and Mouse between two Macs', 'of5T-HH-gGM'),
   'ask': ('Universal Control',
           'I have two Macs on the same desk and I want one keyboard and mouse to work across both, '
           'with copy and paste between them. Explain Universal Control and Universal Clipboard: '
