@@ -57,6 +57,13 @@ struct MachineAgentFan: View {
     /// Where each session lives, from the registry. Only the unusual cases
     /// say anything — see `AgentSessionOrigin.label`.
     var origins: [String: AgentSessionOrigin] = [:]
+    /// The machine's own menu, for the part of this view that covers its
+    /// animal. **The hover column spans the animal on purpose** — so reaching
+    /// for an agent does not lose the pointer — which also means it is the
+    /// view a right-click over that animal lands on. Without this, a machine
+    /// with agents had no menu at all while one without agents did, because
+    /// only the busy one had this column over it.
+    var machineMenu: [AppKitMenuItem] = []
     /// Whether the deck has finished coming down.
     ///
     /// **Not the same question as `spread == 0`.** `spread` is set to nought
@@ -248,6 +255,7 @@ struct MachineAgentFan: View {
         // on where the deck has got to.
         .background(alignment: .topLeading) {
             Color.clear
+                .overlay { AppKitContextMenu(items: machineMenu) }
                 .frame(
                     width: tile * 2.1,
                     // Down past the animal as well, so the deck and the animal

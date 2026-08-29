@@ -82,7 +82,17 @@ final class ContextMenuHostView: NSView {
             )
             entry.target = self
             entry.representedObject = item.action.map(ActionBox.init)
-            entry.image = image(for: item.icon)
+            if let icon = image(for: item.icon) {
+                entry.image = icon
+                // **And in the title as well.** Setting `image` alone drew
+                // nothing here — the menu came up with no image column at all,
+                // while a unit test confirmed the items were carrying their
+                // images. Rather than keep guessing at why the image slot is
+                // being ignored, the icon also goes into the title as a text
+                // attachment, which is drawn as part of the string and so
+                // cannot be dropped by whatever was dropping the other.
+                entry.attributedTitle = title(item.title, with: icon)
+            }
             menu.addItem(entry)
         }
         return menu
@@ -100,6 +110,19 @@ final class ContextMenuHostView: NSView {
         // an unresized 256-point avatar makes the row itself tall.
         found?.size = NSSize(width: 16, height: 16)
         return found
+    }
+
+    /// The icon and the title as one string.
+    private func title(_ text: String, with icon: NSImage) -> NSAttributedString {
+        let attachment = NSTextAttachment()
+        attachment.image = icon
+        // Sat on the text baseline rather than above it, which is what an
+        // attachment does by default and which makes every row taller.
+        attachment.bounds = CGRect(x: 0, y: -3, width: 16, height: 16)
+
+        let line = NSMutableAttributedString(attachment: attachment)
+        line.append(NSAttributedString(string: "  " + text))
+        return line
     }
 
     @objc private func runMenuItem(_ sender: NSMenuItem) {

@@ -413,7 +413,13 @@ struct CPUOverviewView: View {
                             || carrying?.from == machine.machine
                             || returning == machine.machine,
                         rise: deckRise,
-                        machine: machine.configuration
+                        machine: machine.configuration,
+                        machineMenu: MachineMenuItems.items(
+                            for: machine.configuration,
+                            onOpenPage: { onSelectMachine?(machine.machine) },
+                            onOpenAgents: { onSelectAgents?(machine.machine) },
+                            open: { NSWorkspace.shared.open($0) }
+                        )
                     )
                     .offset(y: fanY)
                     // **The deck is part of its machine's target.** Reaching
