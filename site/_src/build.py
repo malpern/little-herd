@@ -165,6 +165,19 @@ def shot(step: dict) -> str:
             f'      </figure>\n')
 
 
+def mark() -> str:
+    """OpenAI's mark, from the Wikimedia SVG: one petal rotated six times.
+
+    Their brand guidelines permit third-party referential use, on two
+    conditions this meets -- it must not imply endorsement, and it must not be
+    more prominent than our own mark. It is a 17px glyph inside a button, on a
+    page led by the Little Herd wordmark, and the button says what it does
+    rather than claiming a relationship.
+    """
+    svg = SRC.joinpath("logos", "openai.svg").read_text().strip()
+    return svg.replace("<svg ", '<svg class="ask-mark" ', 1)
+
+
 def ask(step: dict) -> str:
     """A prefilled ChatGPT prompt for the tool this step introduces.
 
@@ -186,11 +199,7 @@ def ask(step: dict) -> str:
         f'        <p>Want to go further than this page does? Ask ChatGPT to walk you\n'
         f'          through installing and using <b>{label}</b> on your own machines.</p>\n'
         f'        <a class="ask-btn" href="{href}" target="_blank" rel="noopener">\n'
-        f'          <svg class="ask-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor"\n'
-        f'               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">\n'
-        f'            <path d="M12 3.2l1.5 4.1 4.1 1.5-4.1 1.5L12 14.4l-1.5-4.1L6.4 8.8l4.1-1.5z"/>\n'
-        f'            <path d="M18.5 14.5l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"/>\n'
-        f'          </svg>\n'
+        f'          {mark()}\n'
         f'          Ask ChatGPT\n'
         f'        </a>\n'
         f'      </div>\n'
