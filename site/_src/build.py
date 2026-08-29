@@ -125,11 +125,18 @@ def fill(text: str, **slots: str) -> str:
 # --------------------------------------------------------------- the guide
 # Nine steps in one column read as nine identical blocks. They are really
 # three acts, and saying so gives the page a shape a reader can hold.
+#
+# **Ordered by what a newcomer gets soonest for the least shell, not by
+# dependency.** The old order was a build order — reach, connect, tools —
+# which put SSH keys and config files third, before anybody had seen a machine
+# do anything. Screen sharing and Universal Control cost an install between
+# them and pay off immediately, so they come first; the keys are still there,
+# just after the reason to want them.
 ACTS = [
-    ("Get access", "Reaching every machine, and making each one worth arriving at.",
-     ("reach", "connect", "tools")),
-    ("Put them to work", "Running things you can walk away from, and seeing what a shell cannot show you.",
-     ("detach", "screen", "control", "agents")),
+    ("Get to them", "One name each, and a way to see and use any of them — with almost nothing to install.",
+     ("reach", "screen", "control")),
+    ("Work on them", "The shell, the same tools everywhere, and work that carries on after you close the lid.",
+     ("connect", "tools", "detach", "agents")),
     ("Keep it alive", "The two that decide whether a herd survives being left alone.",
      ("backup", "alerts")),
 ]

@@ -5,7 +5,15 @@
 # Extracted from the shipped pages rather than retyped, so the builder
 # reproduces what was already live.
 
-STEPS = [{'id': 'reach', 'video': ('Tailscale', 'How to get started with Tailscale in under 10 minutes', 'sPdvyR7bLqI'), 'ask': ('Tailscale', 'I have a few Macs, a Linux box and a NAS at home that I want to reach from anywhere. Explain what Tailscale is and how it differs from a VPN or port forwarding, then walk me through installing and signing in on macOS and on Linux, turning on MagicDNS so each machine has a name, and checking it works from off my home network. Cover machine key expiry and why I should disable it for a headless machine. Give exact commands.'), 'logo': 'tailscale',
+STEPS = [{'id': 'reach',
+  'video': ('Tailscale', 'How to get started with Tailscale in under 10 minutes', 'sPdvyR7bLqI'),
+  'ask': ('Tailscale',
+          'I have a few Macs, a Linux box and a NAS at home that I want to reach from anywhere. '
+          'Explain what Tailscale is and how it differs from a VPN or port forwarding, then walk '
+          'me through installing and signing in on macOS and on Linux, turning on MagicDNS so each '
+          'machine has a name, and checking it works from off my home network. Cover machine key '
+          'expiry and why I should disable it for a headless machine. Give exact commands.'),
+  'logo': 'tailscale',
   'n': 1,
   'heading': 'Reach any machine from anywhere',
   'what': 'One name per machine that works from the sofa, from a hotel, and from another machine '
@@ -45,8 +53,116 @@ STEPS = [{'id': 'reach', 'video': ('Tailscale', 'How to get started with Tailsca
            'text': 'One name per machine that works from the sofa or a hotel, with nothing exposed '
                    'to the open internet.',
            'tool': 'Tailscale'}},
- {'id': 'connect', 'video': ('Learn Linux TV', 'The OpenSSH Client Config File', 'MWqfc_fegVg'), 'ask': ('SSH and ~/.ssh/config', 'Teach me to reach several home machines by short names over SSH. Cover generating a key, copying it with ssh-copy-id, writing Host / HostName / User entries in ~/.ssh/config, using Include to share that config across machines, the file permissions SSH requires, and why a key used by a scheduled job must not have a passphrase. macOS and Linux, with exact commands.'), 'shot': ('ssh.png', 'Landing on another machine, from its short name.'), 'logo': 'ssh',
+ {'id': 'screen',
+  'video': ('9to5Mac', 'Better Mac Screen Sharing', '5ZXCNGCaYbg'),
+  'ask': ('macOS Screen Sharing',
+          'Explain how to use the Screen Sharing built into macOS to control another Mac on my '
+          "network. Cover turning it on in System Settings, connecting with Finder's Connect to "
+          'Server and a vnc:// address, when it is the right tool rather than SSH, and why macOS '
+          'privacy prompts such as Screen Recording and Full Disk Access can only be granted on '
+          "that machine's own screen."),
+  'shot': ('connect.png', 'Finder&rsquo;s Connect to Server, waiting for a machine name.'),
+  'logo': 'screen',
   'n': 2,
+  'heading': 'See and use another machine&rsquo;s screen from this one',
+  'what': 'The actual desktop of the box in the closet, for the things that only exist on a screen '
+          '&mdash; a permission dialog, an installer, a first run.',
+  'figure': '      <figure class="fig fig-screen">\n'
+            '        <img class="f1" src="images/herdware/chick-laptop.png" alt="">\n'
+            '        <span class="pane"><img src="images/herdware/calf-mini.png" alt=""></span>\n'
+            '        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid '
+            'meet">\n'
+            '          <path class="s-route" d="M126 78 L 236 78"/>\n'
+            '          <path class="s-pulse" d="M126 78 L 236 78"/>\n'
+            '        </svg>\n'
+            '        <figcaption>Its desktop, on your screen.</figcaption>\n'
+            '      </figure>',
+  'tool': {'url': 'https://support.apple.com/guide/mac-help/screen-sharing-overview-mh14066/mac',
+           'name': 'Screen Sharing',
+           'note': 'Built into macOS &mdash; nothing to install',
+           'go': 'Apple support &#8599;'},
+  'body': '      <p>In Finder, <b>Go &rarr; Connect to Server</b> (<kbd>&#8984;K</kbd>) and\n'
+          '        enter <code>vnc://mini</code>. You get the actual desktop.</p>\n'
+          '      <p>Most of the time SSH is better &mdash; faster, scriptable, works on a\n'
+          '        bad connection. But some things only exist on the screen: a permission\n'
+          '        dialog, an installer, a first run, an app that has decided to show you a\n'
+          '        window. Those are not stubbornness on your part; they genuinely cannot be\n'
+          '        done over a shell.</p>\n'
+          '      <p class="trap"><b>The trap:</b> macOS privacy prompts appear on the\n'
+          '        machine&rsquo;s own screen and nowhere else, so a script that needs\n'
+          '        Screen Recording or Full Disk Access will sit there having silently\n'
+          '        failed while you stare at an SSH session with no error in it. Grant those\n'
+          '        over Screen Sharing, once, before automating anything that needs them.</p>\n'
+          '      <p class="trap"><b>And the honest limit:</b> if a machine is wedged before\n'
+          '        the operating system is up, neither SSH nor Screen Sharing can reach it,\n'
+          '        because both are software running inside the thing that has not started.\n'
+          '        That is what a hardware KVM is for, and it is the only thing that is.</p>',
+  'card': {'heading': 'Use another machine&rsquo;s screen',
+           'text': 'For the things that only exist on a screen &mdash; a permission dialog, an '
+                   'installer, a first run.',
+           'tool': 'Screen Sharing'}},
+ {'id': 'control',
+  'video': ('Apple Support', 'How to use Universal Control on Mac and iPad', '9tRzhE-wyNg'),
+  'ask': ('Universal Control',
+          'I have two Macs on the same desk and I want one keyboard and mouse to work across both, '
+          'with copy and paste between them. Explain Universal Control and Universal Clipboard: '
+          'what each one needs (same Apple Account with two-factor, Bluetooth, Wi-Fi and Handoff '
+          'on, machines close together), how to link a second Mac from the add-display menu in '
+          'Displays settings, how the two features differ, and the common reasons the pointer '
+          'refuses to cross. Then tell me what to use instead when the other machine is in another '
+          'room or another building.'),
+  'shot': ('universal-control.png',
+           'The add-display (+) menu in Displays settings, where a second Mac is linked.'),
+  'logo': 'screen',
+  'n': 3,
+  'heading': 'Use one keyboard and mouse across two Macs',
+  'what': 'The pointer runs off the edge of one screen and onto the next machine, and copy on one '
+          'is paste on the other &mdash; with no software to install.',
+  'figure': '      <figure class="fig fig-screen">\n'
+            '        <img class="f1" src="images/herdware/chick-laptop.png" alt="">\n'
+            '        <span class="pane"><img src="images/herdware/calf-mini.png" alt=""></span>\n'
+            '        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid '
+            'meet">\n'
+            '          <path class="s-route" d="M126 78 L 236 78"/>\n'
+            '          <path class="s-pulse" d="M126 78 L 236 78"/>\n'
+            '        </svg>\n'
+            '        <figcaption>One pointer, two machines.</figcaption>\n'
+            '      </figure>',
+  'tool': {'url': 'https://support.apple.com/en-us/102459',
+           'name': 'Universal Control',
+           'note': 'Built into macOS',
+           'go': 'support.apple.com &#8599;'},
+  'body': '      <p>Two Macs on one desk do not need screen sharing. Sign both into the\n'
+          '        same Apple Account with two-factor turned on, leave Bluetooth, Wi-Fi\n'
+          '        and Handoff on, and link the second one from the add-display\n'
+          '        (<b>+</b>) menu in <b>Displays</b> settings. The pointer then runs off\n'
+          '        the edge of one screen onto the other, the keyboard follows it, and\n'
+          '        Universal Clipboard means copy here is paste there.</p>\n'
+          '      <p class="trap"><b>The trap:</b> this is a <em>same-desk</em> feature. It\n'
+          '        needs the machines within about ten metres, because the handshake is\n'
+          '        over Bluetooth. The headless box in the closet is not a candidate\n'
+          '        however good your network is &mdash; that is what the step above is\n'
+          '        for.</p>\n'
+          '      <p class="trap"><b>And:</b> nothing tells you <em>which</em> condition\n'
+          '        failed. A pointer that will not cross is the same silence whether the\n'
+          '        second Mac is on a different Apple Account, has Handoff off, or is\n'
+          '        simply too far away. Check them in that order; the account is the one\n'
+          '        people get wrong.</p>',
+  'card': {'heading': 'One keyboard across two Macs',
+           'text': 'The pointer runs onto the next machine and copy here is paste there, with '
+                   'nothing to install.',
+           'tool': 'Universal Control'}},
+ {'id': 'connect',
+  'video': ('Learn Linux TV', 'The OpenSSH Client Config File', 'MWqfc_fegVg'),
+  'ask': ('SSH and ~/.ssh/config',
+          'Teach me to reach several home machines by short names over SSH. Cover generating a '
+          'key, copying it with ssh-copy-id, writing Host / HostName / User entries in '
+          '~/.ssh/config, using Include to share that config across machines, the file permissions '
+          'SSH requires, and why a key used by a scheduled job must not have a passphrase. macOS '
+          'and Linux, with exact commands.'),
+  'shot': ('ssh.png', 'Landing on another machine, from its short name.'),
+  'logo': 'ssh',
+  'n': 4,
   'heading': 'Get onto any machine with one short command',
   'what': '<code>ssh mini</code> instead of an address you have to remember, and a new machine '
           'that inherits the whole herd rather than being set up by hand.',
@@ -94,8 +210,19 @@ STEPS = [{'id': 'reach', 'video': ('Tailscale', 'How to get started with Tailsca
            'text': 'The same way in to every machine, and a new one inherits the herd instead of '
                    'being set up by hand.',
            'tool': 'SSH'}},
- {'id': 'tools', 'video': ('DevOps Toolbox', '~/.dotfiles 101: A Zero to Configuration Hero Blueprint', 'WpQ5YiM7rD4'), 'ask': ('Homebrew and a Brewfile', 'Show me how to keep the same command-line tools on several Macs using Homebrew and a Brewfile. Cover brew bundle dump and brew bundle, keeping the Brewfile in a dotfiles repo, the difference between formulae and casks and why casks belong only on machines with a screen, and why a cron job or an ssh command cannot find brew on Apple silicon unless it sets PATH itself. Exact commands.'), 'shot': ('brew.png', 'One command, and the machine has your toolkit.'), 'logo': 'homebrew',
-  'n': 3,
+ {'id': 'tools',
+  'video': ('DevOps Toolbox',
+            '~/.dotfiles 101: A Zero to Configuration Hero Blueprint',
+            'WpQ5YiM7rD4'),
+  'ask': ('Homebrew and a Brewfile',
+          'Show me how to keep the same command-line tools on several Macs using Homebrew and a '
+          'Brewfile. Cover brew bundle dump and brew bundle, keeping the Brewfile in a dotfiles '
+          'repo, the difference between formulae and casks and why casks belong only on machines '
+          'with a screen, and why a cron job or an ssh command cannot find brew on Apple silicon '
+          'unless it sets PATH itself. Exact commands.'),
+  'shot': ('brew.png', 'One command, and the machine has your toolkit.'),
+  'logo': 'homebrew',
+  'n': 5,
   'heading': 'Arrive on a machine and find your tools already there',
   'what': 'Every machine carries the same kit, so the one you connect to is somewhere you can work '
           'rather than somewhere you have to set up first.',
@@ -133,8 +260,17 @@ STEPS = [{'id': 'reach', 'video': ('Tailscale', 'How to get started with Tailsca
            'text': 'The machine you connect to is somewhere you can work, not somewhere you have '
                    'to set up first.',
            'tool': 'Homebrew'}},
- {'id': 'detach', 'video': ('typecraft', 'I Love TMUX and you should too', '-B5VDp50daI'), 'ask': ('tmux', 'I am new to tmux and want the minimum that lets me start a long job on a remote machine and disconnect without killing it. Cover installing it, new / detach / attach, the difference between sessions, windows and panes, listing and killing sessions, and the common mistake of running tmux on my laptop instead of on the remote machine. Exact commands and key bindings.'), 'shot': ('tmux.png', 'The green bar is tmux. The work is running on the far machine.'), 'logo': 'tmux',
-  'n': 4,
+ {'id': 'detach',
+  'video': ('typecraft', 'I Love TMUX and you should too', '-B5VDp50daI'),
+  'ask': ('tmux',
+          'I am new to tmux and want the minimum that lets me start a long job on a remote machine '
+          'and disconnect without killing it. Cover installing it, new / detach / attach, the '
+          'difference between sessions, windows and panes, listing and killing sessions, and the '
+          'common mistake of running tmux on my laptop instead of on the remote machine. Exact '
+          'commands and key bindings.'),
+  'shot': ('tmux.png', 'The green bar is tmux. The work is running on the far machine.'),
+  'logo': 'tmux',
+  'n': 6,
   'heading': 'Start something on another machine and walk away',
   'what': 'Close the lid, lose the connection, come back tomorrow &mdash; the work carries on, '
           'because it was never running on your laptop.',
@@ -168,84 +304,14 @@ STEPS = [{'id': 'reach', 'video': ('Tailscale', 'How to get started with Tailsca
            'text': 'Close the lid and the work carries on, because it was never running on your '
                    'laptop.',
            'tool': 'tmux'}},
- {'id': 'screen', 'video': ('9to5Mac', 'Better Mac Screen Sharing', '5ZXCNGCaYbg'), 'ask': ('macOS Screen Sharing', 'Explain how to use the Screen Sharing built into macOS to control another Mac on my network. Cover turning it on in System Settings, connecting with Finder\'s Connect to Server and a vnc:// address, when it is the right tool rather than SSH, and why macOS privacy prompts such as Screen Recording and Full Disk Access can only be granted on that machine\'s own screen.'), 'shot': ('connect.png', 'Finder&rsquo;s Connect to Server, waiting for a machine name.'), 'logo': 'screen',
-  'n': 5,
-  'heading': 'See and use another machine&rsquo;s screen from this one',
-  'what': 'The actual desktop of the box in the closet, for the things that only exist on a screen '
-          '&mdash; a permission dialog, an installer, a first run.',
-  'figure': '      <figure class="fig fig-screen">\n'
-            '        <img class="f1" src="images/herdware/chick-laptop.png" alt="">\n'
-            '        <span class="pane"><img src="images/herdware/calf-mini.png" alt=""></span>\n'
-            '        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid '
-            'meet">\n'
-            '          <path class="s-route" d="M126 78 L 236 78"/>\n'
-            '          <path class="s-pulse" d="M126 78 L 236 78"/>\n'
-            '        </svg>\n'
-            '        <figcaption>Its desktop, on your screen.</figcaption>\n'
-            '      </figure>',
-  'tool': {'url': 'https://support.apple.com/guide/mac-help/screen-sharing-overview-mh14066/mac',
-           'name': 'Screen Sharing',
-           'note': 'Built into macOS &mdash; nothing to install',
-           'go': 'Apple support &#8599;'},
-  'body': '      <p>In Finder, <b>Go &rarr; Connect to Server</b> (<kbd>&#8984;K</kbd>) and\n'
-          '        enter <code>vnc://mini</code>. You get the actual desktop.</p>\n'
-          '      <p>Most of the time SSH is better &mdash; faster, scriptable, works on a\n'
-          '        bad connection. But some things only exist on the screen: a permission\n'
-          '        dialog, an installer, a first run, an app that has decided to show you a\n'
-          '        window. Those are not stubbornness on your part; they genuinely cannot be\n'
-          '        done over a shell.</p>\n'
-          '      <p class="trap"><b>The trap:</b> macOS privacy prompts appear on the\n'
-          '        machine&rsquo;s own screen and nowhere else, so a script that needs\n'
-          '        Screen Recording or Full Disk Access will sit there having silently\n'
-          '        failed while you stare at an SSH session with no error in it. Grant those\n'
-          '        over Screen Sharing, once, before automating anything that needs them.</p>\n'
-          '      <p class="trap"><b>And the honest limit:</b> if a machine is wedged before\n'
-          '        the operating system is up, neither SSH nor Screen Sharing can reach it,\n'
-          '        because both are software running inside the thing that has not started.\n'
-          '        That is what a hardware KVM is for, and it is the only thing that is.</p>',
-  'card': {'heading': 'Use another machine&rsquo;s screen',
-           'text': 'For the things that only exist on a screen &mdash; a permission dialog, an '
-                   'installer, a first run.',
-           'tool': 'Screen Sharing'}},
- {'id': 'control', 'video': ('Apple Support', 'How to use Universal Control on Mac and iPad', '9tRzhE-wyNg'), 'ask': ('Universal Control', 'I have two Macs on the same desk and I want one keyboard and mouse to work across both, with copy and paste between them. Explain Universal Control and Universal Clipboard: what each one needs (same Apple Account with two-factor, Bluetooth, Wi-Fi and Handoff on, machines close together), how to link a second Mac from the add-display menu in Displays settings, how the two features differ, and the common reasons the pointer refuses to cross. Then tell me what to use instead when the other machine is in another room or another building.'), 'shot': ('universal-control.png', 'The add-display (+) menu in Displays settings, where a second Mac is linked.'), 'logo': 'screen',
-  'n': 6,
-  'heading': 'Use one keyboard and mouse across two Macs',
-  'what': 'The pointer runs off the edge of one screen and onto the next machine, and copy on one '
-          'is paste on the other &mdash; with no software to install.',
-  'figure': '      <figure class="fig fig-screen">\n'
-            '        <img class="f1" src="images/herdware/chick-laptop.png" alt="">\n'
-            '        <span class="pane"><img src="images/herdware/calf-mini.png" alt=""></span>\n'
-            '        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid meet">\n'
-            '          <path class="s-route" d="M126 78 L 236 78"/>\n'
-            '          <path class="s-pulse" d="M126 78 L 236 78"/>\n'
-            '        </svg>\n'
-            '        <figcaption>One pointer, two machines.</figcaption>\n'
-            '      </figure>',
-  'tool': {'url': 'https://support.apple.com/en-us/102459',
-           'name': 'Universal Control',
-           'note': 'Built into macOS',
-           'go': 'support.apple.com &#8599;'},
-  'body': '      <p>Two Macs on one desk do not need screen sharing. Sign both into the\n'
-          '        same Apple Account with two-factor turned on, leave Bluetooth, Wi-Fi\n'
-          '        and Handoff on, and link the second one from the add-display\n'
-          '        (<b>+</b>) menu in <b>Displays</b> settings. The pointer then runs off\n'
-          '        the edge of one screen onto the other, the keyboard follows it, and\n'
-          '        Universal Clipboard means copy here is paste there.</p>\n'
-          '      <p class="trap"><b>The trap:</b> this is a <em>same-desk</em> feature. It\n'
-          '        needs the machines within about ten metres, because the handshake is\n'
-          '        over Bluetooth. The headless box in the closet is not a candidate\n'
-          '        however good your network is &mdash; that is what the step above is\n'
-          '        for.</p>\n'
-          '      <p class="trap"><b>And:</b> nothing tells you <em>which</em> condition\n'
-          '        failed. A pointer that will not cross is the same silence whether the\n'
-          '        second Mac is on a different Apple Account, has Handoff off, or is\n'
-          '        simply too far away. Check them in that order; the account is the one\n'
-          '        people get wrong.</p>',
-  'card': {'heading': 'One keyboard across two Macs',
-           'text': 'The pointer runs onto the next machine and copy here is paste there, with '
-                   'nothing to install.',
-           'tool': 'Universal Control'}},
- {'id': 'agents', 'video': ('typecraft', 'I&rsquo;m ditching tmux for herdr!', 'yQDARWdrPeY'), 'ask': ('Herdr', 'Explain Herdr (github.com/herdrdev/herdr), a terminal multiplexer built for AI coding agents. How do I install it on macOS, how does it differ from tmux, how do I run several Claude Code or Codex agents in panes and see at a glance which one is working, blocked or waiting on me, and how do its sessions detach and reattach over SSH?'), 'logo': 'panes',
+ {'id': 'agents',
+  'video': ('typecraft', 'I&rsquo;m ditching tmux for herdr!', 'yQDARWdrPeY'),
+  'ask': ('Herdr',
+          'Explain Herdr (github.com/herdrdev/herdr), a terminal multiplexer built for AI coding '
+          'agents. How do I install it on macOS, how does it differ from tmux, how do I run '
+          'several Claude Code or Codex agents in panes and see at a glance which one is working, '
+          'blocked or waiting on me, and how do its sessions detach and reattach over SSH?'),
+  'logo': 'panes',
   'n': 7,
   'heading': 'Run several agents at once and see which one is waiting on you',
   'what': 'Each agent in its own pane, marked working, blocked or done, on a session you can '
@@ -274,7 +340,15 @@ STEPS = [{'id': 'reach', 'video': ('Tailscale', 'How to get started with Tailsca
            'text': 'And see at a glance which of them is working, which is done, and which is '
                    'waiting on you.',
            'tool': 'Herdr'}},
- {'id': 'backup', 'video': ('SpaceRex', 'Back up macOS to a Synology NAS with Time Machine', 'yQFuJJqqWbc'), 'ask': ('Time Machine and restic', 'Show me how to back up several Macs over the network to one NAS with Time Machine, and how to back up a Linux machine to the same NAS with restic so the destination only ever stores encrypted data. Cover choosing the destination, scheduling, actually testing a restore, and why append-only or immutable backups matter if a machine is compromised. Exact commands.'), 'logo': 'backup',
+ {'id': 'backup',
+  'video': ('SpaceRex', 'Back up macOS to a Synology NAS with Time Machine', 'yQFuJJqqWbc'),
+  'ask': ('Time Machine and restic',
+          'Show me how to back up several Macs over the network to one NAS with Time Machine, and '
+          'how to back up a Linux machine to the same NAS with restic so the destination only ever '
+          'stores encrypted data. Cover choosing the destination, scheduling, actually testing a '
+          'restore, and why append-only or immutable backups matter if a machine is compromised. '
+          'Exact commands.'),
+  'logo': 'backup',
   'n': 8,
   'heading': 'Back every machine up to one place',
   'what': 'One destination that all of them write to, so the box in\n'
@@ -320,7 +394,15 @@ STEPS = [{'id': 'reach', 'video': ('Tailscale', 'How to get started with Tailsca
            'text': 'One destination holding all of it, so the box in the closet becomes the '
                    'machine that matters.',
            'tool': 'Time Machine'}},
- {'id': 'alerts', 'video': ('Techno Tim', 'Meet Uptime Kuma, an open source uptime monitor', 'r_A5NKkAqZM'), 'ask': ('Healthchecks.io', 'Teach me to find out when an unattended machine or a scheduled backup stops running. Explain dead man\'s switch monitoring with Healthchecks.io, how to ping a check from a cron job or a launchd agent on macOS, how to alert on a job that has not reported rather than only on a machine that is down, why a machine should not be the thing that monitors itself, and what a hosted check catches that a self-hosted one cannot.'), 'logo': 'beat',
+ {'id': 'alerts',
+  'video': ('Techno Tim', 'Meet Uptime Kuma, an open source uptime monitor', 'r_A5NKkAqZM'),
+  'ask': ('Healthchecks.io',
+          'Teach me to find out when an unattended machine or a scheduled backup stops running. '
+          "Explain dead man's switch monitoring with Healthchecks.io, how to ping a check from a "
+          'cron job or a launchd agent on macOS, how to alert on a job that has not reported '
+          'rather than only on a machine that is down, why a machine should not be the thing that '
+          'monitors itself, and what a hosted check catches that a self-hosted one cannot.'),
+  'logo': 'beat',
   'n': 9,
   'heading': 'Find out when one of them stops',
   'what': 'An unattended machine that dies is only a problem the\n'
