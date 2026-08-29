@@ -26,6 +26,25 @@ nonisolated enum DashboardChrome {
     /// exist. It is one word to turn on.
     static let startsTransfers = false
 
+    /// **Rehearsal: a drop drives the interface and touches nothing.**
+    ///
+    /// Development builds only, and deliberately so — it exists to answer
+    /// whether the transfer strip reads well, which is a question about
+    /// wording and timing rather than about machines. A rehearsed transfer
+    /// runs no commands, opens no connection, and pushes nothing; it walks the
+    /// phases on a timer so the row can be watched and stopped.
+    ///
+    /// It is the honest way to exercise an interface whose backend you do not
+    /// want firing yet: the alternative is judging a live control by looking
+    /// at a screenshot of it.
+    static let rehearsesTransfers: Bool = {
+        #if DEBUG
+        true
+        #else
+        false
+        #endif
+    }()
+
     /// The agent tokens and their pads, under each machine on the overview.
     ///
     /// They occupied the band the tab row now sits above, and the two together

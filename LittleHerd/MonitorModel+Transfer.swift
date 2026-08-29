@@ -17,7 +17,22 @@ extension MonitorModel {
     ) {
         // See `DashboardChrome.startsTransfers`: wired, working, and not yet
         // allowed to surprise anybody.
-        guard DashboardChrome.startsTransfers else { return }
+        guard DashboardChrome.startsTransfers else {
+            if DashboardChrome.rehearsesTransfers {
+                // The interface, and nothing else. No connection is opened and
+                // no command is run — this exists so the row can be judged by
+                // using it rather than by looking at a picture of it.
+                transfers.rehearse(
+                    Transfer(
+                        origin: origin,
+                        destination: destination,
+                        branch: TransferAssembly.branch(for: session),
+                        title: session.title ?? session.projectName
+                    )
+                )
+            }
+            return
+        }
 
         let assembled = TransferAssembly.request(
             session: session,

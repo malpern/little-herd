@@ -71,3 +71,54 @@ struct TransferStripTests {
         }
     }
 }
+
+/// A flag a `@Sendable` closure may set.
+nonisolated final class TouchFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = false
+    func raise() { lock.lock(); value = true; lock.unlock() }
+    var isRaised: Bool { lock.lock(); defer { lock.unlock() }; return value }
+}
+
+@MainActor
+@Suite("Rehearsal")
+struct TransferRehearsalTests {
+    private let transfer = Transfer(
+        origin: MachineID("local"),
+        destination: MachineID("mini"),
+        branch: "transfer/x",
+        title: "Fan layout"
+    )
+
+    /// **A rehearsal must not be able to reach a machine.** The coordinator is
+    /// given a runner that fails the test outright if it is ever called, so a
+    /// rehearsal that quietly started doing something real would not pass.
+    @Test
+    func aRehearsalRunsNothing() async {
+        let touched = TouchFlag()
+        let coordinator = TransferCoordinator { _ in
+            { _ in
+                touched.raise()
+                return .init(text: "", succeeded: true)
+            }
+        }
+        coordinator.rehearse(transfer)
+        // Long enough to be well into the scripted phases.
+        try? await Task.sleep(for: .milliseconds(1500))
+        #expect(!touched.isRaised)
+        #expect(coordinator.phase(for: transfer)?.isCancellable == true)
+        coordinator.cancel(transfer)
+    }
+
+    /// It still reports phases, or there would be nothing to look at.
+    @Test
+    func aRehearsalReportsProgress() async {
+        let coordinator = TransferCoordinator { _ in
+            { _ in .init(text: "", succeeded: true) }
+        }
+        coordinator.rehearse(transfer)
+        try? await Task.sleep(for: .milliseconds(1400))
+        #expect(coordinator.phase(for: transfer) == .running(.prompt))
+        coordinator.cancel(transfer)
+    }
+}

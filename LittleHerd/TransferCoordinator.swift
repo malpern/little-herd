@@ -19,6 +19,7 @@ final class TransferCoordinator {
     /// so the executor stays the only thing that knows about ordering.
     private let makeRunner: @MainActor (Transfer) -> SuccessorExecutor.Run
     private var tasks: [Transfer: Task<Void, Never>] = [:]
+    private var rehearsalCount = 0
 
     init(
         makeRunner: @escaping @MainActor (Transfer) -> SuccessorExecutor.Run
@@ -74,6 +75,62 @@ final class TransferCoordinator {
             self?.tasks[transfer] = nil
         }
     }
+
+    /// Walks a transfer through its phases without touching a machine.
+    ///
+    /// **Nothing here talks to anything.** No runner, no connection, no
+    /// commands — a timer and the same phases the real one reports, so the row
+    /// can be watched, read and stopped exactly as it would be. See
+    /// `DashboardChrome.rehearsesTransfers`.
+    ///
+    /// Successive rehearsals end differently on purpose: landing, then a red
+    /// check, then an agent that gave up. All three are states the interface
+    /// has to say something sensible about, and a rehearsal that always
+    /// succeeds only ever shows the easy one.
+    func rehearse(_ transfer: Transfer) {
+        guard tasks[transfer] == nil else { return }
+        prepare(transfer)
+
+        let ending = Self.rehearsalEndings[
+            rehearsalCount % Self.rehearsalEndings.count
+        ]
+        rehearsalCount += 1
+
+        tasks[transfer] = Task { [weak self] in
+            for (purpose, pause) in Self.rehearsalScript {
+                if Task.isCancelled { break }
+                // A run that ends early does not reach its later steps.
+                if ending != .landed, purpose == .delivery { continue }
+                self?.transfers[transfer] = .running(purpose)
+                try? await Task.sleep(for: pause)
+            }
+
+            let result: SuccessorOutcome.Result =
+                Task.isCancelled ? .cancelled : ending
+            self?.transfers[transfer] = .finished(
+                SuccessorOutcome(
+                    result: result,
+                    failingStep: result == .checkFailed ? .verification : nil,
+                    output: "Rehearsal — nothing ran."
+                )
+            )
+            self?.tasks[transfer] = nil
+        }
+    }
+
+    private static let rehearsalScript:
+        [(SuccessorRun.Step.Purpose, Duration)] = [
+            (.worktree, .milliseconds(1100)),
+            (.prompt, .milliseconds(600)),
+            (.agent, .seconds(5)),
+            (.verification, .seconds(4)),
+            (.delivery, .milliseconds(900)),
+            (.cleanup, .milliseconds(600)),
+        ]
+
+    private static let rehearsalEndings: [SuccessorOutcome.Result] = [
+        .landed, .checkFailed, .agentFailed,
+    ]
 
     /// Calling one off stops the agent on the other machine too — see
     /// `SSHCommandRunner.runReportingStatus`, where that is measured rather
