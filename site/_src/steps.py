@@ -66,10 +66,10 @@ STEPS = [{'id': 'reach', 'ask': ('Tailscale', 'I have a few Macs, a Linux box an
             '        </svg>\n'
             '        <figcaption>One command, every machine.</figcaption>\n'
             '      </figure>',
-  'tool': {'url': 'https://www.ssh.com/academy/ssh/config',
+  'tool': {'url': 'https://man.openbsd.org/ssh_config',
            'name': 'SSH and <code>~/.ssh/config</code>',
            'note': 'Already on every Mac and Linux machine',
-           'go': 'ssh.com/academy &#8599;'},
+           'go': 'ssh_config(5) &#8599;'},
   'body': '      <p>Generate a key, copy it over with <code>ssh-copy-id</code>, then write\n'
           '        the machine down in <code>~/.ssh/config</code> once:</p>\n'
           '      <pre><code>Host mini\n'
