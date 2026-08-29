@@ -49,11 +49,48 @@ nonisolated enum TransferPhase: Equatable, Sendable {
         case .running(.cleanup): "Tidying up"
         case .finished(let outcome):
             switch outcome.result {
-            case .landed: "Done — on the branch"
-            case .checkFailed: "Tests failed — edits are on the branch"
-            case .agentFailed: "The agent stopped"
+            // **Short enough for one line.** These sat beside two machine
+            // names in a 324-point window and the useful half — "edits are on
+            // the branch" — was the half that got truncated away. What
+            // happened to the work belongs where there is room to say it.
+            case .landed: "Done"
+            case .checkFailed: "Tests failed"
+            case .agentFailed: "Agent stopped"
             case .couldNotStart: "Couldn’t start"
-            case .cancelled: "Called off"
+            case .cancelled: "Stopped"
+            }
+        }
+    }
+
+    /// The longer version, for somewhere with room for it — what actually
+    /// became of the work, which is the part a person needs and the strip has
+    /// no space for.
+    var detail: String {
+        switch self {
+        case .preparing:
+            "Asking the session to write down where it got to."
+        case .running(let purpose):
+            switch purpose {
+            case .worktree: "Fetching the branch on the destination."
+            case .prompt: "Handing over the brief."
+            case .agent: "The agent is working on it."
+            case .verification: "Running the tests on the destination."
+            case .delivery: "Pushing the result to the branch."
+            case .cleanup: "Tidying up the destination."
+            }
+        case .finished(let outcome):
+            switch outcome.result {
+            case .landed:
+                "The work is on the branch, tested, and not merged."
+            case .checkFailed:
+                "The tests did not pass. The edits are still on the branch, "
+                    + "unchanged, for you to read."
+            case .agentFailed:
+                "The agent stopped before finishing. Nothing was pushed."
+            case .couldNotStart:
+                "It never started, so nothing was changed anywhere."
+            case .cancelled:
+                "You called it off. Anything already written is on the branch."
             }
         }
     }

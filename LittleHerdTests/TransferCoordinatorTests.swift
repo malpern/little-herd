@@ -122,7 +122,10 @@ struct TransferCoordinatorTests {
             )
         )
         #expect(phase.wantsAttention)
-        #expect(phase.summary.contains("on the branch"))
+        // The strip's line is short by necessity; what became of the work is
+        // said where there is room for it.
+        #expect(phase.summary == "Tests failed")
+        #expect(phase.detail.contains("still on the branch"))
         #expect(!phase.isCancellable)
     }
 }

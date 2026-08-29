@@ -39,7 +39,26 @@ struct DashboardView: View {
                     TaskTransferView(event: transfer, machines: model.machines)
                         .id(transfer.id)
                 } else {
-                    if model.selection.isMetricFocus {
+                    if let transfers = transfersToShow, !transfers.isEmpty {
+                        // **In the header's place, not above it.** A transfer
+                        // is the most interesting thing on the screen while it
+                        // is running, and the header says how many machines
+                        // are live — which the herd underneath already shows.
+                        // Standing in for it also keeps the window exactly the
+                        // height it was.
+                        TransferStrip(
+                            transfers: transfers,
+                            phase: { model.transfers.phase(for: $0) },
+                            name: { machine in
+                                model.machines
+                                    .first { $0.machine == machine }?
+                                    .shortName ?? machine.rawValue
+                            },
+                            onStop: { model.transfers.cancel($0) },
+                            onDismiss: { model.transfers.dismiss($0) },
+                            onOpen: { model.showAgents(on: $0.destination) }
+                        )
+                    } else if model.selection.isMetricFocus {
                         CPUOverviewHeaderArea(
                             machines: model.overviewMachines,
                             agentSessions: agentSessions,
@@ -232,6 +251,16 @@ struct DashboardView: View {
             return nil
         }
         return model.taskTransfers.currentEvent
+    }
+
+    /// The transfers worth putting in front of somebody.
+    ///
+    /// Only on the overview: the machine pages are where you go to read one in
+    /// detail, and replacing their header with a summary of the thing you are
+    /// already looking at would say it twice.
+    private var transfersToShow: [Transfer]? {
+        guard model.selection == .overview else { return nil }
+        return model.transfers.order
     }
 
     private var isLaunchOverlayVisible: Bool {
