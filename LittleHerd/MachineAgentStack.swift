@@ -92,14 +92,10 @@ struct MachineAgentStack: View {
     @ViewBuilder
     private var countMark: some View {
         if activity.showsCount {
-            let icon = Self.iconSize(forAvatar: avatarSize)
-            Text("\(activity.count)")
-                .font(.system(size: icon * 0.38, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .frame(width: icon * 0.44, height: icon * 0.44)
-                .background(Circle().fill(Color.accentColor))
-                .overlay(Circle().strokeBorder(LittleHerdTheme.background, lineWidth: 1.5))
-                .offset(x: icon * 0.16, y: -icon * 0.12)
+            AgentDeckCountMark(
+                count: activity.count,
+                iconSize: Self.iconSize(forAvatar: avatarSize)
+            )
         }
     }
 

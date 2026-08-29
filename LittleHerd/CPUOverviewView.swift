@@ -48,10 +48,6 @@ struct CPUOverviewView: View {
     @State private var arrivalRaise: Task<Void, Never>?
 
     /// An agent in hand, and the machine the pointer is over.
-    /// The deck is on its way down. Kept apart from `fanned` because the view
-    /// has to outlive the decision to dismiss it by exactly one animation.
-    @State private var lowering = false
-    @State private var lowerAfterDescent: Task<Void, Never>?
     @State private var carrying: CarriedAgent?
 
     struct CarriedAgent: Equatable {
@@ -144,30 +140,10 @@ struct CPUOverviewView: View {
                 // a quieter no than a mark and needs no surface to paint on.
                 .offset(y: welcomes(machine.machine) ? -5 : 0)
                 .animation(.spring(duration: 0.34, bounce: 0.38), value: carrying)
-                .onHover { hovering in
-                    guard DashboardChrome.showsAgentTokens else { return }
-                    // Rising is sprung; falling accelerates. A thing settling
-                    // back onto an animal does not ease to a stop in the air.
-                    withAnimation(
-                        hovering
-                            ? MachineAgentFan.rising
-                            : .easeIn(duration: 0.26)
-                    ) {
-                        if hovering {
-                            guard agentActivity(on: machine) != nil else { return }
-                            // A pointer outranks an arrival: you have asked.
-                            arrivalRaise?.cancel()
-                            // Catch a deck that is already on its way down, so
-                            // coming back to a machine picks it up again
-                            // rather than waiting for it to land first.
-                            keepFanUp()
-                            fanIsAnswerToAPointer = true
-                            fanned = machine.machine
-                        } else if fanned == machine.machine, fanIsAnswerToAPointer {
-                            lowerFan()
-                        }
-                    }
-                }
+                // The deck owns the hover now: its own region covers the
+                // animal as well, so there is no seam to fall through between
+                // pointing at a machine and reaching for its agents. Two
+                // adjacent regions here is what made them blink.
                 .zIndex(activeDrag?.origin == machine.machine ? 1 : 0)
             }
         }
@@ -292,90 +268,86 @@ struct CPUOverviewView: View {
         }
     }
 
-    /// Sends the deck back down, and only then takes it away.
+    /// Lowering is one assignment, and there is no timer.
     ///
-    /// The wait is the whole point: clearing `fanned` immediately removes the
-    /// view mid-air, so the icons vanish instead of returning behind the
-    /// animal and the resting stack appears from nowhere.
+    /// It used to wait out the descent before taking the deck away, and there
+    /// was no correct moment to do that: a spring is still moving when its
+    /// nominal duration is up. Nothing is taken away now.
     private func lowerFan() {
-        lowerAfterDescent?.cancel()
-        lowerAfterDescent = Task {
-            // **A moment before it starts down.** Without this the deck is put
-            // away by the smallest movement off an animal — including the
-            // movement towards the deck itself — and reaching for an agent
-            // became a thing you had to be accurate about. Short enough not to
-            // feel sticky, long enough to cross a gap on the way somewhere —
-            // and long enough that a hand moving across the herd does not set
-            // a deck going down and then have to haul it back up.
-            try? await Task.sleep(for: .milliseconds(340))
-            guard !Task.isCancelled else { return }
-            lowering = true
-            try? await Task.sleep(for: MachineAgentFan.descent)
-            guard !Task.isCancelled else { return }
-            fanned = nil
-            lowering = false
-        }
+        fanned = nil
     }
 
-    /// Catches a deck that is on its way down, or about to be.
+    private func raiseFan(on machine: MachineID) {
+        guard let model = machines.first(where: { $0.machine == machine }),
+              agentActivity(on: model) != nil
+        else { return }
+        // A pointer outranks an arrival: you have asked.
+        arrivalRaise?.cancel()
+        fanIsAnswerToAPointer = true
+        fanned = machine
+    }
+
+    /// Every machine's deck, all of them mounted all of the time.
     ///
-    /// The pointer moving onto the agents *is* interest in them, and the fan
-    /// sits outside the machine's own column, so without this the act of
-    /// reaching for one was what dismissed it.
-    private func keepFanUp() {
-        lowerAfterDescent?.cancel()
-        lowerAfterDescent = nil
-        lowering = false
-    }
-
-    /// The fanned deck, drawn over the herd rather than inside a column.
+    /// Drawn across the herd rather than inside a column because a raised deck
+    /// fans wider than the column it belongs to — and drawn for every machine,
+    /// not just the hovered one, so that raising and lowering is a change of
+    /// state rather than a change of view.
+    ///
+    /// **The removal transition this used to carry was the shift.** It faded
+    /// and shrank the deck towards a different anchor while a second view took
+    /// its place behind the animal, which is why the descent always ended in a
+    /// jump however exactly the geometry was matched. Nothing is inserted or
+    /// removed now, so there is no transition to get right.
     @ViewBuilder
     private var fanOverlay: some View {
-        if let fanned,
-           let machine = machines.first(where: { $0.machine == fanned }),
-           let activity = agentActivity(on: machine) {
-            MachineAgentFan(
-                sessions: activity.sessions,
-                animalCentre: centreOfColumn(for: fanned),
-                width: width,
-                tile: avatarSize * MachineAgentFan.raisedScale,
-                onOpenAll: { onSelectAgents?(fanned) },
-                onCarry: { session, x in
-                    carrying = CarriedAgent(
-                        session: session,
-                        from: fanned,
-                        over: columns.machine(atX: x, leadingInset: horizontalPadding)
+        if DashboardChrome.showsAgentTokens {
+            ForEach(machines, id: \.id) { machine in
+                if let activity = agentActivity(on: machine) {
+                    MachineAgentFan(
+                        sessions: activity.sessions,
+                        animalCentre: centreOfColumn(for: machine.machine),
+                        width: width,
+                        tile: avatarSize * MachineAgentFan.raisedScale,
+                        onOpenAll: { onSelectAgents?(machine.machine) },
+                        onCarry: { session, x in
+                            carrying = CarriedAgent(
+                                session: session,
+                                from: machine.machine,
+                                over: columns.machine(
+                                    atX: x,
+                                    leadingInset: horizontalPadding
+                                )
+                            )
+                        },
+                        onDrop: {
+                            if let carried = carrying,
+                               let over = carried.over,
+                               over != carried.from,
+                               canCarry(to: over, carried.session) {
+                                onTransfer?(carried.session, carried.from, over)
+                            }
+                            carrying = nil
+                        },
+                        raised: fanned == machine.machine,
+                        rise: deckRise
                     )
-                },
-                onDrop: {
-                    if let carried = carrying,
-                       let over = carried.over,
-                       over != carried.from,
-                       canCarry(to: over, carried.session) {
-                        onTransfer?(carried.session, carried.from, over)
+                    .offset(y: fanY)
+                    // **The deck is part of its machine's target.** Reaching
+                    // for an agent means leaving the animal, and the icons sit
+                    // above it, so without this going for one was what put it
+                    // away.
+                    .onHover { over in
+                        if over {
+                            raiseFan(on: machine.machine)
+                        } else if fanned == machine.machine,
+                                  fanIsAnswerToAPointer {
+                            lowerFan()
+                        }
                     }
-                    carrying = nil
-                },
-                lowering: lowering
-            )
-            // Level with the band the resting deck peeks into, so the icons
-            // rise straight up out of the animal rather than travelling
-            // sideways on the way.
-            .offset(y: fanY)
-            // **Down is the rise run backwards.** The icons grow as they come
-            // up, so a fan that simply faded at full size read as a thing
-            // being switched off rather than a thing settling back onto an
-            // animal. Going away it shrinks to the size of the deck it
-            // rejoins, and drops the distance it climbed.
-            .transition(
-                .asymmetric(
-                    insertion: .opacity,
-                    removal: .scale(scale: 0.55, anchor: .bottom)
-                        .combined(with: .offset(y: avatarSize * 0.5))
-                        .combined(with: .opacity)
-                )
-            )
-            .allowsHitTesting(true)
+                    .zIndex(fanned == machine.machine ? 1 : 0)
+                }
+            }
         }
     }
 
@@ -397,11 +369,43 @@ struct CPUOverviewView: View {
     }
 
     /// How far the fan's row sits above the resting deck, as a share of the
-    /// avatar. `MachineAgentFan` reads this to know how far it has to come
-    /// down, so the two cannot drift apart — which they had, by about a third
-    /// of a tile, which is the difference between landing on an animal's
-    /// shoulder and disappearing inside it.
+    /// avatar.
     static let deckDrop: CGFloat = 0.62
+
+    /// The column's own insets, above the animal, which the fan has to know
+    /// about to land on it.
+    ///
+    /// **Every one of these was missed at least once**, and each time the deck
+    /// landed a few points out and then shifted as the resting stack took
+    /// over. They are written down here rather than folded into a constant so
+    /// that the next person to change the column's padding can see what else
+    /// depends on it.
+    private static let columnInset: CGFloat = 4      // .padding(.vertical, 4)
+    private static let barsToAnimal: CGFloat = 3     // VStack(spacing: 3)
+    private static let overviewTop: CGFloat = 10     // .padding(.top, 10)
+
+    /// Where the resting deck's icons are centred, measured from the top of
+    /// the overview.
+    private var deckCentreY: CGFloat {
+        let icon = MachineAgentStack.iconSize(forAvatar: avatarSize)
+        let animalTop = Self.overviewTop + Self.columnInset
+            + DashboardMetrics.thermometerColumnHeight + Self.barsToAnimal
+        // The deck sits `peek` of an icon above the animal's top edge, and
+        // this is its centre rather than its top.
+        return animalTop + icon / 2 - icon * MachineAgentStack.peek
+    }
+
+    /// How far a raised icon has to travel to arrive exactly where the resting
+    /// deck already is.
+    ///
+    /// Given to the fan rather than worked out inside it, because this is the
+    /// one place that knows how the column is built. An icon keeps its raised
+    /// frame and is scaled about its centre, so `tile / 2` converts from the
+    /// frame's top to what is actually drawn.
+    private var deckRise: CGFloat {
+        let tile = avatarSize * MachineAgentFan.raisedScale
+        return deckCentreY - fanY - tile / 2
+    }
 
     private func agentActivity(on machine: MachineMonitorModel) -> MachineAgentActivity? {
         guard machine.state == .live else { return nil }
@@ -868,11 +872,10 @@ struct MachineStatusLabel: View {
                 .matchedAvatar(namespace, machine: machine.machine)
                 // Behind the animal, and drawn as a background so the animal
                 // occludes it — the deck is being carried, not worn.
-                .background(alignment: .top) {
-                    if DashboardChrome.showsAgentTokens, !agents.isFanned, let activity {
-                        MachineAgentStack(activity: activity, avatarSize: avatarSize)
-                    }
-                }
+                // No deck here any more: there is one per machine, mounted
+                // for the life of the overview in `fanOverlay`. A second copy
+                // behind the animal is what the raised one used to hand over
+                // to, and the hand-over was the defect.
                 // A drive in trouble is worth seeing under every metric, not
                 // only Disk: the machine is reachable and its volumes may look
                 // fine while the hardware underneath is failing.

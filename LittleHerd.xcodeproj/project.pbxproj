@@ -35,6 +35,7 @@
 		3FA91D8360F75C9F60C66F1C /* AgentDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A9878F0A2B20756EBC9C5CF /* AgentDestination.swift */; };
 		40506444A83FF76553A19A24 /* FolderSizeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60B1C3B57A90EE8805729A1B /* FolderSizeStore.swift */; };
 		40B66FBE223EF28FE3FB6877 /* SynologyDSMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1E4988B07342992D546101 /* SynologyDSMClient.swift */; };
+		41E92F9B52DA4CD05FF6918C /* AgentDeckCountMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = E68DC9893755E001CE6B8A38 /* AgentDeckCountMark.swift */; };
 		4425832D76E61C50D9AE5F2F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 387B8471B05B8FEFC2973329 /* Assets.xcassets */; };
 		45BC186C83BEC7696C68B73B /* MachinePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2364561D7CD692AC3FC1471A /* MachinePresentation.swift */; };
 		45C4B87B06C248B32DE821B4 /* AgentSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17B5AEB7ADED71EAF3397A2 /* AgentSession.swift */; };
@@ -282,6 +283,7 @@
 		E4F112CE5D8A49060A44E52A /* SSHHostName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHHostName.swift; sourceTree = "<group>"; };
 		E5353A0F070BC8169F5569C4 /* HerdByteCount.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdByteCount.swift; sourceTree = "<group>"; };
 		E5C36AC033CCD76A2AA262A9 /* TaskTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskTransferView.swift; sourceTree = "<group>"; };
+		E68DC9893755E001CE6B8A38 /* AgentDeckCountMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDeckCountMark.swift; sourceTree = "<group>"; };
 		EA5375CFAE79B5E5C9087378 /* CompactionThresholdSeeder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactionThresholdSeeder.swift; sourceTree = "<group>"; };
 		EBD5EAFC1911B210500E6BD9 /* SecretCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretCache.swift; sourceTree = "<group>"; };
 		F08728BB291BD559EB4D267B /* TransferEligibilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferEligibilityTests.swift; sourceTree = "<group>"; };
@@ -319,6 +321,7 @@
 				89069BE9B8A8149598B9B5E4 /* AgentArrivalWatch.swift */,
 				BDC2B520609D94117FF51336 /* AgentAuthVerification.swift */,
 				F36A1B0B40C57B621213124F /* AgentCompaction.swift */,
+				E68DC9893755E001CE6B8A38 /* AgentDeckCountMark.swift */,
 				4A9878F0A2B20756EBC9C5CF /* AgentDestination.swift */,
 				624537ED414B0B245438B502 /* AgentDragSession.swift */,
 				221BEA80E8AB4A9863BC90B4 /* AgentDropEligibility.swift */,
@@ -594,6 +597,7 @@
 				20495DF99112CF1CDC02CBD5 /* AgentArrivalWatch.swift in Sources */,
 				8B754FF26AB9016DAD7BB6A5 /* AgentAuthVerification.swift in Sources */,
 				E4114033EB3F74C949F3DE63 /* AgentCompaction.swift in Sources */,
+				41E92F9B52DA4CD05FF6918C /* AgentDeckCountMark.swift in Sources */,
 				3FA91D8360F75C9F60C66F1C /* AgentDestination.swift in Sources */,
 				9C010945B913AB251C55E53F /* AgentDragSession.swift in Sources */,
 				573867AE142B44A8EAB82148 /* AgentDropEligibility.swift in Sources */,

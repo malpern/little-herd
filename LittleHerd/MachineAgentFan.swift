@@ -28,10 +28,34 @@ struct MachineAgentFan: View {
     /// destination reads as a popover, which is the one thing this design is
     /// trying not to be.
     @State private var spread: CGFloat = 0
-    /// Set while the deck is on its way back down. The view stays alive until
-    /// it has arrived; removing it any earlier is what made the rise look
-    /// one-directional.
-    var lowering: Bool = false
+    /// Whether this machine's deck is up.
+    ///
+    /// **This view is never unmounted, and that is the whole point.** It used
+    /// to be created when a machine was hovered and destroyed when the deck
+    /// landed, with `MachineAgentStack` drawing the resting state in between —
+    /// two views describing one object, handing over at the exact moment
+    /// nothing is supposed to change. Three attempts at making that hand-over
+    /// invisible each fixed a real difference and left a shift behind, because
+    /// the swap itself is the defect: a spring is still moving when its
+    /// nominal duration is up, and there is no correct moment to exchange one
+    /// view for another mid-flight.
+    ///
+    /// So there is one deck now. It rises and settles; nothing is created or
+    /// destroyed, and the resting position is simply where the animation ends.
+    var raised: Bool = false
+    /// How far below the fan's row the resting deck sits. Worked out by
+    /// `CPUOverviewView`, which is the only thing that knows how a column is
+    /// stacked — see `deckRise` there.
+    var rise: CGFloat = 0
+    /// Whether the deck has finished coming down.
+    ///
+    /// **Not the same question as `spread == 0`.** `spread` is set to nought
+    /// the moment the pointer leaves; it is the *animation* that takes time,
+    /// so anything keyed on the value alone happens while the icons are still
+    /// travelling. The count came back a third of the way down for exactly
+    /// that reason.
+    @State private var settled = true
+    @State private var settling: Task<Void, Never>?
     @State private var carrying: Int?
     @State private var carried: CGSize = .zero
 
@@ -50,11 +74,27 @@ struct MachineAgentFan: View {
     /// thing settling onto a surface does not overshoot the way a thing being
     /// lifted off one does, and a little quicker, since nobody is waiting to
     /// read it any more.
-    static let settling = Animation.spring(duration: 0.34, bounce: 0.12)
+    static let settlingCurve = Animation.spring(duration: 0.34, bounce: 0.12)
 
-    /// How long the descent takes altogether, delays included, so a caller
-    /// knows when the deck may actually be taken away.
-    static let descent: Duration = .milliseconds(460)
+    /// The stagger between one card leaving and the next.
+    static let cardDelay: Double = 0.04
+
+    /// How long to wait before the deck may actually be taken away.
+    ///
+    /// **Comfortably longer than the descent, on purpose.** The obvious value
+    /// is the animation's own duration, and it is wrong twice over: the last
+    /// icon does not start until `0.04 × index` after the first, and a spring
+    /// keeps moving after its nominal duration — that number describes how
+    /// long it *reads* as taking, not when it stops. Hand over on 460ms and
+    /// the stack replaces a deck that is still travelling, so it appears at
+    /// the final position and the remaining distance is covered in one frame.
+    /// Which looks exactly like what it is: a shift, right at the end of an
+    /// otherwise continuous movement.
+    ///
+    /// Waiting longer costs nothing. The fan at rest and the resting stack are
+    /// the same picture, so the extra time is invisible — and coming back to
+    /// the machine during it catches the deck rather than starting again.
+    static let descent: Duration = .milliseconds(900)
 
     /// How big a raised icon is, against the animal it came from. Larger than
     /// the deck it rose from — it is the thing being read now, and the growth
@@ -72,6 +112,36 @@ struct MachineAgentFan: View {
         MachineAgentStack.iconSize(forAvatar: tile / Self.raisedScale) / tile
     }
 
+    /// One card: which session it is, where it sits, and how deep in the deck.
+    ///
+    /// Exists so the `ForEach` can be keyed by the session rather than by a
+    /// position — and so the icon can be built in a function of its own, which
+    /// the type-checker needs once a view has this many modifiers on it.
+    nonisolated struct Placed: Identifiable {
+        let session: AgentSession
+        let rect: CGRect
+        let index: Int
+        var id: String { session.id }
+    }
+
+    /// When the deck has landed — which is when the **last** card has, that
+    /// being both the one the count is drawn on and the one that starts last.
+    ///
+    /// A flat number was wrong in both directions: too long for a single card,
+    /// too short for a deep deck. This is the settling curve plus that card's
+    /// own share of the stagger, so the count arrives as the card arrives
+    /// rather than a beat after everything has stopped.
+    private var settleWait: Duration {
+        let seconds = 0.34 + Self.cardDelay * Double(max(sessions.count - 1, 0))
+        return .milliseconds(Int(seconds * 1000))
+    }
+
+    private var placed: [Placed] {
+        zip(sessions, layout.icons).enumerated().map { index, pair in
+            Placed(session: pair.0, rect: pair.1, index: index)
+        }
+    }
+
     private var layout: AgentFanLayout {
         AgentFanLayout.lay(
             out: sessions.count,
@@ -85,57 +155,12 @@ struct MachineAgentFan: View {
     var body: some View {
         let fan = layout
         ZStack(alignment: .topLeading) {
-            ForEach(Array(fan.icons.enumerated()), id: \.offset) { index, rect in
-                Image(nsImage: AgentProviderIcons.icon(for: sessions[index].provider))
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: tile, height: tile)
-                    // No card. The icon is already one.
-                    .shadow(
-                        color: .black.opacity(0.10 + 0.14 * spread),
-                        radius: tile * 0.16,
-                        y: 2
-                    )
-                    // Each icon starts where the deck was — stacked at the
-                    // animal, smaller and lower — and travels to its place.
-                    .scaleEffect(restingShare + (1 - restingShare) * spread)
-                    // **Each icon carries its own weight.** They leave the
-                    // animal a beat apart and settle a beat apart, which is
-                    // what a handful of objects does and what one sheet of
-                    // glass does not. The delay is small enough to read as
-                    // heft rather than as a queue.
-                    .animation(
-                        reduceMotion
-                            ? nil
-                            : (spread == 0 ? Self.settling : Self.rising)
-                                .delay(Double(index) * 0.04),
-                        value: spread
-                    )
-                    .offset(
-                        x: stackedX(index) + (rect.minX - stackedX(index)) * spread
-                            + (carrying == index ? carried.width : 0),
-                        y: stackedY(index) * (1 - spread)
-                            + (carrying == index ? carried.height : 0)
-                    )
-                    // Lifted while it is in hand, and above its neighbours.
-                    .scaleEffect(carrying == index ? 1.12 : 1)
-                    // The resting deck draws its top card in front; so must
-                    // this, or the hand-over between them restacks the icons.
-                    .zIndex(
-                        carrying == index
-                            ? Double(sessions.count + 1)
-                            : Double(sessions.count - index)
-                    )
-                    // Nothing while it is in hand — it belongs to the pointer
-                    // then — and a heavier spring on the way home, because it
-                    // is being put down rather than snapped back.
-                    .animation(
-                        carrying == index ? nil : .spring(duration: 0.42, bounce: 0.34),
-                        value: carried
-                    )
-                    .gesture(carry(sessions[index], index: index, restingAt: rect.midX))
-                    .help(Text(sessions[index].displayTitle))
-                    .accessibilityLabel(Text(sessions[index].displayTitle))
+            // **Keyed by session, not by position.** With an index for an
+            // identity, a finished session does not leave — every card after
+            // it simply becomes a different session, so there is nothing for
+            // SwiftUI to animate out and the deck changes between frames.
+            ForEach(placed) { card in
+                icon(for: card, isLast: card.index == placed.count - 1)
             }
 
             if let overflow = fan.overflow, spread > 0.4 {
@@ -158,18 +183,145 @@ struct MachineAgentFan: View {
                 )
             }
         }
-        .frame(width: width, height: tile, alignment: .topLeading)
+        // The departure itself, and the shuffle the others do to close the
+        // gap. Keyed on the sessions rather than their number so that one
+        // finishing while another starts still moves rather than cutting.
+        .animation(
+            reduceMotion ? nil : .spring(duration: 0.42, bounce: 0.18),
+            value: sessions.map(\.id)
+        )
+        // Tall enough to hold the deck at rest as well as raised. Offsets
+        // reaching outside a frame still draw but stop being hit-testable,
+        // which is why the resting icons could not be pointed at.
+        .frame(
+            width: width,
+            height: tile + max(rise, 0),
+            alignment: .topLeading
+        )
+        // **A target that does not move when the icons do.**
+        //
+        // Hover otherwise lands on the icons themselves, and the first thing
+        // they do when hovered is leave: the deck rises out from under the
+        // pointer, the hover ends, it starts back down, the pointer catches it
+        // again — a machine you are holding still over flickers between up and
+        // down. This is an invisible column over the animal, spanning the
+        // whole climb, so the answer to "is the pointer here" does not depend
+        // on where the deck has got to.
+        .background(alignment: .topLeading) {
+            Color.clear
+                .frame(
+                    width: tile * 2.1,
+                    // Down past the animal as well, so the deck and the animal
+                    // it rides on are **one** region rather than two adjacent
+                    // ones. With a seam between them, moving from the animal
+                    // to the cards left the first before entering the second:
+                    // the deck began to lower and immediately rose again, and
+                    // the depth cue on the cards behind the top one — which is
+                    // keyed on how far up they are — blinked as it went. The
+                    // travel was too small to notice; the fade was not.
+                    height: tile + max(rise, 0) + animalHeight
+                )
+                .contentShape(Rectangle())
+                .offset(x: animalCentre - tile * 1.05)
+        }
         .onAppear {
-            guard !reduceMotion else { spread = 1; return }
-            // No `withAnimation` here: each icon animates on its own delay,
-            // above. Setting the value is enough.
-            spread = 1
+            spread = raised ? 1 : 0
+            settled = !raised
         }
-        // Both directions, so a deck caught on its way down goes back up
-        // rather than finishing its descent and having to be asked again.
-        .onChange(of: lowering) { _, isLowering in
-            spread = isLowering ? 0 : 1
+        // Both directions, and interruptible: a deck caught on its way down
+        // turns round from wherever it is, because a spring given a new
+        // target keeps the velocity it already had.
+        .onChange(of: raised) { _, isRaised in
+            spread = isRaised ? 1 : 0
+            settling?.cancel()
+            guard !isRaised else {
+                // Going up, the count goes at once — see the mark itself.
+                settled = false
+                return
+            }
+            settling = Task {
+                // Long enough for the last icon, which starts a beat after
+                // the first and is still moving when the spring's nominal
+                // duration is up.
+                try? await Task.sleep(for: settleWait)
+                guard !Task.isCancelled else { return }
+                settled = true
+            }
         }
+    }
+
+    @ViewBuilder
+    private func icon(for card: Placed, isLast: Bool) -> some View {
+        let index = card.index
+        Image(nsImage: AgentProviderIcons.icon(for: card.session.provider))
+            .resizable()
+            .scaledToFit()
+            .frame(width: tile, height: tile)
+            // **Inside the scaling, not on top of it.** Attached after
+            // `scaleEffect` the mark kept its full size and hung off the
+            // corner of an unscaled frame — a large circle floating above the
+            // deck it belonged to.
+            .overlay(alignment: .topTrailing) {
+                // On the bottom card of the deck, and only once the deck has
+                // actually landed. It says how many are stacked out of sight,
+                // so it goes the instant they begin to fan out: by then you
+                // can see them, and a number counting things in front of you
+                // is just more to read.
+                if isLast, sessions.count > 1, settled {
+                    AgentDeckCountMark(count: sessions.count, iconSize: tile)
+                }
+            }
+            // No card. The icon is already one.
+            .opacity(index == 0 ? 1 : 0.85 + 0.15 * spread)
+            .shadow(
+                color: .black.opacity(0.22 + 0.02 * spread),
+                radius: tile * (0.068 + 0.092 * spread),
+                y: 1 + spread
+            )
+            // Each icon starts where the deck was — stacked at the animal,
+            // smaller and lower — and travels to its place.
+            .scaleEffect(restingShare + (1 - restingShare) * spread)
+            // **Each icon carries its own weight.** They leave the animal a
+            // beat apart and settle a beat apart, which is what a handful of
+            // objects does and what one sheet of glass does not.
+            .animation(
+                reduceMotion
+                    ? nil
+                    : (spread == 0 ? Self.settlingCurve : Self.rising)
+                        .delay(Double(index) * Self.cardDelay),
+                value: spread
+            )
+            .offset(
+                x: stackedX(index)
+                    + (card.rect.minX - stackedX(index)) * spread
+                    + (carrying == index ? carried.width : 0),
+                y: stackedY(index) * (1 - spread)
+                    + (carrying == index ? carried.height : 0)
+            )
+            // Lifted while it is in hand, and above its neighbours.
+            .scaleEffect(carrying == index ? 1.12 : 1)
+            .zIndex(
+                carrying == index
+                    ? Double(sessions.count + 1)
+                    : Double(sessions.count - index)
+            )
+            // Nothing while it is in hand — it belongs to the pointer then —
+            // and a heavier spring on the way home.
+            .animation(
+                carrying == index ? nil : .spring(duration: 0.42, bounce: 0.34),
+                value: carried
+            )
+            // **Finishing is worth watching.** A session that ends used to be
+            // gone between one frame and the next, the same non-event as an
+            // agent appearing out of nothing. It collapses to a point at its
+            // own centre and fades as it goes, so what you see is the thing
+            // leaving rather than the absence afterwards.
+            .transition(
+                .scale(scale: 0.01, anchor: .center).combined(with: .opacity)
+            )
+            .gesture(carry(card.session, index: index, restingAt: card.rect.midX))
+            .help(Text(card.session.displayTitle))
+            .accessibilityLabel(Text(card.session.displayTitle))
     }
 
     /// Picking one up and carrying it across the herd.
@@ -211,6 +363,10 @@ struct MachineAgentFan: View {
     /// that looks nearly like it.
     private var avatarSize: CGFloat { tile / Self.raisedScale }
 
+    /// Roughly the animal, plus the name under it, so the region reaches the
+    /// bottom of what a person would call "that machine".
+    private var animalHeight: CGFloat { avatarSize * 1.35 }
+
     private func stackedX(_ index: Int) -> CGFloat {
         animalCentre - tile / 2
             + CGFloat(index) * avatarSize * MachineAgentStack.lean
@@ -222,11 +378,4 @@ struct MachineAgentFan: View {
         rise - CGFloat(index) * avatarSize * MachineAgentStack.stagger
     }
 
-    /// The distance from the fan's row down to where the deck rests.
-    ///
-    /// The counterpart of `CPUOverviewView.fanY`, which places that row by
-    /// leaving exactly this much space above the animal. The two are the same
-    /// measurement seen from either end, and they have to stay that way or the
-    /// deck lands somewhere other than where it lives.
-    private var rise: CGFloat { avatarSize * CPUOverviewView.deckDrop }
 }
