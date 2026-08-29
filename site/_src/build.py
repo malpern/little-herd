@@ -148,6 +148,40 @@ def render_toc() -> str:
             + "".join(groups) + '  </nav>\n')
 
 
+def render_rail() -> str:
+    """A sticky strip of the eight numbers, for the long scroll.
+
+    It ships `hidden` and is revealed by guide.js once the contents list above
+    has scrolled away, then hides again past the last step. Sticky-in-flow was
+    tried first: it needed no script to appear, but at rest it sat immediately
+    under the contents as a second, terser copy of the same eight items, and
+    looked like a mistake. Being script-only is the right trade here -- the
+    contents list is the navigation that survives scripting being off, and this
+    is an affordance for the twelve thousand pixels that follow it.
+
+    The compressed form is numbers, not headings. Eight headings the length of
+    "Start something on another machine and walk away" cannot be a bar at any
+    width. What the numbers lose is the grouping, so the current act's name is
+    carried on the left -- it changes three times over the whole page instead
+    of eight, which is the difference between a label and a flicker.
+    """
+    by_id = {s["id"]: s for s in STEPS}
+    groups = []
+    for title, _, ids in ACTS:
+        items = "".join(
+            f'<li><a href="#{i}" title="{by_id[i]["heading"]}">'
+            f'<span class="sr">{by_id[i]["n"]}. {by_id[i]["heading"]}</span>'
+            f'<span aria-hidden="true">{by_id[i]["n"]}</span></a></li>'
+            for i in ids)
+        groups.append(f'<ol data-act="{title}">{items}</ol>')
+    return ('  <nav class="rail" aria-label="The eight steps" hidden>\n'
+            '    <div class="rail-in wrap">\n'
+            '      <span class="rail-act" aria-hidden="true">Get access</span>\n'
+            '      <div class="rail-nums">' + "".join(groups) + '</div>\n'
+            '    </div>\n'
+            '  </nav>\n')
+
+
 def shot(step: dict) -> str:
     """A real screenshot of the tool, after the prose that explains it.
 
@@ -181,8 +215,8 @@ def mark() -> str:
 def video(step: dict) -> str:
     """One creator's video, where a good one exists.
 
-    Only two steps have one, and that is the honest count. Every candidate was
-    checked against YouTube's oembed for its real title and channel rather than
+    Every step has one now, from whoever made the best one rather than from a
+    shortlist of channels. Every candidate was checked against YouTube's oembed for its real title and channel rather than
     trusted from a search result, and two that looked perfect were dropped once
     read: "The Perfect Home DNS Flow" is about DNSimple and auto-SSL rather
     than Pi-hole, and "Stop Using Tailscale" argues against the tool the step
@@ -264,7 +298,7 @@ def render_step(step: dict) -> str:
 def render_steps() -> str:
     by_id = {s["id"]: s for s in STEPS}
     seen = set()
-    out = [render_toc()]
+    out = [render_toc(), render_rail()]
     for n, (title, blurb, ids) in enumerate(ACTS, 1):
         out.append(f'  <div class="act wrap">\n'
                    f'    <span class="act-n">Act {n}</span>\n'
@@ -340,7 +374,7 @@ PAGES = {
                 '  </a>'),
         nav=('<a href="./">The app</a> '
              '<a href="https://github.com/malpern/little-herd">GitHub</a>'),
-        scripts='',
+        scripts='<script src="guide.js"></script>',
         footer_links=(
             '    <a href="./">Little Herd</a>\n'
             '    <a href="https://github.com/malpern/little-herd">Source on GitHub</a>'),
