@@ -37,9 +37,9 @@ contrast is the whole personality.
 
 > # Put your herd to work.
 >
-> See the load across your Macs, your Linux boxes, your NAS and the AI sessions
-> running on them — from the menu bar. Little Herd watches; choosing the machine
-> is still yours.
+> The laptop, the mini, the Linux box in the closet — all of them working, not
+> one at a time. From the menu bar: what each one is running, which AI agents
+> are working where, and move work to the machine that's free.
 >
 > **[ Start a herd ]**  **[ Download Little Herd ]**
 > Free while in development · macOS 15 or later · Apple silicon and Intel
@@ -50,16 +50,35 @@ Taken from the app, which is the right direction of travel: this is the line
 the onboarding screen opens with, and a product that greets you with one
 sentence and sells itself with another is two products.
 
-**It comes within a sentence of breaking the rule above it**, and that is why
-the second half of the paragraph is worded as it is. "Put your herd to work"
-can be read as the app putting machines to work — dispatching, moving,
-managing, all of which this app does not do. What makes it true is that *you*
-are the one doing it: the herd is yours and the work is yours, and Little Herd
-shows you where there is room. "Little Herd watches; choosing the machine is
-still yours" is not throat-clearing, it is the clause that keeps the headline
-honest. If either half is ever cut, cut both.
+**The clause that used to keep this honest is gone, and the reason it existed
+is what removed it.** The old second sentence — "Little Herd watches; choosing
+the machine is still yours" — was there because "Put your herd to work" can be
+read as the app moving work between machines, which it could not then do. That
+is no longer a misreading: it is the product. A hedge in a hero deflates the
+headline above it, and the honest replacement is not a smaller claim but a
+bigger proof, so the sentence now spends its length on what you get rather than
+on what you do not.
 
-Headlines that lost: "All your computers. One little window." (true, and says
+**The structure is frame then proof, and it is deliberate.** The first sentence
+is the frame — all of them working, not one at a time — which is a way of
+seeing rather than a checkable fact, and it is what stops this being read as a
+system monitor with more columns. The second is the proof: what each machine is
+running, and which agents are where, both of which a reader can verify in five
+minutes. **The frame may point at where the product is going; the proof must be
+true today.** That is the rule that replaces the old clause, and it is what any
+future rewrite has to keep.
+
+**The machines are named, not abstracted.** "The laptop, the mini, the Linux
+box in the closet" is a recognition device: the reader sees their own setup.
+Earlier drafts said "one pool of capacity", which is the same idea and the
+wrong words — a pool is fungible, and this app gives every machine a face and a
+name. The copy must never describe the herd as interchangeable capacity; that
+contradicts the art direction and reads as a cluster manager.
+
+Headlines that lost: "Stop working on one machine at a time." (the shift said
+as an instruction; lost because it never says the word the whole site is built
+on), "You don't have a computer. You have a herd." (owns the word, but the
+reader has to solve it), "All your computers. One little window." (true, and says
 nothing about why you would want that), "Stop running four computers. Run a
 herd." (starts by telling the reader they are doing it wrong), "Watch over your
 whole herd" (says nothing about computers to someone arriving cold), "A
@@ -221,15 +240,28 @@ does not hint at it beyond "while in development."
 
 ## Coming soon — labelled, not implied
 
-Two sections describe work that is **not built**. Each carries a "Coming soon"
-pill and sits on its own tinted ground, and every sentence in them is future
-tense. That is what makes them honest: the copy rule is never to claim what the
-app does not do, and a plainly labelled intention is not a claim.
+**One section, not two.** Moving work left this category: the pill is gone, the
+tense is present, and it sits on the ordinary ground with everything else that
+ships. The wording changed with it — **"move work", never "move a session"** —
+because a session is what the machinery moves and work is what the reader
+cares about losing.
 
-> **Move a session to the machine that's free.**
+Cloud is the only one left here. It carries a "Coming soon" pill, sits on its
+own tinted ground, and every sentence in it is future tense. That is what makes
+it honest: the copy rule is never to claim what the app does not do, and a
+plainly labelled intention is not a claim.
+
+**The rule for graduating a section out of here:** drop the pill and the tinted
+ground, change every verb to present tense, and check that nothing elsewhere on
+the page still hedges about it. A section that ships while a sentence somewhere
+else still says "will" reads as two people writing one page.
+
+Moving work, as it now reads:
+
+> **Move work to the machine that's free.**
 >
-> Your laptop is compiling and the mini is idle. Little Herd will stop a Claude
-> or Codex session on one machine and start its successor on another, with the
+> Your laptop is compiling and the mini is idle. Little Herd stops a Claude or
+> Codex session on one machine and starts its successor on another, with the
 > work intact.
 >
 > Not process migration — that isn't possible and isn't wanted. The session
@@ -237,9 +269,14 @@ app does not do, and a plainly labelled intention is not a claim.
 > uncommitted, so the destination checks out one ref and has all of it at once.
 >
 > Your machines share one account, so a move rebalances silicon, not tokens.
-> Little Herd will say so rather than let you move a session for a reason it
-> cannot deliver. Machine to machine only: your phone can start a transfer and
-> watch it, but is never a destination.
+> Little Herd says so rather than let you move work for a reason it cannot
+> deliver. Machine to machine only: your phone can start a transfer and watch
+> it, but is never a destination.
+
+**The limits stay in, and they are the most credible part.** Silicon not
+tokens, the phone never a destination, and not process migration are all
+refusals, and a section that lists only upside reads as a wish. Losing the pill
+is not a licence to lose these.
 
 > **Cloud work, in the same window.**
 >
@@ -382,12 +419,14 @@ NAS, at home, increasingly running agents.
 
 ---
 
-## The Coming soon scenes
+## The two animated scenes
 
-Both unbuilt sections carry a small animated scene made from the Herdware
-avatars, because those two sections are about motion — a session travelling
-between machines, and cloud work arriving beside them — and a still cannot
-carry either.
+Moving work and cloud each carry a small animated scene made from the Herdware
+avatars, because both are about motion — work travelling between machines, and
+cloud work arriving beside them — and a still cannot carry either. They were
+built together when both sections were unbuilt; **the scene stays now that
+moving work ships**, because it was never a placeholder for a screenshot. There
+is nothing to photograph in a transfer: the interesting part is the journey.
 
 **The transfer scene is the app's own signature motion**, borrowed: a route
 arcing from one machine to another with a lit pulse travelling along it, the
