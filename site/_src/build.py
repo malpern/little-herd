@@ -149,36 +149,36 @@ def render_toc() -> str:
 
 
 def render_rail() -> str:
-    """A sticky strip of the eight numbers, for the long scroll.
+    """A bar naming the three acts, for the long scroll.
 
     It ships `hidden` and is revealed by guide.js once the contents list above
     has scrolled away, then hides again past the last step. Sticky-in-flow was
     tried first: it needed no script to appear, but at rest it sat immediately
-    under the contents as a second, terser copy of the same eight items, and
-    looked like a mistake. Being script-only is the right trade here -- the
-    contents list is the navigation that survives scripting being off, and this
-    is an affordance for the twelve thousand pixels that follow it.
+    under the contents as a second, terser copy of the same items, and looked
+    like a mistake. Being script-only is the right trade here -- the contents
+    list is the navigation that survives scripting being off, and this is an
+    affordance for the twelve thousand pixels that follow it.
 
-    The compressed form is numbers, not headings. Eight headings the length of
-    "Start something on another machine and walk away" cannot be a bar at any
-    width. What the numbers lose is the grouping, so the current act's name is
-    carried on the left -- it changes three times over the whole page instead
-    of eight, which is the difference between a label and a flicker.
+    This was eight numbered dots first, and numbers are a legend: you decode
+    "6" against a contents list that has scrolled away, which is not a thing a
+    reader will do at speed. Three words are read rather than decoded, and they
+    are the part a reader cannot already see -- the step's own heading is on
+    screen as they read it, but nothing says which of the three acts it belongs
+    to or how much of the guide is left. Losing five jump targets costs little,
+    because the full contents list is one press of Home away.
+
+    Each act links to its own first step, and the count of steps rides along as
+    a hint rather than as navigation.
     """
     by_id = {s["id"]: s for s in STEPS}
-    groups = []
+    items = []
     for title, _, ids in ACTS:
-        items = "".join(
-            f'<li><a href="#{i}" title="{by_id[i]["heading"]}">'
-            f'<span class="sr">{by_id[i]["n"]}. {by_id[i]["heading"]}</span>'
-            f'<span aria-hidden="true">{by_id[i]["n"]}</span></a></li>'
-            for i in ids)
-        groups.append(f'<ol data-act="{title}">{items}</ol>')
-    return ('  <nav class="rail" aria-label="The eight steps" hidden>\n'
-            '    <div class="rail-in wrap">\n'
-            '      <span class="rail-act" aria-hidden="true">Get access</span>\n'
-            '      <div class="rail-nums">' + "".join(groups) + '</div>\n'
-            '    </div>\n'
+        first, n = ids[0], len(ids)
+        items.append(
+            f'<li><a href="#{first}" data-act="{title}">{title}'
+            f'<span class="rail-n" aria-hidden="true">{n}</span></a></li>')
+    return ('  <nav class="rail" aria-label="The guide" hidden>\n'
+            '    <ol class="rail-in wrap">' + "".join(items) + '</ol>\n'
             '  </nav>\n')
 
 
