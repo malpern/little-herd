@@ -5,7 +5,7 @@
 # Extracted from the shipped pages rather than retyped, so the builder
 # reproduces what was already live.
 
-STEPS = [{'id': 'reach', 'logo': 'tailscale',
+STEPS = [{'id': 'reach', 'ask': ('Tailscale', 'I have a few Macs, a Linux box and a NAS at home that I want to reach from anywhere. Explain what Tailscale is and how it differs from a VPN or port forwarding, then walk me through installing and signing in on macOS and on Linux, turning on MagicDNS so each machine has a name, and checking it works from off my home network. Cover machine key expiry and why I should disable it for a headless machine. Give exact commands.'), 'logo': 'tailscale',
   'n': 1,
   'heading': 'Reach any machine from anywhere',
   'what': 'One name per machine that works from the sofa, from a hotel, and from another machine '
@@ -45,7 +45,7 @@ STEPS = [{'id': 'reach', 'logo': 'tailscale',
            'text': 'One name per machine that works from the sofa or a hotel, with nothing exposed '
                    'to the open internet.',
            'tool': 'Tailscale'}},
- {'id': 'connect', 'shot': ('ssh.png', 'Landing on another machine, from its short name.'), 'logo': 'ssh',
+ {'id': 'connect', 'ask': ('SSH and ~/.ssh/config', 'Teach me to reach several home machines by short names over SSH. Cover generating a key, copying it with ssh-copy-id, writing Host / HostName / User entries in ~/.ssh/config, using Include to share that config across machines, the file permissions SSH requires, and why a key used by a scheduled job must not have a passphrase. macOS and Linux, with exact commands.'), 'shot': ('ssh.png', 'Landing on another machine, from its short name.'), 'logo': 'ssh',
   'n': 2,
   'heading': 'Get onto any machine with one short command',
   'what': '<code>ssh mini</code> instead of an address you have to remember, and a new machine '
@@ -94,7 +94,7 @@ STEPS = [{'id': 'reach', 'logo': 'tailscale',
            'text': 'The same way in to every machine, and a new one inherits the herd instead of '
                    'being set up by hand.',
            'tool': 'SSH'}},
- {'id': 'tools', 'shot': ('brew.png', 'One command, and the machine has your toolkit.'), 'logo': 'homebrew',
+ {'id': 'tools', 'ask': ('Homebrew and a Brewfile', 'Show me how to keep the same command-line tools on several Macs using Homebrew and a Brewfile. Cover brew bundle dump and brew bundle, keeping the Brewfile in a dotfiles repo, the difference between formulae and casks and why casks belong only on machines with a screen, and why a cron job or an ssh command cannot find brew on Apple silicon unless it sets PATH itself. Exact commands.'), 'shot': ('brew.png', 'One command, and the machine has your toolkit.'), 'logo': 'homebrew',
   'n': 3,
   'heading': 'Arrive on a machine and find your tools already there',
   'what': 'Every machine carries the same kit, so the one you connect to is somewhere you can work '
@@ -133,7 +133,7 @@ STEPS = [{'id': 'reach', 'logo': 'tailscale',
            'text': 'The machine you connect to is somewhere you can work, not somewhere you have '
                    'to set up first.',
            'tool': 'Homebrew'}},
- {'id': 'detach', 'shot': ('tmux.png', 'The green bar is tmux. The work is running on the far machine.'), 'logo': 'tmux',
+ {'id': 'detach', 'ask': ('tmux', 'I am new to tmux and want the minimum that lets me start a long job on a remote machine and disconnect without killing it. Cover installing it, new / detach / attach, the difference between sessions, windows and panes, listing and killing sessions, and the common mistake of running tmux on my laptop instead of on the remote machine. Exact commands and key bindings.'), 'shot': ('tmux.png', 'The green bar is tmux. The work is running on the far machine.'), 'logo': 'tmux',
   'n': 4,
   'heading': 'Start something on another machine and walk away',
   'what': 'Close the lid, lose the connection, come back tomorrow &mdash; the work carries on, '
@@ -168,7 +168,7 @@ STEPS = [{'id': 'reach', 'logo': 'tailscale',
            'text': 'Close the lid and the work carries on, because it was never running on your '
                    'laptop.',
            'tool': 'tmux'}},
- {'id': 'screen', 'shot': ('connect.png', 'Finder&rsquo;s Connect to Server, waiting for a machine name.'), 'logo': 'screen',
+ {'id': 'screen', 'ask': ('macOS Screen Sharing', 'Explain how to use the Screen Sharing built into macOS to control another Mac on my network. Cover turning it on in System Settings, connecting with Finder\'s Connect to Server and a vnc:// address, when it is the right tool rather than SSH, and why macOS privacy prompts such as Screen Recording and Full Disk Access can only be granted on that machine\'s own screen.'), 'shot': ('connect.png', 'Finder&rsquo;s Connect to Server, waiting for a machine name.'), 'logo': 'screen',
   'n': 5,
   'heading': 'See and use another machine&rsquo;s screen from this one',
   'what': 'The actual desktop of the box in the closet, for the things that only exist on a screen '
@@ -207,7 +207,7 @@ STEPS = [{'id': 'reach', 'logo': 'tailscale',
            'text': 'For the things that only exist on a screen &mdash; a permission dialog, an '
                    'installer, a first run.',
            'tool': 'Screen Sharing'}},
- {'id': 'agents', 'logo': 'panes',
+ {'id': 'agents', 'ask': ('Herdr', 'Explain Herdr (github.com/herdrdev/herdr), a terminal multiplexer built for AI coding agents. How do I install it on macOS, how does it differ from tmux, how do I run several Claude Code or Codex agents in panes and see at a glance which one is working, blocked or waiting on me, and how do its sessions detach and reattach over SSH?'), 'logo': 'panes',
   'n': 6,
   'heading': 'Run several agents at once and see which one is waiting on you',
   'what': 'Each agent in its own pane, marked working, blocked or done, on a session you can '
@@ -236,7 +236,7 @@ STEPS = [{'id': 'reach', 'logo': 'tailscale',
            'text': 'And see at a glance which of them is working, which is done, and which is '
                    'waiting on you.',
            'tool': 'Herdr'}},
- {'id': 'backup', 'logo': 'backup',
+ {'id': 'backup', 'ask': ('Time Machine and restic', 'Show me how to back up several Macs over the network to one NAS with Time Machine, and how to back up a Linux machine to the same NAS with restic so the destination only ever stores encrypted data. Cover choosing the destination, scheduling, actually testing a restore, and why append-only or immutable backups matter if a machine is compromised. Exact commands.'), 'logo': 'backup',
   'n': 7,
   'heading': 'Back every machine up to one place',
   'what': 'One destination that all of them write to, so the box in\n'
@@ -282,7 +282,7 @@ STEPS = [{'id': 'reach', 'logo': 'tailscale',
            'text': 'One destination holding all of it, so the box in the closet becomes the '
                    'machine that matters.',
            'tool': 'Time Machine'}},
- {'id': 'alerts', 'logo': 'beat',
+ {'id': 'alerts', 'ask': ('Healthchecks.io', 'Teach me to find out when an unattended machine or a scheduled backup stops running. Explain dead man\'s switch monitoring with Healthchecks.io, how to ping a check from a cron job or a launchd agent on macOS, how to alert on a job that has not reported rather than only on a machine that is down, why a machine should not be the thing that monitors itself, and what a hosted check catches that a self-hosted one cannot.'), 'logo': 'beat',
   'n': 8,
   'heading': 'Find out when one of them stops',
   'what': 'An unattended machine that dies is only a problem the\n'
