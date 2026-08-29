@@ -39,6 +39,7 @@
 		3FA91D8360F75C9F60C66F1C /* AgentDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A9878F0A2B20756EBC9C5CF /* AgentDestination.swift */; };
 		40506444A83FF76553A19A24 /* FolderSizeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60B1C3B57A90EE8805729A1B /* FolderSizeStore.swift */; };
 		40B66FBE223EF28FE3FB6877 /* SynologyDSMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1E4988B07342992D546101 /* SynologyDSMClient.swift */; };
+		412D38E57A2A4D53FC287070 /* TransitCardRenderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B3D93707AB7958B4F319C06 /* TransitCardRenderTests.swift */; };
 		41E92F9B52DA4CD05FF6918C /* AgentDeckCountMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = E68DC9893755E001CE6B8A38 /* AgentDeckCountMark.swift */; };
 		4425832D76E61C50D9AE5F2F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 387B8471B05B8FEFC2973329 /* Assets.xcassets */; };
 		45BC186C83BEC7696C68B73B /* MachinePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2364561D7CD692AC3FC1471A /* MachinePresentation.swift */; };
@@ -176,6 +177,7 @@
 		13A62AEDE179380F1817E463 /* Transfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transfer.swift; sourceTree = "<group>"; };
 		1640B34A7ED62C25CB2A837E /* AgentTransitCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTransitCard.swift; sourceTree = "<group>"; };
 		199544A93AE05F23B93D38E4 /* DashboardTransition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardTransition.swift; sourceTree = "<group>"; };
+		1B3D93707AB7958B4F319C06 /* TransitCardRenderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitCardRenderTests.swift; sourceTree = "<group>"; };
 		1B6AC6220F6963E6B819CA63 /* TransferStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferStrip.swift; sourceTree = "<group>"; };
 		1C0E9354B762F8C407715028 /* MachineAgentPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineAgentPad.swift; sourceTree = "<group>"; };
 		221BEA80E8AB4A9863BC90B4 /* AgentDropEligibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDropEligibility.swift; sourceTree = "<group>"; };
@@ -508,6 +510,7 @@
 				2E5B4FFEF2B3B44DCB611561 /* TransferPilotTests.swift */,
 				A354ADFCEB27A5556725F88F /* TransferStripRenderTests.swift */,
 				45E0AEF110A52B557FF37FD9 /* TransferStripTests.swift */,
+				1B3D93707AB7958B4F319C06 /* TransitCardRenderTests.swift */,
 				79D386671F3A56A3353C18AF /* WindowPlacementTests.swift */,
 			);
 			path = LittleHerdTests;
@@ -769,6 +772,7 @@
 				BEB2F707E29579A32F200E25 /* TransferPilotTests.swift in Sources */,
 				69942ADF66E268FEC1BAF1B4 /* TransferStripRenderTests.swift in Sources */,
 				24BECCAA1BE50F32D6570190 /* TransferStripTests.swift in Sources */,
+				412D38E57A2A4D53FC287070 /* TransitCardRenderTests.swift in Sources */,
 				97ABDF19EE954232A1A9D5D5 /* WindowPlacementTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

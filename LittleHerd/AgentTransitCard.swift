@@ -54,11 +54,14 @@ struct AgentTransitCard: View {
             .frame(width: size, height: size)
             .shadow(color: .black.opacity(0.26), radius: size * 0.16, y: 2)
             .overlay { mark }
-            // **Above the card, not on it.** A bar over the art hides the one
-            // thing that says whose work this is, and a spinner said only
-            // "something is happening" — which you already knew, because you
-            // just dropped it there. This says how far.
-            .overlay(alignment: .top) { bar }
+            // **Across the foot of the card, the way the Dock shows a
+            // download.** Floating it above the card put it over whatever
+            // happened to be behind — on this screen, the thermometer blocks —
+            // where a short coloured bar among other short coloured bars reads
+            // as one more segment of the chart. Inside the card's own bounds
+            // it cannot collide with anything, it is an idiom people already
+            // know from the Dock, and it costs only a sliver of the art.
+            .overlay(alignment: .bottom) { bar }
             .accessibilityLabel(Text(label))
     }
 
@@ -82,15 +85,25 @@ struct AgentTransitCard: View {
     @ViewBuilder
     private var bar: some View {
         if case .working(let fraction) = state {
+            let width = size * 0.76
             ZStack(alignment: .leading) {
+                // A dark track with a pale edge, so it holds up over a light
+                // icon and a dark one alike — these are application icons and
+                // this app cannot choose their colour.
                 Capsule()
-                    .fill(.black.opacity(0.22))
+                    .fill(.black.opacity(0.45))
+                    .overlay(
+                        Capsule().strokeBorder(.white.opacity(0.35), lineWidth: 0.5)
+                    )
                 Capsule()
                     .fill(Color.accentColor)
-                    .frame(width: max(size * 0.06, size * 0.86 * fraction))
+                    .padding(0.5)
+                    .frame(width: max(size * 0.08, width * fraction))
             }
-            .frame(width: size * 0.86, height: max(3, size * 0.075))
-            .offset(y: -size * 0.30)
+            .frame(width: width, height: max(3, size * 0.085))
+            // Clear of the corner radius: sat flush to the bottom the track
+            // was clipped at both ends by the card's own rounding.
+            .offset(y: -size * 0.24)
             // Eased rather than sprung: it never goes backwards, and a bar
             // that overshoots its own fill reads as a mistake.
             .animation(
