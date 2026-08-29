@@ -13,6 +13,11 @@ nonisolated struct Transfer: Hashable, Sendable {
     let branch: String
     /// What the session was called, for the interface to say.
     let title: String
+    /// Where the work came from, so its result can be read back there. The
+    /// source machine has the repository and is where somebody is sitting;
+    /// reading the diff there means the destination may be asleep by the time
+    /// anybody looks.
+    let repository: String
 }
 
 /// Where a transfer has got to.

@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 struct DashboardView: View {
+    @Environment(\.openWindow) private var openWindow
     let model: MonitorModel
     /// Needed so a NAS can be signed in from the page that says it is not
     /// connected, rather than only from Settings.
@@ -56,7 +57,10 @@ struct DashboardView: View {
                             },
                             onStop: { model.transfers.cancel($0) },
                             onDismiss: { model.transfers.dismiss($0) },
-                            onOpen: { model.showAgents(on: $0.destination) }
+                            onOpen: { transfer in
+                                model.transferBeingRead = transfer
+                                openWindow(id: LittleHerdWindowID.transferDiff)
+                            }
                         )
                     } else if model.selection.isMetricFocus {
                         CPUOverviewHeaderArea(

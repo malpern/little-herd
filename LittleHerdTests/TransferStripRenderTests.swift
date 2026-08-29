@@ -16,7 +16,8 @@ struct TransferStripRenderTests {
             origin: MachineID("local"),
             destination: MachineID("mini"),
             branch: "transfer/fan-layout-a1b2c3d4",
-            title: title
+            title: title,
+            repository: "/repo"
         )
     }
 

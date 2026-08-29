@@ -105,6 +105,15 @@ struct LittleHerdApp: App {
         .windowResizability(.contentSize)
         .windowToolbarStyle(.unifiedCompact(showsTitle: true))
 
+        // **A window of its own, not a panel in the dashboard.** That window
+        // is 324 points wide and sized to the point; a diff is the one thing
+        // here that genuinely needs room, and it is read carefully and
+        // occasionally rather than watched.
+        Window("Transferred Work", id: LittleHerdWindowID.transferDiff) {
+            TransferDiffSceneView(model: model)
+        }
+        .defaultSize(width: 720, height: 520)
+
         MenuBarExtra(isInserted: $menuBarEnabled) {
             MenuBarPanel(model: model)
         } label: {
@@ -182,6 +191,7 @@ enum LittleHerdPreferences {
 enum LittleHerdWindowID {
     static let dashboard = "dashboard"
     static let addMachines = "add-machines"
+    static let transferDiff = "transfer-diff"
 }
 
 private extension MachineMonitorModel {

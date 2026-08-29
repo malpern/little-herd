@@ -19,6 +19,12 @@ final class TransferCoordinator {
     /// so the executor stays the only thing that knows about ordering.
     private let makeRunner: @MainActor (Transfer) -> SuccessorExecutor.Run
     private var tasks: [Transfer: Task<Void, Never>] = [:]
+    /// The commit each transfer departed from, learned while it runs.
+    ///
+    /// Kept beside the transfer rather than inside it: a `Transfer` is the key
+    /// this is all stored under, and a value that changes half way through is
+    /// a key that changes half way through.
+    private(set) var departures: [Transfer: String] = [:]
     private var rehearsalCount = 0
 
     init(
@@ -28,6 +34,10 @@ final class TransferCoordinator {
     }
 
     func phase(for transfer: Transfer) -> TransferPhase? { transfers[transfer] }
+
+    func record(departure commit: String, for transfer: Transfer) {
+        departures[transfer] = commit
+    }
 
     /// - Parameter steps: what to run, already decided. The coordinator does
     ///   not build these: `SuccessorLaunch` decides whether there is a plan at

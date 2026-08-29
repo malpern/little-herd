@@ -13,6 +13,9 @@ final class MonitorModel {
     private(set) var diskMachines: [MachineMonitorModel] = []
     let aiUsageLimits = AIUsageLimitsModel()
 
+    /// The transfer whose result is being read, if the diff window is open.
+    var transferBeingRead: Transfer?
+
     /// Transfers in flight, held here rather than in a view because one
     /// outlives the panel that started it by a long way.
     /// `@ObservationIgnored` because the reference never changes — views

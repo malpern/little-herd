@@ -11,7 +11,8 @@ struct TransferCoordinatorTests {
             origin: MachineID(rawValue: "air"),
             destination: MachineID(rawValue: "mini"),
             branch: "transfer/fan",
-            title: title
+            title: title,
+            repository: "/repo"
         )
     }
 

@@ -87,7 +87,8 @@ struct TransferRehearsalTests {
         origin: MachineID("local"),
         destination: MachineID("mini"),
         branch: "transfer/x",
-        title: "Fan layout"
+        title: "Fan layout",
+        repository: "/repo"
     )
 
     /// **A rehearsal must not be able to reach a machine.** The coordinator is
@@ -130,7 +131,8 @@ struct TransferClearingTests {
         origin: MachineID("local"),
         destination: MachineID("mini"),
         branch: "transfer/y",
-        title: "Fan layout"
+        title: "Fan layout",
+        repository: "/repo"
     )
 
     private func coordinator(

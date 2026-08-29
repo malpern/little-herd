@@ -27,7 +27,8 @@ extension MonitorModel {
                         origin: origin,
                         destination: destination,
                         branch: TransferAssembly.branch(for: session),
-                        title: session.title ?? session.projectName
+                        title: session.title ?? session.projectName,
+                        repository: session.workingDirectory ?? ""
                     )
                 )
             }
@@ -79,6 +80,9 @@ extension MonitorModel {
                     )
                 )
             case .success(let commit):
+                // Kept so the result can be read back: the diff is everything
+                // after this, and the branch carries the departure too.
+                transfers.record(departure: commit, for: request.transfer)
                 let arrival = TransferPilot.arrival(
                     commit: commit,
                     briefPath: request.briefPath,
@@ -106,6 +110,48 @@ extension MonitorModel {
                 }
             }
         }
+    }
+
+    /// Reads what a finished transfer changed.
+    ///
+    /// Run on the machine the work came *from*, which has the repository and
+    /// is where somebody is sitting. Local commands, not SSH: the destination
+    /// may be asleep by the time anybody opens this, and the branch is on the
+    /// remote either way.
+    func diff(for transfer: Transfer) async -> Result<TransferDiff, TransferDiffFailure> {
+        guard let departure = transfers.departures[transfer] else {
+            return .failure(TransferDiffFailure(
+                message: "This transfer did not get as far as pushing "
+                    + "anything, so there is nothing on the branch to read."
+            ))
+        }
+        let commands = TransferDiffReader.commands(
+            repository: transfer.repository,
+            branch: transfer.branch,
+            since: departure
+        )
+        var outputs: [String] = []
+        for command in commands {
+            let text = await LocalProcessRunner.run(
+                executablePath: "/usr/bin/git",
+                arguments: Array(command.dropFirst())
+            )
+            guard let text else {
+                return .failure(TransferDiffFailure(
+                    message: "Couldn’t read the branch. The work is still on "
+                        + "\(transfer.branch); nothing has been merged."
+                ))
+            }
+            outputs.append(text)
+        }
+        guard outputs.count == 3 else {
+            return .failure(
+                TransferDiffFailure(message: "Couldn’t read the branch.")
+            )
+        }
+        return .success(
+            TransferDiffReader.parse(numstat: outputs[1], patch: outputs[2])
+        )
     }
 
     /// How to talk to one machine, or nothing if it is not one we can reach.

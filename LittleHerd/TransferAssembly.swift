@@ -70,7 +70,8 @@ nonisolated enum TransferAssembly {
                     origin: origin,
                     destination: destination,
                     branch: branch,
-                    title: session.title ?? session.projectName
+                    title: session.title ?? session.projectName,
+                    repository: sourceRepository
                 ),
                 departure: TransferDeparture.steps(
                     repository: sourceRepository,
