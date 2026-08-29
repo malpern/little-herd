@@ -1,4 +1,4 @@
-/* Which of the eight steps you are in.
+/* Which of the three acts you are in.
  *
  * The rail itself is CSS: it is in the flow after the contents list and pins
  * with position: sticky. This file only adds the highlight, so with scripting
@@ -13,22 +13,26 @@
  * settles ties in reading order rather than by intersection ratio, which is
  * what a reader means by "where am I".
  *
- * The other is that the act name is read from the DOM rather than duplicated
- * here, so the grouping lives in exactly one place -- steps.py -- and this
- * cannot drift out of step with the page it is labelling.
+ * The other is that the act each step belongs to is read from the DOM rather
+ * than duplicated here, so the grouping lives in exactly one place -- ACTS in
+ * build.py -- and this cannot drift out of step with the page it labels.
  */
 (function () {
   var rail = document.querySelector('.rail');
   if (!rail) return;
 
-  var links = [].slice.call(rail.querySelectorAll('a[href^="#"]'));
-  var label = rail.querySelector('.rail-act');
-  var steps = links.map(function (a) {
-    return document.getElementById(decodeURIComponent(a.hash.slice(1)));
-  });
-  if (steps.some(function (s) { return !s; })) return;
+  // the bar names the acts; the steps it has to measure are on the page
+  var links = [].slice.call(rail.querySelectorAll('a[data-act]'));
+  var steps = [].slice.call(document.querySelectorAll('.step'));
+  if (!links.length || !steps.length) return;
 
-  var acts = links.map(function (a) { return a.closest('ol').dataset.act; });
+  // each step's act comes from the heading above it, so the two agree by
+  // construction rather than by a list repeated here
+  var acts = steps.map(function (s) {
+    var act = s.closest('.steps').previousElementSibling;
+    return act && act.querySelector('h2') ? act.querySelector('h2').textContent : '';
+  });
+
   var toc = document.querySelector('.toc');
   var last = steps[steps.length - 1];
   var current = -1, shown = null;
@@ -54,12 +58,12 @@
     }
     if (i === current) return;
     current = i;
-    links.forEach(function (a, n) {
-      if (n === i) a.setAttribute('aria-current', 'step');
+    // before the first step, the reader is heading into the first act
+    var here = acts[i < 0 ? 0 : i];
+    links.forEach(function (a) {
+      if (a.dataset.act === here) a.setAttribute('aria-current', 'true');
       else a.removeAttribute('aria-current');
     });
-    // before the first step, name the act the reader is heading into
-    label.textContent = acts[i < 0 ? 0 : i];
   }
 
   // the observer is a change signal, not the decision: it fires when any step
