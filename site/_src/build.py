@@ -81,6 +81,23 @@ def render_toc() -> str:
             + "".join(groups) + '  </nav>\n')
 
 
+def shot(step: dict) -> str:
+    """A real screenshot of the tool, after the prose that explains it.
+
+    Every one was taken in a disposable lab VM with an invented hostname, so
+    none of them has anything real in it to redact. They sit last in the step
+    because they answer "is this what I should be seeing" -- a question a
+    reader only has once they have run the thing.
+    """
+    if not step.get("shot"):
+        return ""
+    img, caption = step["shot"]
+    return (f'      <figure class="shot-fig">\n'
+            f'        <img src="images/guide/{img}" alt="{caption}" loading="lazy">\n'
+            f'        <figcaption>{caption}</figcaption>\n'
+            f'      </figure>\n')
+
+
 def render_step(step: dict) -> str:
     """One column, in reading order: what you can do, then a picture of it,
     then the tool, then how, then the trap.
@@ -106,6 +123,7 @@ def render_step(step: dict) -> str:
         f'        <span class="tool-go">{tool["go"]}</span>\n'
         f'      </a>\n'
         f'{step["body"]}\n'
+        f'{shot(step)}'
         f'    </div>\n'
         f'  </li>\n\n'
     )

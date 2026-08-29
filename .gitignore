@@ -10,3 +10,7 @@ xcuserdata/
 # local preview server config
 .claude/launch.json
 site/preview.html
+
+# the builder imports steps.py, which leaves these behind
+__pycache__/
+*.pyc
