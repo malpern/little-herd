@@ -773,77 +773,73 @@ kbd {
 .toc a:hover b { color: var(--forest); }
 
 /* ---------------------------------------------------------- guide: the rail
-   The contents list answers "what is on this page" once, at the top. This bar
+   The contents list answers "what is on this page" once, at the top. The rail
    answers "where am I" for the twelve thousand pixels that follow.
-
-   It names the three acts. It was eight numbered dots first, and numbers are a
-   legend -- you decode "6" against a contents list that has scrolled away,
-   which nobody does at speed. Words are read instead of decoded, and the act
-   is the part a reader cannot already see: the step's heading is on screen in
-   front of them, but nothing else says which act it belongs to or how much of
-   the guide is left.
 
    It is fixed rather than sticky, and revealed only once the contents list has
    scrolled away. Sticky-in-flow was tried first and looked wrong at rest: it
    sat immediately below the contents as a second, terser copy of the same
-   items. It also hides again past the last step, because by then there is
-   nothing left to be lost in.
+   eight items. It also hides again past the last step, because by then there
+   is nothing left to be lost in.
 
    That makes it script-only, which is the right trade -- it is an affordance
    for a long scroll, and the contents list above it is the navigation that
    works with scripting off. The markup carries `hidden` until the script
-   removes it, so with none it is absent rather than invisible. */
+   removes it, so with none it is absent rather than invisible.
+
+   Numbers rather than headings, because eight headings the length of "Start
+   something on another machine and walk away" are not a bar at any width. The
+   act name on the left carries the grouping the numbers drop, and it changes
+   three times over the page rather than eight. */
 .rail[hidden] { display: none; }
 .rail {
   position: fixed; inset-block-start: 0; inset-inline: 0; z-index: 4;
   background: var(--bg);
   border-block-end: 1px solid var(--rule);
+  /* out of the way until earned: directly under the contents list it is a
+     second copy of the same eight items, which is worse than nothing */
   visibility: hidden; opacity: 0; transform: translateY(-100%);
   transition: opacity .18s ease, transform .18s ease, visibility 0s .18s;
 }
 .rail.on { visibility: visible; opacity: 1; transform: none; transition-delay: 0s; }
-.rail-in {
-  list-style: none; margin: 0; display: flex; gap: .3rem;
-  padding-block: .45rem;
+.rail-in { display: flex; align-items: center; gap: 1rem; padding-block: .5rem; }
+.rail-act {
+  font-size: .72rem; letter-spacing: .09em; text-transform: uppercase;
+  font-weight: 600; color: var(--muted); white-space: nowrap;
 }
+.rail-nums { display: flex; align-items: center; gap: .55rem; margin-inline-start: auto; }
+.rail ol { list-style: none; margin: 0; padding: 0; display: flex; gap: .3rem; }
+/* the acts read as three runs of numbers, not eight in a row */
+.rail ol + ol { margin-inline-start: .55rem; border-inline-start: 1px solid var(--rule); padding-inline-start: .85rem; }
 .rail a {
-  display: flex; align-items: center; gap: .45rem;
-  padding: .34rem .7rem; border-radius: 999px;
+  display: grid; place-items: center;
+  inline-size: 1.85rem; block-size: 1.85rem; border-radius: 50%;
   text-decoration: none; color: var(--muted);
-  font-size: .92rem; line-height: 1.2; white-space: nowrap;
+  font-size: .85rem; font-variant-numeric: tabular-nums;
   transition: background-color .15s, color .15s;
 }
-.rail a:hover { color: var(--fg); background: var(--card); box-shadow: inset 0 0 0 1px var(--card-edge); }
-/* how many steps are in the act -- a hint about what is left, not a target */
-.rail-n {
-  font-size: .72rem; font-variant-numeric: tabular-nums;
-  color: var(--muted); opacity: .7;
-}
-.rail a[aria-current] { background: var(--teal); color: #fff; font-weight: 500; }
+.rail a:hover { background: var(--card); color: var(--fg); box-shadow: inset 0 0 0 1px var(--card-edge); }
+.rail a[aria-current] { background: var(--teal); color: #fff; font-weight: 600; }
 .rail a[aria-current]:hover { background: var(--teal); color: #fff; box-shadow: none; }
-.rail a[aria-current] .rail-n { color: #fff; opacity: .75; }
-/* the bar would otherwise land on top of the heading it just took you to */
-.step { scroll-margin-block-start: 3.4rem; }
+/* the pinned bar would otherwise land on top of the heading it just took you to */
+.step { scroll-margin-block-start: 3.5rem; }
 
-/* Measured, not guessed: the three names and their counts come to 523px with
-   desktop padding, which no phone has. Under 34rem the type steps down and the
-   counts go -- they were a hint about what was left, and the names are the
-   navigation -- which brings the bar to 333px and fits a 360px screen with
-   room to spare. (Measured at a wide window with these rules forced on:
-   headless Chrome floors its layout viewport at 500px, so measuring at a
-   phone-sized window returns numbers that mean nothing.) */
-@media (max-width: 34rem) {
-  .rail-in { padding-inline: .6rem; }
-  .rail a { padding-inline: .5rem; font-size: .86rem; gap: .3rem; }
-  .rail-n { display: none; }
+/* Measured, not guessed: the label is 137px and the numbers 326px, so the bar
+   needs 479px of content box. At 36rem the padding is 5vw, which leaves 518 --
+   the last width where the label still fits. Below it the numbers are the
+   navigation and the label is the first thing to go. */
+@media (max-width: 36rem) {
+  .rail-act { display: none; }
+  .rail-nums { margin-inline: auto; }
 }
-/* and a floor under all of it: a name long enough to overflow scrolls inside
-   the bar rather than widening the page, which would take the whole document
-   with it */
-.rail-in { overflow-x: auto; scrollbar-width: none; }
-.rail-in::-webkit-scrollbar { display: none; }
-.rail-in > li { flex: 0 0 auto; }
-@media (prefers-reduced-motion: reduce) { .rail, .rail a { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .rail a { transition: none; } }
+
+/* the label for each number, for a reader who cannot see the page it marks */
+.sr {
+  position: absolute; inline-size: 1px; block-size: 1px;
+  margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+
 
 /* The measure stays at 40rem. Wider is not more readable, and the empty
    right-hand side at desktop is what a comfortable line length costs. */
