@@ -2176,14 +2176,25 @@ a half-finished move is visible in the interface rather than in a log.
     looking at the cropped image, not at its dimensions — the first attempt
     reported a perfectly plausible 600x656 at 2x and was entirely black.
 
-    **The page describes items 4 and 8 as Coming soon.** Decided 26 August,
-    on the grounds that the site is published but not announced. Each sits on
-    its own tinted ground behind a "Coming soon" pill, every sentence is future
-    tense, and both carry the constraints rather than only the upside —
-    "silicon, not tokens", the phone never being a destination, the vendors'
-    own commands. Those limits are the most credible thing in the section; a
-    roadmap that lists only upside reads as a wish. **If either item changes
-    shape, the page is now a second place that has to change with it.**
+    **Item 8 (cloud) is the only Coming soon section left.** Item 4 graduated on
+    29 August: moving work is claimed in the present tense, the pill and the
+    tinted ground are gone, and the hero says it outright. **That is ahead of
+    the app by one boolean** — `DashboardChrome.startsTransfers` is still
+    `false`, held until the progress and cancel controls exist — so the page
+    and the build have to be brought level, and the site is the side that
+    cannot be quietly walked back.
+
+    The wording is **"move work", never "move a session"**: a session is what
+    the machinery moves, work is what the reader is afraid of losing.
+
+    What survives from the original decision is the shape. A section sits on
+    tinted ground behind a pill with every sentence future tense until it
+    ships, and both sections carry their constraints rather than only the
+    upside — "silicon, not tokens", the phone never being a destination, the
+    vendors' own commands. Those limits are the most credible thing in the
+    section; a roadmap that lists only upside reads as a wish, and losing the
+    pill is not a licence to lose them. **If either item changes shape, the
+    page is a second place that has to change with it.**
 
     When transfer ships, watching stays the headline and moving becomes a
     strong section rather than the thesis — watching is the everyday use and
