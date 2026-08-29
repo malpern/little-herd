@@ -2025,12 +2025,25 @@ a half-finished move is visible in the interface rather than in a log.
     **The site is reframed around the herd, and there is a second page.**
     Decided 26 August. The word was decoration — used constantly, never taught —
     so the hero now sells the practice and the download is the second call to
-    action. `site/herd.html` is a finite six-step guide: Tailscale, SSH config,
-    Homebrew and a Brewfile, tmux, Screen Sharing, and **Herdr**
+    action. `site/herd.html` is a finite **eight**-step guide: Tailscale, SSH
+    config, Homebrew and a Brewfile, tmux, Screen Sharing, **Herdr**
     (<https://github.com/herdrdev/herdr>, an agent multiplexer — it shows agents
-    on one machine, which is the complement to seeing them across all of them).
-    Little Herd is the payoff and is not one of the six, which is what makes the
-    rest of it believable.
+    on one machine, which is the complement to seeing them across all of them),
+    Time Machine to a NAS, and Healthchecks.io. Little Herd is the payoff and is
+    not one of the eight, which is what makes the rest of it believable.
+
+    **The last two were added because the first six do not survive being left
+    alone.** Backup and alerting are what decide whether a herd is still there
+    in a month, and a guide that stops at "you can reach everything" teaches the
+    half that is fun. Pi-hole was considered for a ninth and deliberately is
+    not one: it is a job you give a machine rather than a thing that makes
+    machines work together, so it sits in a closing aside with its own video and
+    an explicit note saying why it is not a step.
+
+    **Eight steps in one column read as eight identical blocks, so they are
+    three acts** — Get access, Put them to work, Keep it alive — declared once
+    in `ACTS` in `build.py`. That grouping is load-bearing in three places now:
+    the contents list, the act headings, and the sticky bar.
 
     Every step carries its trap, and the traps are the whole reason to read it
     rather than any other tutorial. **They are generalised, not copied:** the
@@ -2043,7 +2056,114 @@ a half-finished move is visible in the interface rather than in a log.
     referenced by `<use>`, with `build-preview.py` folding both back inline for
     the Artifact.
 
-    **Screenshots are still not taken, and the obstacle is TCC.**
+    **The pages are generated, and hand-editing one is a CI failure.**
+    `site/_src/build.py` renders `index.html` and `herd.html` from partials plus
+    `site/_src/steps.py`; both carry a do-not-edit banner and the Pages workflow
+    runs `build.py --check` before it will publish. `steps.py` is the single
+    source for the eight guide steps *and* the eight homepage cards, so the two
+    pages cannot disagree about what a tool is called or where it links.
+
+    Still no framework, and the decision was re-examined rather than assumed:
+    Astro would be the answer at five pages or a blog, plain Vite would buy
+    nothing here. That note lives in `site/_src/README.md`.
+
+    **One trap in the builder, because it silently shipped a broken page.** The
+    body slice runs `</header>` → `<footer>`, and `<script src="demo.js">` sits
+    *after* `</footer>` — so the first build dropped it, killing all three live
+    panels while every page still rendered perfectly and the source diff looked
+    like an entity change. Anything after the footer has to be declared in the
+    `scripts` slot. It was caught by diffing the *rendered* output — text
+    length, link count, element ids — not the source.
+
+    **The guide's screenshots come out of a disposable VM, and that route is
+    the answer to the TCC problem below.** The repo is a `vm-lab` tenant
+    (`.vm-lab.tsv`, `artifact_expect` "Little Herd.app"), so a macOS 27 guest
+    with `--desktop` gives a clean machine with Peekaboo and TCC already
+    granted, and nothing has to happen on the real screen. Four shots ship —
+    ssh, brew, tmux, Finder's Connect to Server — every one **staged, not
+    scrubbed**: invented hostnames in a machine that has nothing real in it.
+
+    Two lessons cost an afternoon each. **`--macos 15` silently gets a stock
+    Cirrus image** with no Peekaboo and no TCC; the desktop branch of
+    `base_for()` is gated on 26 or 27, so the flag is the fix, not the lab.
+    And **identity leaks three separate ways into a terminal screenshot**: the
+    known-hosts warning printed the address, the prompt printed the lab account
+    because the override only applied to the outer shell, and Terminal composed
+    the account into its own title bar. Pre-seed the host key, set `PROMPT` in
+    the guest's `.zshrc`, crop the chrome, and **OCR the result** — all four
+    were checked that way rather than by eye.
+
+    **Code on the page is highlighted at build time**, by a small shell and
+    `ssh_config` tokeniser in `build.py` emitting six classes
+    (`t-cmd`, `t-flag`, `t-path`, `t-key`, `t-val`, `t-cmt`). A runtime
+    highlighter would be an external script, and the Artifact preview's CSP
+    blocks those — so the choice was a build step or nothing.
+
+    **Every step carries a video, and the count is the honest one.** Nine
+    links: Tailscale's own introduction, Learn Linux TV on the ssh config,
+    DevOps Toolbox on dotfiles, typecraft on tmux and on Herdr, 9to5Mac on
+    screen sharing, SpaceRex backing a Mac up to a Synology, Techno Tim on
+    Uptime Kuma, and Crosstalk Solutions on Pi-hole in the aside. **Restricting
+    the search to two named creators was the wrong constraint** — it left five
+    steps bare, including the one specifically asked for — so the rule is now
+    whoever made the best one. Every id is verified against **YouTube's oembed**
+    for its real channel and title rather than trusted from a search result, and
+    two that looked perfect were dropped once their descriptions were read: "The
+    Perfect Home DNS Flow" is DNSimple and auto-SSL rather than Pi-hole, and
+    "Stop Using Tailscale" argues against the tool its step recommends. **A link
+    that turns out to be neither is worse than no link.**
+
+    **Each step also offers a prefilled ChatGPT prompt** via `chatgpt.com/?q=`
+    — undocumented but long-established — kept to a few hundred characters
+    because a long query string risks being cut by a WAF on the way. The button
+    carries OpenAI's mark, rebuilt from the Wikimedia SVG as one petal and five
+    `<use>` rotations so it takes `currentColor` and themes with the page. Their
+    guidelines permit referential use on two conditions this meets: it must not
+    imply endorsement, and it must not be more prominent than our own mark.
+
+    **A sticky bar names where you are in the guide**, revealed once the
+    contents list scrolls away and hidden again past the last step — the page is
+    13,000px and nothing answered "where am I" for any of it. It ships `hidden`
+    and `site/guide.js` reveals it, which is deliberate: the contents list is
+    the navigation that survives scripting being off.
+
+    **It shows the eight numbers, and that was chosen over the alternative
+    twice.** Sticky-in-flow was tried first because it needs no script to
+    appear, and looked wrong at rest — directly under the contents it was a
+    second, terser copy of the same eight items. Then the numbers were replaced
+    with the three act names, on the argument that a number is a legend you
+    decode against a contents list that has scrolled away; **that shipped and
+    was reverted on sight** (PRs 30 and 31). Words read more easily and navigate
+    more coarsely, and the coarser version was the one that felt wrong on the
+    page. The argument is not gone, only outvoted by looking at it.
+
+    **The highlight is measured, not observed.** An `IntersectionObserver` on
+    the steps answers "is this on screen", which is the wrong question when
+    every step is taller than the window — the answer is regularly "none" or
+    "two". The observer is only a signal that the answer may have changed; the
+    decision is the last step whose top has passed under the bar, which settles
+    ties in reading order. **A background tab gets no animation frames**, so a
+    scroll while hidden would leave the highlight unpainted until the reader
+    scrolled again; `demo.js` learned that same lesson here first, and there is
+    now a note in each pointing at the other.
+
+    **The guide is one column, and was briefly two.** The sidebar used the width
+    a 40rem measure leaves empty at desktop, which was optimising for wasted
+    pixels rather than for reading. A guide is read rather than scanned, and the
+    empty right-hand side is what a comfortable measure costs.
+
+    **Measure narrow layouts with the rules forced on at a wide window.**
+    Headless Chrome floors its layout viewport at 500px, so measuring at a
+    phone-sized window returns numbers that mean nothing — it reported the same
+    overflow before a change as after it, which is the only reason the numbers
+    were not believed.
+
+    **Open on the site: the homepage has two download buttons, ~7,500px apart,
+    and nothing between them.** A reader convinced in the middle has nowhere to
+    click.
+
+    **Screenshots of the app are still not taken, and the obstacle is TCC —
+    but the VM lab above is now a route around it.**
     `screencapture -l` (which `scripts/capture_app_window.swift` uses) and
     `screencapture -R` are both refused outright on this machine — "could not
     create image from window" and "could not create image from rect" — while a
@@ -2070,17 +2190,17 @@ a half-finished move is visible in the interface rather than in a log.
     the reason it lives in the menu bar, and the product should not collapse if
     a transfer proves finicky in practice.
 
-    **Two things stand between here and a site, and neither is a feature.**
-    Confirm whether the certificate fix is still unreleased, and **take fresh
-    screenshots** — both files in `Documentation/Screenshots` are from
-    20 August and predate the working session CPU meter, the destinations
-    section, and everything from 25 August. For a menu-bar app the screenshots
-    *are* the site. Render the panels with `PanelRenderHarness`, but check the
-    hero shots in the running app: the harness draws no `ScrollView`, no lazy
-    stack, no `Form`, no hover state, and turns a `.borderless` button into a
-    yellow placeholder. Shoot **dark-mode versions too** — `HerdBackground`
-    has a dark variant, so the app can supply screenshots that sit on the
-    evergreen hero without fighting it, which the cream ones would.
+    **The app screenshots were refreshed on 27 August** — `dashboard`,
+    `ai-panel` and `add-machines` in `Documentation/Screenshots`. For a menu-bar
+    app the screenshots *are* the site, so when they next need retaking: render
+    the panels with `PanelRenderHarness`, but check the hero shots in the
+    running app, because the harness draws no `ScrollView`, no lazy stack, no
+    `Form`, no hover state, and turns a `.borderless` button into a yellow
+    placeholder.
+
+    **Still owed: dark-mode versions.** `HerdBackground` has a dark variant, so
+    the app can supply screenshots that sit on the evergreen hero without
+    fighting it, which the cream ones do.
 
     **The paid shape, unchanged and not yet built.** Distribution is Developer
     ID and notarisation, because the store is closed to this app for good (see
