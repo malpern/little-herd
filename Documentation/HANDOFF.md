@@ -1500,14 +1500,38 @@ a half-finished move is visible in the interface rather than in a log.
    invalidating every permission somebody already gave would be a worse answer
    than trusting them.
 
-   **What is still missing is the account.** A destination is an account and
-   the herd stores machines: `MachineConfiguration` refuses a second entry with
-   the same hostname, so the mini's `clawd` and `malpern` cannot both be in the
-   herd, and everything that decides whether a session can land is per-user —
-   the home directory and so which repositories exist, the agent install, the
-   credentials. That needs an account-qualified `MachineID` and an ssh user in
-   the configuration, which costs the published `transfer.json` contract
-   nothing since `MachineID` wraps a `String`.
+   **The account is done.** `MachineConfiguration` carries an optional
+   `sshUser`, and `sshDestination` composes it with the hostname wherever the
+   app talks to a machine — one place, because several call sites and one of
+   them forgetting is a machine sampled as the wrong account without saying so.
+   A configuration with no account recorded still means what it always meant,
+   so nothing already saved changed.
+
+   Two parts were easy to miss and both were needed for the field to be worth
+   anything. **The store deduplicated on hostname alone**, so the mini's second
+   account could never be added — the field would have existed and been
+   unusable by exactly the person who wanted it; it matches on host *and*
+   account now. And **the composed destination still has to pass
+   `SSHHostName`**, which exists because a name starting with a dash is read by
+   `ssh` as an option: a hostile account name is refused rather than sent.
+
+   This is what made a drag onto the mini refuse for want of a checkout that
+   was sitting on the machine the whole time — under `malpern`, while Little
+   Herd was looking at `clawd`.
+
+   **Cloning a missing repository is deliberately not the answer to that, and
+   is worth having later.** When a destination genuinely lacks the repository,
+   the tempting fix is to have the drag clone it. Rejected as an automatic
+   step: a clone is minutes and gigabytes on somebody else's disk, chooses a
+   location nobody was asked about, needs credentials there for a private
+   repository, and turns a small gesture into machine setup. Worse, it would
+   have hidden the bug above by making a *second* copy of a repository that
+   already existed.
+
+   The shape worth building, when it is wanted: the refusal becomes an offer —
+   "Mini does not have little-herd — set it up?" — confirmed once, with the
+   destination path visible, after which drags to that machine simply work.
+   An offer, never a side effect.
 
 5. **Transfer a session between machines, at the session level.** **A spike
    has now done this by hand — see the facts above — so the open questions are

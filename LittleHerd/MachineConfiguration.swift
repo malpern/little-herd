@@ -37,6 +37,21 @@ nonisolated struct MachineConfiguration: Codable, Equatable, Identifiable,
     var connection: MachineConnection
     var avatar: HerdwareAvatar
     var identityFile: String?
+
+    /// The account on that host, when it is not the one `ssh` would pick.
+    ///
+    /// **A machine is an account on a host, not a host.** The mini has two
+    /// that matter — one runs the scheduled jobs, the other is the console
+    /// login — and they have different checkouts, different agents and
+    /// different credentials. Treating the host as the unit made a repository
+    /// that plainly exists on the mini invisible, because Little Herd was
+    /// looking at the other account: a drag onto it was refused for want of a
+    /// checkout that was sitting there the whole time.
+    ///
+    /// Kept apart from `hostname` rather than folded into it so the two can be
+    /// shown separately, and so an existing configuration — which has no
+    /// account recorded — keeps meaning exactly what it meant.
+    var sshUser: String?
     var serverNames: [String]
     var supportsGPU: Bool
     /// DSM account name. The password lives in the keychain, never here — this
@@ -131,6 +146,19 @@ nonisolated struct MachineConfiguration: Codable, Equatable, Identifiable,
         case .linux: .linux
         case .storage: nil
         }
+    }
+
+    /// What `ssh` should be given: the account and the host together, or just
+    /// the host when no account is recorded.
+    ///
+    /// Composed here rather than at each call site, because there are several
+    /// and one of them forgetting is a machine that is sampled as the wrong
+    /// account without saying so.
+    var sshDestination: String {
+        guard let user = sshUser?.trimmingCharacters(in: .whitespaces),
+              !user.isEmpty
+        else { return hostname }
+        return "\(user)@\(hostname)"
     }
 
     static func local(
@@ -289,8 +317,15 @@ final class MachineConfigurationStore {
             if let index = updated.firstIndex(where: { $0.id == addition.id }) {
                 updated[index] = addition
             } else if updated.contains(where: {
-                Self.normalizedHostname($0.hostname)
+                // **The pair, not the host.** One machine is one account on
+                // one host, so the mini's scheduled-jobs account and its
+                // console login are two entries and must both be allowed in.
+                // Matching on hostname alone kept the second one out, which
+                // made the account field below unusable by anybody who tried
+                // to add the machine it exists for.
+                (Self.normalizedHostname($0.hostname)
                     == Self.normalizedHostname(addition.hostname)
+                    && $0.sshUser == addition.sshUser)
                     || $0.name.caseInsensitiveCompare(addition.name) == .orderedSame
             }) {
                 continue

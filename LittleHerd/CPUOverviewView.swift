@@ -14,6 +14,8 @@ struct CPUOverviewView: View {
     /// and running one outlives this window — neither belongs in a gesture
     /// handler.
     var onTransfer: ((AgentSession, MachineID, MachineID) -> Void)?
+    /// How the transfer of a given session is going, if one is running.
+    var transferState: ((AgentSession) -> TransitState?)?
     var agentCPU: [String: Double] = [:]
     /// Every account, so a drag can ask what each machine could actually take.
     var herd: [DestinationAccount] = []
@@ -49,6 +51,23 @@ struct CPUOverviewView: View {
 
     /// An agent in hand, and the machine the pointer is over.
     @State private var carrying: CarriedAgent?
+    /// The machine whose deck is waiting for a card to come home.
+    @State private var returning: MachineID?
+    @State private var returnAfterDrop: Task<Void, Never>?
+
+    /// A card that has been dropped on another machine and is neither in the
+    /// deck it left nor in the one it is joining.
+    @State private var transit: TransitCard?
+    @State private var transitWatch: Task<Void, Never>?
+
+    nonisolated struct TransitCard: Equatable {
+        let session: AgentSession
+        let from: MachineID
+        let to: MachineID
+        var state: TransitState
+        /// Set while it is on its way back to the deck it came from.
+        var goingHome = false
+    }
 
     struct CarriedAgent: Equatable {
         let session: AgentSession
@@ -138,6 +157,26 @@ struct CPUOverviewView: View {
                 // An animal that could take what is being carried lifts to
                 // meet it; one that could not simply does not answer, which is
                 // a quieter no than a mark and needs no surface to paint on.
+                // **And it lights.** The lift alone was legible while you
+                // were watching the animal, and easy to miss while you were
+                // watching the card in your hand — which is where a person
+                // dragging is actually looking. A soft ground behind the
+                // column says "here" without drawing a box around it.
+                .background {
+                    if welcomes(machine.machine) {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.accentColor.opacity(0.14))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .strokeBorder(
+                                        Color.accentColor.opacity(0.35),
+                                        lineWidth: 1
+                                    )
+                            )
+                            .padding(.horizontal, -4)
+                            .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                    }
+                }
                 .offset(y: welcomes(machine.machine) ? -5 : 0)
                 .animation(.spring(duration: 0.34, bounce: 0.38), value: carrying)
                 // The deck owns the hover now: its own region covers the
@@ -152,6 +191,7 @@ struct CPUOverviewView: View {
         .padding(.top, 10)
         .padding(.bottom, 16)
         .overlay(alignment: .topLeading) { fanOverlay }
+        .overlay(alignment: .topLeading) { transitOverlay }
         .onChange(of: sessionFingerprint) { _, _ in noticeArrivals() }
         // The moment the herd is being looked at is the moment an arrival can
         // be shown. Without this the announcement waits for a session change
@@ -239,6 +279,12 @@ struct CPUOverviewView: View {
     /// take it.
     private func welcomes(_ machine: MachineID) -> Bool {
         guard let carrying, carrying.over == machine else { return false }
+        // A rehearsal answers from every machine, for the reason in
+        // `canCarry`: real eligibility refuses most of this herd, and a target
+        // that never lights is a target nobody can judge.
+        if DashboardChrome.rehearsesTransfers, !DashboardChrome.startsTransfers {
+            return machine != carrying.from
+        }
         return AgentDropEligibility.canAccept(
             machine,
             carrying: MachineAgentActivity(
@@ -321,15 +367,38 @@ struct CPUOverviewView: View {
                             )
                         },
                         onDrop: {
+                            // Hold the deck up until the card is back in it.
+                            if let from = carrying?.from {
+                                returning = from
+                                returnAfterDrop?.cancel()
+                                returnAfterDrop = Task {
+                                    try? await Task.sleep(for: .milliseconds(460))
+                                    guard !Task.isCancelled else { return }
+                                    returning = nil
+                                }
+                            }
                             if let carried = carrying,
                                let over = carried.over,
                                over != carried.from,
                                canCarry(to: over, carried.session) {
-                                onTransfer?(carried.session, carried.from, over)
+                                beginTransit(carried, to: over)
                             }
                             carrying = nil
                         },
-                        raised: fanned == machine.machine,
+                        // **Up while one of its cards is away.** A card
+                        // released over another machine springs home over
+                        // about four-tenths of a second, and if the deck
+                        // lowers underneath it in the meantime the depth cue
+                        // on the cards behind the top one drops to 0.85 —
+                        // which is the flash of transparency after a snap
+                        // back. The deck waits for its card.
+                        excluding: transit.map {
+                            $0.from == machine.machine && !$0.goingHome
+                                ? [$0.session.id] : []
+                        } ?? [],
+                        raised: fanned == machine.machine
+                            || carrying?.from == machine.machine
+                            || returning == machine.machine,
                         rise: deckRise
                     )
                     .offset(y: fanY)
@@ -348,6 +417,83 @@ struct CPUOverviewView: View {
                     .zIndex(fanned == machine.machine ? 1 : 0)
                 }
             }
+        }
+    }
+
+    /// Sends the card to the machine it was dropped on and watches what
+    /// becomes of it.
+    ///
+    /// **The card is the progress indicator.** It settles onto the destination
+    /// and spins there; a tick and a chime if the work lands, and if it does
+    /// not, it goes home and the deck it left opens to take it back. The strip
+    /// says the same thing in words for anyone who missed it.
+    private func beginTransit(_ carried: CarriedAgent, to destination: MachineID) {
+        transitWatch?.cancel()
+        withAnimation(.spring(duration: 0.42, bounce: 0.22)) {
+            transit = TransitCard(
+                session: carried.session,
+                from: carried.from,
+                to: destination,
+                state: .working
+            )
+        }
+        onTransfer?(carried.session, carried.from, destination)
+
+        transitWatch = Task {
+            // Watched rather than awaited: the outcome is owned by the
+            // coordinator, which outlives this view, and the view may be
+            // rebuilt any number of times while a transfer runs.
+            while !Task.isCancelled {
+                let state = transferState?(carried.session)
+                if let state, state != .working {
+                    await finishTransit(state)
+                    return
+                }
+                try? await Task.sleep(for: .milliseconds(120))
+            }
+        }
+    }
+
+    private func finishTransit(_ state: TransitState) async {
+        TransitSound.play(state)
+        withAnimation(.spring(duration: 0.3, bounce: 0.3)) {
+            transit?.state = state
+        }
+
+        if state == .succeeded {
+            // Long enough to read the tick, then it belongs to the machine it
+            // is standing on and this stops drawing it.
+            try? await Task.sleep(for: .milliseconds(900))
+            withAnimation(.easeOut(duration: 0.3)) { transit = nil }
+        } else {
+            // Home again, and the deck it left opens to receive it: the
+            // exclusion lifts as it arrives rather than after, so the gap is
+            // already there when it lands.
+            try? await Task.sleep(for: .milliseconds(420))
+            withAnimation(.spring(duration: 0.46, bounce: 0.24)) {
+                transit?.goingHome = true
+            }
+            try? await Task.sleep(for: .milliseconds(500))
+            transit = nil
+        }
+    }
+
+    /// The card in transit, drawn over the herd.
+    @ViewBuilder
+    private var transitOverlay: some View {
+        if let transit {
+            let machine = transit.goingHome ? transit.from : transit.to
+            AgentTransitCard(
+                session: transit.session,
+                state: transit.state,
+                size: avatarSize * MachineAgentFan.raisedScale
+            )
+            .offset(
+                x: centreOfColumn(for: machine)
+                    - avatarSize * MachineAgentFan.raisedScale / 2,
+                y: fanY + deckRise
+            )
+            .allowsHitTesting(false)
         }
     }
 
@@ -438,7 +584,18 @@ struct CPUOverviewView: View {
     /// icon carries one session, so it is wrapped in the activity the rest of
     /// the eligibility code expects.
     private func canCarry(to machine: MachineID, _ session: AgentSession) -> Bool {
-        AgentDropEligibility.canAccept(
+        // **A rehearsal takes anything.** Real eligibility asks whether the
+        // destination has a checkout of the repository the work is in, and on
+        // this herd the answer is usually no — the mini is sampled as one
+        // account and the checkout belongs to another, which is the
+        // account-qualified-machine problem still open on the roadmap. That is
+        // a correct refusal and it makes the interface unreachable, so a
+        // rehearsal skips it.
+        if DashboardChrome.rehearsesTransfers, !DashboardChrome.startsTransfers {
+            return machine != carrying?.from
+        }
+
+        return AgentDropEligibility.canAccept(
             machine,
             carrying: MachineAgentActivity(
                 provider: session.provider,

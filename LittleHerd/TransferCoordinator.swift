@@ -73,6 +73,7 @@ final class TransferCoordinator {
             )
             self?.transfers[transfer] = .finished(outcome)
             self?.tasks[transfer] = nil
+            self?.clearIfNothingToSay(transfer)
         }
     }
 
@@ -115,6 +116,7 @@ final class TransferCoordinator {
                 )
             )
             self?.tasks[transfer] = nil
+            self?.clearIfNothingToSay(transfer)
         }
     }
 
@@ -137,6 +139,28 @@ final class TransferCoordinator {
     /// than assumed. The cleanup steps still run.
     func cancel(_ transfer: Transfer) {
         tasks[transfer]?.cancel()
+    }
+
+    /// Takes away a row that has nothing left to tell you.
+    ///
+    /// **A transfer that worked says so on the card itself** — a tick, a
+    /// chime, and the card standing on the machine it moved to — so the strip
+    /// repeating it is a line of text asking to be dismissed for no reason.
+    /// It goes on its own after a moment.
+    ///
+    /// A failure stays. The card comes home, which says *that* it did not
+    /// work, and the strip is the only place that says *why* — a red check is
+    /// a different thing from an agent that gave up, and the difference
+    /// decides what you do next. Nobody has to read it, but it should not
+    /// disappear before they can.
+    private func clearIfNothingToSay(_ transfer: Transfer) {
+        guard case .finished(let outcome) = transfers[transfer],
+              outcome.result == .landed || outcome.result == .cancelled
+        else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(1600))
+            self?.dismiss(transfer)
+        }
     }
 
     /// Only once somebody has seen it.

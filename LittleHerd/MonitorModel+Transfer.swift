@@ -121,7 +121,7 @@ extension MonitorModel {
               !model.isLocal
         else { return nil }
 
-        let host = model.hostname
+        let host = model.sshDestination
         let identity = model.identityFile
         return { step in
             let result = await SSHCommandRunner.runReportingStatus(

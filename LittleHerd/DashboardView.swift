@@ -128,6 +128,24 @@ struct DashboardView: View {
                                     to: destination
                                 )
                             },
+                            // How the card in transit knows what to draw. The
+                            // branch is the key because it is derived from the
+                            // session, so the view can ask about a session
+                            // without holding a transfer.
+                            transferState: { session in
+                                let branch = TransferAssembly.branch(for: session)
+                                guard
+                                    let transfer = model.transfers.order
+                                        .first(where: { $0.branch == branch }),
+                                    let phase = model.transfers.phase(for: transfer)
+                                else { return nil }
+                                switch phase {
+                                case .preparing, .running: return .working
+                                case .finished(let outcome):
+                                    return outcome.result == .landed
+                                        ? .succeeded : .failed
+                                }
+                            },
                             herd: model.machines.map(\.destinationAccount),
                             // Only here. The menu bar draws its own rows and
                             // is dismissed by the click that would read the
@@ -430,6 +448,8 @@ private struct OverviewMetricContent: View {
     var onSelectAgents: ((MachineID) -> Void)?
     /// A session was dropped on a machine that will take it.
     var onTransfer: ((AgentSession, MachineID, MachineID) -> Void)?
+    /// How that transfer is going, for the card making the journey.
+    var transferState: ((AgentSession) -> TransitState?)?
     var herd: [DestinationAccount] = []
     var announcesArrivals = false
 
@@ -459,6 +479,7 @@ private struct OverviewMetricContent: View {
                 onSelectMachine: onSelectMachine,
                 onSelectAgents: onSelectAgents,
                 onTransfer: onTransfer,
+                transferState: transferState,
                 agentCPU: agentCPU,
                 herd: herd,
                 announcesArrivals: announcesArrivals

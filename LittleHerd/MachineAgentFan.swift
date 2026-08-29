@@ -42,6 +42,10 @@ struct MachineAgentFan: View {
     ///
     /// So there is one deck now. It rises and settles; nothing is created or
     /// destroyed, and the resting position is simply where the animation ends.
+    /// Sessions this deck must not draw, because they are somewhere else —
+    /// in transit to another machine. The deck closes around them exactly as
+    /// it does around one being carried.
+    var excluding: Set<String> = []
     var raised: Bool = false
     /// How far below the fan's row the resting deck sits. Worked out by
     /// `CPUOverviewView`, which is the only thing that knows how a column is
@@ -136,9 +140,38 @@ struct MachineAgentFan: View {
         return .milliseconds(Int(seconds * 1000))
     }
 
+    /// **The deck heals around a card that has been picked up.**
+    ///
+    /// Two layouts: the full one, which is where the carried card was and so
+    /// where it starts from, and one for the cards left behind, laid out as
+    /// though the missing one had never been there. They slide into the gap
+    /// while it is in hand and slide back out when it returns.
+    private var shown: [AgentSession] {
+        sessions.filter { !excluding.contains($0.id) }
+    }
+
     private var placed: [Placed] {
-        zip(sessions, layout.icons).enumerated().map { index, pair in
-            Placed(session: pair.0, rect: pair.1, index: index)
+        let full = layout.icons
+        let healed = carrying == nil ? full : AgentFanLayout.lay(
+            out: max(sessions.count - 1, 1),
+            centredOn: animalCentre,
+            inWindowOfWidth: width,
+            tile: tile,
+            gap: gap
+        ).icons
+
+        var slot = 0
+        return shown.enumerated().map { index, session in
+            guard index != carrying else {
+                return Placed(
+                    session: session,
+                    rect: full[min(index, full.count - 1)],
+                    index: index
+                )
+            }
+            let rect = healed[min(slot, healed.count - 1)]
+            slot += 1
+            return Placed(session: session, rect: rect, index: index)
         }
     }
 
@@ -319,6 +352,15 @@ struct MachineAgentFan: View {
             .transition(
                 .scale(scale: 0.01, anchor: .center).combined(with: .opacity)
             )
+            // Closing the gap, and opening it again when the card comes back.
+            .animation(
+                reduceMotion ? nil : .spring(duration: 0.36, bounce: 0.20),
+                value: carrying
+            )
+            // **The pointer says what the thing under it does.** An open hand
+            // over a card that can be picked up, a closed one while it is
+            // being carried.
+            .pointerStyle(carrying == index ? .grabActive : .grabIdle)
             .gesture(carry(card.session, index: index, restingAt: card.rect.midX))
             .help(Text(card.session.displayTitle))
             .accessibilityLabel(Text(card.session.displayTitle))

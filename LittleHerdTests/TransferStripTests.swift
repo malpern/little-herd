@@ -122,3 +122,54 @@ struct TransferRehearsalTests {
         coordinator.cancel(transfer)
     }
 }
+
+@MainActor
+@Suite("Clearing finished rows")
+struct TransferClearingTests {
+    private let transfer = Transfer(
+        origin: MachineID("local"),
+        destination: MachineID("mini"),
+        branch: "transfer/y",
+        title: "Fan layout"
+    )
+
+    private func coordinator(
+        _ succeed: Bool
+    ) -> TransferCoordinator {
+        TransferCoordinator { _ in
+            { step in
+                .init(
+                    text: "",
+                    succeeded: succeed || step.purpose != .verification
+                )
+            }
+        }
+    }
+
+    /// **A transfer that worked takes its own row away.** The card already
+    /// said so — a tick, a chime, and the card standing on the machine it
+    /// moved to — and a line of text repeating it only asks to be dismissed.
+    @Test
+    func aSuccessClearsItself() async {
+        let one = coordinator(true)
+        one.begin(transfer, steps: [])
+        try? await Task.sleep(for: .milliseconds(1900))
+        #expect(one.phase(for: transfer) == nil)
+    }
+
+    /// **A failure stays.** The card coming home says it did not work; only
+    /// the row says why, and that difference decides what you do next.
+    @Test
+    func aFailureWaitsToBeRead() async {
+        let one = coordinator(false)
+        one.begin(
+            transfer,
+            steps: [
+                .init(purpose: .verification, command: "x", isFatal: true)
+            ]
+        )
+        try? await Task.sleep(for: .milliseconds(1900))
+        #expect(one.phase(for: transfer) != nil)
+        #expect(one.needingAttention == [transfer])
+    }
+}

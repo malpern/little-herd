@@ -11,6 +11,9 @@ nonisolated struct DiscoveredMachine: Equatable, Identifiable, Sendable {
     let id: String
     var name: String
     var hostname: String
+    /// The account on that host. Empty means "whatever `ssh` would pick",
+    /// which is what every machine meant before this existed.
+    var sshUser: String = ""
     let hardwareSummary: String
     let platform: MachinePlatform
     let connection: MachineConnection
@@ -33,6 +36,7 @@ nonisolated struct DiscoveredMachine: Equatable, Identifiable, Sendable {
             connection: connection,
             avatar: avatar,
             identityFile: nil,
+            sshUser: sshUser.isEmpty ? nil : sshUser,
             serverNames: connection == .smb ? [hostname] : [],
             supportsGPU: platform == .macOS || avatar == .oxGPU
         )
@@ -709,6 +713,24 @@ private struct MachineSettingsReviewView: View {
 
                         TextField("Hostname", text: edited($machine, \.hostname))
                             .textFieldStyle(.roundedBorder)
+
+                        // **Which account, when it matters.** One host can be
+                        // two machines: on this herd the mini's scheduled jobs
+                        // and its console login have different checkouts and
+                        // different agents, and reading the wrong one made a
+                        // repository that was plainly there invisible. Left
+                        // empty it means what it has always meant — whatever
+                        // `ssh` would pick.
+                        TextField(
+                            "Account (optional)",
+                            text: edited($machine, \.sshUser)
+                        )
+                        .textFieldStyle(.roundedBorder)
+                        .help(Text(
+                            "The account to sign in as, if not the default. "
+                                + "The same Mac under two accounts is two "
+                                + "machines here."
+                        ))
                     }
                 }
             }

@@ -33,7 +33,7 @@ final class MonitorModel {
         guard let model = machines.first(where: { $0.machine == machine }),
               !model.isLocal
         else { return nil }
-        let host = model.hostname
+        let host = model.sshDestination
         let identity = model.identityFile
         return SuccessorSSH.runner(host: host, identityFile: identity)
     }
@@ -411,7 +411,7 @@ final class MonitorModel {
                     RemoteMonitor(
                         machine: model,
                         sampler: RemoteMetricsSampler(
-                            host: configuration.hostname,
+                            host: configuration.sshDestination,
                             platform: platform,
                             identityFile: configuration.identityFile
                         )

@@ -8,6 +8,8 @@ final class MachineMonitorModel: Identifiable {
     let name: String
     let shortName: String
     let hostname: String
+    /// The account-and-host `ssh` is given. `hostname` stays what is shown.
+    let sshDestination: String
     let symbolName: String
     let avatar: HerdwareAvatar
     let supportsGPU: Bool
@@ -89,6 +91,7 @@ final class MachineMonitorModel: Identifiable {
         name = configuration.name
         shortName = configuration.shortName
         hostname = configuration.hostname
+        sshDestination = configuration.sshDestination
         platform = configuration.platform
         symbolName = configuration.platform.symbolName
         avatar = configuration.avatar
@@ -154,7 +157,7 @@ final class MachineMonitorModel: Identifiable {
         return .available(
             FolderSizeScanner(
                 location: .ssh(
-                    host: hostname,
+                    host: sshDestination,
                     identityFile: identityFile,
                     platform: remotePlatform
                 )
@@ -270,7 +273,7 @@ final class MachineMonitorModel: Identifiable {
         agentAuth = await AgentAuthVerifier.verify(
             install: install,
             isLocal: isLocal,
-            host: hostname,
+            host: sshDestination,
             identityFile: identityFile
         )
     }
