@@ -139,9 +139,9 @@
       </a>
       <p>Generate a key, copy it over with <code>ssh-copy-id</code>, then write
         the machine down in <code>~/.ssh/config</code> once:</p>
-      <pre><code>Host mini
-  HostName mini.your-tailnet.ts.net
-  User you</code></pre>
+      <pre><code><span class="t-key">Host</span> <span class="t-val">mini</span>
+  <span class="t-key">HostName</span> <span class="t-val">mini.your-tailnet.ts.net</span>
+  <span class="t-key">User</span> <span class="t-val">you</span></code></pre>
       <p>That name now works everywhere SSH does &mdash;
         <code>scp file mini:</code>, <code>rsync</code>, an editor&rsquo;s remote
         mode, a backup job. Keep the file in your dotfiles and
@@ -185,8 +185,8 @@
       <p>A herd whose members each have a different half of your toolkit is
         still a pile. Dump what you have into a list, keep the list in your
         dotfiles, and install from it on every machine:</p>
-      <pre><code>brew bundle dump --file ~/dotfiles/Brewfile
-brew bundle --file ~/dotfiles/Brewfile</code></pre>
+      <pre><code><span class="t-cmd">brew</span> bundle dump <span class="t-flag">--file</span> <span class="t-path">~/dotfiles/Brewfile</span>
+<span class="t-cmd">brew</span> bundle <span class="t-flag">--file</span> <span class="t-path">~/dotfiles/Brewfile</span></code></pre>
       <p>A new machine goes from bare to useful in one command, and when you
         adopt a tool you add it once.</p>
       <p class="trap"><b>The trap:</b> a non-interactive shell &mdash; a cron
@@ -236,10 +236,10 @@ brew bundle --file ~/dotfiles/Brewfile</code></pre>
       </a>
       <p>The trick is that the session belongs to the far machine, not to your
         connection. You are attaching to something already running there:</p>
-      <pre><code>ssh mini
-tmux new -s work      # start it there
-# Ctrl-b then d       # detach; the work keeps going
-tmux attach -t work   # come back, from anywhere</code></pre>
+      <pre><code><span class="t-cmd">ssh</span> mini
+<span class="t-cmd">tmux</span> new <span class="t-flag">-s</span> work      <span class="t-cmt"># start it there</span>
+<span class="t-cmt"># Ctrl-b then d       # detach; the work keeps going</span>
+<span class="t-cmd">tmux</span> attach <span class="t-flag">-t</span> work   <span class="t-cmt"># come back, from anywhere</span></code></pre>
       <p>This is the single biggest change in how remote machines feel. They
         stop being fragile.</p>
       <p class="trap"><b>The trap:</b> tmux has to run <em>on the remote

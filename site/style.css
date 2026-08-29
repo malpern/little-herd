@@ -21,6 +21,7 @@
   --card-edge:  rgba(29, 28, 26, 0.08);
   --shadow:     0 1px 2px rgba(29,28,26,.05), 0 8px 24px rgba(29,28,26,.06);
   --licence-bg: var(--forest);
+  --code-path:  #8A5A2B;   /* the one code colour the palette lacked */
 
   --measure: 34rem;
   --pad: clamp(1.25rem, 5vw, 4rem);
@@ -40,6 +41,7 @@
     --shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
     --forest:    #70C799;
     --licence-bg:#10352A;
+    --code-path: #D0A273;
   }
 }
 :root[data-theme="dark"] {
@@ -52,6 +54,7 @@
   --shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
   --forest:    #70C799;
   --licence-bg:#10352A;
+  --code-path: #D0A273;
 }
 
 /* ----------------------------------------------------------------- base */
@@ -783,3 +786,15 @@ kbd {
   box-shadow: 0 1px 2px rgba(29,28,26,.06), 0 8px 22px rgba(29,28,26,.10);
 }
 .shot-fig figcaption { font-size: .87rem; color: var(--muted); margin-block-start: .6rem; }
+
+/* --------------------------------------------------------- code highlighting
+   Tokenised by the builder, coloured from the palette the rest of the site
+   already uses, so a code block reads as part of the page rather than as a
+   snippet pasted in from an editor with its own opinions. Five classes is the
+   whole vocabulary: it is shell and ssh_config, not a language server. */
+.t-cmd  { color: var(--forest); font-weight: 600; }
+.t-key  { color: var(--forest); font-weight: 600; }
+.t-flag { color: var(--teal); }
+.t-path { color: var(--code-path); }
+.t-cmt  { color: var(--muted); font-style: italic; }
+.t-val  { color: inherit; }
