@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import html as _html
 import pathlib
+import urllib.parse
 import re
 import sys
 
@@ -164,6 +165,38 @@ def shot(step: dict) -> str:
             f'      </figure>\n')
 
 
+def ask(step: dict) -> str:
+    """A prefilled ChatGPT prompt for the tool this step introduces.
+
+    `?q=` is not documented by OpenAI but is long-established and widely used.
+    The prompts are kept a few hundred characters because a very long query
+    string risks being cut by a WAF along the way.
+
+    The button says "Ask ChatGPT" in words and carries a drawn glyph rather
+    than OpenAI's mark: Simple Icons no longer carries that logo, which usually
+    means it was removed at the owner's request, and naming a product you are
+    pointing someone at is fine where reproducing its logo may not be.
+    """
+    if not step.get("ask"):
+        return ""
+    label, prompt = step["ask"]
+    href = "https://chatgpt.com/?q=" + urllib.parse.quote(prompt, safe="")
+    return (
+        f'      <div class="ask">\n'
+        f'        <p>Want to go further than this page does? Ask ChatGPT to walk you\n'
+        f'          through installing and using <b>{label}</b> on your own machines.</p>\n'
+        f'        <a class="ask-btn" href="{href}" target="_blank" rel="noopener">\n'
+        f'          <svg class="ask-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor"\n'
+        f'               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">\n'
+        f'            <path d="M12 3.2l1.5 4.1 4.1 1.5-4.1 1.5L12 14.4l-1.5-4.1L6.4 8.8l4.1-1.5z"/>\n'
+        f'            <path d="M18.5 14.5l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"/>\n'
+        f'          </svg>\n'
+        f'          Ask ChatGPT\n'
+        f'        </a>\n'
+        f'      </div>\n'
+    )
+
+
 def render_step(step: dict) -> str:
     """One column, in reading order: what you can do, then a picture of it,
     then the tool, then how, then the trap.
@@ -190,6 +223,7 @@ def render_step(step: dict) -> str:
         f'      </a>\n'
         f'{highlight_blocks(step["body"])}\n'
         f'{shot(step)}'
+        f'{ask(step)}'
         f'    </div>\n'
         f'  </li>\n\n'
     )
