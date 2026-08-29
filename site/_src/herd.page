@@ -29,6 +29,10 @@
       the network and drops the ad and tracker domains before they resolve. A
       media server does the same trick for films. A spare machine with a fast
       disk makes a good build cache.</p>
+    <a class="vid" href="https://www.youtube.com/watch?v=cE21YjuaB6o" target="_blank" rel="noopener">
+      <span class="vid-play" aria-hidden="true"></span>
+      <span class="vid-txt"><b>World&rsquo;s Greatest Pi-hole Tutorial</b><i>Crosstalk Solutions on YouTube</i></span>
+    </a>
     <p class="note">None of those are in this guide, because each is its own
       afternoon and none of them is about running machines <em>together</em>.
       They are simply the sort of thing you can do once you have somewhere to

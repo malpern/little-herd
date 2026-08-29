@@ -5,7 +5,7 @@
 # Extracted from the shipped pages rather than retyped, so the builder
 # reproduces what was already live.
 
-STEPS = [{'id': 'reach', 'ask': ('Tailscale', 'I have a few Macs, a Linux box and a NAS at home that I want to reach from anywhere. Explain what Tailscale is and how it differs from a VPN or port forwarding, then walk me through installing and signing in on macOS and on Linux, turning on MagicDNS so each machine has a name, and checking it works from off my home network. Cover machine key expiry and why I should disable it for a headless machine. Give exact commands.'), 'logo': 'tailscale',
+STEPS = [{'id': 'reach', 'video': ('Tailscale', 'How to get started with Tailscale in under 10 minutes', 'sPdvyR7bLqI'), 'ask': ('Tailscale', 'I have a few Macs, a Linux box and a NAS at home that I want to reach from anywhere. Explain what Tailscale is and how it differs from a VPN or port forwarding, then walk me through installing and signing in on macOS and on Linux, turning on MagicDNS so each machine has a name, and checking it works from off my home network. Cover machine key expiry and why I should disable it for a headless machine. Give exact commands.'), 'logo': 'tailscale',
   'n': 1,
   'heading': 'Reach any machine from anywhere',
   'what': 'One name per machine that works from the sofa, from a hotel, and from another machine '
@@ -45,7 +45,7 @@ STEPS = [{'id': 'reach', 'ask': ('Tailscale', 'I have a few Macs, a Linux box an
            'text': 'One name per machine that works from the sofa or a hotel, with nothing exposed '
                    'to the open internet.',
            'tool': 'Tailscale'}},
- {'id': 'connect', 'ask': ('SSH and ~/.ssh/config', 'Teach me to reach several home machines by short names over SSH. Cover generating a key, copying it with ssh-copy-id, writing Host / HostName / User entries in ~/.ssh/config, using Include to share that config across machines, the file permissions SSH requires, and why a key used by a scheduled job must not have a passphrase. macOS and Linux, with exact commands.'), 'shot': ('ssh.png', 'Landing on another machine, from its short name.'), 'logo': 'ssh',
+ {'id': 'connect', 'video': ('Learn Linux TV', 'The OpenSSH Client Config File', 'MWqfc_fegVg'), 'ask': ('SSH and ~/.ssh/config', 'Teach me to reach several home machines by short names over SSH. Cover generating a key, copying it with ssh-copy-id, writing Host / HostName / User entries in ~/.ssh/config, using Include to share that config across machines, the file permissions SSH requires, and why a key used by a scheduled job must not have a passphrase. macOS and Linux, with exact commands.'), 'shot': ('ssh.png', 'Landing on another machine, from its short name.'), 'logo': 'ssh',
   'n': 2,
   'heading': 'Get onto any machine with one short command',
   'what': '<code>ssh mini</code> instead of an address you have to remember, and a new machine '
@@ -168,7 +168,7 @@ STEPS = [{'id': 'reach', 'ask': ('Tailscale', 'I have a few Macs, a Linux box an
            'text': 'Close the lid and the work carries on, because it was never running on your '
                    'laptop.',
            'tool': 'tmux'}},
- {'id': 'screen', 'ask': ('macOS Screen Sharing', 'Explain how to use the Screen Sharing built into macOS to control another Mac on my network. Cover turning it on in System Settings, connecting with Finder\'s Connect to Server and a vnc:// address, when it is the right tool rather than SSH, and why macOS privacy prompts such as Screen Recording and Full Disk Access can only be granted on that machine\'s own screen.'), 'shot': ('connect.png', 'Finder&rsquo;s Connect to Server, waiting for a machine name.'), 'logo': 'screen',
+ {'id': 'screen', 'video': ('9to5Mac', 'Better Mac Screen Sharing', '5ZXCNGCaYbg'), 'ask': ('macOS Screen Sharing', 'Explain how to use the Screen Sharing built into macOS to control another Mac on my network. Cover turning it on in System Settings, connecting with Finder\'s Connect to Server and a vnc:// address, when it is the right tool rather than SSH, and why macOS privacy prompts such as Screen Recording and Full Disk Access can only be granted on that machine\'s own screen.'), 'shot': ('connect.png', 'Finder&rsquo;s Connect to Server, waiting for a machine name.'), 'logo': 'screen',
   'n': 5,
   'heading': 'See and use another machine&rsquo;s screen from this one',
   'what': 'The actual desktop of the box in the closet, for the things that only exist on a screen '
@@ -236,7 +236,7 @@ STEPS = [{'id': 'reach', 'ask': ('Tailscale', 'I have a few Macs, a Linux box an
            'text': 'And see at a glance which of them is working, which is done, and which is '
                    'waiting on you.',
            'tool': 'Herdr'}},
- {'id': 'backup', 'ask': ('Time Machine and restic', 'Show me how to back up several Macs over the network to one NAS with Time Machine, and how to back up a Linux machine to the same NAS with restic so the destination only ever stores encrypted data. Cover choosing the destination, scheduling, actually testing a restore, and why append-only or immutable backups matter if a machine is compromised. Exact commands.'), 'logo': 'backup',
+ {'id': 'backup', 'video': ('SpaceRex', 'Back up macOS to a Synology NAS with Time Machine', 'yQFuJJqqWbc'), 'ask': ('Time Machine and restic', 'Show me how to back up several Macs over the network to one NAS with Time Machine, and how to back up a Linux machine to the same NAS with restic so the destination only ever stores encrypted data. Cover choosing the destination, scheduling, actually testing a restore, and why append-only or immutable backups matter if a machine is compromised. Exact commands.'), 'logo': 'backup',
   'n': 7,
   'heading': 'Back every machine up to one place',
   'what': 'One destination that all of them write to, so the box in\n'
@@ -282,7 +282,7 @@ STEPS = [{'id': 'reach', 'ask': ('Tailscale', 'I have a few Macs, a Linux box an
            'text': 'One destination holding all of it, so the box in the closet becomes the '
                    'machine that matters.',
            'tool': 'Time Machine'}},
- {'id': 'alerts', 'ask': ('Healthchecks.io', 'Teach me to find out when an unattended machine or a scheduled backup stops running. Explain dead man\'s switch monitoring with Healthchecks.io, how to ping a check from a cron job or a launchd agent on macOS, how to alert on a job that has not reported rather than only on a machine that is down, why a machine should not be the thing that monitors itself, and what a hosted check catches that a self-hosted one cannot.'), 'logo': 'beat',
+ {'id': 'alerts', 'video': ('Techno Tim', 'Meet Uptime Kuma, an open source uptime monitor', 'r_A5NKkAqZM'), 'ask': ('Healthchecks.io', 'Teach me to find out when an unattended machine or a scheduled backup stops running. Explain dead man\'s switch monitoring with Healthchecks.io, how to ping a check from a cron job or a launchd agent on macOS, how to alert on a job that has not reported rather than only on a machine that is down, why a machine should not be the thing that monitors itself, and what a hosted check catches that a self-hosted one cannot.'), 'logo': 'beat',
   'n': 8,
   'heading': 'Find out when one of them stops',
   'what': 'An unattended machine that dies is only a problem the\n'
