@@ -1519,6 +1519,36 @@ a half-finished move is visible in the interface rather than in a log.
    was sitting on the machine the whole time — under `malpern`, while Little
    Herd was looking at `clawd`.
 
+   **The next piece is several accounts on one machine, and listing the host
+   twice is not it.** Adding the mini a second time works and was tried: two
+   entries, two animals, two sets of eligibility. It is wrong on three tabs out
+   of four. CPU, memory and disk belong to the **host** — two entries read the
+   same silicon twice, count the same memory pressure twice, and make the
+   header say five machines where there are four. Only the AI tab benefits,
+   because sessions, agents, checkouts and credentials are the things that are
+   genuinely per-account.
+
+   So the model is one machine per host, with accounts as a property of it:
+
+   - **Metrics are sampled once**, from whichever account can reach the host.
+   - **Sessions are sampled per account and merged**, each tagged with the
+     account it belongs to, so one animal's deck can carry agents from several
+     logins — which is what the machine is actually doing.
+   - **Eligibility asks whether *any* account here has the checkout**, and the
+     transfer picks that account rather than making somebody choose the right
+     animal.
+   - **A transfer targets a machine *and* an account.** `Transfer` and
+     `TransferAssembly` both grow a field.
+
+   The cost is honest: the sampler runs one shell script that does metrics and
+   sessions together, so the session half has to become per-account while the
+   metrics half stays single — and that script is the part where a mistake
+   makes a machine read as down. A day rather than an afternoon.
+
+   The `crab-mini` avatar was added for the two-entry version and is kept: it
+   is the right icon the day a machine needs distinguishing for a reason that
+   is not an addressing bug.
+
    **Cloning a missing repository is deliberately not the answer to that, and
    is worth having later.** When a destination genuinely lacks the repository,
    the tempting fix is to have the drag clone it. Rejected as an automatic
