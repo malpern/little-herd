@@ -10,6 +10,10 @@ final class MachineMonitorModel: Identifiable {
     let hostname: String
     /// The account-and-host `ssh` is given. `hostname` stays what is shown.
     let sshDestination: String
+    /// Kept whole, not only in the pieces copied out of it: what a person can
+    /// *do* with a machine — open a shell, its screen, its console — depends
+    /// on how it is reached, and that is spread across several fields.
+    let configuration: MachineConfiguration
     let symbolName: String
     let avatar: HerdwareAvatar
     let supportsGPU: Bool
@@ -92,6 +96,7 @@ final class MachineMonitorModel: Identifiable {
         shortName = configuration.shortName
         hostname = configuration.hostname
         sshDestination = configuration.sshDestination
+        self.configuration = configuration
         platform = configuration.platform
         symbolName = configuration.platform.symbolName
         avatar = configuration.avatar

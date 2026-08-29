@@ -755,6 +755,18 @@ nonisolated enum AgentTaskProbe {
       little_herd_reg_id=$(sed -n 's/.*"sessionId"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$little_herd_reg" | head -n 1)
       [ -n "$little_herd_reg_id" ] || continue
       little_herd_live_ids="$little_herd_live_ids $little_herd_reg_id"
+      # Two more fields out of a file already open.
+      #
+      # `claude agents --json` reports these too, and reads *these files* to do
+      # it — so calling it would spawn a binary each probe to be told what a
+      # `sed` already has. What they are worth: `kind` separates a session you
+      # are talking to from one dispatched by another agent, and `entrypoint`
+      # says whether it lives in the desktop app or a terminal. Neither is
+      # derivable from a transcript.
+      little_herd_reg_kind=$(sed -n 's/.*"kind"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$little_herd_reg" | head -n 1)
+      little_herd_reg_entry=$(sed -n 's/.*"entrypoint"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$little_herd_reg" | head -n 1)
+      printf "agent_live=%s\t%s\t%s\n" "$little_herd_reg_id" \
+        "${little_herd_reg_kind:-unknown}" "${little_herd_reg_entry:-unknown}"
     done
     # How long a finished turn still counts as waiting for a person.
     #

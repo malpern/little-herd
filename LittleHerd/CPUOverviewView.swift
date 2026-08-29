@@ -183,6 +183,19 @@ struct CPUOverviewView: View {
                 // animal as well, so there is no seam to fall through between
                 // pointing at a machine and reaching for its agents. Two
                 // adjacent regions here is what made them blink.
+                // The things you go and do after looking at a machine,
+                // put where you are already pointing — through AppKit, so the
+                // animal can be in the menu. See `AppKitContextMenu`.
+                .overlay {
+                    AppKitContextMenu(
+                        items: MachineMenuItems.items(
+                            for: machine.configuration,
+                            onOpenPage: { onSelectMachine?(machine.machine) },
+                            onOpenAgents: { onSelectAgents?(machine.machine) },
+                            open: { NSWorkspace.shared.open($0) }
+                        )
+                    )
+                }
                 .zIndex(activeDrag?.origin == machine.machine ? 1 : 0)
             }
         }
@@ -399,7 +412,8 @@ struct CPUOverviewView: View {
                         raised: fanned == machine.machine
                             || carrying?.from == machine.machine
                             || returning == machine.machine,
-                        rise: deckRise
+                        rise: deckRise,
+                        machine: machine.configuration
                     )
                     .offset(y: fanY)
                     // **The deck is part of its machine's target.** Reaching

@@ -51,6 +51,9 @@ struct MachineAgentFan: View {
     /// `CPUOverviewView`, which is the only thing that knows how a column is
     /// stacked — see `deckRise` there.
     var rise: CGFloat = 0
+    /// The machine these belong to, for the menu on a card. Optional so the
+    /// fan can still be drawn in a test without inventing a configuration.
+    var machine: MachineConfiguration?
     /// Whether the deck has finished coming down.
     ///
     /// **Not the same question as `spread == 0`.** `spread` is set to nought
@@ -361,6 +364,17 @@ struct MachineAgentFan: View {
             // over a card that can be picked up, a closed one while it is
             // being carried.
             .pointerStyle(carrying == index ? .grabActive : .grabIdle)
+            // The card cannot say which project it is in twenty points of
+            // width. The menu can, and it is where somebody would ask.
+            .contextMenu {
+                if let machine {
+                    AgentContextMenu(
+                        session: card.session,
+                        machine: machine,
+                        onOpenAgents: onOpenAll
+                    )
+                }
+            }
             .gesture(carry(card.session, index: index, restingAt: card.rect.midX))
             .help(Text(card.session.displayTitle))
             .accessibilityLabel(Text(card.session.displayTitle))

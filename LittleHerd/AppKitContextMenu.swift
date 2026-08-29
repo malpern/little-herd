@@ -1,0 +1,114 @@
+import AppKit
+import SwiftUI
+
+/// A right-click menu built in AppKit, so its items can carry images.
+///
+/// **SwiftUI's `.contextMenu` drops icons on macOS.** It accepts a `Label` with
+/// an image, compiles, and then the system draws text only — which is why the
+/// animal never appeared. `NSMenuItem` has an `image` property and the system
+/// honours it; the limitation was the bridge, not the platform.
+///
+/// Everything a menu does for free is kept: keyboard navigation, Escape,
+/// submenus, VoiceOver, and the system's own drawing.
+struct AppKitContextMenu: NSViewRepresentable {
+    let items: [AppKitMenuItem]
+
+    func makeNSView(context: Context) -> ContextMenuHostView {
+        let view = ContextMenuHostView()
+        view.items = items
+        return view
+    }
+
+    func updateNSView(_ view: ContextMenuHostView, context: Context) {
+        view.items = items
+    }
+}
+
+/// One row: a title, something to draw beside it, and what it does.
+nonisolated struct AppKitMenuItem {
+    enum Icon {
+        case none
+        case symbol(String)
+        /// An asset, which is the point of the exercise — the machine's animal.
+        case asset(String)
+        case image(NSImage)
+    }
+
+    let title: String
+    var icon: Icon = .none
+    /// A separator, drawn instead of a row.
+    var isSeparator = false
+    var action: (() -> Void)?
+
+    static var separator: AppKitMenuItem {
+        AppKitMenuItem(title: "", isSeparator: true)
+    }
+}
+
+/// The view that owns the menu.
+///
+/// **It claims right-clicks and nothing else.** An `NSView` laid over the herd
+/// would otherwise take the mouse from the SwiftUI views underneath, and the
+/// thing underneath here is the agent drag — which has already been broken once
+/// by a layering change. `hitTest` looks at the event being dispatched and
+/// returns nothing at all unless it is the one this view is for.
+final class ContextMenuHostView: NSView {
+    var items: [AppKitMenuItem] = []
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard let event = NSApp.currentEvent else { return nil }
+        switch event.type {
+        case .rightMouseDown, .rightMouseUp, .rightMouseDragged:
+            return super.hitTest(point)
+        case .leftMouseDown, .leftMouseUp
+            where event.modifierFlags.contains(.control):
+            return super.hitTest(point)
+        default:
+            return nil
+        }
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let menu = NSMenu()
+        for item in items {
+            guard !item.isSeparator else {
+                menu.addItem(.separator())
+                continue
+            }
+            let entry = NSMenuItem(
+                title: item.title,
+                action: item.action == nil ? nil : #selector(runMenuItem(_:)),
+                keyEquivalent: ""
+            )
+            entry.target = self
+            entry.representedObject = item.action.map(ActionBox.init)
+            entry.image = image(for: item.icon)
+            menu.addItem(entry)
+        }
+        return menu
+    }
+
+    private func image(for icon: AppKitMenuItem.Icon) -> NSImage? {
+        let found: NSImage? = switch icon {
+        case .none: nil
+        case .symbol(let name):
+            NSImage(systemSymbolName: name, accessibilityDescription: nil)
+        case .asset(let name): NSImage(named: name)
+        case .image(let image): image
+        }
+        // Menu icons are drawn at about this size whatever they arrive as, and
+        // an unresized 256-point avatar makes the row itself tall.
+        found?.size = NSSize(width: 16, height: 16)
+        return found
+    }
+
+    @objc private func runMenuItem(_ sender: NSMenuItem) {
+        (sender.representedObject as? ActionBox)?.run()
+    }
+
+    private final class ActionBox {
+        private let body: () -> Void
+        init(_ body: @escaping () -> Void) { self.body = body }
+        func run() { body() }
+    }
+}
