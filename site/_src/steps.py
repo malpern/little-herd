@@ -45,7 +45,7 @@ STEPS = [{'id': 'reach', 'logo': 'tailscale',
            'text': 'One name per machine that works from the sofa or a hotel, with nothing exposed '
                    'to the open internet.',
            'tool': 'Tailscale'}},
- {'id': 'connect', 'logo': 'ssh',
+ {'id': 'connect', 'shot': ('ssh.png', 'Landing on another machine, from its short name.'), 'logo': 'ssh',
   'n': 2,
   'heading': 'Get onto any machine with one short command',
   'what': '<code>ssh mini</code> instead of an address you have to remember, and a new machine '
@@ -94,7 +94,7 @@ STEPS = [{'id': 'reach', 'logo': 'tailscale',
            'text': 'The same way in to every machine, and a new one inherits the herd instead of '
                    'being set up by hand.',
            'tool': 'SSH'}},
- {'id': 'tools', 'logo': 'homebrew',
+ {'id': 'tools', 'shot': ('brew.png', 'One command, and the machine has your toolkit.'), 'logo': 'homebrew',
   'n': 3,
   'heading': 'Arrive on a machine and find your tools already there',
   'what': 'Every machine carries the same kit, so the one you connect to is somewhere you can work '
@@ -133,7 +133,7 @@ STEPS = [{'id': 'reach', 'logo': 'tailscale',
            'text': 'The machine you connect to is somewhere you can work, not somewhere you have '
                    'to set up first.',
            'tool': 'Homebrew'}},
- {'id': 'detach', 'logo': 'tmux',
+ {'id': 'detach', 'shot': ('tmux.png', 'The green bar is tmux. The work is running on the far machine.'), 'logo': 'tmux',
   'n': 4,
   'heading': 'Start something on another machine and walk away',
   'what': 'Close the lid, lose the connection, come back tomorrow &mdash; the work carries on, '
@@ -168,7 +168,7 @@ STEPS = [{'id': 'reach', 'logo': 'tailscale',
            'text': 'Close the lid and the work carries on, because it was never running on your '
                    'laptop.',
            'tool': 'tmux'}},
- {'id': 'screen', 'logo': 'screen',
+ {'id': 'screen', 'shot': ('connect.png', 'Finder&rsquo;s Connect to Server, waiting for a machine name.'), 'logo': 'screen',
   'n': 5,
   'heading': 'See and use another machine&rsquo;s screen from this one',
   'what': 'The actual desktop of the box in the closet, for the things that only exist on a screen '
