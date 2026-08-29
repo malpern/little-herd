@@ -126,15 +126,19 @@ def fill(text: str, **slots: str) -> str:
 # Nine steps in one column read as nine identical blocks. They are really
 # three acts, and saying so gives the page a shape a reader can hold.
 #
-# **Ordered by what a newcomer gets soonest for the least shell, not by
-# dependency.** The old order was a build order — reach, connect, tools —
-# which put SSH keys and config files third, before anybody had seen a machine
-# do anything. Screen sharing and Universal Control cost an install between
-# them and pay off immediately, so they come first; the keys are still there,
-# just after the reason to want them.
+# **A widening radius, not a build order.** The first version of this page
+# went reach, connect, tools — the order the things depend on each other —
+# which put SSH keys and file permissions third, before the reader had seen a
+# machine do anything for them.
+#
+# It now starts with what a Mac already does and widens: Universal Control
+# across a desk, screen sharing across a house, Tailscale across the world.
+# Nothing is installed until step three, by which point there is a reason to
+# want it. The shell follows, and the two that only matter once a herd is left
+# alone stay at the end.
 ACTS = [
-    ("Get to them", "One name each, and a way to see and use any of them — with almost nothing to install.",
-     ("reach", "screen", "control")),
+    ("Get to them", "The same desk, then the same house, then anywhere — starting with what your Mac already does.",
+     ("control", "screen", "reach")),
     ("Work on them", "The shell, the same tools everywhere, and work that carries on after you close the lid.",
      ("connect", "tools", "detach", "agents")),
     ("Keep it alive", "The two that decide whether a herd survives being left alone.",

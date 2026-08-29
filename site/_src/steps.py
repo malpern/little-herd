@@ -5,54 +5,57 @@
 # Extracted from the shipped pages rather than retyped, so the builder
 # reproduces what was already live.
 
-STEPS = [{'id': 'reach',
-  'video': ('Tailscale', 'How to get started with Tailscale in under 10 minutes', 'sPdvyR7bLqI'),
-  'ask': ('Tailscale',
-          'I have a few Macs, a Linux box and a NAS at home that I want to reach from anywhere. '
-          'Explain what Tailscale is and how it differs from a VPN or port forwarding, then walk '
-          'me through installing and signing in on macOS and on Linux, turning on MagicDNS so each '
-          'machine has a name, and checking it works from off my home network. Cover machine key '
-          'expiry and why I should disable it for a headless machine. Give exact commands.'),
-  'logo': 'tailscale',
+STEPS = [{'id': 'control',
+  'video': ('Apple Support', 'How to use Universal Control on Mac and iPad', '9tRzhE-wyNg'),
+  'ask': ('Universal Control',
+          'I have two Macs on the same desk and I want one keyboard and mouse to work across both, '
+          'with copy and paste between them. Explain Universal Control and Universal Clipboard: '
+          'what each one needs (same Apple Account with two-factor, Bluetooth, Wi-Fi and Handoff '
+          'on, machines close together), how to link a second Mac from the add-display menu in '
+          'Displays settings, how the two features differ, and the common reasons the pointer '
+          'refuses to cross. Then tell me what to use instead when the other machine is in another '
+          'room or another building.'),
+  'shot': ('universal-control.png',
+           'The add-display (+) menu in Displays settings, where a second Mac is linked.'),
+  'logo': 'screen',
   'n': 1,
-  'heading': 'Reach any machine from anywhere',
-  'what': 'One name per machine that works from the sofa, from a hotel, and from another machine '
-          'in the herd &mdash; with nothing exposed to the open internet.',
-  'figure': '      <figure class="fig fig-ring">\n'
-            '        <img class="f1" src="images/herdware/chick-laptop.png" alt=""><img class="f2" '
-            'src="images/herdware/calf-mini.png" alt=""><img class="f3" '
-            'src="images/herdware/ox-gpu.png" alt="">\n'
+  'heading': 'Use one keyboard and mouse across two Macs',
+  'what': 'The pointer runs off the edge of one screen and onto the next machine, and copy on one '
+          'is paste on the other &mdash; with no software to install.',
+  'figure': '      <figure class="fig fig-screen">\n'
+            '        <img class="f1" src="images/herdware/chick-laptop.png" alt="">\n'
+            '        <span class="pane"><img src="images/herdware/calf-mini.png" alt=""></span>\n'
             '        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid '
             'meet">\n'
-            '          <path class="s-route" d="M210 22 C 350 22, 400 128, 210 128 C 20 128, 70 '
-            '22, 210 22 Z"/>\n'
-            '          <path class="s-pulse" d="M210 22 C 350 22, 400 128, 210 128 C 20 128, 70 '
-            '22, 210 22 Z"/>\n'
+            '          <path class="s-route" d="M126 78 L 236 78"/>\n'
+            '          <path class="s-pulse" d="M126 78 L 236 78"/>\n'
             '        </svg>\n'
-            '        <figcaption>One name each, reachable from anywhere.</figcaption>\n'
+            '        <figcaption>One pointer, two machines.</figcaption>\n'
             '      </figure>',
-  'tool': {'url': 'https://tailscale.com',
-           'name': 'Tailscale',
-           'note': 'Free for personal use',
-           'go': 'tailscale.com &#8599;'},
-  'body': '      <p>This one is first because everything below it assumes you can reach\n'
-          '        the machine at all. Install on each one, sign in with the same account,\n'
-          '        turn on MagicDNS, and you are done &mdash; no port forwarding, no static\n'
-          '        IP, no router configuration, and nothing listening on the public\n'
-          '        internet.</p>\n'
-          '      <p class="trap"><b>The trap:</b> a machine&rsquo;s key expires by default,\n'
-          '        usually in about six months. A laptop you use daily just asks you to sign\n'
-          '        in again. <em>An unattended box silently drops off the network</em> and\n'
-          '        you discover it the next time you need it, which is the worst possible\n'
-          '        moment. Disable key expiry for anything headless.</p>\n'
-          '      <p class="trap"><b>And:</b> a <code>.local</code> name is mDNS. It resolves\n'
-          '        at home and nowhere else, so a setup tested only on the sofa looks\n'
-          '        finished and fails the first time you leave the house. Use the tailnet\n'
-          '        name everywhere, including in scripts.</p>',
-  'card': {'heading': 'Reach any of them from anywhere',
-           'text': 'One name per machine that works from the sofa or a hotel, with nothing exposed '
-                   'to the open internet.',
-           'tool': 'Tailscale'}},
+  'tool': {'url': 'https://support.apple.com/en-us/102459',
+           'name': 'Universal Control',
+           'note': 'Built into macOS',
+           'go': 'support.apple.com &#8599;'},
+  'body': '      <p>Two Macs on one desk do not need screen sharing. Sign both into the\n'
+          '        same Apple Account with two-factor turned on, leave Bluetooth, Wi-Fi\n'
+          '        and Handoff on, and link the second one from the add-display\n'
+          '        (<b>+</b>) menu in <b>Displays</b> settings. The pointer then runs off\n'
+          '        the edge of one screen onto the other, the keyboard follows it, and\n'
+          '        Universal Clipboard means copy here is paste there.</p>\n'
+          '      <p class="trap"><b>The trap:</b> this is a <em>same-desk</em> feature. It\n'
+          '        needs the machines within about ten metres, because the handshake is\n'
+          '        over Bluetooth. The headless box in the closet is not a candidate\n'
+          '        however good your network is &mdash; that is what the next two\n'
+          '        steps are for.</p>\n'
+          '      <p class="trap"><b>And:</b> nothing tells you <em>which</em> condition\n'
+          '        failed. A pointer that will not cross is the same silence whether the\n'
+          '        second Mac is on a different Apple Account, has Handoff off, or is\n'
+          '        simply too far away. Check them in that order; the account is the one\n'
+          '        people get wrong.</p>',
+  'card': {'heading': 'One keyboard across two Macs',
+           'text': 'The pointer runs onto the next machine and copy here is paste there, with '
+                   'nothing to install.',
+           'tool': 'Universal Control'}},
  {'id': 'screen',
   'video': ('9to5Mac', 'Better Mac Screen Sharing', '5ZXCNGCaYbg'),
   'ask': ('macOS Screen Sharing',
@@ -101,57 +104,55 @@ STEPS = [{'id': 'reach',
            'text': 'For the things that only exist on a screen &mdash; a permission dialog, an '
                    'installer, a first run.',
            'tool': 'Screen Sharing'}},
- {'id': 'control',
-  'video': ('Apple Support', 'How to use Universal Control on Mac and iPad', '9tRzhE-wyNg'),
-  'ask': ('Universal Control',
-          'I have two Macs on the same desk and I want one keyboard and mouse to work across both, '
-          'with copy and paste between them. Explain Universal Control and Universal Clipboard: '
-          'what each one needs (same Apple Account with two-factor, Bluetooth, Wi-Fi and Handoff '
-          'on, machines close together), how to link a second Mac from the add-display menu in '
-          'Displays settings, how the two features differ, and the common reasons the pointer '
-          'refuses to cross. Then tell me what to use instead when the other machine is in another '
-          'room or another building.'),
-  'shot': ('universal-control.png',
-           'The add-display (+) menu in Displays settings, where a second Mac is linked.'),
-  'logo': 'screen',
+ {'id': 'reach',
+  'video': ('Tailscale', 'How to get started with Tailscale in under 10 minutes', 'sPdvyR7bLqI'),
+  'ask': ('Tailscale',
+          'I have a few Macs, a Linux box and a NAS at home that I want to reach from anywhere. '
+          'Explain what Tailscale is and how it differs from a VPN or port forwarding, then walk '
+          'me through installing and signing in on macOS and on Linux, turning on MagicDNS so each '
+          'machine has a name, and checking it works from off my home network. Cover machine key '
+          'expiry and why I should disable it for a headless machine. Give exact commands.'),
+  'logo': 'tailscale',
   'n': 3,
-  'heading': 'Use one keyboard and mouse across two Macs',
-  'what': 'The pointer runs off the edge of one screen and onto the next machine, and copy on one '
-          'is paste on the other &mdash; with no software to install.',
-  'figure': '      <figure class="fig fig-screen">\n'
-            '        <img class="f1" src="images/herdware/chick-laptop.png" alt="">\n'
-            '        <span class="pane"><img src="images/herdware/calf-mini.png" alt=""></span>\n'
+  'heading': 'Reach any machine from anywhere',
+  'what': 'One name per machine that works from the sofa, from a hotel, and from another machine '
+          'in the herd &mdash; with nothing exposed to the open internet.',
+  'figure': '      <figure class="fig fig-ring">\n'
+            '        <img class="f1" src="images/herdware/chick-laptop.png" alt=""><img class="f2" '
+            'src="images/herdware/calf-mini.png" alt=""><img class="f3" '
+            'src="images/herdware/ox-gpu.png" alt="">\n'
             '        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid '
             'meet">\n'
-            '          <path class="s-route" d="M126 78 L 236 78"/>\n'
-            '          <path class="s-pulse" d="M126 78 L 236 78"/>\n'
+            '          <path class="s-route" d="M210 22 C 350 22, 400 128, 210 128 C 20 128, 70 '
+            '22, 210 22 Z"/>\n'
+            '          <path class="s-pulse" d="M210 22 C 350 22, 400 128, 210 128 C 20 128, 70 '
+            '22, 210 22 Z"/>\n'
             '        </svg>\n'
-            '        <figcaption>One pointer, two machines.</figcaption>\n'
+            '        <figcaption>One name each, reachable from anywhere.</figcaption>\n'
             '      </figure>',
-  'tool': {'url': 'https://support.apple.com/en-us/102459',
-           'name': 'Universal Control',
-           'note': 'Built into macOS',
-           'go': 'support.apple.com &#8599;'},
-  'body': '      <p>Two Macs on one desk do not need screen sharing. Sign both into the\n'
-          '        same Apple Account with two-factor turned on, leave Bluetooth, Wi-Fi\n'
-          '        and Handoff on, and link the second one from the add-display\n'
-          '        (<b>+</b>) menu in <b>Displays</b> settings. The pointer then runs off\n'
-          '        the edge of one screen onto the other, the keyboard follows it, and\n'
-          '        Universal Clipboard means copy here is paste there.</p>\n'
-          '      <p class="trap"><b>The trap:</b> this is a <em>same-desk</em> feature. It\n'
-          '        needs the machines within about ten metres, because the handshake is\n'
-          '        over Bluetooth. The headless box in the closet is not a candidate\n'
-          '        however good your network is &mdash; that is what the step above is\n'
-          '        for.</p>\n'
-          '      <p class="trap"><b>And:</b> nothing tells you <em>which</em> condition\n'
-          '        failed. A pointer that will not cross is the same silence whether the\n'
-          '        second Mac is on a different Apple Account, has Handoff off, or is\n'
-          '        simply too far away. Check them in that order; the account is the one\n'
-          '        people get wrong.</p>',
-  'card': {'heading': 'One keyboard across two Macs',
-           'text': 'The pointer runs onto the next machine and copy here is paste there, with '
-                   'nothing to install.',
-           'tool': 'Universal Control'}},
+  'tool': {'url': 'https://tailscale.com',
+           'name': 'Tailscale',
+           'note': 'Free for personal use',
+           'go': 'tailscale.com &#8599;'},
+  'body': '      <p>The two above work across a desk and across a house. This is the one\n'
+          '        that makes distance stop mattering, and everything below it assumes\n'
+          '        you have it. Install on each machine, sign in with the same account,\n'
+          '        turn on MagicDNS, and you are done &mdash; no port forwarding, no static\n'
+          '        IP, no router configuration, and nothing listening on the public\n'
+          '        internet.</p>\n'
+          '      <p class="trap"><b>The trap:</b> a machine&rsquo;s key expires by default,\n'
+          '        usually in about six months. A laptop you use daily just asks you to sign\n'
+          '        in again. <em>An unattended box silently drops off the network</em> and\n'
+          '        you discover it the next time you need it, which is the worst possible\n'
+          '        moment. Disable key expiry for anything headless.</p>\n'
+          '      <p class="trap"><b>And:</b> a <code>.local</code> name is mDNS. It resolves\n'
+          '        at home and nowhere else, so a setup tested only on the sofa looks\n'
+          '        finished and fails the first time you leave the house. Use the tailnet\n'
+          '        name everywhere, including in scripts.</p>',
+  'card': {'heading': 'Reach any of them from anywhere',
+           'text': 'One name per machine that works from the sofa or a hotel, with nothing exposed '
+                   'to the open internet.',
+           'tool': 'Tailscale'}},
  {'id': 'connect',
   'video': ('Learn Linux TV', 'The OpenSSH Client Config File', 'MWqfc_fegVg'),
   'ask': ('SSH and ~/.ssh/config',
