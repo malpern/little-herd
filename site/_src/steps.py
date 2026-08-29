@@ -133,7 +133,7 @@ STEPS = [{'id': 'reach', 'ask': ('Tailscale', 'I have a few Macs, a Linux box an
            'text': 'The machine you connect to is somewhere you can work, not somewhere you have '
                    'to set up first.',
            'tool': 'Homebrew'}},
- {'id': 'detach', 'ask': ('tmux', 'I am new to tmux and want the minimum that lets me start a long job on a remote machine and disconnect without killing it. Cover installing it, new / detach / attach, the difference between sessions, windows and panes, listing and killing sessions, and the common mistake of running tmux on my laptop instead of on the remote machine. Exact commands and key bindings.'), 'shot': ('tmux.png', 'The green bar is tmux. The work is running on the far machine.'), 'logo': 'tmux',
+ {'id': 'detach', 'video': ('typecraft', 'I Love TMUX and you should too', '-B5VDp50daI'), 'ask': ('tmux', 'I am new to tmux and want the minimum that lets me start a long job on a remote machine and disconnect without killing it. Cover installing it, new / detach / attach, the difference between sessions, windows and panes, listing and killing sessions, and the common mistake of running tmux on my laptop instead of on the remote machine. Exact commands and key bindings.'), 'shot': ('tmux.png', 'The green bar is tmux. The work is running on the far machine.'), 'logo': 'tmux',
   'n': 4,
   'heading': 'Start something on another machine and walk away',
   'what': 'Close the lid, lose the connection, come back tomorrow &mdash; the work carries on, '
@@ -207,7 +207,7 @@ STEPS = [{'id': 'reach', 'ask': ('Tailscale', 'I have a few Macs, a Linux box an
            'text': 'For the things that only exist on a screen &mdash; a permission dialog, an '
                    'installer, a first run.',
            'tool': 'Screen Sharing'}},
- {'id': 'agents', 'ask': ('Herdr', 'Explain Herdr (github.com/herdrdev/herdr), a terminal multiplexer built for AI coding agents. How do I install it on macOS, how does it differ from tmux, how do I run several Claude Code or Codex agents in panes and see at a glance which one is working, blocked or waiting on me, and how do its sessions detach and reattach over SSH?'), 'logo': 'panes',
+ {'id': 'agents', 'video': ('typecraft', 'I&rsquo;m ditching tmux for herdr!', 'yQDARWdrPeY'), 'ask': ('Herdr', 'Explain Herdr (github.com/herdrdev/herdr), a terminal multiplexer built for AI coding agents. How do I install it on macOS, how does it differ from tmux, how do I run several Claude Code or Codex agents in panes and see at a glance which one is working, blocked or waiting on me, and how do its sessions detach and reattach over SSH?'), 'logo': 'panes',
   'n': 6,
   'heading': 'Run several agents at once and see which one is waiting on you',
   'what': 'Each agent in its own pane, marked working, blocked or done, on a session you can '

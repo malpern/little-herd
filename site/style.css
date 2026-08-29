@@ -821,3 +821,28 @@ kbd {
 }
 .ask-btn:hover { border-color: var(--teal); transform: translateY(-1px); }
 .ask-mark { width: 17px; height: 17px; color: var(--teal); }
+
+/* A creator's video, where one exists. Compact on purpose: one row, the title
+   and who made it, sitting under the tool card as a second door rather than
+   competing with it. */
+.vid {
+  display: inline-flex; align-items: center; gap: .65rem;
+  max-width: 40rem; margin-block: -.6rem 1.4rem;
+  padding: .5rem .8rem .5rem .6rem;
+  border: 1px solid var(--card-edge); border-radius: 10px;
+  background: var(--card); text-decoration: none; color: inherit;
+  transition: border-color .2s ease, transform .2s ease;
+}
+.vid:hover { border-color: var(--alert); transform: translateY(-1px); }
+.vid-play {
+  flex: none; width: 26px; height: 18px; border-radius: 5px;
+  background: var(--alert); position: relative;
+}
+.vid-play::after {
+  content: ""; position: absolute; inset: 0; margin: auto;
+  width: 0; height: 0; border-style: solid;
+  border-width: 4.5px 0 4.5px 7px; border-color: transparent transparent transparent #fff;
+}
+.vid-txt { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.vid-txt b { font-weight: 600; font-size: .95rem; }
+.vid-txt i { font-style: normal; font-size: .82rem; color: var(--muted); }
