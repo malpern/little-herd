@@ -545,8 +545,12 @@ private struct LittleHerdSettingsView: View {
             VStack(alignment: .leading, spacing: 7) {
                 Toggle("Notify me when a machine needs attention", isOn: $alertsEnabled)
                     .font(.body.weight(.medium))
+                    .help(Text(
+                        "A disk nearly full, memory critical, or a machine "
+                            + "that has stopped responding."
+                    ))
 
-                Text("A notification when a disk is nearly full, memory is critical, or a machine stops responding — once per event, and once when it recovers.")
+                Text("Once when something needs looking at, once when it recovers.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -555,8 +559,14 @@ private struct LittleHerdSettingsView: View {
             VStack(alignment: .leading, spacing: 7) {
                 Toggle("Start CodexBar if it isn’t running", isOn: $startsUsageSource)
                     .font(.body.weight(.medium))
+                    .help(Text(
+                        "Neither vendor writes a limit anywhere Little Herd "
+                            + "can read, so the figure comes from CodexBar. "
+                            + "When it is not running the number stops "
+                            + "moving, which looks like having no limit."
+                    ))
 
-                Text("Usage figures come from CodexBar, because neither vendor writes a limit anywhere Little Herd can read. When CodexBar isn’t running the figure quietly stops moving, which looks the same as having no limit at all.")
+                Text("Usage figures come from CodexBar. Without it they stop moving.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -568,8 +578,13 @@ private struct LittleHerdSettingsView: View {
                     isOn: $requiresDestinationApproval
                 )
                 .font(.body.weight(.medium))
+                .help(Text(
+                    "Little Herd uses your own SSH access either way, so this "
+                        + "guards against dropping on the wrong machine "
+                        + "rather than against anyone reaching it."
+                ))
 
-                Text("Off, every machine that could run the work will take it. On, each one has to be allowed once, on its own AI page, and the herd refuses the rest while you drag. Little Herd uses your own SSH access either way, so this guards against dropping on the wrong machine rather than against anyone reaching it.")
+                Text("Each machine has to be allowed once, on its own AI page.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -579,14 +594,14 @@ private struct LittleHerdSettingsView: View {
                 Toggle("Show status in menu bar", isOn: $menuBarEnabled)
                     .font(.body.weight(.medium))
 
-                Text("Shows the busiest machine during normal use. High CPU, memory pressure, low storage, or an unreachable machine takes priority when attention is needed.")
+                Text("The busiest machine, or whatever needs attention.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             Label(
-                "Uses Little Herd’s existing low-frequency samples—no extra monitoring loop.",
+                "No extra monitoring — it uses samples already being taken.",
                 systemImage: "leaf"
             )
             .font(.caption)
@@ -599,7 +614,15 @@ private struct LittleHerdSettingsView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Machines")
                         .font(.body.weight(.medium))
-                    Text("\(machineStore.machines.count) saved. Drag to reorder; this is the order they appear in everywhere. Tick a machine to let a session be moved onto it.")
+                    // **Only mentions the tick when there is one.** It
+                    // appears with "Ask before a machine can take work", so
+                    // describing it unconditionally sent anybody with that
+                    // setting off looking for a control that is not drawn.
+                    Text(
+                        requiresDestinationApproval
+                            ? "\(machineStore.machines.count) saved. Drag to reorder. Tick a machine to let work move onto it."
+                            : "\(machineStore.machines.count) saved. Drag to reorder."
+                    )
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
