@@ -178,6 +178,28 @@ def mark() -> str:
     return svg.replace("<svg ", '<svg class="ask-mark" ', 1)
 
 
+def video(step: dict) -> str:
+    """One creator's video, where a good one exists.
+
+    Only two steps have one, and that is the honest count. Every candidate was
+    checked against YouTube's oembed for its real title and channel rather than
+    trusted from a search result, and two that looked perfect were dropped once
+    read: "The Perfect Home DNS Flow" is about DNSimple and auto-SSL rather
+    than Pi-hole, and "Stop Using Tailscale" argues against the tool the step
+    is recommending. A link that turns out to be neither is worse than no link.
+    """
+    if not step.get("video"):
+        return ""
+    who, title, vid = step["video"]
+    return (
+        f'      <a class="vid" href="https://www.youtube.com/watch?v={vid}"\n'
+        f'         target="_blank" rel="noopener">\n'
+        f'        <span class="vid-play" aria-hidden="true"></span>\n'
+        f'        <span class="vid-txt"><b>{title}</b><i>{who} on YouTube</i></span>\n'
+        f'      </a>\n'
+    )
+
+
 def ask(step: dict) -> str:
     """A prefilled ChatGPT prompt for the tool this step introduces.
 
@@ -231,6 +253,7 @@ def render_step(step: dict) -> str:
         f'        <span class="tool-go">{tool["go"]}</span>\n'
         f'      </a>\n'
         f'{highlight_blocks(step["body"])}\n'
+        f'{video(step)}'
         f'{shot(step)}'
         f'{ask(step)}'
         f'    </div>\n'

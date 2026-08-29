@@ -72,3 +72,21 @@ Vendor *marketing* images are a separate question and the answer is mostly no:
 Tailscale's press page states no usage terms at all, and a press kit is
 conventionally for editorial coverage rather than for illustrating another
 company's product site. Ask press@tailscale.com if you want them.
+
+## Adding a creator's video
+
+`steps.py` takes an optional `video` of `(creator, title, youtube_id)`.
+
+**Verify every id against YouTube's oembed before adding it**, which returns
+the real title and channel:
+
+```sh
+curl -s "https://www.youtube.com/oembed?url=https%3A//www.youtube.com/watch%3Fv%3DVIDEOID&format=json"
+```
+
+A search result is not proof of who made a video or what it covers. Two
+candidates that looked ideal were dropped after reading their descriptions:
+*The Perfect Home DNS Flow* is about DNSimple and auto-SSL rather than Pi-hole,
+and *Stop Using Tailscale* argues against the tool its step recommends. Only
+two steps carry a video, and that is the honest count rather than a gap to
+fill.
