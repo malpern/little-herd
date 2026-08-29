@@ -94,7 +94,7 @@ STEPS = [{'id': 'reach', 'ask': ('Tailscale', 'I have a few Macs, a Linux box an
            'text': 'The same way in to every machine, and a new one inherits the herd instead of '
                    'being set up by hand.',
            'tool': 'SSH'}},
- {'id': 'tools', 'ask': ('Homebrew and a Brewfile', 'Show me how to keep the same command-line tools on several Macs using Homebrew and a Brewfile. Cover brew bundle dump and brew bundle, keeping the Brewfile in a dotfiles repo, the difference between formulae and casks and why casks belong only on machines with a screen, and why a cron job or an ssh command cannot find brew on Apple silicon unless it sets PATH itself. Exact commands.'), 'shot': ('brew.png', 'One command, and the machine has your toolkit.'), 'logo': 'homebrew',
+ {'id': 'tools', 'video': ('DevOps Toolbox', '~/.dotfiles 101: A Zero to Configuration Hero Blueprint', 'WpQ5YiM7rD4'), 'ask': ('Homebrew and a Brewfile', 'Show me how to keep the same command-line tools on several Macs using Homebrew and a Brewfile. Cover brew bundle dump and brew bundle, keeping the Brewfile in a dotfiles repo, the difference between formulae and casks and why casks belong only on machines with a screen, and why a cron job or an ssh command cannot find brew on Apple silicon unless it sets PATH itself. Exact commands.'), 'shot': ('brew.png', 'One command, and the machine has your toolkit.'), 'logo': 'homebrew',
   'n': 3,
   'heading': 'Arrive on a machine and find your tools already there',
   'what': 'Every machine carries the same kit, so the one you connect to is somewhere you can work '
