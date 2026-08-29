@@ -175,3 +175,49 @@ struct TransferClearingTests {
         #expect(one.needingAttention == [transfer])
     }
 }
+
+@Suite("How far along")
+struct TransferProgressTests {
+    /// **The bar is weighted by time, not by step count.** Six equal segments
+    /// would sit at a third for the whole of the agent's work — often most of
+    /// the transfer — and then run through the last four in a moment. A bar
+    /// that stands still for half an hour looks stuck exactly when the thing
+    /// is working hardest.
+    @Test
+    func theAgentOwnsMostOfTheWidth() {
+        let beforeAgent = TransferPhase.running(.prompt).progress
+        let agent = TransferPhase.running(.agent).progress
+        let check = TransferPhase.running(.verification).progress
+        // Between them, the two long steps are most of the bar.
+        #expect(check - beforeAgent > 0.6)
+        // And the bookkeeping either side is a sliver.
+        #expect(beforeAgent < 0.2)
+        #expect(agent > beforeAgent)
+    }
+
+    /// It never goes backwards, whatever order the phases are asked about.
+    @Test
+    func itOnlyEverMovesForward() {
+        let order: [TransferPhase] = [
+            .preparing,
+            .running(.worktree), .running(.prompt), .running(.agent),
+            .running(.verification), .running(.delivery), .running(.cleanup),
+            .finished(.init(result: .landed, failingStep: nil, output: "")),
+        ]
+        for (earlier, later) in zip(order, order.dropFirst()) {
+            #expect(later.progress > earlier.progress)
+        }
+    }
+
+    /// Nothing sits at nought, so a bar that has just appeared still shows
+    /// that something is under way.
+    @Test
+    func itNeverStartsEmpty() {
+        #expect(TransferPhase.preparing.progress > 0)
+        #expect(
+            TransferPhase.finished(
+                .init(result: .landed, failingStep: nil, output: "")
+            ).progress == 1
+        )
+    }
+}

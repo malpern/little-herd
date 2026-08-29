@@ -434,7 +434,7 @@ struct CPUOverviewView: View {
                 session: carried.session,
                 from: carried.from,
                 to: destination,
-                state: .working
+                state: .working(0)
             )
         }
         onTransfer?(carried.session, carried.from, destination)
@@ -445,10 +445,13 @@ struct CPUOverviewView: View {
             // rebuilt any number of times while a transfer runs.
             while !Task.isCancelled {
                 let state = transferState?(carried.session)
-                if let state, state != .working {
+                if let state, !state.isWorking {
                     await finishTransit(state)
                     return
                 }
+                // The bar has to be told how far along it is, not merely that
+                // it is still going.
+                if let state { transit?.state = state }
                 try? await Task.sleep(for: .milliseconds(120))
             }
         }

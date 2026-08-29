@@ -3,9 +3,15 @@ import SwiftUI
 
 /// What is happening to a card that has been dropped on another machine.
 nonisolated enum TransitState: Equatable {
-    case working
+    /// Under way, and this far along. See `TransferPhase.progress`.
+    case working(Double)
     case succeeded
     case failed
+
+    var isWorking: Bool {
+        if case .working = self { return true }
+        return false
+    }
 }
 
 /// A sound for an outcome nobody may be watching.
@@ -40,7 +46,6 @@ struct AgentTransitCard: View {
     let size: CGFloat
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var spinning = false
 
     var body: some View {
         Image(nsImage: AgentProviderIcons.icon(for: session.provider))
@@ -49,6 +54,11 @@ struct AgentTransitCard: View {
             .frame(width: size, height: size)
             .shadow(color: .black.opacity(0.26), radius: size * 0.16, y: 2)
             .overlay { mark }
+            // **Above the card, not on it.** A bar over the art hides the one
+            // thing that says whose work this is, and a spinner said only
+            // "something is happening" — which you already knew, because you
+            // just dropped it there. This says how far.
+            .overlay(alignment: .top) { bar }
             .accessibilityLabel(Text(label))
     }
 
@@ -56,24 +66,7 @@ struct AgentTransitCard: View {
     private var mark: some View {
         switch state {
         case .working:
-            // Over the card rather than beside it: the card is the subject,
-            // and a spinner next to it would read as something else's.
-            Circle()
-                .trim(from: 0, to: 0.7)
-                .stroke(
-                    Color.white,
-                    style: StrokeStyle(lineWidth: size * 0.09, lineCap: .round)
-                )
-                .frame(width: size * 0.52, height: size * 0.52)
-                .rotationEffect(.degrees(spinning ? 360 : 0))
-                .animation(
-                    reduceMotion
-                        ? nil
-                        : .linear(duration: 0.9).repeatForever(autoreverses: false),
-                    value: spinning
-                )
-                .shadow(color: .black.opacity(0.5), radius: 2)
-                .onAppear { spinning = true }
+            EmptyView()
         case .succeeded:
             Image(systemName: "checkmark.circle.fill")
                 .resizable()
@@ -86,9 +79,32 @@ struct AgentTransitCard: View {
         }
     }
 
+    @ViewBuilder
+    private var bar: some View {
+        if case .working(let fraction) = state {
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(.black.opacity(0.22))
+                Capsule()
+                    .fill(Color.accentColor)
+                    .frame(width: max(size * 0.06, size * 0.86 * fraction))
+            }
+            .frame(width: size * 0.86, height: max(3, size * 0.075))
+            .offset(y: -size * 0.30)
+            // Eased rather than sprung: it never goes backwards, and a bar
+            // that overshoots its own fill reads as a mistake.
+            .animation(
+                reduceMotion ? nil : .easeInOut(duration: 0.45),
+                value: fraction
+            )
+            .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
+        }
+    }
+
     private var label: String {
         switch state {
-        case .working: "\(session.displayTitle), moving"
+        case .working(let fraction):
+            "\(session.displayTitle), moving, \(Int(fraction * 100)) per cent"
         case .succeeded: "\(session.displayTitle), moved"
         case .failed: "\(session.displayTitle), did not move"
         }

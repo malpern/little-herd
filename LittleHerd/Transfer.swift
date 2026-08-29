@@ -34,6 +34,34 @@ nonisolated enum TransferPhase: Equatable, Sendable {
     /// Over, one way or another.
     case finished(SuccessorOutcome)
 
+    /// How far along, from nought to one.
+    ///
+    /// **Weighted by how long each step actually takes, not by how many there
+    /// are.** Six equal segments would put the bar at a third while the agent
+    /// works — which is most of the transfer, sometimes half an hour of it —
+    /// and then run through the last four in a couple of seconds. A bar that
+    /// stands still for thirty minutes and then leaps is worse than no bar:
+    /// it looks stuck at exactly the moment the thing is working hardest.
+    ///
+    /// The weights are rough on purpose. What has to be right is the shape —
+    /// most of the width belongs to the agent and the tests, and the
+    /// bookkeeping either side is a sliver.
+    var progress: Double {
+        switch self {
+        case .preparing: 0.04
+        case .running(let purpose):
+            switch purpose {
+            case .worktree: 0.10
+            case .prompt: 0.14
+            case .agent: 0.60
+            case .verification: 0.88
+            case .delivery: 0.96
+            case .cleanup: 0.99
+            }
+        case .finished: 1
+        }
+    }
+
     /// Whether calling it off is still meaningful.
     var isCancellable: Bool {
         switch self {
