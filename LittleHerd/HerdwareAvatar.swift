@@ -6,6 +6,14 @@ nonisolated enum HerdwareAvatar: String, CaseIterable, Codable, Identifiable,
 {
     case chickLaptop = "chick-laptop"
     case calfMini = "calf-mini"
+    /// A second Mac mini, for the second account on one.
+    ///
+    /// **Two accounts on a host are two machines, and they should not be the
+    /// same animal.** The mini runs the scheduled jobs under one login and is
+    /// the console under another; drawing both as the calf makes the herd say
+    /// there are two identical machines, which is the one thing that is not
+    /// true about them.
+    case crabMini = "crab-mini"
     case lambStudio = "lamb-studio"
     case duckAllInOne = "duck-all-in-one"
     case rabbitNUC = "rabbit-nuc"
