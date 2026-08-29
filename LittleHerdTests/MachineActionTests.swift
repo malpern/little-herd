@@ -78,3 +78,58 @@ struct MachineActionTests {
         )
     }
 }
+
+@Suite("Resuming a session")
+struct ResumeCommandTests {
+    private func session(_ provider: AgentTaskProvider) -> AgentSession {
+        AgentSession(
+            id: "abc-123", provider: provider, projectName: "p",
+            state: .waiting, updatedAt: Date(), progress: nil
+        )
+    }
+
+    private func machine(_ connection: MachineConnection) -> MachineConfiguration {
+        MachineConfiguration(
+            id: MachineID("m"), name: "M", shortName: "M",
+            hostname: "openclaw.local", hardwareSummary: "",
+            platform: .macOS, connection: connection, avatar: .calfMini,
+            identityFile: nil, sshUser: "malpern", serverNames: [],
+            supportsGPU: false
+        )
+    }
+
+    /// **Resuming happens where the session is.** `--resume` reads a
+    /// transcript that exists only on that machine, so a command copied for a
+    /// remote session has to get you there first — and on the account the
+    /// machine is, not whichever one ssh would have picked.
+    @Test
+    func aRemoteSessionIsResumedThroughItsOwnMachine() {
+        let command = AgentMenuItems.resumeCommand(
+            for: session(.claude),
+            on: machine(.ssh)
+        )
+        #expect(command == "ssh malpern@openclaw.local -t 'claude --resume abc-123'")
+    }
+
+    /// A session on this Mac needs no ssh wrapped round it.
+    @Test
+    func aLocalSessionIsJustTheCommand() {
+        #expect(
+            AgentMenuItems.resumeCommand(
+                for: session(.claude),
+                on: machine(.local)
+            ) == "claude --resume abc-123"
+        )
+    }
+
+    /// Each agent is resumed the way that agent resumes.
+    @Test
+    func eachProviderHasItsOwnVerb() {
+        #expect(
+            AgentMenuItems.resumeCommand(
+                for: session(.codex),
+                on: machine(.local)
+            ) == "codex resume abc-123"
+        )
+    }
+}

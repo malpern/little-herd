@@ -61,116 +61,74 @@ nonisolated enum MachineMenuItems {
     }
 }
 
-/// The right-click menu on a machine.
-///
-/// **Little Herd has been read-only staring.** You watch a machine fill up, or
-/// stop answering, and then leave the app to do something about it. These are
-/// the things people go and do next, put where they are already pointing.
-struct MachineContextMenu: View {
-    let machine: MachineConfiguration
-    var onOpenPage: (() -> Void)?
-    var onOpenAgents: (() -> Void)?
+/// The same agent menu, as AppKit rows.
+@MainActor
+enum AgentMenuItems {
+    static func items(
+        for session: AgentSession,
+        on machine: MachineConfiguration,
+        origin: AgentSessionOrigin?,
+        onOpenAgents: (() -> Void)?
+    ) -> [AppKitMenuItem] {
+        var items: [AppKitMenuItem] = [
+            AppKitMenuItem(
+                title: session.displayTitle,
+                icon: .image(AgentProviderIcons.icon(for: session.provider)),
+                action: onOpenAgents
+            )
+        ]
 
-    @Environment(\.openURL) private var openURL
-
-    var body: some View {
-        Section {
-            // **The animal, in the menu.** A menu item takes any image, and
-            // the herd's whole idea is that a machine is a creature rather
-            // than a hostname — so the cow you right-clicked is the cow you
-            // are looking at. It also does the work a header would: you can
-            // tell at a glance which machine this menu belongs to, which
-            // matters when four of them sit twenty points apart.
-            if let onOpenPage {
-                Button(action: onOpenPage) {
-                    Label {
-                        Text(machine.name)
-                    } icon: {
-                        Image(machine.avatar.assetName)
-                            .resizable()
-                            .scaledToFit()
-                    }
-                }
-            }
-            if let onOpenAgents {
-                Button("Its Agents", systemImage: "sparkles") {
-                    onOpenAgents()
-                }
-            }
-        }
-
-        let actions = MachineActions.actions(for: machine)
-        if !actions.isEmpty {
-            Section {
-                ForEach(actions) { action in
-                    Button(action.title, systemImage: action.systemImage) {
-                        openURL(action.url)
-                    }
-                }
-            }
-        }
-
-        Section {
-            Button("Copy Hostname", systemImage: "doc.on.doc") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(
-                    machine.sshDestination,
-                    forType: .string
+        // The question the card raises and cannot answer in twenty points.
+        if let directory = session.workingDirectory {
+            items.append(
+                AppKitMenuItem(
+                    title: (directory as NSString).lastPathComponent,
+                    icon: .symbol("folder")
                 )
-            }
+            )
         }
-    }
-}
-
-/// The right-click menu on one agent's card.
-///
-/// It leads with the project, because that is the question the card raises and
-/// cannot answer in twenty points of width — and because a session's own title
-/// is often the more useful of the two, so both are here rather than one.
-struct AgentContextMenu: View {
-    let session: AgentSession
-    let machine: MachineConfiguration
-    var onOpenAgents: (() -> Void)?
-
-    @Environment(\.openURL) private var openURL
-
-    var body: some View {
-        Section {
-            // The agent's own icon, for the same reason: these cards are
-            // twenty points wide and two providers look alike at that size.
-            Label {
-                Text(session.displayTitle)
-            } icon: {
-                Image(nsImage: AgentProviderIcons.icon(for: session.provider))
-                    .resizable()
-                    .scaledToFit()
-            }
-            if let directory = session.workingDirectory {
-                Text(directory)
-            }
+        // Only when there is something unusual to say — see
+        // `AgentSessionOrigin.label`.
+        if let label = origin?.label {
+            items.append(
+                AppKitMenuItem(title: label, icon: .symbol("questionmark.circle"))
+            )
         }
 
-        Section {
-            if let onOpenAgents {
-                Button("Show It On \(machine.shortName)", systemImage: "sparkles") {
-                    onOpenAgents()
+        items.append(.separator)
+        items.append(
+            AppKitMenuItem(
+                title: "Copy Resume Command",
+                icon: .symbol("arrow.clockwise"),
+                action: {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(
+                        resumeCommand(for: session, on: machine),
+                        forType: .string
+                    )
                 }
-            }
-            // **Resuming happens where the session is.** A local one opens a
-            // Terminal here; a remote one opens a shell on that machine first,
-            // because `--resume` reads a transcript that only exists there.
-            Button("Copy Resume Command", systemImage: "arrow.clockwise") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(resumeCommand, forType: .string)
-            }
-            Button("Copy Session ID", systemImage: "number") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(session.id, forType: .string)
-            }
-        }
+            )
+        )
+        items.append(
+            AppKitMenuItem(
+                title: "Copy Session ID",
+                icon: .symbol("number"),
+                action: {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(session.id, forType: .string)
+                }
+            )
+        )
+        return items
     }
 
-    private var resumeCommand: String {
+    /// **Resuming happens where the session is.** A local one is a command
+    /// here; a remote one needs a shell on that machine first, because
+    /// `--resume` reads a transcript that exists only there.
+    nonisolated static func resumeCommand(
+        for session: AgentSession,
+        on machine: MachineConfiguration
+    ) -> String {
         let resume = switch session.provider {
         case .claude: "claude --resume \(session.id)"
         case .codex: "codex resume \(session.id)"

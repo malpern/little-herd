@@ -54,6 +54,9 @@ struct MachineAgentFan: View {
     /// The machine these belong to, for the menu on a card. Optional so the
     /// fan can still be drawn in a test without inventing a configuration.
     var machine: MachineConfiguration?
+    /// Where each session lives, from the registry. Only the unusual cases
+    /// say anything — see `AgentSessionOrigin.label`.
+    var origins: [String: AgentSessionOrigin] = [:]
     /// Whether the deck has finished coming down.
     ///
     /// **Not the same question as `spread == 0`.** `spread` is set to nought
@@ -365,13 +368,18 @@ struct MachineAgentFan: View {
             // being carried.
             .pointerStyle(carrying == index ? .grabActive : .grabIdle)
             // The card cannot say which project it is in twenty points of
-            // width. The menu can, and it is where somebody would ask.
-            .contextMenu {
+            // width. The menu can, and it is where somebody would ask —
+            // through AppKit, like the machine's, so the agent's own icon is
+            // beside its name.
+            .overlay {
                 if let machine {
-                    AgentContextMenu(
-                        session: card.session,
-                        machine: machine,
-                        onOpenAgents: onOpenAll
+                    AppKitContextMenu(
+                        items: AgentMenuItems.items(
+                            for: card.session,
+                            on: machine,
+                            origin: origins[card.session.id],
+                            onOpenAgents: onOpenAll
+                        )
                     )
                 }
             }
