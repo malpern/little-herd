@@ -1555,6 +1555,26 @@ source machine after a failure.
    rule would collapse to "Linux failed to resolve", which is what the tooltip
    already says. Build it when a second machine becomes reachable only over the
    tailnet, and not before.
+
+   **A first real case arrived on 1 September, and it argues for different
+   wording rather than for building this.** The mini's Tailscale tunnel stopped
+   while the machine stayed powered on, logged in, and answering ssh on the LAN.
+   Little Herd reported it offline for a day and was right to: its probe genuinely
+   could not reach it, because the app addressed the machine by a tailnet name and
+   the laptop's ssh fallback to the LAN was guarded on whether that name
+   *resolved* — and MagicDNS keeps serving the address of a node that has been
+   offline for days. Fixed in `dotfiles`, not here.
+
+   **What is ours is the sentence.** The classification was correct — `.noAnswer`,
+   since the name resolved and nothing replied — but its detail reads *"Likely
+   asleep or off the network"*, and the machine was neither. It was awake, on the
+   network, and reachable at a different address. That is a confident wrong
+   diagnosis rather than an unhelpful one, and it sent the question to a person
+   rather than answering it. Worth rewording to name what was observed instead of
+   guessing at the cause; **do not add a reachability sweep to make the guess
+   better**, because probing every other route to a machine is a fair amount of
+   work to improve one tooltip, and this app already declines to enumerate
+   volumes for a smaller reason.
 4. **Destination eligibility is measured, and it has a caller now.**
    Every account reports which agents it can run and where, and which
    repositories it has checked out keyed by the origin remote's slug.
