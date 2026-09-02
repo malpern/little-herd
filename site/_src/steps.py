@@ -1,4 +1,4 @@
-# The nine steps, and the homepage card for each.
+# The ten steps, and the homepage card for each.
 # ONE source: the guide renders from `heading`/`what`/`figure`/`tool`/`body`,
 # the homepage card from `card`, and both take the tool name and the anchor
 # from the same entry -- which is what stops the two pages drifting apart.
@@ -153,6 +153,68 @@ STEPS = [{'id': 'control',
            'text': 'One name per machine that works from the sofa or a hotel, with nothing exposed '
                    'to the open internet.',
            'tool': 'Tailscale'}},
+ {'id': 'stream',
+  'video': ('gotbletu', 'Sunshine and Moonlight for Game Streaming or Remote Desktop', 'D9fzO7MYS2M'),
+  'ask': ('Sunshine and Moonlight',
+          'I want to use my Linux machine&rsquo;s desktop from my Mac, and screen sharing over VNC '
+          'is too slow to work in. Explain Sunshine and Moonlight in plain terms, then walk me '
+          'through installing Sunshine on Linux and Moonlight on macOS, pairing them with a PIN, '
+          'and checking that hardware encoding is actually being used. Cover what to do when the '
+          'Linux machine has no monitor attached, and how to keep Sunshine&rsquo;s web page off '
+          'the open internet.'),
+  'logo': 'stream',
+  'n': 4,
+  'heading': 'Use a Linux desktop as if it were the one in front of you',
+  'what': 'The same idea as screen sharing, but smooth enough to actually work in &mdash; the '
+          'machine turns its screen into video and your Mac plays it back.',
+  'figure': '      <figure class="fig fig-screen">\n'
+            '        <img class="f1" src="images/herdware/chick-laptop.png" alt="">\n'
+            '        <span class="pane"><img src="images/herdware/ox-gpu.png" alt=""></span>\n'
+            '        <svg class="s-wire" viewBox="0 0 420 150" preserveAspectRatio="xMidYMid '
+            'meet">\n'
+            '          <path class="s-route" d="M126 78 L 236 78"/>\n'
+            '          <path class="s-pulse" d="M126 78 L 236 78"/>\n'
+            '          <path class="s-pulse d1" d="M126 78 L 236 78"/>\n'
+            '          <path class="s-pulse d2" d="M126 78 L 236 78"/>\n'
+            '        </svg>\n'
+            '        <figcaption>Its screen, as video, as fast as you can move.</figcaption>\n'
+            '      </figure>',
+  'tool': {'url': 'https://moonlight-stream.org',
+           'name': 'Sunshine + Moonlight',
+           'note': 'Open source &middot; one install on each end',
+           'go': 'moonlight-stream.org &#8599;'},
+  'body': '      <p>Install <b>Sunshine</b> on the Linux machine and <b>Moonlight</b> on\n'
+          '        your Mac, open Sunshine&rsquo;s settings page in a browser, and type in\n'
+          '        the four-digit PIN that Moonlight shows you. That is the whole setup, and\n'
+          '        it is the last time you have to think about it.</p>\n'
+          '      <p>Screen sharing sends pictures of a screen, one after another. Sunshine\n'
+          '        sends <i>video</i>: the graphics chip already in that machine compresses\n'
+          '        the desktop the way a video call does, and your Mac plays it back the same\n'
+          '        way. That is the whole difference, and it is the difference between\n'
+          '        dragging a window that follows your hand and one that arrives a moment\n'
+          '        later. Screen sharing is still the right tool for clicking one button in\n'
+          '        one dialog. This is the one for anything that moves &mdash; a browser, a\n'
+          '        video, an editor you actually intend to work in.</p>\n'
+          '      <p class="trap"><b>The trap:</b> a machine with no monitor plugged into it\n'
+          '        has no screen to send, and Sunshine will start, report itself healthy, and\n'
+          '        stream a black rectangle. Anything that presents a display fixes it &mdash;\n'
+          '        a cheap dummy HDMI plug, a monitor left connected, a KVM &mdash; and this\n'
+          '        is far and away the most common reason it appears not to work on a machine\n'
+          '        in a cupboard. Expect one alarming line in the log at startup about a\n'
+          '        display that could not be initialised; it tries several ways of capturing\n'
+          '        the screen and says so about the ones it does not use.</p>\n'
+          '      <p class="trap"><b>And the honest limit:</b> Sunshine&rsquo;s settings page\n'
+          '        answers on every network the machine is attached to, and it is the page\n'
+          '        that controls the machine&rsquo;s screen &mdash; so it belongs on your\n'
+          '        private network from the day you install it, never on a port forwarded\n'
+          '        from your router. The step above is what makes that easy. Note too that\n'
+          '        this is the machine&rsquo;s one real desktop rather than a private session\n'
+          '        of your own: sit down at it while you are connected and you are both\n'
+          '        looking at the same screen.</p>',
+  'card': {'heading': 'Use a Linux desktop remotely',
+           'text': 'Smooth enough to work in, because the machine sends video rather than '
+                   'pictures of a screen.',
+           'tool': 'Sunshine + Moonlight'}},
  {'id': 'connect',
   'video': ('Learn Linux TV', 'The OpenSSH Client Config File', 'MWqfc_fegVg'),
   'ask': ('SSH and ~/.ssh/config',
@@ -163,7 +225,7 @@ STEPS = [{'id': 'control',
           'and Linux, with exact commands.'),
   'shot': ('ssh.png', 'Landing on another machine, from its short name.'),
   'logo': 'ssh',
-  'n': 4,
+  'n': 5,
   'heading': 'Get onto any machine with one short command',
   'what': '<code>ssh mini</code> instead of an address you have to remember, and a new machine '
           'that inherits the whole herd rather than being set up by hand.',
@@ -223,7 +285,7 @@ STEPS = [{'id': 'control',
           'unless it sets PATH itself. Exact commands.'),
   'shot': ('brew.png', 'One command, and the machine has your toolkit.'),
   'logo': 'homebrew',
-  'n': 5,
+  'n': 6,
   'heading': 'Arrive on a machine and find your tools already there',
   'what': 'Every machine carries the same kit, so the one you connect to is somewhere you can work '
           'rather than somewhere you have to set up first.',
@@ -271,7 +333,7 @@ STEPS = [{'id': 'control',
           'commands and key bindings.'),
   'shot': ('tmux.png', 'The green bar is tmux. The work is running on the far machine.'),
   'logo': 'tmux',
-  'n': 6,
+  'n': 7,
   'heading': 'Start something on another machine and walk away',
   'what': 'Close the lid, lose the connection, come back tomorrow &mdash; the work carries on, '
           'because it was never running on your laptop.',
@@ -313,7 +375,7 @@ STEPS = [{'id': 'control',
           'several Claude Code or Codex agents in panes and see at a glance which one is working, '
           'blocked or waiting on me, and how do its sessions detach and reattach over SSH?'),
   'logo': 'panes',
-  'n': 7,
+  'n': 8,
   'heading': 'Run several agents at once and see which one is waiting on you',
   'what': 'Each agent in its own pane, marked working, blocked or done, on a session you can '
           'detach from and pick up later over SSH.',
@@ -350,7 +412,7 @@ STEPS = [{'id': 'control',
           'restore, and why append-only or immutable backups matter if a machine is compromised. '
           'Exact commands.'),
   'logo': 'backup',
-  'n': 8,
+  'n': 9,
   'heading': 'Back every machine up to one place',
   'what': 'One destination that all of them write to, so the box in\n'
           '        the closet stops being storage you own and becomes the machine that\n'
@@ -404,7 +466,7 @@ STEPS = [{'id': 'control',
           'rather than only on a machine that is down, why a machine should not be the thing that '
           'monitors itself, and what a hosted check catches that a self-hosted one cannot.'),
   'logo': 'beat',
-  'n': 9,
+  'n': 10,
   'heading': 'Find out when one of them stops',
   'what': 'An unattended machine that dies is only a problem the\n'
           '        moment you need it &mdash; which is always the worst moment. Have it\n'

@@ -138,7 +138,7 @@ def fill(text: str, **slots: str) -> str:
 # alone stay at the end.
 ACTS = [
     ("Get to them", "The same desk, then the same house, then anywhere — starting with what your Mac already does.",
-     ("control", "screen", "reach")),
+     ("control", "screen", "reach", "stream")),
     ("Work on them", "The shell, the same tools everywhere, and work that carries on after you close the lid.",
      ("connect", "tools", "detach", "agents")),
     ("Keep it alive", "The two that decide whether a herd survives being left alone.",
@@ -371,12 +371,12 @@ PAGES = {
     "herd.html": dict(
         page="herd.page",
         title="Start a herd — Little Herd",
-        description=("Eight things you can do once your computers are a herd: reach any of "
-                     "them from anywhere, get on with one command, find your tools already "
-                     "there, start work and walk away, use another machine’s screen, and run "
-                     "several agents at once."),
+        description=("Ten things you can do once your computers are a herd: reach any of "
+                     "them from anywhere, get on with one command, use a Linux desktop as "
+                     "smoothly as your own, find your tools already there, start work and "
+                     "walk away, and run several agents at once."),
         og_title="Start a herd",
-        og_description="Eight things that turn a pile of computers into a herd.",
+        og_description="Ten things that turn a pile of computers into a herd.",
         top_class=" top-solid",
         lockup=('  <a class="lockup" href="./">\n'
                 '    <img src="images/icon.png" alt="">\n'
