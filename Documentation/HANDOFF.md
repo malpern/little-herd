@@ -2186,13 +2186,35 @@ source machine after a failure.
     **The site is reframed around the herd, and there is a second page.**
     Decided 26 August. The word was decoration — used constantly, never taught —
     so the hero now sells the practice and the download is the second call to
-    action. `site/herd.html` is a finite **nine**-step guide: Universal Control,
-    Screen Sharing, Tailscale, SSH config, Homebrew and a Brewfile, tmux,
-    **Herdr** (<https://github.com/herdrdev/herdr>, an agent multiplexer — it
-    shows agents on one machine, which is the complement to seeing them across
-    all of them), Time Machine to a NAS, and Healthchecks.io. Little Herd is the
-    payoff and is not one of the nine, which is what makes the rest of it
-    believable.
+    action. `site/herd.html` is a finite **ten**-step guide: Universal Control,
+    Screen Sharing, Tailscale, **Sunshine and Moonlight**, SSH config, Homebrew
+    and a Brewfile, tmux, **Herdr** (<https://github.com/herdrdev/herdr>, an
+    agent multiplexer — it shows agents on one machine, which is the complement
+    to seeing them across all of them), Time Machine to a NAS, and
+    Healthchecks.io. Little Herd is the payoff and is not one of the ten, which
+    is what makes the rest of it believable.
+
+    **Sunshine and Moonlight were added on 2 September, at 4.** Screen Sharing
+    at 2 is the right answer for one button in one dialog and the wrong one for
+    working on a Linux box: VNC sends pictures of a screen, and a desktop you
+    cannot drag a window on is one nobody uses. Sunshine sends video encoded by
+    the graphics chip already in the machine. It sits after Tailscale by the
+    ordering rule — it needs software on both ends and a pairing step, so it
+    comes after the two that install nothing — and that placement also puts its
+    most important trap one step after the thing that makes the trap easy to
+    obey. **Its traps are measured on a machine that has been running it**, not
+    taken from documentation: a host with no monitor attached has no screen to
+    send and streams a black rectangle while reporting itself healthy, and the
+    settings page answers on every network the machine is on while being the
+    page that controls its screen. The startup log's `[wlgrab] Could not
+    initialize display` line is noise — it tries capture backends in order and
+    narrates the ones it rejects — and is called out as such so nobody hunts a
+    fault that is not there.
+
+    **It is the only step with no screenshot, deliberately.** Both halves of the
+    tool put a real machine name on screen, the lab that stages these shots runs
+    macOS guests only, and a redacted shot would be the single one here that was
+    — so it goes without rather than break the rule that every shot is staged.
 
     **The order is what it pays back, not what it depends on, and it was got
     wrong twice.** The first order was a build order wearing a reader's
@@ -2223,11 +2245,19 @@ source machine after a failure.
     machines work together, so it sits in a closing aside with its own video and
     an explicit note saying why it is not a step.
 
-    **Nine steps in one column read as nine identical blocks, so they are
-    three acts** — Get to them, Work on them, Keep it alive — declared once
-    in `ACTS` in `build.py`, which fails the build if a step is missing from
-    one. That grouping is load-bearing in three places: the contents list, the
-    act headings, and the sticky bar.
+    **Ten steps in one column read as ten identical blocks, so they are
+    three acts** — Get to them (four), Work on them (four), Keep it alive (two)
+    — declared once in `ACTS` in `build.py`, which fails the build if a step is
+    missing from one. That grouping is load-bearing in three places: the
+    contents list, the act headings, and the sticky bar.
+
+    **The intro is prose and does not count the steps for itself, so it goes
+    stale silently.** It read *"Eight things turn a pile of computers into a
+    herd"* while there were nine, and said they go in that order *"because each
+    one assumes the last"* — the build order the reordering deliberately
+    replaced. Both were fixed on 2 September. The count also appears in the meta
+    description and the Open Graph one, which is three places prose has to agree
+    with `STEPS`; nothing checks it.
 
     Every step carries its trap, and the traps are the whole reason to read it
     rather than any other tutorial. **They are generalised, not copied:** the
@@ -2283,12 +2313,12 @@ source machine after a failure.
     highlighter would be an external script, and the Artifact preview's CSP
     blocks those — so the choice was a build step or nothing.
 
-    **Every step carries a video, and the count is the honest one.** Ten
+    **Every step carries a video, and the count is the honest one.** Eleven
     links: BarTech TV on Universal Control, 9to5Mac on screen sharing,
-    Tailscale's own introduction, Learn Linux TV on the ssh config, DevOps
-    Toolbox on dotfiles, typecraft on tmux and on Herdr, SpaceRex backing a Mac
-    up to a Synology, Techno Tim on Uptime Kuma, and Crosstalk Solutions on
-    Pi-hole in the aside. **Restricting
+    Tailscale's own introduction, gotbletu on Sunshine and Moonlight, Learn
+    Linux TV on the ssh config, DevOps Toolbox on dotfiles, typecraft on tmux
+    and on Herdr, SpaceRex backing a Mac up to a Synology, Techno Tim on Uptime
+    Kuma, and Crosstalk Solutions on Pi-hole in the aside. **Restricting
     the search to two named creators was the wrong constraint** — it left five
     steps bare, including the one specifically asked for — so the rule is now
     whoever made the best one. Every id is verified against **YouTube's oembed**
@@ -2297,6 +2327,20 @@ source machine after a failure.
     Perfect Home DNS Flow" is DNSimple and auto-SSL rather than Pi-hole, and
     "Stop Using Tailscale" argues against the tool its step recommends. **A link
     that turns out to be neither is worse than no link.**
+
+    Sunshine's choice went the same way and is worth recording because the
+    obvious pick lost twice over. NetworkChuck's is by a wide margin the
+    most-watched video on this subject and is out for the reason already
+    standing against Tech Gear Talk — the card renders a title verbatim, and
+    that one shouts. AgileDevArt's is the best match on substance (49K views,
+    and a description that is specifically low-latency *desktop* streaming
+    rather than gaming) and dates itself in its own title, which a page written
+    two years later has to display. gotbletu's has 4.7K views and a description
+    of two bare links, and is the only one of the four whose title names remote
+    desktop — which is what the step is about. **Descriptions are not fetchable
+    by tooling**: YouTube renders them in script, so `WebFetch` returns the
+    footer and oembed carries only channel and title. They have to be read in a
+    browser, and this is the step where that was worked out.
 
     Universal Control's is the third instance and the first where the *shipped*
     link was wrong: the step is headed "two Macs" and carried Apple's own video,
