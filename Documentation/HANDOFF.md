@@ -1330,7 +1330,7 @@ developer tests with.
 
 **A progress bar has to be weighted by how long each step takes, not by how many
 there are.** Six equal segments put the fill at a third for the whole of the
-agent's work — often most of a transfer and sometimes half an hour of it — then
+agent's work — often most of a transfer, sometimes half an hour of it — then
 run through the last four in a moment. A bar that stands still for thirty
 minutes and then leaps looks stuck at exactly the point the thing is working
 hardest. The weights are deliberately rough and the tests assert the *shape* —
@@ -1565,7 +1565,7 @@ source machine after a failure.
    *resolved* — and MagicDNS keeps serving the address of a node that has been
    offline for days. Fixed in `dotfiles`, not here.
 
-   **What is ours is the sentence.** The classification was correct — `.noAnswer`,
+   **What is ours is the sentence.** The classification was right — `.noAnswer`,
    since the name resolved and nothing replied — but its detail reads *"Likely
    asleep or off the network"*, and the machine was neither. It was awake, on the
    network, and reachable at a different address. That is a confident wrong
