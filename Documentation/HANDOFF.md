@@ -1,7 +1,21 @@
 # Little Herd — handoff
 
-**State:** `v0.1.55` is released and `main` carries nothing beyond it. 523
-tests pass. Roadmap item 6 is done — each machine's agent versions.
+**State:** `v0.1.60` is released and `main` carries thirteen commits beyond
+it, unreleased: the diff window, the progress bar on a card, both context menus
+rebuilt in AppKit, and the guide reordered. 627 tests pass on this Mac.
+
+**The transfer is built, wired, and switched off — and the reason it is off
+has expired.** `endDrag()` reports an accepted drop, `MonitorModel.beginTransfer`
+runs the whole seven-step move, a strip in the header band says which step it is
+in and offers to stop it, the card carries a progress bar across its foot, and a
+finished transfer opens a window showing the diff that came back.
+`DashboardChrome.startsTransfers` is still `false`, and its comment still gives
+the reason as *"there is nothing on screen yet to say a transfer is happening,
+how far it has got, or to call it off"* — all three of those now exist. **The
+next decision on this project is whether to turn that word to `true`**, and
+nothing but a live run stands in the way. Development builds rehearse the strip
+on a timer instead (`rehearsesTransfers`), which is how the wording and timing
+were judged.
 
 **The dashboard follows the website's miniature of it: four metric tabs along
 the bottom, and a header that says one thing.** The pull-down they replace is
@@ -30,12 +44,14 @@ rather than arguing about it — seven placement studies, in
 - more agents than the window holds end on a round `+` that opens that
   machine's AI page
 
-**Nothing moves on drop**, deliberately: the outcome is computed and discarded.
-The rise, the arrival raise and the carry have never been watched — the screen
-locked before they could be — so their three constants are unjudged: the rise
-spring, the arrival's hold, and how far a welcoming animal lifts.
+**The deck has since been watched and tuned**, which is what settled the
+three constants this file once listed as unjudged. The rise was given mass; the
+deck became one object that moves rather than two that swap, which is what
+stopped it animating twice and flickering as the pointer crossed a card; and it
+comes back down instead of being taken away.
 
-**Asking permission is a setting, off by default.** See item 1.
+**Asking permission is a setting, off by default**, and its per-machine setter
+lives on a machine's AI page. See item 4.
 
 **The website is live** at <https://malpern.github.io/little-herd/>, and the
 README is a front door that matches it — the hero is baked from the site's own
@@ -85,6 +101,24 @@ and four on 26 August:
     0.1.48  cards open beside their token, and can be dismissed
     0.1.49  the metrics move to tabs along the bottom; agent tokens hidden
     0.1.50  the fix for 0.1.49: the tabs were clipped by the titlebar band
+
+ten more between 27 and 29 August, and six of them are the transfer:
+
+    0.1.51  the window measures itself as content plus titlebar
+    0.1.52  the herd holds still as you change metric; backups in the guide
+    0.1.53  the tab mark has two levels, and reddens for a machine in trouble
+    0.1.54  the agents sit behind the animals, with no card around them
+    0.1.55  the deck rises, answers an arrival, and can be carried
+    0.1.56  the transfer's constraints written down before anything is built
+    0.1.57  the shell taken from a successor; an allowlist was never a fence
+    0.1.58  the transfer machinery: departure, pilot, successor, coordinator
+    0.1.59  a drop reaches the transfer, with the door held shut
+    0.1.60  a strip to watch it and stop it; a machine is an account on a host
+
+and on `main`, unreleased: the diff window that says what came back, a progress
+bar across the foot of the card, both context menus rebuilt in AppKit because
+SwiftUI drops their icons, Settings saying each thing once, and the guide
+reordered to start where a Mac user already is.
 
 **0.1.33 shipped a bug that could take a machine off the dashboard entirely** —
 an empty directory aborting the probe under zsh. Nothing in this herd tripped
@@ -1259,6 +1293,82 @@ zsh with no coreutils — so any wrapper shelling out with one fails there. And
 (`env: node: No such file`) while `~/.local/bin/codex` works, which is the
 "absolute paths, never the PATH" rule the app already follows, confirmed again.
 
+**SwiftUI's `.contextMenu` throws away icons on macOS.** It takes a `Label`
+with an image, compiles, and the system draws text only — so the animal never
+appeared in a machine's menu and neither did the symbols beside SSH and Screen
+Sharing. The build was green and the source read correctly, which is the worst
+combination: a context menu is not drawn until it is opened, so the render
+harness could not have caught it either. It was found by somebody opening the
+menu and photographing it. Both menus are built in AppKit now, and the SwiftUI
+versions were deleted rather than left beside them — two descriptions of one
+menu is how the fan and the resting deck came to disagree earlier the same
+evening, and here the dead one is the one that reads correctly.
+
+**`NSMenuItem.image` then drew nothing either, and the answer was to stop using
+it.** A unit test builds the same menu the view builds and confirms every animal
+and symbol resolves and that the items carry them — so the images were set and
+something between there and the screen discarded them. Rather than keep guessing
+at why, the icon also goes into the title as a text attachment, which is drawn
+as part of the string and does render. The image slot is still set, harmlessly,
+in case it starts working.
+
+**An AppKit layer over the herd will take the mouse from the SwiftUI views
+underneath, and what is underneath is the agent drag.** The host view claims
+right-clicks and nothing else: `hitTest` reads the event being dispatched and
+returns `nil` for anything that is not one. Verified by hand — the icons are
+there *and* an agent still drags between machines — because a layering change
+had already broken the drag once that evening.
+
+**A machine with agents had no context menu at all, and a machine without one
+did.** The fan's hover column spans its animal on purpose, so that reaching for
+a card does not lose the pointer; that column is therefore the view a
+right-click over the animal lands on, above the machine's own overlay. A machine
+with no agents draws no fan, so it worked — the machine most worth
+right-clicking was the only one that could not be. **A bug that spares the empty
+case is a bug that will be found by a user**, because the empty case is what a
+developer tests with.
+
+**A progress bar has to be weighted by how long each step takes, not by how many
+there are.** Six equal segments put the fill at a third for the whole of the
+agent's work — often most of a transfer and sometimes half an hour of it — then
+run through the last four in a moment. A bar that stands still for thirty
+minutes and then leaps looks stuck at exactly the point the thing is working
+hardest. The weights are deliberately rough and the tests assert the *shape* —
+the agent and the tests own most of the width, the bookkeeping either side is a
+sliver — rather than the numbers.
+
+**These icons carry their own padding, so the frame's edge is not the art's
+edge.** A bar aligned to the bottom of the frame straddled the card instead of
+sitting on it. Found by drawing it over stand-in blocks rather than by reasoning
+about it, which is also how its first position — floating above the card, over
+whatever thermometer segment happened to be behind — was found to be wrong.
+
+**A diff of transferred work must start at the commit the source pushed, not at
+the branch's parent.** The branch carries the departure too — the brief, and
+whatever was uncommitted when the session left — so diffing from the parent
+presents all of that as the agent's work. It is read on the machine the work
+came *from*, with local git: that machine has the repository and is where
+somebody is sitting, and the destination may be asleep by the time anybody
+looks. `--numstat` rather than `--stat`, because the latter draws a bar chart
+that would have to be un-drawn to get the numbers back — and, verified against
+real git rather than remembered, a path with spaces survives while a binary file
+comes back as `-\t-\tpath` and must not be read as zero lines changed.
+
+**A control whose backend you do not want firing yet can still be used, and
+should be.** A drop in a development build walks a transfer through its phases
+on a timer: no runner, no connection, nothing pushed, compiled out of Release
+rather than switched off in it. Successive rehearsals end differently on purpose
+— landing, then a red check, then an agent that gave up — because an interface
+that always succeeds only ever shows the easy state. The test hands the
+coordinator a runner that fails outright if it is ever called, so a rehearsal
+that quietly began doing something real would not pass. **This is the honest
+alternative to judging a live control from a screenshot of it.**
+
+**An indeterminate `ProgressView` renders as a prohibition sign under
+`ImageRenderer`** and is an ordinary spinner in the app. One more thing the
+harness cannot draw; the transfer strip's five states were drawn there and that
+one was checked live.
+
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -1389,42 +1499,40 @@ it; the files survived only because the directory had not been reaped yet.
 
 ## Next
 
-**The website now promises "Put your herd to work", and the app does not yet
-let you.** That headline was adopted deliberately on 27 August, with the
-knowledge that it runs within a sentence of the site's own rule against
-claiming what the app does not do — what keeps it honest today is the clause
-beside it, *"Little Herd watches; choosing the machine is still yours."*
-**Until the app can do it, that clause is load-bearing and must not be trimmed
-for length.**
+**The website promises "Put your herd to work", and on 29 August the hedge
+came off it.** The hero used to carry the clause *"Little Herd watches;
+choosing the machine is still yours"*, which this file called load-bearing and
+told nobody to trim. It is gone, deliberately: every verb in the hero is
+present tense and it says *move work to the machine that's free* outright.
+**That is a promise the code can keep and the shipped build does not**, because
+`DashboardChrome.startsTransfers` is `false`. Either that word changes or the
+sentence has to come back — and the first is the right answer, because the
+three things the flag was waiting for all exist now.
 
-Three of the items below are that work, and they unblock each other in this
-order — the numbering is the file's, not a priority:
+The three items that were the critical path are essentially closed, and what
+replaced them is one decision and its consequences:
 
-- **Item 1, the tokens and their drag.** Switched off, and the gesture already
-  built. Nothing can be moved by hand until they are on screen.
-- **Item 4, what a destination has to be asked.** Eligibility is measured and
-  the drop consults it; what is missing is the account-level answer, the
-  setter for the permission, and binding a grant to a host rather than to a
-  `MachineID` that can be re-pointed.
-- **Item 5, the transfer itself.** The seven-step move: quiesce, summarise,
-  verify the artifact, start the successor, verify it behaviourally, and only
-  then retire the source.
+- **Item 1, the tokens and their drag.** Done. `showsAgentTokens` is on, the
+  deck has been watched and tuned, and the carry reports an accepted drop.
+- **Item 4, what a destination has to be asked.** Done, all three parts: the
+  account-level answer (`sshUser`), the setter (the per-machine allowance on
+  the AI page), and the grant bound to a host. What remains under it is several
+  accounts on one host, which is a model change rather than a gap.
+- **Item 5, the transfer itself.** Built, run end to end on real machines, and
+  wired to the drop. What is left is turning it on, and the interface work that
+  turning it on makes urgent.
 
-A fourth is worth naming even though it is not on the critical path:
-**a session that fails to arrive has to say so, and leave you where you
-started.** The order in item 5 is a safety property and only half of one until
-a half-finished move is visible in the interface rather than in a log.
+The fourth, still open and now the one that matters most: **a session that
+fails to arrive has to say so, and leave you where you started.** The order in
+item 5 is a safety property and only half of one until a half-finished move is
+visible in the interface rather than in a log. The strip says a run went red
+and the diff window says what is on the branch; what nobody has yet seen is the
+source machine after a failure.
 
-1. **The agents' design is built; what is left is judging how it feels.** The
-   deck, the rise, the fan, the arrival raise and the carry all ship in
-   `v0.1.55`. Only the hover fan has been watched working — the screen locked
-   before the rest could be — so three constants are unjudged: the rise spring
-   (`MachineAgentFan`, 0.34s at bounce 0.22), the arrival's hold
-   (`CPUOverviewView.raise(forArrival:)`, 2.6s), and how far a welcoming animal
-   lifts (5pt). Watch them, move them, and this item is done.
-
-   **Nothing moves on a drop**, and that is the whole of what remains between
-   this and the promise on the website. See items 4 and 5.
+1. ~~The agents' design, and judging how it feels.~~ **Done.** Built in
+   `v0.1.55` and tuned by watching it since; what the watching taught is in the
+   facts. The numbering below is the file's rather than a priority, so this
+   entry stays as a marker instead of renumbering everything that points at it.
 
 2. **P-core/E-core awareness is blocked, not pending.** Per-core utilisation
    needs root on a remote Mac — `powermetrics` refuses without it, and neither
@@ -1447,41 +1555,48 @@ a half-finished move is visible in the interface rather than in a log.
    rule would collapse to "Linux failed to resolve", which is what the tooltip
    already says. Build it when a second machine becomes reachable only over the
    tailnet, and not before.
-4. **Destination eligibility is measured and deliberately has no interface.**
+4. **Destination eligibility is measured, and it has a caller now.**
    Every account reports which agents it can run and where, and which
    repositories it has checked out keyed by the origin remote's slug.
    `DestinationEligibility` answers with one of six things, `AgentAuthProbe`
    and `AgentAuthVerifier` can ask a provider whether it will actually answer,
-   and `MachineConfiguration.mayHostSessions` still records intent.
+   and `MachineConfiguration.mayHostSessions` records intent.
 
-   **The two surfaces that showed all this were removed on 25 August, on
-   purpose.** A checkbox in Settings and a Destinations section in the AI panel
-   were a permission and a placement decision for a move that cannot happen —
-   pre-solving a problem while the thing they serve is unbuilt. The judgement
-   was that the interface was wrong rather than the capability, and that a new
-   one should be drawn when there is a transfer to draw it for.
+   **The two surfaces that showed all this were removed on 25 August, and what
+   replaced them is not a redraw of either.** A checkbox in Settings and a
+   Destinations section in the AI panel were a permission and a placement
+   decision for a move that could not happen. What draws the eligibility now is
+   the thing it was written for: `AgentDropEligibility` answers the drag, so a
+   machine that could not take the work does not lift to meet you, and **Move
+   To** on an agent card lists every machine with the unable ones greyed and
+   the reason beside them. That last is the part a drag cannot do — a drag
+   refuses in silence, which had somebody asking whether transfers were
+   switched on at all.
 
-   **So this is capability with no caller, and that is a state this project has
-   been bitten by before.** `HoveredMachineMetricHeader` sat unwired from the
-   first public commit until somebody noticed, and by then it had quietly
-   drifted out of step with the rest of the app. The difference is that this
-   time it is written down. What is unwired: `verifyAgentAuthentication()` on
-   the model, the whole of `DestinationRoster`, and every `DestinationEligibility`
-   answer. It is all tested, so it cannot rot silently — but nothing draws it,
-   and `mayHostSessions` is now stuck at whatever it was last set to, because
-   the only thing that set it is gone. **Re-adding a setter is part of building
-   the new interface, not an afterthought.**
+   **The permission has a setter again, and it ships with its own switch.**
+   `MachineDestinationAllowance` on a machine's AI page is the one control that
+   makes "ask before a machine can take work" usable, and it is drawn only when
+   that setting is on. The two arrive together on purpose: `mayHostSessions`
+   defaults to *off*, so turning the setting on while nothing could set it
+   would refuse the whole herd with no way back — a default outliving its
+   control. Note also that the toggle writes through to the store rather than
+   to the model, because the model's own setter changes memory and nothing
+   else, and a permission forgotten on the next launch is the one failure a
+   permission must not have.
 
-   **What is left underneath is that a destination is an account and the herd
-   stores machines.** `MachineConfiguration` refuses a second entry with the
-   same hostname, so the mini's `clawd` and `malpern` cannot both be in the
-   herd, and everything that decides whether a session can land is per-user:
-   the home directory and so which repos exist, the agent install, the
-   credentials, and the GUI login session the Keychain fact turns on. That last
-   point may invert the obvious choice — `malpern` is the account logged in
-   graphically. Fixing it needs an account-qualified `MachineID` and an ssh
-   user in the configuration, which costs the published `transfer.json`
-   contract nothing since `MachineID` wraps a `String`.
+   **Asking at all is off by default, and that is an accident boundary rather
+   than a security one.** With `requiresDestinationApproval` off — the shipped
+   default — `mayHostSessions` is not consulted and any machine that *could*
+   run the work will take it. Little Herd reaches these machines over the
+   user's own SSH keys, so a transfer starts nothing they could not start from
+   a shell themselves.
+
+   **What is genuinely still unwired is `DestinationRoster`**, which nothing
+   outside its own file mentions: every caller assembles its own
+   `[DestinationAccount]` from the machines it already has. That is the state
+   `HoveredMachineMetricHeader` was in for months before anybody noticed, so it
+   is written down here rather than left to be rediscovered — either something
+   uses it or it goes.
 
    **Budget is not one of the reasons.** The machines share one account, so an
    exhausted limit cannot be escaped by choosing a different destination —
@@ -1765,10 +1880,28 @@ a half-finished move is visible in the interface rather than in a log.
    - `TransferCoordinator` — lifecycle, and finished transfers survive a closed
      panel so a red run is not lost silently.
 
-   Still open:
+   Wired since, and this is where the item now stands:
 
-   - `endDrag()` does not call any of it. Everything it needs now exists.
-   - The interface: per-step progress, the diff, calling one off mid-flight.
+   - **The drop calls it.** `endDrag()` reports an accepted drop and
+     `MonitorModel.beginTransfer` assembles and runs the move — a deck drag
+     moves the session its badge was already standing for, a card carried out
+     of the fan moves that one. The view reports and does not act: what is
+     possible needs every machine's checkouts and agents, and a run outlives
+     the window that started it, so neither belongs in a gesture handler.
+   - **The interface is built.** `TransferStrip` stands in for the overview
+     header — in the band rather than above it, because this content is sized
+     to the point and anything that grows it pushes the metric tabs off the
+     bottom, three times so far. It names which of the eight phases is running,
+     offers to stop a live one and to dismiss a finished one, and those are
+     deliberately two controls rather than one label changing: stopping work on
+     another machine and clearing a row you have read should not be one
+     mis-click apart. The card carries a progress bar across its foot, and
+     `TransferDiffScene` opens a window on what came back.
+   - **What is left is one word.** `DashboardChrome.startsTransfers` is still
+     `false`, and its comment still says the reason is that nothing on screen
+     says a transfer is happening, how far it has got, or lets you call it off.
+     All three exist. **Turn it on, watch a real move, and this item closes** —
+     and the site's hero, which no longer hedges, becomes true.
    - ~~The first real end-to-end run.~~ **Done. A full transfer completed
      green on 27 August**, source → mini → branch → back:
 
@@ -1781,7 +1914,7 @@ a half-finished move is visible in the interface rather than in a log.
      cleanup     worktree gone, prompt gone
      ```
 
-     The earlier runs on the same day** It
+     **The earlier runs on the same day are the more useful record.** They
      found four things, all above: the variadic flag that ate the prompt (a
      real bug, now fixed), the non-hermetic check (a real design problem, open),
      the whole-tree capture, and the git narration. What worked: the departure
@@ -1859,15 +1992,19 @@ a half-finished move is visible in the interface rather than in a log.
    ssh-poll in the background. It wants a resident collector on the mini, which
    is the same helper item 3 needs for the Keychain problem and the same one a
    durable successor session needs. Build it once. The model layer is already
-   portable — 29 of 48 source files import neither SwiftUI nor AppKit, and
+   portable — 64 of 103 source files import neither SwiftUI nor AppKit, and
    `MachinePresentation` exists precisely because display decisions were pulled
-   out of the view bodies.
+   out of the view bodies. The proportion has held as the app has doubled,
+   which is the part worth checking rather than the count.
 
-7. **Agent versions are shown; the herd-level view of skew is not.**
-   A machine's AI page now lists what it has installed, above the sessions,
-   with the path it was found at and — when another account has a newer copy —
-   which one and what version. Skew is marked rather than announced, because
-   it is the standing condition rather than an incident.
+7. **Agent versions are measured; nothing draws them any more.**
+   The AI page used to list what a machine had installed, above the sessions,
+   with the path it was found at and — when another account had a newer copy —
+   which one and what version. `DashboardChrome.showsInstalledAgents` is now
+   `false`: which agents are installed is a fact about the machine rather than
+   about the work, and it was the first thing on a page you open to see what is
+   running. The probe still reads it, and the transfer needs it, so this is
+   measurement without a display rather than dead code.
 
    What is still missing is seeing the herd at once. Today you learn that the
    Air is on Codex `0.148.0-alpha.15` and the mini on `alpha.21` by visiting
@@ -2020,17 +2157,43 @@ a half-finished move is visible in the interface rather than in a log.
     to open it, with the metric picker coming along so a lens change keeps you
     on that machine. A third instance opens on a machine's Disk page, volumes
     and all, including the shared-container row. **The README is still stale on
-    this** — it says hovering a machine in any overview replaces the header.
+    this, in two places** — it says hovering a row replaces the stable header
+    with that agent's machine and plan step, and it describes the per-provider
+    budget gauges in the header, which `showsUsageMarksInHeader` turned off.
+    Both are the same edit: the header says one thing now, and the four metric
+    tabs are what changed underneath it.
 
     **The site is reframed around the herd, and there is a second page.**
     Decided 26 August. The word was decoration — used constantly, never taught —
     so the hero now sells the practice and the download is the second call to
-    action. `site/herd.html` is a finite **eight**-step guide: Tailscale, SSH
-    config, Homebrew and a Brewfile, tmux, Screen Sharing, **Herdr**
-    (<https://github.com/herdrdev/herdr>, an agent multiplexer — it shows agents
-    on one machine, which is the complement to seeing them across all of them),
-    Time Machine to a NAS, and Healthchecks.io. Little Herd is the payoff and is
-    not one of the eight, which is what makes the rest of it believable.
+    action. `site/herd.html` is a finite **nine**-step guide: Universal Control,
+    Screen Sharing, Tailscale, SSH config, Homebrew and a Brewfile, tmux,
+    **Herdr** (<https://github.com/herdrdev/herdr>, an agent multiplexer — it
+    shows agents on one machine, which is the complement to seeing them across
+    all of them), Time Machine to a NAS, and Healthchecks.io. Little Herd is the
+    payoff and is not one of the nine, which is what makes the rest of it
+    believable.
+
+    **The order is what it pays back, not what it depends on, and it was got
+    wrong twice.** The first order was a build order wearing a reader's
+    clothes — reach, connect, tools — which put SSH keys and file permissions
+    at step three, the most technical thing on the page offered as the price of
+    admission. Reordering by payback put Tailscale first, and that was still
+    a build order: it opens by asking somebody to install a mesh VPN and make
+    an account on every machine before they have seen any of this do anything
+    for them. **It now widens instead** — Universal Control across a desk,
+    screen sharing across a house, Tailscale across the world — so nothing is
+    installed until step three, by which point there is a reason to want it.
+    Universal Control is the least technical of the nine and the most niche
+    (two Macs, one desk), which is why it opens rather than being buried.
+
+    **Two lines were lies the moment the order changed, and both were caught by
+    reading the rendered page rather than by moving the entries.** Tailscale
+    opened with "this one is first because everything below it assumes you can
+    reach the machine at all" — true when it was first — and Universal Control
+    sent the reader to "the step above" for something that had moved below it.
+    **A step that names its position is a step that will be wrong**; say what a
+    thing adds, not where it sits.
 
     **The last two were added because the first six do not survive being left
     alone.** Backup and alerting are what decide whether a herd is still there
@@ -2040,10 +2203,11 @@ a half-finished move is visible in the interface rather than in a log.
     machines work together, so it sits in a closing aside with its own video and
     an explicit note saying why it is not a step.
 
-    **Eight steps in one column read as eight identical blocks, so they are
-    three acts** — Get access, Put them to work, Keep it alive — declared once
-    in `ACTS` in `build.py`. That grouping is load-bearing in three places now:
-    the contents list, the act headings, and the sticky bar.
+    **Nine steps in one column read as nine identical blocks, so they are
+    three acts** — Get to them, Work on them, Keep it alive — declared once
+    in `ACTS` in `build.py`, which fails the build if a step is missing from
+    one. That grouping is load-bearing in three places: the contents list, the
+    act headings, and the sticky bar.
 
     Every step carries its trap, and the traps are the whole reason to read it
     rather than any other tutorial. **They are generalised, not copied:** the
@@ -2099,11 +2263,12 @@ a half-finished move is visible in the interface rather than in a log.
     highlighter would be an external script, and the Artifact preview's CSP
     blocks those — so the choice was a build step or nothing.
 
-    **Every step carries a video, and the count is the honest one.** Nine
-    links: Tailscale's own introduction, Learn Linux TV on the ssh config,
-    DevOps Toolbox on dotfiles, typecraft on tmux and on Herdr, 9to5Mac on
-    screen sharing, SpaceRex backing a Mac up to a Synology, Techno Tim on
-    Uptime Kuma, and Crosstalk Solutions on Pi-hole in the aside. **Restricting
+    **Every step carries a video, and the count is the honest one.** Ten
+    links: BarTech TV on Universal Control, 9to5Mac on screen sharing,
+    Tailscale's own introduction, Learn Linux TV on the ssh config, DevOps
+    Toolbox on dotfiles, typecraft on tmux and on Herdr, SpaceRex backing a Mac
+    up to a Synology, Techno Tim on Uptime Kuma, and Crosstalk Solutions on
+    Pi-hole in the aside. **Restricting
     the search to two named creators was the wrong constraint** — it left five
     steps bare, including the one specifically asked for — so the rule is now
     whoever made the best one. Every id is verified against **YouTube's oembed**
@@ -2112,6 +2277,18 @@ a half-finished move is visible in the interface rather than in a log.
     Perfect Home DNS Flow" is DNSimple and auto-SSL rather than Pi-hole, and
     "Stop Using Tailscale" argues against the tool its step recommends. **A link
     that turns out to be neither is worse than no link.**
+
+    Universal Control's is the third instance and the first where the *shipped*
+    link was wrong: the step is headed "two Macs" and carried Apple's own video,
+    which is titled "on Mac and iPad" and demonstrates exactly that — the one
+    illustration on the step showed the pairing the step is not about. Two
+    better-known candidates lost for recorded reasons. Stephen Robles' "My
+    Ultimate Dual Mac Workflow" is the trap again — perfect title, and a
+    description that is iCloud Drive and Final Cut sync with no mention of
+    Universal Control. Tech Gear Talk's is the stronger video on the merits, and
+    its title shouts in capitals; **the card renders a title verbatim**, so on a
+    page that does not raise its voice that is a layout fact rather than a
+    quibble.
 
     **Each step also offers a prefilled ChatGPT prompt** via `chatgpt.com/?q=`
     — undocumented but long-established — kept to a few hundred characters
@@ -2282,11 +2459,13 @@ a half-finished move is visible in the interface rather than in a log.
     said so. If more is built here, build it a test harness first — a fake
     agent script that can be made to hang, refuse, or answer is most of one.
 
-    The feature is also ahead of its consumer. It exists for the transfer flow
-    (item 4), which is not built, and its whole user-visible effect today is a
-    caption and a link that spends a request to change it. That is a
-    reasonable bet, not a finished feature; do not add to it before the mover
-    exists to use it.
+    **The consumer has since arrived, and the untested half has not
+    changed.** The verifier's answer is what `AgentDropEligibility` consults
+    when a token is carried over a machine, so a hundred and ninety lines of
+    process and concurrency plumbing that no test touches now sit under a
+    gesture. Still true as of 29 August: nothing in `LittleHerdTests` names
+    `AgentAuthVerifier`, `ProbeWatchdog` or `runCapturingAll`. The fake-agent
+    harness above is the thing to build before turning transfers on.
 
 
 ## Keeping this file honest
