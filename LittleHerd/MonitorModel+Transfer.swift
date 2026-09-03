@@ -165,16 +165,17 @@ extension MonitorModel {
 
     /// How to talk to one machine, or nothing if it is not one we can reach.
     ///
-    /// The local Mac has no runner: a transfer *from* here would have to run
-    /// its departure locally rather than over SSH, and that path does not
-    /// exist yet — better an honest refusal than a command sent to a hostname
-    /// that means this machine.
+    /// **This Mac runs its departure directly.** It used to be refused, on the
+    /// grounds that a local departure "does not exist yet" — which was true and
+    /// made the ordinary case impossible: working on the machine in front of
+    /// you and handing the session to another one. The steps are shell text
+    /// either way, so the only difference is whether `ssh` is in front of them.
     private func departureRunner(
         for machine: MachineID
     ) -> (@Sendable (TransferDeparture.Step) async -> SuccessorExecutor.StepOutput)? {
-        guard let model = machines.first(where: { $0.machine == machine }),
-              !model.isLocal
+        guard let model = machines.first(where: { $0.machine == machine })
         else { return nil }
+        guard !model.isLocal else { return SuccessorLocal.departureRunner() }
 
         let host = model.sshDestination
         let identity = model.identityFile

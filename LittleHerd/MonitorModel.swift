@@ -29,13 +29,17 @@ final class MonitorModel {
     }
 
     /// How to run the destination's half. Same shape as the departure's, on
-    /// the other machine.
+    /// whichever machine it is.
+    ///
+    /// This Mac runs its steps directly rather than over SSH. It used to be
+    /// refused outright, which made the machine somebody is sitting at the one
+    /// machine in the herd that could not take work.
     private func arrivalRunner(
         for machine: MachineID
     ) -> SuccessorExecutor.Run? {
-        guard let model = machines.first(where: { $0.machine == machine }),
-              !model.isLocal
+        guard let model = machines.first(where: { $0.machine == machine })
         else { return nil }
+        guard !model.isLocal else { return SuccessorLocal.runner() }
         let host = model.sshDestination
         let identity = model.identityFile
         return SuccessorSSH.runner(host: host, identityFile: identity)
