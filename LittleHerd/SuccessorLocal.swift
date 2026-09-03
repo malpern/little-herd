@@ -94,24 +94,33 @@ nonisolated enum SuccessorLocal {
     /// while the failure mode of leaking one is a confident wrong answer.
     /// `~/.local/bin` leads the path because that is where both agents install
     /// themselves.
+    ///
+    /// **Every entry here was tested, and one that looked obviously harmless
+    /// was not.** The first version also carried `USER`, `LOGNAME` and
+    /// `TMPDIR`, on the reasoning that a process with no user is a stranger
+    /// shape than one with a plain environment and that none of them can carry
+    /// a credential. `USER` makes `claude` report **"Not logged in"** with
+    /// valid credentials on disk — deterministically, three runs out of three,
+    /// while the same command without it answers immediately. The mechanism is
+    /// not known and does not matter; what matters is that an allowlist is only
+    /// as safe as the testing of each entry, and this one was assembled partly
+    /// on taste.
+    ///
+    /// `LOGNAME` and `TMPDIR` were both measured as harmless and are still
+    /// gone: nothing needed them, and the point of a list nobody can justify
+    /// entry by entry is that it grows.
     static var environment: [String: String] {
         let home = NSHomeDirectory()
-        var environment = [
+        return [
             "HOME": home,
             "PATH": "\(home)/.local/bin:/opt/homebrew/bin:/usr/local/bin"
                 + ":/usr/bin:/bin:/usr/sbin:/sbin",
             "SHELL": "/bin/sh",
             "LANG": "en_US.UTF-8",
+            // Something rather than nothing, so a tool that consults it does
+            // not reach for a terminal that is not there.
+            "TERM": "dumb",
         ]
-        // Carried because a process with no user or temporary directory is a
-        // stranger shape than one with a plain environment, and neither can
-        // carry a credential.
-        for key in ["USER", "LOGNAME", "TMPDIR"] {
-            if let value = ProcessInfo.processInfo.environment[key] {
-                environment[key] = value
-            }
-        }
-        return environment
     }
 
     /// A runner for the destination's half, ready to hand to the executor.

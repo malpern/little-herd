@@ -32,6 +32,7 @@ struct TransferPilotTests {
             sessionIdentifier: "abc",
             provider: .claude,
             agentExecutable: "/Users/malpern/.local/bin/claude",
+            briefPath: "Documentation/transfers/x.md",
             prompt: "brief",
             message: "m"
         )

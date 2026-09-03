@@ -14,6 +14,7 @@ struct TransferDepartureTests {
             sessionIdentifier: "abc123",
             provider: .claude,
             agentExecutable: "/Users/malpern/.local/bin/claude",
+            briefPath: "Documentation/transfers/fan.md",
             prompt: Self.brief,
             message: "Carry the work"
         )
@@ -73,6 +74,17 @@ struct TransferDepartureTests {
         // And the prompt is piped, never trailing — see SuccessorRun.
         #expect(brief.command.contains("little-herd-prompt\" |"))
         #expect(!brief.command.contains("$(cat"))
+
+        // **It may write its brief, and only that.** Without a permission
+        // mode the session is refused when it tries to write and reports
+        // success anyway — measured on the first live transfer.
+        #expect(brief.command.contains("--permission-mode acceptEdits"))
+        #expect(brief.command.contains("--disallowedTools"))
+
+        // **And the artifact is what decides, not the exit status.** That run
+        // exited zero having written nothing, and the departure pushed a
+        // branch whose brief did not exist.
+        #expect(brief.command.contains("test -s 'Documentation/transfers/fan.md'"))
     }
 
     /// The sha is what the destination is pinned to, so it has to come back.

@@ -92,6 +92,7 @@ nonisolated struct TransferDeparture: Equatable {
         sessionIdentifier: String,
         provider: AgentTaskProvider,
         agentExecutable: String,
+        briefPath: String,
         prompt: String,
         message: String
     ) -> [Step] {
@@ -137,11 +138,27 @@ nonisolated struct TransferDeparture: Equatable {
                 purpose: .brief,
                 // On standard input, for the reason given in `SuccessorRun`:
                 // `--disallowedTools` is variadic and eats a trailing prompt.
+                // **`acceptEdits`, for the same reason the successor gets
+                // it.** Without a permission mode the session is asked to
+                // write a file and refused when it tries: measured on the
+                // first live transfer, where the agent reported "the write to
+                // Documentation/transfers/… was denied by the permission
+                // prompt, so nothing was created". It is the narrowest grant
+                // that lets it do the one thing it was asked to do, and the
+                // shell is still gone.
+                //
+                // **And the artifact is checked, not the exit status.** That
+                // run exited zero having written nothing, so the departure
+                // sailed on and pushed a branch whose brief did not exist —
+                // the successor would have been handed a path to nothing. An
+                // agent's status says it finished, never that it succeeded.
                 command: "cd \(repository) && cat \(promptFile) | "
                     + "\(RemoteShell.quoted(agentExecutable)) "
                     + "\(RemoteShell.quoted(resume)) "
+                    + "--permission-mode acceptEdits "
                     + "--disallowedTools "
-                    + "\(RemoteShell.quoted(SuccessorLaunch.deniedTools))",
+                    + "\(RemoteShell.quoted(SuccessorLaunch.deniedTools))"
+                    + " && test -s \(RemoteShell.quoted(briefPath))",
                 isFatal: true
             )
         )

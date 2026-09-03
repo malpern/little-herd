@@ -103,6 +103,7 @@ nonisolated enum TransferAssembly {
                     sessionIdentifier: session.id,
                     provider: session.provider,
                     agentExecutable: sourceInstallation.path,
+                    briefPath: briefPath,
                     prompt: TransferDeparture.briefRequest(
                         path: briefPath,
                         destination: herd.first {
