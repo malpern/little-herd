@@ -53,6 +53,40 @@ extension MonitorModel {
         transfers.prepare(request.transfer)
 
         Task {
+            // **Ask the destination whether it can sign in, before anything
+            // leaves this machine.**
+            //
+            // Measured on the first live transfers: the mini's token had
+            // expired six days earlier, and the transfer pushed a branch,
+            // fetched it on the far side, built a worktree, staged a brief and
+            // started an agent before failing on something that was knowable
+            // in one step. Everything needed to know it already existed —
+            // `AgentAuthVerifier`, and a `signedOut` state whose own comment
+            // calls it "a machine to sign in on" — and nothing consulted it.
+            //
+            // It costs a model call, which is why it is here and not on the
+            // thirty-second sample: this is the moment the answer changes a
+            // decision. Only a definite refusal stops it. A probe that times
+            // out reads as `unverified`, which means nothing was learned, and
+            // refusing on silence would ground the herd whenever a machine was
+            // slow.
+            if let target = machines.first(where: { $0.machine == destination }) {
+                await target.verifyAgentAuthentication()
+                if case .refused(let reason) = target.agentAuth {
+                    return transfers.fail(
+                        request.transfer,
+                        SuccessorOutcome(
+                            result: .couldNotStart,
+                            failingStep: nil,
+                            output: reason,
+                            // Nothing has been built or pushed yet, and this is
+                            // the one refusal that can still say so honestly.
+                            remnant: .nothing
+                        )
+                    )
+                }
+            }
+
             guard let sourceRunner = departureRunner(for: origin) else {
                 return transfers.fail(
                     request.transfer,

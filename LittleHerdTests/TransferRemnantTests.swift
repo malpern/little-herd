@@ -273,3 +273,24 @@ struct CheckFailedDetailTests {
         #expect(check.contains("tests did not pass"))
     }
 }
+
+@Suite("Destination sign-in")
+struct DestinationAuthTests {
+    /// The exact words the mini gave on a real transfer, after its token
+    /// expired on 28 August. It matches no known refusal pattern and so is
+    /// reported verbatim — which is the design: a refusal nobody has seen
+    /// before is exactly the one worth reading in full.
+    @Test
+    func anExpiredTokenReadsAsARefusal() {
+        let state = AgentAuthProbe.outcome(
+            from: "Failed to authenticate. API Error: 401 OAuth access token "
+                + "has expired. Re-authenticate to continue.",
+            at: .now
+        )
+        guard case .refused(let reason) = state else {
+            Issue.record("expected a refusal, got \(state)")
+            return
+        }
+        #expect(reason.contains("expired"))
+    }
+}

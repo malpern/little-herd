@@ -14,17 +14,27 @@ import Foundation
 /// thing removed "for now" is a thing rewritten from memory later. Turning
 /// either back on is one word, and the tests for what they draw still run.
 nonisolated enum DashboardChrome {
-    /// **Whether a drop actually starts a transfer.** Off, and this one is
-    /// not a design question: everything behind it works and has run end to
-    /// end on real machines, but there is nothing on screen yet to say a
-    /// transfer is happening, how far it has got, or to call it off.
+    /// **Whether a drop actually starts a transfer.** On, as of 3 September.
     ///
-    /// A drag is a small gesture and easily made by accident. Starting an
-    /// agent on another Mac, and pushing a branch, with no visible answer is
-    /// the kind of thing that is only discovered later — so the wiring is
-    /// complete and this stays false until the progress and cancel controls
-    /// exist. It is one word to turn on.
-    static let startsTransfers = false
+    /// It was false while there was nothing on screen to say a transfer was
+    /// happening, how far it had got, or to call it off. All three exist: the
+    /// strip stands in for the header, the card carries a progress bar, and a
+    /// finished transfer opens a window on what came back.
+    ///
+    /// **The note that used to sit here said it was "one word to turn on", and
+    /// that was wrong three times over.** Turning it on meant first making this
+    /// Mac able to take part at all, fixing a worktree that transferred its
+    /// parent's tree, giving the departing session permission to write the
+    /// brief it is asked for, and four more found the same way. Every one of
+    /// them was invisible to a green suite and obvious within a minute of
+    /// running the thing. If this is ever switched back off, do not assume the
+    /// road back is short.
+    ///
+    /// What earned the change: a red transfer that stopped at the check with
+    /// the branch exactly where the departure left it and no delivery
+    /// attempted, and a green one that landed with the successor's commit on
+    /// the branch and nothing left behind on the destination.
+    static let startsTransfers = true
 
     /// **Rehearsal: a drop drives the interface and touches nothing.**
     ///
