@@ -1413,6 +1413,44 @@ was to change the assertion, not the sentence. Worth pausing on whenever a
 green suite resists a change that is obviously right: **the test may be
 asserting the defect.** It now checks that the other two states do *not* say it.
 
+**Six transfer bugs were found by running one transfer, and none by 670 tests.**
+Recorded together because the ratio is the point, not any one of them: this Mac
+could not take part at all; a session in a worktree transferred its parent's
+tree; the departure used the destination's agent path for a step that runs on
+the source; `USER` in the environment made a signed-in CLI report itself signed
+out; the departing session had no permission to write the brief it was asked
+for and reported success anyway; and a leftover scratch worktree blocked every
+later transfer of the same session. **The suite was green throughout.** When a
+path has never run end to end, the tests are measuring the parts and not the
+thing.
+
+**An agent's exit status says it finished, never that it succeeded.** The
+departing session was refused permission to write its brief, said so in its
+output, and exited zero — so the departure captured a tree, pushed a branch and
+handed the destination a path to a file that did not exist. Any step whose
+purpose is to produce an artifact has to check for the artifact.
+
+**`USER` in the environment makes `claude` report "Not logged in"** with valid
+credentials on disk, deterministically. Found while narrowing why a freshly
+authenticated CLI would not answer; the mechanism is unknown and does not
+matter. It was in `SuccessorLocal`'s allowlist because a process with no user
+looked like a stranger shape than one with a plain environment — which is
+taste, not testing. **An allowlist is only as safe as the testing of each
+entry.**
+
+**`xcodebuild` does not pass the shell's environment to the test host.** A gate
+on `ProcessInfo.processInfo.environment` needs `TEST_RUNNER_`-prefixed
+variables; without the prefix the suite reports "1 test passed" in a
+millisecond, which is a skip wearing a pass's clothes. And piping a
+backgrounded `xcodebuild` into `head` closes the pipe and kills the run
+mid-build, which looks like a command that produced no output.
+
+**A scratch path derived from the work is the same path every time that work
+moves.** The successor's worktree is named for the branch, so a run that ends
+without cleaning up blocks every later transfer of that session with "already
+exists". Anything that creates a fixed path on somebody else's machine has to
+remove before it creates, not merely after it finishes.
+
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -1548,19 +1586,29 @@ came off it.** The hero used to carry the clause *"Little Herd watches;
 choosing the machine is still yours"*, which this file called load-bearing and
 told nobody to trim. It is gone, deliberately: every verb in the hero is
 present tense and it says *move work to the machine that's free* outright.
-**That is a promise the code can keep and the shipped build does not**, because
-`DashboardChrome.startsTransfers` is `false`.
+**The app keeps that promise as of 3 September.** `startsTransfers` is `true`,
+and a session has been moved from this Mac to the mini twice — once red by
+design, once landing clean:
 
-**Do not believe the "one word to turn on" note on that flag.** It has been
-wrong three times, each time because attempting the live run found something
-the tests could not. On 3 September, setting up that run produced three fixes
-and no transfer: this Mac could not take part at all (`SuccessorLocal`), a
-session in a worktree transferred its parent's tree seven commits behind
-itself, and the departure was handed the destination's agent path for a step
-that runs on the source. **Every one of them was found by trying to run it and
-none by a green suite of 666 tests.** Assume the next attempt finds a fourth,
-and treat flipping the flag as the *beginning* of the work rather than the end
-of it. See item 14 for what the herd still lacks.
+    red    departure → push → fetch+pin → prompt → agent → CHECK FAILED → cleanup
+           no delivery attempted; branch exactly where the departure left it
+    green  the same, then delivery; successor's commit on the branch; nothing
+           left behind on the destination
+
+**The flag's old note said it was "one word to turn on". It was wrong three
+times, and turning it on took six fixes** — this Mac could not take part at all
+(`SuccessorLocal`), a session in a worktree transferred its parent's tree seven
+commits behind itself, the departure used the destination's agent path for a
+step that runs on the source, `USER` in the environment made a signed-in CLI
+report itself signed out, the departing session had no permission to write the
+brief it was asked for *and reported success anyway*, and a leftover scratch
+worktree blocked every later transfer of the same session. **Every one was
+invisible to a green suite of ~670 tests and obvious within a minute of running
+the thing.** That ratio is the single most useful fact in this file.
+
+**Still unreleased.** The shipped build is `v0.1.60` and cannot transfer at
+all, so the website's promise is kept by `main` and not by anything anyone can
+download.
 
 The three items that were the critical path are essentially closed, and what
 replaced them is one decision and its consequences:
@@ -2678,18 +2726,25 @@ the only part drawn.
     already refuses to carry anything provider-specific. Worth deciding on
     purpose rather than discovering by accident.
 
-    **What this herd lacks today, as the concrete instance of all of the
-    above.** No transfer is currently possible here at all:
+    **What this herd looks like, as the concrete instance of all of the
+    above.** As of 3 September the Air has the CLI installed, so air ↔ mini
+    transfers work in both directions and have been run:
 
-        Air     no CLI agent          little-herd ✓   xcodebuild ✓
+        Air     ~/.local/bin/claude   little-herd ✓   xcodebuild ✓
         Mini    ~/.local/bin/claude   little-herd ✓   xcodebuild ✓
         Linux   ~/.local/bin/claude   no checkout     no xcodebuild
 
     A source needs an agent to write its brief; a destination needs an agent, a
-    checkout, and the toolchain the check will use. The Air fails as both for
-    one reason — Claude Code runs here as the desktop app and there is no CLI
-    at the path the probe looks for. Installing it makes mini ↔ air work in
-    both directions and is the shortest route to the first live run.
+    checkout, and the toolchain the check will use. **Linux is the standing
+    example of why item 14 exists**: it has an agent and could host work, and
+    the hardcoded `xcodebuild` check makes it permanently ineligible for this
+    repository while telling the user nothing about why.
+
+    **The destination's sign-in is now asked at the drag**, which is the first
+    piece of this item to ship. It is the remedy that can only be explained,
+    never offered — signing in needs a browser — and the cost of not asking was
+    measured: a transfer pushed a branch, built a remote worktree and started an
+    agent before failing on a token that had expired six days earlier.
 
     **Order to build it in:** the per-repository check first, because it
     unblocks every other repository and makes the pre-flight free; then split
