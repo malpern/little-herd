@@ -55,6 +55,7 @@
 		4DECA6731350AC1B325E372D /* MetricsSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8E7D7B96F3C77459C1DD141 /* MetricsSampler.swift */; };
 		4F24CDD27DEBD6E140685C00 /* StreamingProcessRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75816BB07A0EFE6F81C52052 /* StreamingProcessRunner.swift */; };
 		4F56017C41A8EC6CBC9D6118 /* TransferPilot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6010F90DC7DFEDFDFF7F8869 /* TransferPilot.swift */; };
+		4FC84151AB5072716BB3486C /* ContainerAttribution.swift in Sources */ = {isa = PBXBuildFile; fileRef = F609256D1E307FFA9E715C45 /* ContainerAttribution.swift */; };
 		504FBEFADC2C468C7A9BB2D8 /* HerdByteCountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2ACEE7A3A10D1A9CE3D0F22 /* HerdByteCountTests.swift */; };
 		50FBB1AD8156234A2915CBBE /* SuccessorSSH.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7900F4CECEEEBA67C7F0B94B /* SuccessorSSH.swift */; };
 		510ED568359C558B6A05BCFE /* MachineActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE7C98CC9A2691BAFB89BCC /* MachineActivity.swift */; };
@@ -143,6 +144,7 @@
 		CF632AA195C36FA80B20AB9F /* StorageVolume.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74631ABBC0DF62E9034B91B7 /* StorageVolume.swift */; };
 		CFE44C170EDC1D59BF3059B4 /* DashboardMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDDCBAEF57EA2A52D3B1C3E1 /* DashboardMetrics.swift */; };
 		D055E99491EB7222709A5794 /* AgentCompactionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C06FF4AFEC0C873B1820587 /* AgentCompactionTests.swift */; };
+		D061C40AD9174F6A7106CA98 /* ContainerAttributionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC923C97EA4CE402D1F47E6 /* ContainerAttributionTests.swift */; };
 		D2F2948B293526C6E04CC41B /* AgentMoveMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38B045383125EA4D512F0D88 /* AgentMoveMenu.swift */; };
 		D8DFEA05123844483DAF9171 /* SynologyDSMTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6E8B58BFECC711998639C6 /* SynologyDSMTests.swift */; };
 		D91CA4B85E7162E4DB2649A6 /* LittleHerdApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66BA172D3CC6CD4B8AEBC144 /* LittleHerdApp.swift */; };
@@ -296,6 +298,7 @@
 		BE23C778660407B336F50BA0 /* MetricsSamplerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricsSamplerTests.swift; sourceTree = "<group>"; };
 		BEF64A0A793884AE8FC6DC12 /* AppKitContextMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppKitContextMenu.swift; sourceTree = "<group>"; };
 		BF4DF45226956A9BAE4D2BF5 /* SuccessorLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessorLaunchTests.swift; sourceTree = "<group>"; };
+		BFC923C97EA4CE402D1F47E6 /* ContainerAttributionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerAttributionTests.swift; sourceTree = "<group>"; };
 		C0180D64F840CC482E396D1C /* MachineAgentStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineAgentStack.swift; sourceTree = "<group>"; };
 		C03247C9E6019749B240BDA1 /* TransferDiffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferDiffView.swift; sourceTree = "<group>"; };
 		C1A0DC0F7A6B9443E5F6E450 /* PanelRenderHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelRenderHarness.swift; sourceTree = "<group>"; };
@@ -332,6 +335,7 @@
 		F48867A7F46AAF10D8E460B4 /* TransferEligibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferEligibility.swift; sourceTree = "<group>"; };
 		F4BDACBAF4ED283DFADD4CEA /* AgentMoveMenuTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentMoveMenuTests.swift; sourceTree = "<group>"; };
 		F5F554C0CD098ED8BEED7D3B /* MachineActionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineActionTests.swift; sourceTree = "<group>"; };
+		F609256D1E307FFA9E715C45 /* ContainerAttribution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerAttribution.swift; sourceTree = "<group>"; };
 		F82C710E619943CBDCBE3355 /* HerdWorkload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdWorkload.swift; sourceTree = "<group>"; };
 		F92F0519C69CB99B932A38ED /* FolderBrowserModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderBrowserModel.swift; sourceTree = "<group>"; };
 		F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteUnavailabilityTests.swift; sourceTree = "<group>"; };
@@ -383,6 +387,7 @@
 				C1B84E18576938DDB61E77B6 /* CodexBarSource.swift */,
 				C46E8C156433D6B061659FCA /* CodexRolloutUsage.swift */,
 				EA5375CFAE79B5E5C9087378 /* CompactionThresholdSeeder.swift */,
+				F609256D1E307FFA9E715C45 /* ContainerAttribution.swift */,
 				965A795B156AE46A3D239AFB /* CPUOverviewHeaderView.swift */,
 				133A808E3BA4EEA2AF234D6E /* CPUOverviewView.swift */,
 				75AEA2BD4FDDBC0DB466CF07 /* DashboardChrome.swift */,
@@ -505,6 +510,7 @@
 				29F273B61D78B7B84881FE18 /* CodexRolloutUsageTests.swift */,
 				989B1846C85DC25C36F54BAC /* CompactionSeedTests.swift */,
 				3CBDB146412416AE14C5CEB4 /* ConfigurationDurabilityTests.swift */,
+				BFC923C97EA4CE402D1F47E6 /* ContainerAttributionTests.swift */,
 				D4B6A06868013E695C04092B /* DestinationAllowanceTests.swift */,
 				52D5157BE29095D9CF3FED86 /* FolderSizeTests.swift */,
 				C2ACEE7A3A10D1A9CE3D0F22 /* HerdByteCountTests.swift */,
@@ -677,6 +683,7 @@
 				B503079BC74767A615F0B400 /* CodexBarSource.swift in Sources */,
 				124EC8E304AB0B9091583921 /* CodexRolloutUsage.swift in Sources */,
 				09F5F84F794C80AF6513274F /* CompactionThresholdSeeder.swift in Sources */,
+				4FC84151AB5072716BB3486C /* ContainerAttribution.swift in Sources */,
 				920B95435D7A332B3733C090 /* DashboardChrome.swift in Sources */,
 				CFE44C170EDC1D59BF3059B4 /* DashboardMetrics.swift in Sources */,
 				F45BA889DF0A918F2B8A1CE7 /* DashboardTransition.swift in Sources */,
@@ -777,6 +784,7 @@
 				B270CF7B1257E519C16B1B71 /* CodexRolloutUsageTests.swift in Sources */,
 				F1CC199504DF09B4C8362D87 /* CompactionSeedTests.swift in Sources */,
 				0B46A10585034F62414676B1 /* ConfigurationDurabilityTests.swift in Sources */,
+				D061C40AD9174F6A7106CA98 /* ContainerAttributionTests.swift in Sources */,
 				62AE452AB9C99EE98F50CC98 /* DestinationAllowanceTests.swift in Sources */,
 				5716E746539B82A0D580CDB7 /* FolderSizeTests.swift in Sources */,
 				504FBEFADC2C468C7A9BB2D8 /* HerdByteCountTests.swift in Sources */,

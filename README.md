@@ -229,7 +229,9 @@ processes themselves.
 
 Macs are deliberately excluded. Docker Desktop and OrbStack run every container
 inside one virtual machine, so a Mac's process list shows a single helper and has
-nothing to attribute; only the Linux machines carry container labels. The same existing process-list sample is reused for
+nothing to attribute; only the Linux machines carry container labels.
+
+The same existing process-list sample is reused for
 memory attribution, so the memory page adds no additional periodic process scan.
 Helper processes are grouped under their containing app before the largest app
 families are shown, and each is labelled with its own application icon, read
