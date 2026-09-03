@@ -72,5 +72,46 @@ struct TransferDiffRenderTests {
             size: CGSize(width: 720, height: 300),
             named: "transfer-diff-empty"
         )
+
+        // The two failures that leave nothing to read, drawn because the
+        // difference between them is the whole of what this window has to
+        // say. The one that made no branch must not print a branch name --
+        // that name is selectable text somebody will paste into a shell.
+        try harness.render(
+            TransferDiffView(
+                transfer: transfer,
+                phase: .finished(
+                    .init(
+                        result: .couldNotStart,
+                        failingStep: nil,
+                        output: "",
+                        remnant: .nothing
+                    )
+                ),
+                diff: nil,
+                error: "This transfer did not get as far as pushing "
+                    + "anything, so there is nothing on the branch to read."
+            ),
+            size: CGSize(width: 720, height: 460),
+            named: "transfer-diff-nothing-left"
+        )
+        try harness.render(
+            TransferDiffView(
+                transfer: transfer,
+                phase: .finished(
+                    .init(
+                        result: .couldNotStart,
+                        failingStep: nil,
+                        output: "",
+                        remnant: .pushedBranch
+                    )
+                ),
+                diff: nil,
+                error: "Couldn’t read the branch. The work is still on "
+                    + "\(transfer.branch); nothing has been merged."
+            ),
+            size: CGSize(width: 720, height: 460),
+            named: "transfer-diff-never-arrived"
+        )
     }
 }

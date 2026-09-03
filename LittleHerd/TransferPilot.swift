@@ -16,6 +16,36 @@ nonisolated enum TransferPilot {
         case noCommitReported
         /// The destination was refused before anything ran there.
         case refused(SuccessorLaunch.Refusal)
+
+        /// What this failure left on the source.
+        ///
+        /// Derived from *where* it stopped rather than recorded as it went,
+        /// because the departure's order is what decides it and that order is
+        /// right here: the branch is created at the end of `capture`, so a
+        /// failure at or before that point created nothing, and everything
+        /// after it is looking at a branch that exists.
+        var remnant: TransferRemnant {
+            switch self {
+            case .departure(.brief, _), .departure(.capture, _):
+                .nothing
+            // `branch -f` is the last thing the capture chain does, so a push
+            // that fails is a branch that exists and went nowhere.
+            case .departure(.push, _):
+                .localBranch
+            // Cleanup is not fatal and cannot produce a failure here, but it
+            // runs after the push either way, so the branch is out.
+            case .departure(.cleanup, _):
+                .pushedBranch
+            // It pushed and then said nothing a sha could be read from — the
+            // branch is on the remote, and only our knowledge of it is missing.
+            case .noCommitReported:
+                .pushedBranch
+            // A refusal comes from planning the arrival, which only happens
+            // once the departure has fully succeeded.
+            case .refused:
+                .pushedBranch
+            }
+        }
     }
 
     /// The sha a push reported, or nothing.

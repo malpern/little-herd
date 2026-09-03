@@ -59,7 +59,9 @@ extension MonitorModel {
                     SuccessorOutcome(
                         result: .couldNotStart,
                         failingStep: nil,
-                        output: "Couldn’t reach the machine it is leaving."
+                        output: "Couldn’t reach the machine it is leaving.",
+                        // Nothing was asked of it, so nothing was made.
+                        remnant: .nothing
                     )
                 )
             }
@@ -76,7 +78,10 @@ extension MonitorModel {
                     SuccessorOutcome(
                         result: .couldNotStart,
                         failingStep: nil,
-                        output: String(describing: failure)
+                        output: String(describing: failure),
+                        // Where it stopped decides what survives, and only the
+                        // failure knows where it stopped.
+                        remnant: failure.remnant
                     )
                 )
             case .success(let commit):
@@ -102,7 +107,11 @@ extension MonitorModel {
                         SuccessorOutcome(
                             result: .couldNotStart,
                             failingStep: nil,
-                            output: String(describing: failure)
+                            output: String(describing: failure),
+                            // The departure fully succeeded to get here: the
+                            // work is pushed, and only the destination was
+                            // refused.
+                            remnant: .pushedBranch
                         )
                     )
                 case .success(let steps):

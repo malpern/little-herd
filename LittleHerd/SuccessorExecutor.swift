@@ -15,7 +15,13 @@ nonisolated struct SuccessorOutcome: Equatable {
         case checkFailed
         /// The agent itself failed or refused.
         case agentFailed
-        /// Never got as far as the agent: no branch, no worktree, no prompt.
+        /// Never got as far as the agent.
+        ///
+        /// **This does not mean nothing happened**, and saying so was a real
+        /// defect: the departure builds a branch and pushes it before the
+        /// destination is asked to do anything, so a run that dies on the way
+        /// can still have left the work on a branch. What survives is
+        /// `remnant`, and it is the thing a person actually needs.
         case couldNotStart
         /// Called off part-way.
         case cancelled
@@ -25,6 +31,37 @@ nonisolated struct SuccessorOutcome: Equatable {
     /// The last thing that ran, and whatever it said.
     let failingStep: SuccessorRun.Step.Purpose?
     let output: String
+    /// What is left on the machine the work came from.
+    ///
+    /// Defaulted to `.pushedBranch` because every outcome the executor
+    /// produces is one the departure already got past — the run does not begin
+    /// until a commit has been pushed. Only the failures that happen *before*
+    /// that, in `MonitorModel.beginTransfer`, have anything else to say, and
+    /// they say it explicitly.
+    var remnant: TransferRemnant = .pushedBranch
+}
+
+/// What a transfer leaves behind on the machine it was leaving.
+///
+/// The order in `SuccessorRun` is a safety property — quiesce, summarise,
+/// verify, and only then retire the source — and it was only half of one while
+/// the interface could not say where a half-finished move had got to. The diff
+/// window prints this above the branch name, which is where the contradiction
+/// showed: it read "nothing was changed anywhere" directly above the name of
+/// the branch holding the work.
+///
+/// The source session is never touched by any of this. Nothing retires it, so
+/// "leave you where you started" holds for the session itself; what varies is
+/// how much of the branch exists.
+nonisolated enum TransferRemnant: Equatable, Sendable {
+    /// Nothing was created anywhere. The only genuinely clean failure.
+    case nothing
+    /// The branch was built on the source and never pushed, so the work is
+    /// gathered up and sitting on one machine.
+    case localBranch
+    /// The branch is on the source and on the remote, which is where every
+    /// failure from the destination's side leaves things.
+    case pushedBranch
 }
 
 /// Runs the steps and says how it went.

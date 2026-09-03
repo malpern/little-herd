@@ -54,10 +54,16 @@ struct TransferDiffView: View {
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
 
-            Text(transfer.branch)
-                .font(.caption2.monospaced())
-                .foregroundStyle(.tertiary)
-                .textSelection(.enabled)
+            // Only when there is one. A branch name under "nothing was
+            // changed anywhere" is the same contradiction as the sentence this
+            // window used to print above it, and a name somebody can select
+            // and paste into a shell is a promise that it resolves.
+            if phase.map(\.leftABranch) ?? true {
+                Text(transfer.branch)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.tertiary)
+                    .textSelection(.enabled)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)

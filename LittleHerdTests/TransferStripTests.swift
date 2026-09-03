@@ -5,9 +5,17 @@ import Testing
 
 @Suite("Transfer strip")
 struct TransferStripTests {
-    private func finished(_ result: SuccessorOutcome.Result) -> TransferPhase {
+    private func finished(
+        _ result: SuccessorOutcome.Result,
+        remnant: TransferRemnant = .pushedBranch
+    ) -> TransferPhase {
         .finished(
-            SuccessorOutcome(result: result, failingStep: nil, output: "")
+            SuccessorOutcome(
+                result: result,
+                failingStep: nil,
+                output: "",
+                remnant: remnant
+            )
         )
     }
 
@@ -50,8 +58,30 @@ struct TransferStripTests {
         let red = finished(.checkFailed)
         #expect(red.summary.count <= 16)
         #expect(red.detail.contains("still on the branch"))
-        #expect(finished(.couldNotStart).detail.contains("nothing was changed"))
         #expect(TransferPhase.running(.agent).detail.contains("working"))
+
+        // This line used to read `finished(.couldNotStart).detail.contains(
+        // "nothing was changed")` and it was the bug rather than the guard:
+        // the same sentence was returned whether the departure had made
+        // nothing, a local branch, or a pushed one. It is only true of the
+        // first, and it is the rarest of the three. See TransferRemnantTests.
+        #expect(
+            finished(.couldNotStart, remnant: .nothing)
+                .detail.contains("nothing was changed")
+        )
+        #expect(
+            !finished(.couldNotStart, remnant: .pushedBranch)
+                .detail.contains("nothing was changed")
+        )
+
+        // Every summary still has to fit the strip, including the reworded
+        // ones — the detail is where the room is.
+        for phase in [
+            finished(.landed), finished(.checkFailed), finished(.agentFailed),
+            finished(.couldNotStart), finished(.cancelled),
+        ] {
+            #expect(phase.summary.count <= 16, "\(phase.summary) is too long")
+        }
     }
 
     /// Every phase says something a person would recognise, and none of them
