@@ -1369,6 +1369,33 @@ alternative to judging a live control from a screenshot of it.**
 harness cannot draw; the transfer strip's five states were drawn there and that
 one was checked live.
 
+**`-only-testing` with a bare Swift Testing function name runs nothing and
+reports success.** `-only-testing:LittleHerdTests/SuiteName/testName` matches no
+`@Test` — the parentheses are part of the identifier — and `xcodebuild` then
+exits `** TEST SUCCEEDED **` having executed zero tests. Three mutation runs
+"passed" this way on 3 September, including one against a canary that returned
+a fixed string before running anything at all, which is how it was caught.
+**Filter at the suite level, or read the ✔ lines** — a run that names no test is
+a run that did nothing. The suite-level form (`…/AgentAuthVerifierTests`) works.
+
+**A new source file is invisible until `xcodegen` runs, and the error blames the
+wrong file.** `project.yml` globs `LittleHerd` and `LittleHerdTests` while the
+generated `LittleHerd.xcodeproj` is checked in, so a branch that adds a file
+without regenerating compiles for its author — whose Xcode regenerated locally —
+and for nobody else. It surfaces as `Cannot find <NewType> in scope`, pointed at
+the file that *uses* the type rather than the one that is missing, which reads
+like a typo or a missing import. PR #1 sat as a draft in this state.
+
+**Some bugs cannot reproduce inside the test runner, and a test written for the
+symptom will pass for ever.** The verifier closes standard input because an
+agent that finds an open one waits on it. Two attempts to test that passed with
+the behaviour deleted: timing the call proves nothing because a runner's stdin is
+already at EOF, and asking the child whether it sees the null device proves
+nothing because `xcodebuild` hands the *test process* `/dev/null` too — so
+inheriting and setting are the same descriptor. The test only became real once it
+put a pipe on descriptor 0 for the duration of the call. **When the environment
+already satisfies the property, assert against an environment that does not.**
+
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -2523,13 +2550,21 @@ source machine after a failure.
     said so. If more is built here, build it a test harness first — a fake
     agent script that can be made to hang, refuse, or answer is most of one.
 
-    **The consumer has since arrived, and the untested half has not
-    changed.** The verifier's answer is what `AgentDropEligibility` consults
-    when a token is carried over a machine, so a hundred and ninety lines of
-    process and concurrency plumbing that no test touches now sit under a
-    gesture. Still true as of 29 August: nothing in `LittleHerdTests` names
-    `AgentAuthVerifier`, `ProbeWatchdog` or `runCapturingAll`. The fake-agent
-    harness above is the thing to build before turning transfers on.
+    **The harness exists now, and the local half is covered.**
+    `AgentAuthVerifierTests` is ten tests driving real subprocesses, built on
+    3 September. No abstraction was needed: `AgentAuthProbe.command` quotes
+    `install.path` into `/bin/sh`, so an `AgentInstallation` pointed at a
+    script is a real agent doing whatever the script says. Each test was
+    checked by breaking what it covers — deleting the null-device stdin
+    reddens one, discarding standard error reddens three, and removing the
+    SIGKILL escalation leaves the child alive through SIGTERM with the read
+    blocked for the full thirty seconds.
+
+    **`SSHCommandRunner.runCapturingAll` is still untested**, and that is the
+    remaining half: it needs a live host, and pointing it at `localhost` would
+    test this Mac's sshd rather than the runner. The watchdog underneath it is
+    shared with the local path and is now covered, which is the part that had
+    the bugs.
 
 
 ## Keeping this file honest
