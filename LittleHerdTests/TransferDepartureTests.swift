@@ -14,8 +14,6 @@ struct TransferDepartureTests {
             sessionIdentifier: "abc123",
             provider: .claude,
             agentExecutable: "/Users/malpern/.local/bin/claude",
-            promptFile: "/tmp/herd/prompt",
-            indexFile: "/tmp/herd/index",
             prompt: Self.brief,
             message: "Carry the work"
         )
@@ -73,7 +71,7 @@ struct TransferDepartureTests {
         #expect(brief.command.contains("--disallowedTools"))
         #expect(brief.command.contains("Bash"))
         // And the prompt is piped, never trailing — see SuccessorRun.
-        #expect(brief.command.contains("cat '/tmp/herd/prompt' |"))
+        #expect(brief.command.contains("little-herd-prompt\" |"))
         #expect(!brief.command.contains("$(cat"))
     }
 
@@ -92,7 +90,24 @@ struct TransferDepartureTests {
         let last = try #require(steps().last)
         #expect(last.purpose == .cleanup)
         #expect(!last.isFatal)
-        #expect(last.command.contains("/tmp/herd/index"))
+        #expect(last.command.contains("little-herd-index"))
+    }
+
+    /// **The scratch files live in the git directory, asked for at run time.**
+    ///
+    /// They cannot sit in the working tree, or `add -A` sweeps them onto the
+    /// branch. They used to be built as `<repository>/.git/…`, which is a
+    /// directory in a plain checkout and a *file* in a worktree — so the path
+    /// was invalid in the case that matters, because this project is developed
+    /// in worktrees and a session in one is the ordinary thing to move.
+    /// `rev-parse --absolute-git-dir` is right for both.
+    @Test
+    func thescratchFilesAreFoundRatherThanAssumed() {
+        for step in steps() where step.command.contains("little-herd-") {
+            #expect(step.command.contains("rev-parse --absolute-git-dir"))
+            // The literal that broke a worktree. It must not come back.
+            #expect(!step.command.contains("/.git/little-herd"))
+        }
     }
 }
 

@@ -79,21 +79,36 @@ nonisolated struct TransferDeparture: Equatable {
     /// objects are content-addressed and immutable, so every one of those
     /// steps is an addition; nothing existing is altered, and a failure
     /// half-way leaves unreferenced objects that git collects on its own.
+    /// - Parameter repository: **the session's own working directory**, not
+    ///   the checkout the probe discovered under `~/local-code`. Those are the
+    ///   same thing only when nobody is using a worktree, and this project is
+    ///   developed in worktrees — so passing the discovered checkout captured
+    ///   the parent's tree and pushed a branch that did not contain the work
+    ///   the brief described. `git -C` is happy anywhere inside a working
+    ///   tree, so the session's directory is both correct and sufficient.
     static func steps(
         repository: String,
         branch: String,
         sessionIdentifier: String,
         provider: AgentTaskProvider,
         agentExecutable: String,
-        promptFile: String,
-        indexFile: String,
         prompt: String,
         message: String
     ) -> [Step] {
         let repository = RemoteShell.quoted(repository)
         let branchName = RemoteShell.quoted(branch)
-        let promptFile = RemoteShell.quoted(promptFile)
-        let indexFile = RemoteShell.quoted(indexFile)
+
+        // **Asked for at run time rather than assembled here.** These two files
+        // must sit outside the working tree, or `add -A` would sweep them onto
+        // the branch — which is why they used to be built as
+        // `<repository>/.git/…`. That is a directory in a plain checkout and a
+        // *file* in a worktree, so the path was invalid in exactly the case
+        // this method now has to serve. `rev-parse --absolute-git-dir` answers
+        // correctly for both, and it has to be asked once per step because each
+        // one crosses its own ssh connection and no shell variable survives
+        // between them.
+        let promptFile = "\"$(git -C \(repository) rev-parse --absolute-git-dir)/little-herd-prompt\""
+        let indexFile = "\"$(git -C \(repository) rev-parse --absolute-git-dir)/little-herd-index\""
         let encodedPrompt = Data(prompt.utf8).base64EncodedString()
 
         var steps: [Step] = []

@@ -32,8 +32,6 @@ struct TransferPilotTests {
             sessionIdentifier: "abc",
             provider: .claude,
             agentExecutable: "/Users/malpern/.local/bin/claude",
-            promptFile: "/tmp/p",
-            indexFile: "/tmp/i",
             prompt: "brief",
             message: "m"
         )

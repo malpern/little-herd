@@ -71,16 +71,24 @@ nonisolated enum TransferAssembly {
                     destination: destination,
                     branch: branch,
                     title: session.title ?? session.projectName,
-                    repository: sourceRepository
+                    // Read back from here too: the diff is taken locally, on
+                    // the machine the work came from, and it has to be the
+                    // same tree the departure pushed.
+                    repository: directory
                 ),
                 departure: TransferDeparture.steps(
-                    repository: sourceRepository,
+                    // The session's own directory, not `sourceRepository`.
+                    // The probe finds checkouts at `~/local-code/<repo>`
+                    // exactly, so a git worktree is never one of its own — and
+                    // a session running in a worktree resolved to its parent,
+                    // whose tree is a different commit entirely. The slug is
+                    // still what says the destination has the same repository;
+                    // only the path the departure operates on changes.
+                    repository: directory,
                     branch: branch,
                     sessionIdentifier: session.id,
                     provider: session.provider,
                     agentExecutable: installation.path,
-                    promptFile: "\(sourceRepository)/.git/little-herd-prompt",
-                    indexFile: "\(sourceRepository)/.git/little-herd-index",
                     prompt: TransferDeparture.briefRequest(
                         path: briefPath,
                         destination: herd.first {
