@@ -120,6 +120,49 @@ struct SuccessorLocalTests {
         #expect(Self.running(marker) == 0, "the work outlived its cancellation")
     }
 
+    /// **A step must not inherit whatever launched the app.**
+    ///
+    /// This is the difference between the two runners that mattered and was
+    /// nearly missed: `ssh host 'command'` runs in a fresh session on the far
+    /// machine, while a local `Process` inherits the parent's environment
+    /// wholesale. Measured on this Mac — an agent started from a terminal
+    /// holding `ANTHROPIC_BASE_URL` inherited it and reported "Not logged in"
+    /// with valid credentials on disk, which reads exactly like a machine that
+    /// needs signing in and is not one.
+    @Test
+    func aStepDoesNotInheritTheAppsOwnEnvironment() async {
+        setenv("LITTLE_HERD_LEAK_CHECK", "leaked", 1)
+        setenv("ANTHROPIC_BASE_URL", "http://example.invalid", 1)
+        defer {
+            unsetenv("LITTLE_HERD_LEAK_CHECK")
+            unsetenv("ANTHROPIC_BASE_URL")
+        }
+
+        let result = await SuccessorLocal.runReportingStatus(
+            command: #"printf '[%s][%s][%s]' "$LITTLE_HERD_LEAK_CHECK" "$ANTHROPIC_BASE_URL" "$HOME""#,
+            timeout: 30
+        )
+
+        #expect(result.succeeded)
+        #expect(!result.output.contains("leaked"))
+        #expect(!result.output.contains("example.invalid"))
+        // And it is a usable environment rather than an empty one.
+        #expect(result.output.contains(NSHomeDirectory()))
+    }
+
+    /// The path leads with where both agents install themselves, because the
+    /// step most likely to need it is the one that runs an agent.
+    @Test
+    func thePathReachesTheAgentsOwnDirectory() async {
+        let result = await SuccessorLocal.runReportingStatus(
+            command: #"printf '%s' "$PATH""#,
+            timeout: 30
+        )
+
+        #expect(result.output.hasPrefix("\(NSHomeDirectory())/.local/bin:"))
+        #expect(result.output.contains("/usr/bin"))
+    }
+
     /// How many processes are sleeping for that many seconds. The bracket
     /// keeps `grep` from matching its own command line.
     private static func running(_ marker: String) -> Int {

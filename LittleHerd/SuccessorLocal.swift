@@ -46,6 +46,7 @@ nonisolated enum SuccessorLocal {
         // EOF, and an agent that finds an open one waits on it — measured, and
         // the reason `AgentAuthVerifier` does the same.
         process.standardInput = FileHandle.nullDevice
+        process.environment = Self.environment
 
         return await withTaskCancellationHandler {
             await Task.detached(priority: .utility) {
@@ -70,6 +71,47 @@ nonisolated enum SuccessorLocal {
             // started does nothing.
             process.terminate()
         }
+    }
+
+    /// A deliberately built environment rather than this app's own.
+    ///
+    /// **The two runners were not equivalent and that was the point of the
+    /// type.** `ssh host 'command'` runs in a fresh session on the far machine
+    /// and cannot see a variable Little Herd happens to be holding; a local
+    /// `Process` inherits every one of them. So a step that behaved one way
+    /// remotely could behave another way here, decided by whatever launched
+    /// the app.
+    ///
+    /// Measured, and not hypothetically: an agent started from a terminal that
+    /// exported `ANTHROPIC_BASE_URL` inherited it and answered "Not logged in"
+    /// with perfectly good credentials sitting on disk. It reads exactly like
+    /// a signed-out machine, and the same account answers immediately from a
+    /// clean environment. Little Herd would have reported a machine as needing
+    /// a sign-in it did not need.
+    ///
+    /// An allowlist rather than a denylist, because the failure mode of
+    /// missing a variable is a command that cannot find something and says so,
+    /// while the failure mode of leaking one is a confident wrong answer.
+    /// `~/.local/bin` leads the path because that is where both agents install
+    /// themselves.
+    static var environment: [String: String] {
+        let home = NSHomeDirectory()
+        var environment = [
+            "HOME": home,
+            "PATH": "\(home)/.local/bin:/opt/homebrew/bin:/usr/local/bin"
+                + ":/usr/bin:/bin:/usr/sbin:/sbin",
+            "SHELL": "/bin/sh",
+            "LANG": "en_US.UTF-8",
+        ]
+        // Carried because a process with no user or temporary directory is a
+        // stranger shape than one with a plain environment, and neither can
+        // carry a credential.
+        for key in ["USER", "LOGNAME", "TMPDIR"] {
+            if let value = ProcessInfo.processInfo.environment[key] {
+                environment[key] = value
+            }
+        }
+        return environment
     }
 
     /// A runner for the destination's half, ready to hand to the executor.
