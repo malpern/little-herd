@@ -90,7 +90,7 @@ struct SuccessorLaunchTests {
     /// command line from the brief.
     @Test
     func theLauncherRunsTheCheckAndTheDelivery() {
-        let checks = SuccessorLaunch.verification(scheme: "LittleHerd")
+        let checks = SuccessorLaunch.verification(check: .xcode(scheme: "LittleHerd"))
         #expect(checks.first?.first == "xcodebuild")
         #expect(checks.first?.contains("LittleHerd") == true)
 

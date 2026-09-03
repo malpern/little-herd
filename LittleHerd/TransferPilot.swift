@@ -113,7 +113,7 @@ nonisolated enum TransferPilot {
         scratchRoot: String,
         provider: AgentTaskProvider,
         reportedAgentPath: String,
-        scheme: String,
+        check: RepositoryCheck,
         commitMessage: String
     ) -> Result<[SuccessorRun.Step], Failure> {
         let plan = SuccessorLaunch.plan(
@@ -137,7 +137,7 @@ nonisolated enum TransferPilot {
                     repository: repository,
                     branch: branch,
                     promptFile: "\(plan.workingDirectory).prompt",
-                    scheme: scheme,
+                    check: check,
                     commitMessage: commitMessage
                 )
             )

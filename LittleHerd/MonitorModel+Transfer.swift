@@ -40,7 +40,7 @@ extension MonitorModel {
             from: origin,
             to: destination,
             in: machines.map(\.destinationAccount),
-            scheme: TransferAssembly.scheme
+            check: TransferAssembly.check
         )
 
         guard case .success(let request) = assembled else {
@@ -97,7 +97,7 @@ extension MonitorModel {
                     scratchRoot: TransferAssembly.scratchRoot,
                     provider: request.provider,
                     reportedAgentPath: request.destinationAgentPath,
-                    scheme: request.scheme,
+                    check: request.check,
                     commitMessage: "Successor work on \(request.transfer.branch)"
                 )
                 switch arrival {
@@ -197,10 +197,14 @@ extension MonitorModel {
 }
 
 extension TransferAssembly {
-    /// The scheme a check runs against, and where scratch worktrees go.
-    /// Constants for now; both belong in per-repository settings the day
-    /// Little Herd is pointed at something that is not this project.
-    static let scheme = "LittleHerd"
+    /// The check every transfer currently runs, and where scratch worktrees go.
+    ///
+    /// **Still a constant, and now only because nothing reports what is in a
+    /// repository yet.** `RepositoryCheckDetector` answers this from a listing
+    /// of the repository root; what is missing is somebody to take that
+    /// listing on the machine concerned. Until then every transfer is assumed
+    /// to be this project, which is true of every transfer that has happened.
+    static let check = RepositoryCheck.xcode(scheme: "LittleHerd")
     static let scratchRoot = NSString(string: "~/.little-herd/transfers")
         .expandingTildeInPath
 }

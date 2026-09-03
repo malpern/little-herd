@@ -28,7 +28,7 @@ struct TransferCoordinatorTests {
             repository: "/repo",
             branch: "transfer/fan",
             promptFile: "/tmp/p",
-            scheme: "LittleHerd",
+            check: .xcode(scheme: "LittleHerd"),
             commitMessage: "m"
         )
     }

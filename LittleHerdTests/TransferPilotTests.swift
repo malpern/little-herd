@@ -92,7 +92,7 @@ struct TransferPilotTests {
             scratchRoot: "/tmp/herd",
             provider: .claude,
             reportedAgentPath: "/Users/malpern/.local/bin/claude",
-            scheme: "LittleHerd",
+            check: .xcode(scheme: "LittleHerd"),
             commitMessage: "m"
         ).get()
 
@@ -130,7 +130,7 @@ struct TransferPilotTests {
             scratchRoot: "/tmp",
             provider: .claude,
             reportedAgentPath: "/Users/malpern/.local/bin/claude",
-            scheme: "LittleHerd",
+            check: .xcode(scheme: "LittleHerd"),
             commitMessage: "m"
         )
         #expect(result == .failure(.refused(.notATransferBranch)))

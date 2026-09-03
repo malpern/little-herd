@@ -55,7 +55,7 @@ nonisolated struct SuccessorRun: Equatable {
         repository: String,
         branch: String,
         promptFile: String,
-        scheme: String,
+        check: RepositoryCheck,
         commitMessage: String
     ) -> [Step] {
         let scratch = RemoteShell.quoted(plan.workingDirectory)
@@ -123,9 +123,10 @@ nonisolated struct SuccessorRun: Equatable {
             )
         )
 
-        // The check and the delivery are this app's commands. A brief names
-        // which scheme to build; it can never name a command line.
-        for check in SuccessorLaunch.verification(scheme: scheme) {
+        // The check and the delivery are this app's commands. A repository
+        // names which check to run and fills in its blanks; neither it nor a
+        // brief can ever name a command line. See `RepositoryCheck`.
+        for check in SuccessorLaunch.verification(check: check) {
             steps.append(
                 Step(
                     purpose: .verification,

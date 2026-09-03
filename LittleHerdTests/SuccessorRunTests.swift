@@ -30,7 +30,7 @@ struct SuccessorRunTests {
             repository: "/Users/malpern/local-code/little-herd",
             branch: branch,
             promptFile: "/tmp/herd/prompt",
-            scheme: "LittleHerd",
+            check: .xcode(scheme: "LittleHerd"),
             commitMessage: "Successor work"
         )
     }

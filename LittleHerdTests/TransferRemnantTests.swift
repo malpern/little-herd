@@ -217,7 +217,7 @@ struct TransferAgentPathTests {
                 from: MachineID("air"),
                 to: MachineID("mini"),
                 in: herd,
-                scheme: "LittleHerd"
+                check: .xcode(scheme: "LittleHerd")
             ).get()
         )
 
@@ -243,7 +243,7 @@ struct TransferAgentPathTests {
             from: MachineID("air"),
             to: MachineID("mini"),
             in: herd,
-            scheme: "LittleHerd"
+            check: .xcode(scheme: "LittleHerd")
         )
 
         #expect(result == .failure(.originLacksAgent))

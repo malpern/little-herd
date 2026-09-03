@@ -17,7 +17,7 @@ struct SuccessorExecutorTests {
             repository: "/repo",
             branch: "transfer/x",
             promptFile: "/tmp/herd/prompt",
-            scheme: "LittleHerd",
+            check: .xcode(scheme: "LittleHerd"),
             commitMessage: "m"
         )
     }

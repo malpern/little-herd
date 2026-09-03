@@ -17,7 +17,7 @@ nonisolated enum TransferAssembly {
         let destinationRepository: String
         let destinationAgentPath: String
         let provider: AgentTaskProvider
-        let scheme: String
+        let check: RepositoryCheck
     }
 
     enum Refusal: Equatable, Error {
@@ -38,7 +38,7 @@ nonisolated enum TransferAssembly {
         from origin: MachineID,
         to destination: MachineID,
         in herd: [DestinationAccount],
-        scheme: String
+        check: RepositoryCheck
     ) -> Result<Request, Refusal> {
         guard let source = herd.first(where: { $0.machine == origin })?.report,
               let directory = session.workingDirectory,
@@ -115,7 +115,7 @@ nonisolated enum TransferAssembly {
                 destinationRepository: destinationRepository,
                 destinationAgentPath: installation.path,
                 provider: session.provider,
-                scheme: scheme
+                check: check
             )
         )
     }

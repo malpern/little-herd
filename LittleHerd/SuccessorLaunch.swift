@@ -75,8 +75,14 @@ nonisolated enum SuccessorLaunch {
     /// What the launcher runs after the successor has finished editing, in
     /// order, stopping at the first failure. These are the app's commands, not
     /// the brief's: a brief names *which* check to run, never a command line.
-    static func verification(scheme: String) -> [[String]] {
-        [["xcodebuild", "test", "-scheme", scheme, "-destination", "platform=macOS"]]
+    /// The check's commands, which are `RepositoryCheck`'s to decide.
+    ///
+    /// This used to build the `xcodebuild` line itself from a scheme name,
+    /// which was right while the only repository was this one. What has not
+    /// changed is the property that mattered: the repository names *which*
+    /// check and fills in its blanks, and never names a command line.
+    static func verification(check: RepositoryCheck) -> [[String]] {
+        check.commands
     }
 
     /// And what it runs to deliver the result, if the verification passed.
