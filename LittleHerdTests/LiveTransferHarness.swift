@@ -125,9 +125,15 @@ struct LiveTransferHarness {
             return
         }
 
+        let remote = SuccessorSSH.runner(host: "malpern@mini")
         let outcome = await SuccessorExecutor.execute(
             steps: steps,
-            run: SuccessorSSH.runner(host: "malpern@mini"),
+            run: { step in
+                print("=== ARRIVE \(step.purpose) :: \(step.command.prefix(200))")
+                let out = await remote(step)
+                print("===   -> ok=\(out.succeeded) :: \(out.text.suffix(600))")
+                return out
+            },
             progress: { purpose in print("=== STEP \(purpose)") }
         )
 
