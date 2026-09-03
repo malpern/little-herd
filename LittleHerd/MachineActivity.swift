@@ -59,6 +59,12 @@ nonisolated struct MachineActivity: Equatable, Sendable {
     let processID: Int?
     let contextName: String?
     let childProcessName: String?
+    /// The container this process runs inside, when it runs inside one at all.
+    ///
+    /// A qualifier rather than a kind: `node` in a container is still `node`,
+    /// and a `clang` in one is still compiling. What the container adds is
+    /// *where*, which is exactly what a Docker host's process list was missing.
+    let containerName: String?
     let agentTask: AgentTaskSummary?
 
     init(
@@ -67,6 +73,7 @@ nonisolated struct MachineActivity: Equatable, Sendable {
         processID: Int? = nil,
         contextName: String? = nil,
         childProcessName: String? = nil,
+        containerName: String? = nil,
         agentTask: AgentTaskSummary? = nil
     ) {
         self.processName = processName
@@ -74,6 +81,7 @@ nonisolated struct MachineActivity: Equatable, Sendable {
         self.processID = processID
         self.contextName = contextName
         self.childProcessName = childProcessName
+        self.containerName = containerName
         self.agentTask = agentTask
     }
 
@@ -131,6 +139,16 @@ nonisolated struct MachineActivity: Equatable, Sendable {
     }
 
     var shortLabel: LocalizedStringResource {
+        guard let containerName else { return baseShortLabel }
+        return "\(String(localized: baseShortLabel)) · \(containerName)"
+    }
+
+    var tooltip: LocalizedStringResource {
+        guard let containerName else { return baseTooltip }
+        return "\(String(localized: baseTooltip)) (container \(containerName))"
+    }
+
+    private var baseShortLabel: LocalizedStringResource {
         return switch kind {
         case .codex: "Codex"
         case .claudeCode: "Claude Code"
@@ -173,7 +191,7 @@ nonisolated struct MachineActivity: Equatable, Sendable {
         }
     }
 
-    var tooltip: LocalizedStringResource {
+    private var baseTooltip: LocalizedStringResource {
         if let agentTask {
             switch agentTask.status {
             case .active:
@@ -205,7 +223,7 @@ nonisolated struct MachineActivity: Equatable, Sendable {
         case .browser:
             "Running a browser — \(cpuCores, format: .number.precision(.fractionLength(1 ... 2))) CPU cores"
         case .terminal:
-            "\(shortLabel) — \(cpuCores, format: .number.precision(.fractionLength(1 ... 2))) CPU cores"
+            "\(baseShortLabel) — \(cpuCores, format: .number.precision(.fractionLength(1 ... 2))) CPU cores"
         case .indexing:
             "Indexing files — \(cpuCores, format: .number.precision(.fractionLength(1 ... 2))) CPU cores"
         case .desktop:
@@ -222,6 +240,19 @@ nonisolated struct MachineActivity: Equatable, Sendable {
             processID: processID,
             contextName: contextName,
             childProcessName: childProcessName,
+            containerName: containerName,
+            agentTask: agentTask
+        )
+    }
+
+    func addingContainerName(_ containerName: String?) -> MachineActivity {
+        MachineActivity(
+            processName: processName,
+            cpuPercent: cpuPercent,
+            processID: processID,
+            contextName: contextName,
+            childProcessName: childProcessName,
+            containerName: containerName,
             agentTask: agentTask
         )
     }
@@ -233,6 +264,7 @@ nonisolated struct MachineActivity: Equatable, Sendable {
             processID: processID,
             contextName: contextName,
             childProcessName: childProcessName,
+            containerName: containerName,
             agentTask: agentTask
         )
     }
@@ -244,6 +276,7 @@ nonisolated struct MachineActivity: Equatable, Sendable {
             processID: processID,
             contextName: contextName,
             childProcessName: childProcessName,
+            containerName: containerName,
             agentTask: agentTask
         )
     }
@@ -282,9 +315,14 @@ nonisolated enum MachineActivityParser {
     static let detailHighlights = 8
     static let defaultMinimumCPUPercent = 0.5
 
+    /// Two rows merge only when they are the same kind of work *in the same
+    /// place*. Without the container in the key, a `node` in `web` and a `node`
+    /// in `api` would consolidate into one row carrying their summed CPU and
+    /// whichever container happened to hold the busier process — a number
+    /// attributed to a service that did not spend it.
     private enum SummaryKey: Hashable {
-        case category(MachineActivityKind)
-        case process(String)
+        case category(MachineActivityKind, String?)
+        case process(String, String?)
     }
 
     private struct Aggregate {
@@ -318,8 +356,12 @@ nonisolated enum MachineActivityParser {
             == .orderedAscending
     }
 
+    /// - Parameter containerNames: The container each process ID belongs to,
+    ///   for the machines that report it. Applied before consolidation, because
+    ///   the container decides which rows are allowed to merge.
     static func highlights(
         from processOutput: String,
+        containerNames: [Int: String] = [:],
         limit: Int = maximumHighlights,
         minimumCPUPercent: Double = defaultMinimumCPUPercent
     ) -> [MachineActivity] {
@@ -328,6 +370,12 @@ nonisolated enum MachineActivityParser {
         let activities = processOutput
             .split(whereSeparator: \.isNewline)
             .compactMap { parseLine(String($0)) }
+            .map { activity in
+                guard let processID = activity.processID,
+                      let containerName = containerNames[processID]
+                else { return activity }
+                return activity.addingContainerName(containerName)
+            }
             .filter { !ignoredProcessNames.contains($0.processName.lowercased()) }
             .filter { $0.cpuPercent > 0 }
 
@@ -355,7 +403,8 @@ nonisolated enum MachineActivityParser {
                 MachineActivity(
                     processName: aggregate.representative.processName,
                     cpuPercent: aggregate.totalCPUPercent,
-                    processID: aggregate.representative.processID
+                    processID: aggregate.representative.processID,
+                    containerName: aggregate.representative.containerName
                 )
             }
             .filter { $0.cpuPercent >= minimumCPUPercent }
@@ -367,9 +416,9 @@ nonisolated enum MachineActivityParser {
     private static func summaryKey(for activity: MachineActivity) -> SummaryKey {
         switch activity.kind {
         case .other:
-            .process(activity.processName.lowercased())
+            .process(activity.processName.lowercased(), activity.containerName)
         default:
-            .category(activity.kind)
+            .category(activity.kind, activity.containerName)
         }
     }
 

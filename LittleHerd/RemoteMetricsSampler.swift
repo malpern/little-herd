@@ -56,6 +56,7 @@ nonisolated enum RemoteOutputParser {
     ) -> [MachineActivity] {
         var workingDirectories: [Int: String] = [:]
         var childProcessNames: [Int: String] = [:]
+        var containerNames: [Int: String] = [:]
         for line in output.split(whereSeparator: \.isNewline)
         {
             let prefix: String
@@ -63,6 +64,8 @@ nonisolated enum RemoteOutputParser {
                 prefix = "context="
             } else if line.hasPrefix("child=") {
                 prefix = "child="
+            } else if line.hasPrefix("container=") {
+                prefix = "container="
             } else {
                 continue
             }
@@ -70,10 +73,13 @@ nonisolated enum RemoteOutputParser {
             let fields = line.dropFirst(prefix.count)
                 .split(maxSplits: 1, whereSeparator: \.isWhitespace)
             guard fields.count == 2, let processID = Int(fields[0]) else { continue }
-            if prefix == "context=" {
+            switch prefix {
+            case "context=":
                 workingDirectories[processID] = String(fields[1])
-            } else {
+            case "child=":
                 childProcessNames[processID] = String(fields[1])
+            default:
+                containerNames[processID] = String(fields[1])
             }
         }
 
@@ -87,6 +93,7 @@ nonisolated enum RemoteOutputParser {
 
         let candidateActivities = MachineActivityParser.highlights(
             from: processOutput,
+            containerNames: containerNames,
             limit: 20,
             minimumCPUPercent: 0
         )
@@ -548,7 +555,11 @@ actor RemoteMetricsSampler {
     done
     """#
 
-    private static let linuxCommand = #"""
+    private static var linuxCommand: String {
+        ContainerAttributionProbe.shellFunction() + "\n" + linuxCommandTemplate
+    }
+
+    private static let linuxCommandTemplate = #"""
     export LC_ALL=C
     echo "cores=$(/usr/bin/nproc)"
     cpu=$(/usr/bin/awk '/^cpu / {for(i=2;i<=NF;i++) printf "%s%s", $i, i==NF?"":" "; exit}' /proc/stat)
@@ -576,7 +587,8 @@ actor RemoteMetricsSampler {
       printf "storage=%s\t%s\t%s\t%s\t%s\n" "$storage_name64" "$storage_mount64" "$storage_total" "$storage_available" "$storage_group64"
     done
     process_table=$(/bin/ps -Ao pcpu=,rss=,pid=,comm=)
-    printf "%s\n" "$process_table" | /usr/bin/awk '{cpu=$1; pid=$3; $1=""; $2=""; $3=""; sub(/^[[:space:]]+/,"",$0); command=$0; base=command; sub(/^.*\//,"",base); if (cpu > 0 && base !~ /^(awk|head|ps|sort)$/) {totals[command]+=cpu; if (cpu > peaks[command]) {peaks[command]=cpu; pids[command]=pid}}} END {for (command in totals) printf "%.1f %s %s\n", totals[command], pids[command], command}' | /usr/bin/sort -k1,1nr | /usr/bin/head -n 12 | while read -r activity_cpu activity_pid activity_command; do
+    activity_rows=$(printf "%s\n" "$process_table" | /usr/bin/awk '{cpu=$1; pid=$3; $1=""; $2=""; $3=""; sub(/^[[:space:]]+/,"",$0); command=$0; base=command; sub(/^.*\//,"",base); if (cpu > 0 && base !~ /^(awk|head|ps|sort)$/) {totals[command]+=cpu; if (cpu > peaks[command]) {peaks[command]=cpu; pids[command]=pid}}} END {for (command in totals) printf "%.1f %s %s\n", totals[command], pids[command], command}' | /usr/bin/sort -k1,1nr | /usr/bin/head -n 12)
+    printf "%s\n" "$activity_rows" | while read -r activity_cpu activity_pid activity_command; do
       echo "activity=$activity_cpu $activity_pid $activity_command"
       activity_base=${activity_command##*/}
       case "$activity_base" in
@@ -594,6 +606,9 @@ actor RemoteMetricsSampler {
           ;;
       esac
     done
+    if [ -n "$activity_rows" ]; then
+      printf "%s\n" "$activity_rows" | /usr/bin/awk '{print $2}' | little_herd_containers
+    fi
     printf "%s\n" "$process_table" | /usr/bin/awk '{rss=$2; $1=""; $2=""; $3=""; sub(/^[[:space:]]+/,"",$0); if (rss > 0 && $0 != "") printf "%.0f\t%s\n", rss*1024, $0}' | /usr/bin/sort -k1,1nr | /usr/bin/head -n 40 | while IFS="$(printf '\t')" read -r memory_bytes memory_command; do
       memory_command64=$(printf "%s" "$memory_command" | /usr/bin/base64 | /usr/bin/tr -d '\n')
       printf "memory_process=%s\t%s\n" "$memory_command64" "$memory_bytes"

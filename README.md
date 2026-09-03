@@ -207,7 +207,29 @@ automatically.
 Activity collection uses process names, CPU percentages, direct parent/child
 process relationships, and—for active build tools only—the process working
 folder. It does not inspect command arguments, prompts, responses, environment
-variables, or credentials. The same existing process-list sample is reused for
+variables, or credentials.
+
+On Linux, a process that is running inside a container is labelled with it, so a
+Docker host's list reads `node · web` and `node · api` rather than two
+indistinguishable rows called `node`. The container is a qualifier rather than a
+category: work inside one is still described by what it is, so a compile in a
+container reads `Compiling Little Herd · build-runner`. Two containers running
+the same program stay on separate rows, because merging them would hand one
+service the CPU the other spent.
+
+The container comes from `/proc/PID/cgroup`, which the kernel already maintains
+and any account can read — no daemon, agent, or elevated privilege. That file
+holds only the container's ID, so Little Herd asks `docker ps` (or `podman ps`)
+for the friendly name when either is on the remote PATH, and otherwise shows the
+twelve-character short ID that `docker ps` itself prints. Socket access is never
+required: an SSH account outside the `docker` group simply sees short IDs. The
+runtime is asked only when a container was actually found among the busiest
+processes, is given two seconds to answer, and is never sent anything about the
+processes themselves.
+
+Macs are deliberately excluded. Docker Desktop and OrbStack run every container
+inside one virtual machine, so a Mac's process list shows a single helper and has
+nothing to attribute; only the Linux machines carry container labels. The same existing process-list sample is reused for
 memory attribution, so the memory page adds no additional periodic process scan.
 Helper processes are grouped under their containing app before the largest app
 families are shown, and each is labelled with its own application icon, read
