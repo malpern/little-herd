@@ -249,3 +249,27 @@ struct TransferAgentPathTests {
         #expect(result == .failure(.originLacksAgent))
     }
 }
+
+@Suite("Which step failed")
+struct CheckFailedDetailTests {
+    private func finished(_ step: SuccessorRun.Step.Purpose) -> TransferPhase {
+        .finished(
+            SuccessorOutcome(result: .checkFailed, failingStep: step, output: "")
+        )
+    }
+
+    /// **`checkFailed` is two states, and the sentence has to be true of both.**
+    /// A failed push leaves you where a failed check does — edits made, nothing
+    /// delivered — which is why it does not get a result of its own. Seen on a
+    /// real transfer: the tests passed on the mini and the commit failed, and
+    /// the app said the tests did not pass.
+    @Test
+    func aFailedPushDoesNotClaimTheTestsFailed() {
+        let push = finished(.delivery).detail
+        #expect(!push.contains("tests did not pass"))
+        #expect(push.contains("could not be pushed"))
+
+        let check = finished(.verification).detail
+        #expect(check.contains("tests did not pass"))
+    }
+}

@@ -90,7 +90,16 @@ nonisolated enum SuccessorLaunch {
     static func delivery(branch: String, message: String) -> [[String]] {
         [
             ["git", "add", "-A"],
-            ["git", "commit", "-m", message],
+            // **`--allow-empty`, because a successor that correctly changes
+            // nothing is not a failed transfer.** Measured on the first green
+            // live run: the brief described work that was already finished, the
+            // agent rightly did nothing, and `git commit` exited non-zero with
+            // "nothing to commit, working tree clean" — which the executor read
+            // as a failed delivery and reported as a failed check. The diff
+            // window already has words for this state ("The agent finished
+            // without changing any files"); it was the only part of the system
+            // that did.
+            ["git", "commit", "--allow-empty", "-m", message],
             ["git", "push", "origin", "HEAD:refs/heads/\(branch)"],
         ]
     }

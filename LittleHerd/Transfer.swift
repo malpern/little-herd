@@ -116,8 +116,18 @@ nonisolated enum TransferPhase: Equatable, Sendable {
             case .landed:
                 "The work is on the branch, tested, and not merged."
             case .checkFailed:
-                "The tests did not pass. The edits are still on the branch, "
-                    + "unchanged, for you to read."
+                // `checkFailed` covers a failed push as well as a failed
+                // check — deliberately, rather than inventing a fifth result
+                // for a state that leaves you in the same place. But the
+                // sentence has to be true of whichever it was: saying "the
+                // tests did not pass" after they passed and the push failed is
+                // the same confident wrong answer `couldNotStart` used to give,
+                // and it was seen on a real transfer.
+                outcome.failingStep == .delivery
+                    ? "The tests passed, but the result could not be pushed. "
+                        + "The work is on the destination and not on the branch."
+                    : "The tests did not pass. The edits are still on the branch, "
+                        + "unchanged, for you to read."
             case .agentFailed:
                 // It used to end "Nothing was pushed", which is false: the
                 // departure pushed the branch before the agent was asked for

@@ -83,6 +83,19 @@ nonisolated struct SuccessorRun: Equatable {
                     + "\(RemoteShell.quoted(branch)) "
                     + "&& test \"$(git -C \(repository) rev-parse FETCH_HEAD)\" "
                     + "= \(commit) "
+                    // **Idempotent, because the scratch path is derived from
+                    // the branch and so is the same every time this session is
+                    // moved.** A run that ends without cleaning up — a crash, a
+                    // machine that slept, a cancelled transfer — leaves the
+                    // directory behind, and `worktree add` then refuses with
+                    // "already exists" for ever after. Measured: the second
+                    // live transfer of one session failed here because the
+                    // first had left its worktree, and the only thing wrong was
+                    // litter. Removing first costs nothing when there is
+                    // nothing to remove.
+                    + "&& { git -C \(repository) worktree remove --force "
+                    + "\(scratch) >/dev/null 2>&1 || true; } "
+                    + "&& rm -rf \(scratch) "
                     + "&& git -C \(repository) worktree add --detach "
                     + "\(scratch) \(commit)",
                 isFatal: true
@@ -154,8 +167,13 @@ nonisolated struct SuccessorRun: Equatable {
         steps.append(
             Step(
                 purpose: .cleanup,
+                // `rm -rf` after the removal rather than instead of it:
+                // git's own removal is the tidy path and also unregisters the
+                // worktree, but it fails on a directory it does not recognise
+                // and then the litter stays. Both, and neither is fatal.
                 command: "git -C \(repository) worktree remove --force "
-                    + "\(scratch); rm -f \(promptFile)",
+                    + "\(scratch) >/dev/null 2>&1; rm -rf \(scratch); "
+                    + "rm -f \(promptFile)",
                 isFatal: false
             )
         )
