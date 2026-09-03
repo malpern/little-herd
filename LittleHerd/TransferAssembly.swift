@@ -25,6 +25,11 @@ nonisolated enum TransferAssembly {
         /// The destination has no checkout of the repository the work is in.
         case destinationLacksRepository
         case destinationLacksAgent
+        /// The source has no agent to ask. The brief is written by the
+        /// departing session, on its own machine, through that machine's own
+        /// agent — so this is a different question from whether the
+        /// destination can run one, and it used to be conflated with it.
+        case originLacksAgent
         case originUnknown
     }
 
@@ -60,6 +65,15 @@ nonisolated enum TransferAssembly {
         guard let installation = target.bestInstallation else {
             return .failure(.destinationLacksAgent)
         }
+        // **The brief runs on the source, so it needs the source's agent.**
+        // This used to pass the destination's path to the departure, which is
+        // the machine the departure never touches. Two Macs with the agent in
+        // the same place hid it completely; here one of them has no CLI agent
+        // at all, and the step would have tried to run the other machine's
+        // path locally and reported it as a missing agent.
+        guard let sourceInstallation = source.bestInstallation else {
+            return .failure(.originLacksAgent)
+        }
 
         let branch = self.branch(for: session)
         let briefPath = "Documentation/transfers/\(branch.dropFirst("transfer/".count)).md"
@@ -88,7 +102,7 @@ nonisolated enum TransferAssembly {
                     branch: branch,
                     sessionIdentifier: session.id,
                     provider: session.provider,
-                    agentExecutable: installation.path,
+                    agentExecutable: sourceInstallation.path,
                     prompt: TransferDeparture.briefRequest(
                         path: briefPath,
                         destination: herd.first {

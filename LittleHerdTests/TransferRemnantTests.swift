@@ -156,3 +156,96 @@ struct TransferRemnantTests {
         #expect(landed.detail.contains("not merged"))
     }
 }
+
+/// Which machine's agent each half of a transfer uses.
+///
+/// The brief is the departing session's own account of itself, written by
+/// resuming it — on its own machine, through that machine's agent. The
+/// successor is a different agent on a different machine. They are two
+/// installations and the assembly used to reach for one of them twice.
+@Suite("Transfer agents")
+struct TransferAgentPathTests {
+    private func account(
+        _ id: String,
+        checkout: String,
+        agent: String?
+    ) -> DestinationAccount {
+        DestinationAccount(
+            machine: MachineID(id),
+            name: id,
+            symbolName: "desktopcomputer",
+            report: DestinationReport(
+                installations: agent.map {
+                    [AgentInstallation(provider: .claude, version: "1", path: $0)]
+                } ?? [],
+                checkouts: ["little-herd": checkout]
+            ),
+            mayHostSessions: true,
+            auth: .unverified,
+            isVerifying: false
+        )
+    }
+
+    private var session: AgentSession {
+        AgentSession(
+            id: "session-abc",
+            provider: .claude,
+            projectName: "Little Herd",
+            state: .waiting,
+            updatedAt: .now,
+            progress: nil,
+            workingDirectory: "/Users/a/local-code/little-herd"
+        )
+    }
+
+    /// **The departure runs the source's agent, at the source's path.** The
+    /// two machines keep their agents in different places here — one of them
+    /// has none at all — so passing the destination's path to the departure
+    /// meant running a path that does not exist on the machine it runs on.
+    @Test
+    func theBriefIsWrittenByTheSourcesOwnAgent() throws {
+        let herd = [
+            account("air", checkout: "/Users/a/local-code/little-herd",
+                    agent: "/Users/a/.local/bin/claude"),
+            account("mini", checkout: "/Users/b/local-code/little-herd",
+                    agent: "/Users/b/.claude/versions/2.1/claude"),
+        ]
+
+        let request = try #require(
+            try? TransferAssembly.request(
+                session: session,
+                from: MachineID("air"),
+                to: MachineID("mini"),
+                in: herd,
+                scheme: "LittleHerd"
+            ).get()
+        )
+
+        let brief = try #require(request.departure.first { $0.purpose == .brief && $0.command.contains("--resume") })
+        #expect(brief.command.contains("/Users/a/.local/bin/claude"))
+        #expect(!brief.command.contains("/Users/b/"))
+        // And the destination still gets its own.
+        #expect(request.destinationAgentPath == "/Users/b/.claude/versions/2.1/claude")
+    }
+
+    /// A source with no agent cannot be asked for a brief, and that is its own
+    /// refusal rather than the destination's.
+    @Test
+    func aSourceWithNoAgentIsRefusedInItsOwnRight() {
+        let herd = [
+            account("air", checkout: "/Users/a/local-code/little-herd", agent: nil),
+            account("mini", checkout: "/Users/b/local-code/little-herd",
+                    agent: "/Users/b/.local/bin/claude"),
+        ]
+
+        let result = TransferAssembly.request(
+            session: session,
+            from: MachineID("air"),
+            to: MachineID("mini"),
+            in: herd,
+            scheme: "LittleHerd"
+        )
+
+        #expect(result == .failure(.originLacksAgent))
+    }
+}
