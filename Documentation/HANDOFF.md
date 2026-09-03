@@ -1549,9 +1549,18 @@ choosing the machine is still yours"*, which this file called load-bearing and
 told nobody to trim. It is gone, deliberately: every verb in the hero is
 present tense and it says *move work to the machine that's free* outright.
 **That is a promise the code can keep and the shipped build does not**, because
-`DashboardChrome.startsTransfers` is `false`. Either that word changes or the
-sentence has to come back — and the first is the right answer, because the
-three things the flag was waiting for all exist now.
+`DashboardChrome.startsTransfers` is `false`.
+
+**Do not believe the "one word to turn on" note on that flag.** It has been
+wrong three times, each time because attempting the live run found something
+the tests could not. On 3 September, setting up that run produced three fixes
+and no transfer: this Mac could not take part at all (`SuccessorLocal`), a
+session in a worktree transferred its parent's tree seven commits behind
+itself, and the departure was handed the destination's agent path for a step
+that runs on the source. **Every one of them was found by trying to run it and
+none by a green suite of 666 tests.** Assume the next attempt finds a fourth,
+and treat flipping the flag as the *beginning* of the work rather than the end
+of it. See item 14 for what the herd still lacks.
 
 The three items that were the critical path are essentially closed, and what
 replaced them is one decision and its consequences:
@@ -1562,9 +1571,10 @@ replaced them is one decision and its consequences:
   account-level answer (`sshUser`), the setter (the per-machine allowance on
   the AI page), and the grant bound to a host. What remains under it is several
   accounts on one host, which is a model change rather than a gap.
-- **Item 5, the transfer itself.** Built, run end to end on real machines, and
-  wired to the drop. What is left is turning it on, and the interface work that
-  turning it on makes urgent.
+- **Item 5, the transfer itself.** Built, run end to end on real machines *by
+  hand in August*, and wired to the drop. It has still never run from the app.
+  What is left is item 14 — the herd cannot currently host a transfer at all —
+  and then turning it on and watching one.
 
 The fourth is **done as of 3 September: a session that fails to arrive says
 so, and says where it got to.** It turned out to be a sentence rather than a
@@ -2599,6 +2609,94 @@ the only part drawn.
     shared with the local path and is now covered, which is the part that had
     the bugs.
 
+
+14. **A destination is eligible for a piece of *work*, not eligible in
+    general — and nothing in the model says so yet.** Raised 3 September, after
+    the live run turned out to be impossible on this herd for reasons that have
+    nothing to do with this herd.
+
+    Everything `DestinationEligibility` asks is **machine-level**: does this
+    account have an agent, a checkout, credentials. Those six answers are well
+    shaped — each names its own remedy, `noAgent` being "a machine to install
+    something on" and `signedOut` "a machine to sign in on". What is missing is
+    **work-level**: whether this machine can do *this* work. Xcode is the
+    obvious case and the general one — a Rust repo wants cargo, a Node repo the
+    right Node, a repo with a devcontainer wants Docker. A machine that is a
+    perfect destination for one repository is useless for another, and the
+    model cannot currently express that at all.
+
+    **Only the repository can say what it needs.** Little Herd can infer that a
+    Claude session wants Claude; it cannot infer that this project wants Xcode
+    and the next one wants Python 3.12. So: **detect by default, declare to
+    override** — `.xcodeproj` means xcodebuild, `Cargo.toml` means cargo, and a
+    `[transfer]` block in the repository settles anything ambiguous. The
+    constraint that matters is one this file already holds in another form:
+    **the check must never be chosen by the thing being checked.** The
+    successor cannot pick its own exam, for the same reason the launcher
+    verifies the brief rather than the agent verifying it.
+
+    **The pre-flight falls out of the check for free, and must not be declared
+    twice.** If the check is `xcodebuild test -scheme LittleHerd`, then
+    `command -v xcodebuild` is the pre-flight, taken from the check's first
+    word. Two lists of one fact drift — that is how the fan and the resting
+    deck came to disagree, and how two menu implementations did.
+
+    **Remedies are a spectrum and only some can be offered.** The cloning
+    decision is the precedent — an offer, confirmed once, never a side effect —
+    but the costs differ by orders of magnitude:
+
+    - a missing **checkout** is minutes and gigabytes: offer it
+    - a missing **agent CLI** is one installer: offer it
+    - missing **credentials** need a browser: explain, never attempt
+    - a missing **Xcode** is 15 GB and an Apple Account: explain, never attempt
+
+    The rule: **offer only what can be completed non-interactively over SSH,
+    and otherwise name the gap and stop.** That also disposes of the platform
+    question without teaching Little Herd anything about operating systems — it
+    does not have to decide whether the linux box *could ever* run `xcodebuild`,
+    only report that it does not have it and offer no install it cannot
+    perform.
+
+    **Requirements scale with what is asked for, and the messaging has to.**
+    Watching needs no agent binary anywhere — the app reads transcripts, which
+    is the "no agent to install on the other machines" line the website leads
+    with. Only *moving* work needs a CLI, on both ends. So a missing
+    prerequisite surfaces at the drag, about the machine it concerns, and never
+    as a checklist at launch. Most people will never see one.
+
+    **Ask work facts on the drag, not on the timer.** Machine facts are cheap
+    and already sampled every thirty seconds. Twenty `command -v` calls per
+    sample would go into the shell script this file calls the most dangerous
+    file in the app, for an answer that changes almost never.
+    `AgentAuthVerifier` set the precedent: it costs something, so it is asked
+    deliberately, at the moment the answer would change a decision.
+
+    **An open question that would widen everything.** The brief is deliberately
+    prose rather than a serialised session — so does the destination need the
+    *same* agent, or merely *an* agent? If a Claude handoff can be picked up by
+    Codex, eligibility widens a long way for almost nothing, since the design
+    already refuses to carry anything provider-specific. Worth deciding on
+    purpose rather than discovering by accident.
+
+    **What this herd lacks today, as the concrete instance of all of the
+    above.** No transfer is currently possible here at all:
+
+        Air     no CLI agent          little-herd ✓   xcodebuild ✓
+        Mini    ~/.local/bin/claude   little-herd ✓   xcodebuild ✓
+        Linux   ~/.local/bin/claude   no checkout     no xcodebuild
+
+    A source needs an agent to write its brief; a destination needs an agent, a
+    checkout, and the toolchain the check will use. The Air fails as both for
+    one reason — Claude Code runs here as the desktop app and there is no CLI
+    at the path the probe looks for. Installing it makes mini ↔ air work in
+    both directions and is the shortest route to the first live run.
+
+    **Order to build it in:** the per-repository check first, because it
+    unblocks every other repository and makes the pre-flight free; then split
+    the eligibility answer into machine-level and work-level so the interface
+    can say *"the mini has the repo and the agent, but not the toolchain this
+    work needs"* rather than a flat no; then offers, only where they can be
+    completed; then the provider question.
 
 ## Keeping this file honest
 
