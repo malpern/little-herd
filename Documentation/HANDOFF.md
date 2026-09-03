@@ -1396,6 +1396,23 @@ inheriting and setting are the same descriptor. The test only became real once i
 put a pipe on descriptor 0 for the duration of the call. **When the environment
 already satisfies the property, assert against an environment that does not.**
 
+**A view rendered below its own declared minimum silently loses the part that
+overflows.** `TransferDiffView` declares `.frame(minHeight: 420)` and two new
+failure states were drawn at 300, which put the entire header — title, the
+sentence saying what became of the work, and the branch name — off the top of
+the image, leaving a page that looked deliberately sparse rather than clipped.
+Nothing failed; the harness wrote a PNG and reported success. **Render at the
+size the view asks for**, and when a render looks emptier than the code reads,
+suspect the frame before the content.
+
+**A test can encode the bug it is standing next to.** `TransferStripTests`
+required `couldNotStart`'s detail to contain "nothing was changed" — which is
+true of one of that result's three causes and false of the two that leave work
+on a branch. Fixing the sentence turned the suite red, and the correct response
+was to change the assertion, not the sentence. Worth pausing on whenever a
+green suite resists a change that is obviously right: **the test may be
+asserting the defect.** It now checks that the other two states do *not* say it.
+
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -1549,12 +1566,28 @@ replaced them is one decision and its consequences:
   wired to the drop. What is left is turning it on, and the interface work that
   turning it on makes urgent.
 
-The fourth, still open and now the one that matters most: **a session that
-fails to arrive has to say so, and leave you where you started.** The order in
-item 5 is a safety property and only half of one until a half-finished move is
-visible in the interface rather than in a log. The strip says a run went red
-and the diff window says what is on the branch; what nobody has yet seen is the
-source machine after a failure.
+The fourth is **done as of 3 September: a session that fails to arrive says
+so, and says where it got to.** It turned out to be a sentence rather than a
+mechanism. `couldNotStart` read *"It never started, so nothing was changed
+anywhere"* for all three of its causes, and one of those is a departure that
+fully succeeded with the destination refused — while the diff window prints
+that line directly above the branch name, so it denied that anything had
+happened above the evidence that it had. `agentFailed` ended *"Nothing was
+pushed"*, false for the same reason: the departure pushes before the agent is
+asked for anything.
+
+`TransferRemnant` now carries what survives on the source, derived by
+`TransferPilot.Failure` from its own case, because where a run stopped is what
+decides it: the branch is created by the last command of the capture chain, so
+anything at or before it made nothing, a failed push leaves a branch on one
+machine, and every later failure is looking at a branch that is already out.
+The window draws the branch name only when there is a branch — it is selectable
+text somebody will paste into a shell.
+
+**The source session was never at risk and still is not.** Nothing in a
+transfer retires it, so "leave you where you started" already held for the
+session itself; the branch was the only part that varied, which is why it is
+the only part drawn.
 
 1. ~~The agents' design, and judging how it feels.~~ **Done.** Built in
    `v0.1.55` and tuned by watching it since; what the watching taught is in the
