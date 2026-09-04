@@ -2753,6 +2753,58 @@ the only part drawn.
     work needs"* rather than a flat no; then offers, only where they can be
     completed; then the provider question.
 
+15. **A command-line interface, because the herd is legible to a pair of eyes
+    and to nothing else.** Raised 3 September, out of not being able to finish
+    item 3: the last unverified step was a drag, and there is no second way in.
+
+    **The core is already shaped for it.** Every one of the thirteen files the
+    transfer runs through — `TransferAssembly`, `TransferPilot`,
+    `TransferDeparture`, `SuccessorRun`, `SuccessorLaunch`, `SuccessorExecutor`,
+    `SuccessorSSH`, `SuccessorLocal`, `RepositoryCheck`, `AgentDestination`,
+    `AgentDropEligibility`, `TransferEligibility`, `Transfer` — imports neither
+    SwiftUI nor AppKit. `LiveTransferHarness` drives a complete transfer through
+    them without a view. This is a wrapper, not a refactor.
+
+    **It is also the one capability here that breaks a rule the rest of this
+    setup keeps.** `~/.config/agent/ACCESS.md` opens by saying every tool is
+    "CLI + on-disk creds + a wrapper on `$PATH` — deliberately not MCP — so it
+    works identically in any agent or shell". Little Herd is GUI-only, so it is
+    the only thing in the herd an agent cannot reach. And **linux can never run
+    a menu-bar app**, so today it can host work and initiate none; no amount of
+    interface work fixes that.
+
+    **Build the read verbs first, and treat `move` as a separate decision.**
+
+        little-herd machines [--json]
+        little-herd sessions [--json]
+        little-herd destinations <session> [--json]   ← why yes, and why not there
+        little-herd transfers [--json]
+        little-herd move <session> --to <machine> [--yes]
+
+    The read half carries no policy question, and `destinations` is the useful
+    one: it is item 14's eligibility answer made legible to something other than
+    a pointer. It would have halved the debugging that found six transfer bugs
+    in one afternoon.
+
+    **The objection, which is about policy rather than code.** Every transfer
+    today begins with a human gesture, and a CLI removes that by construction —
+    an agent that can call `move` can send its own work to another machine,
+    spend tokens there and push branches, with nobody dragging anything. That is
+    a real escalation and should be decided rather than arrived at. The house
+    rule already answers it, and the answer should be copied verbatim from
+    `attgw` and `yarm`: reads are automatic, **every mutation prints the change
+    and refuses without `--yes`**, and the exit code carries the contract —
+    `0` applied or read, `1` error, `2` refused and *nothing changed*, which
+    exists precisely so a refusal cannot be mistaken for an application.
+
+    **One wrinkle to settle before writing any of it.** Machine configuration
+    lives in the app's `UserDefaults` (`machineConfigurationsV1`) and
+    eligibility needs a live probe. The CLI either re-probes itself — slower,
+    but works with the app closed, and on linux where it cannot run at all — or
+    asks the running app, which is faster and needs IPC. **Re-probe**:
+    independence from the GUI is the entire point, and a tool that only works
+    while a menu-bar app is open is not the thing `ACCESS.md` describes.
+
 ## Keeping this file honest
 
 It is the roadmap; there is no other tracker. Update it at the end of a session
