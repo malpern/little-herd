@@ -101,6 +101,7 @@
 		89745750651E4D9FC15DE448 /* AgentDropEligibilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86994D7297949A526B17050E /* AgentDropEligibilityTests.swift */; };
 		8B68A0A2E80163B03E89D3B8 /* SuccessorLocalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 658C0D4904DE777B5C0F92A2 /* SuccessorLocalTests.swift */; };
 		8B754FF26AB9016DAD7BB6A5 /* AgentAuthVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDC2B520609D94117FF51336 /* AgentAuthVerification.swift */; };
+		8CE31CD4D9BD981BC87C2915 /* HerdCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49C967C600FD0014DDF80A0 /* HerdCommandTests.swift */; };
 		8D9A2410B9D02566E457C7F6 /* SuccessorRunTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5E475A4DF178283F4418E /* SuccessorRunTests.swift */; };
 		908AC8A727784963D66AAC6C /* MachineAgentActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F32D4B7CE84B3F6870AC568 /* MachineAgentActivity.swift */; };
 		920B95435D7A332B3733C090 /* DashboardChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75AEA2BD4FDDBC0DB466CF07 /* DashboardChrome.swift */; };
@@ -114,6 +115,7 @@
 		9EBFA43128EEF75AFFDC4C3F /* SynologyTrustTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C57E556B607FDBFC533B251 /* SynologyTrustTests.swift */; };
 		A23B343EAFCC59009DBBB951 /* DashboardWindowBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F86234553E6FA795BAE88C /* DashboardWindowBridge.swift */; };
 		A3B86273DEF5E8F43616CE18 /* HerdWorkloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD1898FFA14E2C7BC9A924C2 /* HerdWorkloadTests.swift */; };
+		A5EE002AE56504F17741530C /* HerdCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025CEE59D30B500DFF89F77E /* HerdCommand.swift */; };
 		A673853D135FCA0E042DEBE8 /* PanelRenderHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A0DC0F7A6B9443E5F6E450 /* PanelRenderHarness.swift */; };
 		A6A4579A4635CC653D663CDE /* MonitorModel+Transfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDB4D2062B7AF22AE79268DF /* MonitorModel+Transfer.swift */; };
 		A75BF90DF86C9F46EB1FC29C /* FullDiskAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 902F116974B1C2D720ED2B18 /* FullDiskAccess.swift */; };
@@ -189,6 +191,7 @@
 
 /* Begin PBXFileReference section */
 		0030CD269D45A066A95941B9 /* MetricHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricHistoryTests.swift; sourceTree = "<group>"; };
+		025CEE59D30B500DFF89F77E /* HerdCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdCommand.swift; sourceTree = "<group>"; };
 		0268A4FEC4C1CE1B192EB31C /* MachineDetailPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineDetailPane.swift; sourceTree = "<group>"; };
 		0B5E191C740CEFB9F0FE06A2 /* AgentFanLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentFanLayout.swift; sourceTree = "<group>"; };
 		114C1DCAE7973C5472BD9796 /* AIUsageLimitsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIUsageLimitsView.swift; sourceTree = "<group>"; };
@@ -346,6 +349,7 @@
 		F3BFFFA4ABE22A99AFFDA520 /* MenuIconTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuIconTests.swift; sourceTree = "<group>"; };
 		F405C1D91AB9D95F0D588013 /* CodexBarOfferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexBarOfferTests.swift; sourceTree = "<group>"; };
 		F48867A7F46AAF10D8E460B4 /* TransferEligibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferEligibility.swift; sourceTree = "<group>"; };
+		F49C967C600FD0014DDF80A0 /* HerdCommandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdCommandTests.swift; sourceTree = "<group>"; };
 		F4BDACBAF4ED283DFADD4CEA /* AgentMoveMenuTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentMoveMenuTests.swift; sourceTree = "<group>"; };
 		F5F554C0CD098ED8BEED7D3B /* MachineActionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineActionTests.swift; sourceTree = "<group>"; };
 		F609256D1E307FFA9E715C45 /* ContainerAttribution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerAttribution.swift; sourceTree = "<group>"; };
@@ -419,6 +423,7 @@
 				941460A953D8A453CCA3CF1E /* HerdAvatarSize.swift */,
 				E5353A0F070BC8169F5569C4 /* HerdByteCount.swift */,
 				C6AE1D932764BCE8C5F27FD5 /* HerdColumns.swift */,
+				025CEE59D30B500DFF89F77E /* HerdCommand.swift */,
 				B216258773940FD0422DACC2 /* HerdStyle.swift */,
 				D56F2E897732951FB02B9B7F /* HerdwareAvatar.swift */,
 				F82C710E619943CBDCBE3355 /* HerdWorkload.swift */,
@@ -532,6 +537,7 @@
 				52D5157BE29095D9CF3FED86 /* FolderSizeTests.swift */,
 				C2ACEE7A3A10D1A9CE3D0F22 /* HerdByteCountTests.swift */,
 				33B38445BD2EC011BFCC8B8A /* HerdColumnsTests.swift */,
+				F49C967C600FD0014DDF80A0 /* HerdCommandTests.swift */,
 				BD1898FFA14E2C7BC9A924C2 /* HerdWorkloadTests.swift */,
 				28A334FD1C930D9B96C4E2F1 /* InMemoryConfigurationStorage.swift */,
 				C4A3F211A1CB3FB031F11E6D /* LiveTransferHarness.swift */,
@@ -720,6 +726,7 @@
 				C239D2D922B785BBF084A38C /* HerdAvatarSize.swift in Sources */,
 				2C7DEF12C3468CCD42F5962B /* HerdByteCount.swift in Sources */,
 				6AB7CD21519D28D1089C7122 /* HerdColumns.swift in Sources */,
+				A5EE002AE56504F17741530C /* HerdCommand.swift in Sources */,
 				6A65C3FDEED92059FB1C9835 /* HerdStyle.swift in Sources */,
 				5CB3283CDCE6D84BF5D5D30B /* HerdWorkload.swift in Sources */,
 				3A45C65052806FE4A571A349 /* HerdwareAvatar.swift in Sources */,
@@ -813,6 +820,7 @@
 				5716E746539B82A0D580CDB7 /* FolderSizeTests.swift in Sources */,
 				504FBEFADC2C468C7A9BB2D8 /* HerdByteCountTests.swift in Sources */,
 				C26304A73D54EB5BDBDE66A4 /* HerdColumnsTests.swift in Sources */,
+				8CE31CD4D9BD981BC87C2915 /* HerdCommandTests.swift in Sources */,
 				A3B86273DEF5E8F43616CE18 /* HerdWorkloadTests.swift in Sources */,
 				BF0A72836087C3E499B9E54D /* InMemoryConfigurationStorage.swift in Sources */,
 				F1A156FDB00BC2F7D53A2A32 /* LiveTransferHarness.swift in Sources */,

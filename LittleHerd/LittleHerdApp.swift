@@ -9,7 +9,33 @@ private final class LittleHerdAppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+/// The real entry point, so that a question asked from a shell can be answered
+/// before any of this becomes an application.
+///
+/// SwiftUI's `App` supplies its own `main()`, which starts AppKit and shows a
+/// window. Standing in front of it is what lets `little-herd machines` print
+/// and exit without a Dock icon appearing — and `disposition` is deliberately
+/// conservative about what counts as a verb, because this code runs on every
+/// launch including the ones Launch Services starts with arguments of its own.
 @main
+enum LittleHerdEntryPoint {
+    static func main() {
+        switch HerdCommand.disposition(for: CommandLine.arguments) {
+        case .respond(let output, let code):
+            let text = HerdCommand.answer(
+                for: CommandLine.arguments,
+                fallback: output
+            )
+            if !text.isEmpty {
+                FileHandle.standardOutput.write(Data((text + "\n").utf8))
+            }
+            exit(code)
+        case .launchTheApp:
+            LittleHerdApp.main()
+        }
+    }
+}
+
 struct LittleHerdApp: App {
     @NSApplicationDelegateAdaptor(LittleHerdAppDelegate.self)
     private var appDelegate
