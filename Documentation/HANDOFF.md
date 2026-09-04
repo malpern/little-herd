@@ -2773,6 +2773,22 @@ the only part drawn.
     a menu-bar app**, so today it can host work and initiate none; no amount of
     interface work fixes that.
 
+    **`machines` ships as of 3 September**, and the app is the command rather
+    than a second target: standing in front of SwiftUI's generated `main` costs
+    one enum, where a separate executable would have wanted the shared code in a
+    library first — sixty-odd files moved before knowing whether anybody wants
+    this. `MachineConfigurationStore` reads the same defaults the app writes,
+    which is why there is no daemon and no IPC.
+
+    **The guard on what counts as a verb is load-bearing, and testing it proved
+    more than the comment claimed.** The entry point runs on every launch,
+    including the ones Launch Services and `xctest` begin with their own
+    `-`-prefixed arguments. Removing `!verb.hasPrefix("-")` does not fail an
+    assertion — the test host *is* this app, so it reads a runner argument as an
+    unknown verb, prints usage and exits, and the whole suite dies with "Early
+    unexpected exit, operation never finished bootstrapping". Anything added to
+    that entry point has to keep that property.
+
     **Build the read verbs first, and treat `move` as a separate decision.**
 
         little-herd machines [--json]
