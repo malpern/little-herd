@@ -114,7 +114,8 @@ ten more between 27 and 29 August, and six of them are the transfer:
     0.1.60  a strip to watch it and stop it; a machine is an account on a host
     0.1.61  transfers on, and Little Herd answers questions from a shell
     0.1.62  a hovered agent names its project, in the band the readings vacate
-    0.1.63  it names the *work* instead — the folder was the wrong answer
+    0.1.63  it names the *work* instead — the folder was the wrong answer; a
+            card gets its tooltip back and Codex threads their real names
 
 0.1.61 is the one that matters: the diff window, the progress bar across the
 foot of the card, both context menus rebuilt in AppKit because SwiftUI drops
@@ -1357,6 +1358,20 @@ script that asserted on the text it expected before writing, the assertion
 failed, and the script exited without writing while the commit message
 described the change in full. Caught by reading the diff before pushing. **Read
 the diff, not the intention**, especially when a scripted edit is involved.
+
+**"Unmerged" and "not in main" are different questions, and `git cherry` is
+what tells them apart.** A review of this repo on 5 September found 51 local
+branches, 36 of them unmerged by ancestry — which reads as a great deal of
+abandoned work and was almost none. Twenty-five had been squash-merged, so
+their patches were in main under different shas; four were older snapshots of
+the website that would have *deleted* nine thousand lines had anyone merged
+them; two were refactors that landed by another route, provable because every
+file they created is in main today; two were transfer artifacts, one of them
+the successor's own branch from the live run, whose fixes were already applied
+by hand. **One** carried anything: the streaming write-up above. `git cherry
+main <branch>` marks a commit `-` when an equivalent patch is already in main
+and `+` when it is not, and it answered in one pass what ancestry could not.
+The repo is two branches now.
 
 **A Codex thread's name is in `name`. Its `title` column is a decoy and holds
 the entire first user message** — one live row carried four thousand characters
@@ -3018,18 +3033,31 @@ the only part drawn.
     control. **A machine in the red never recedes at all** — a reading that says
     something is wrong is not backdrop.
 
-    **The recede empties a band, and the band now carries the project name —
-    and the two ride the same flag, which a render is what settled.** The name
-    shipped ungated at first, so with the readings still forward it drew on top
-    of a live chart. That is the *default* configuration, the one almost
-    everybody has, and nothing but rendering it would have shown it: the flag
-    was on for every look taken by the person who wrote it.
-    Hovering a card names the project it is working on, in the space the
-    thermometers just left, anchored over the card and in the same type as a
-    machine's own name. The card is twenty points wide; before this, what an
-    agent was *working on* lived only in a right-click menu and a four-second
-    tooltip. That the effect pays for the label is the argument for keeping it —
-    an ornament that clears room for a fact is not only an ornament.
+    **The recede empties a band, and the band now names what a card is working
+    on.** Hovering a card puts its name in the space the thermometers just
+    left, anchored over the card and in the same type as a machine's own. The
+    card is twenty points wide; before this, what an agent was doing lived only
+    in a right-click menu and a tooltip. That the effect pays for the label is
+    the argument for keeping it — an ornament that clears room for a fact is
+    not only an ornament.
+
+    **The label and the recede ride the same flag, which a render settled.**
+    The name shipped ungated at first, so with the readings still forward it
+    drew on top of a live chart. That is the *default* configuration, the one
+    almost everybody has, and nothing but rendering it would have shown it: the
+    flag was on for every look taken by the person who wrote it.
+
+    **It named the project first, and the project was the wrong answer.**
+    0.1.62 shipped that and 0.1.63 fixed it. `projectName` is the last
+    component of a working directory, which is a good name only when
+    somebody started the session inside a project. A third of this herd did
+    not: a Claude session run from `~/local-code` was labelled *"local
+    code"*, and every Codex session runs in a dated folder Codex slugs out
+    of the opening message, so those read *"work in local code wa…"*. It
+    draws `displayTitle` now — the session's own name, falling back to the
+    project when there is none — so the project stays as the answer of last
+    resort rather than the first one. Nothing but hovering the shipped build
+    and disbelieving it would have caught this.
 
     **The harness can draw a hover state now** — `rendersFanFor`,
     `rendersNameFor` and `rendersOpen` hand in the state a pointer would
@@ -3050,12 +3078,20 @@ the only part drawn.
     driving the mouse: it is not reliable here, and the render seam above is
     the repeatable path.
 
-    **Two things about the cards are still open, and both want a pointer.** A
-    card has had **no tooltip since its context menu was added** — `.help` is on
-    it and does not fire — and moving that menu to `.background`, which is
-    exactly what fixed the columns, **stops a card's right-click menu opening at
-    all**. So the two cases are not the same bug and the column's fix does not
-    generalise.
+    **A card's tooltip is fixed, and the reason it broke is worth keeping.** It
+    had shown nothing since its context menu was laid over it, though `.help`
+    was on it the whole time. The reflex here — and this project had just spent
+    an evening on exactly that — is to blame the overlay for swallowing the
+    pointer. It does not: the label above the row is driven by `onHover` on the
+    same icon and works. **A tooltip is not hover.** It belongs to whichever
+    view is topmost under the pointer, and that is the menu's `NSView`, which
+    had none to give. It is given one directly through AppKit's own `toolTip`
+    rather than by hoping SwiftUI's `.help` routes through a representable, and
+    it carries the full name when the label above has had to truncate it.
+
+    Moving that menu to `.background` would also have "fixed" it and is the
+    wrong answer: tried, and there a card's right-click menu **never opens at
+    all**. The fix the columns needed does not generalise one level down.
 
 ## Keeping this file honest
 
