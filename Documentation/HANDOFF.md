@@ -2789,7 +2789,25 @@ the only part drawn.
     unexpected exit, operation never finished bootstrapping". Anything added to
     that entry point has to keep that property.
 
-    **Build the read verbs first, and treat `move` as a separate decision.**
+    **All three read verbs ship as of 3 September.** `destinations` answers with
+    `TransferAssembly.request` — the function a drop calls — rather than
+    restating the reasoning, so the command cannot drift from the app. Against
+    this herd it says the mini can take the work and linux cannot for want of a
+    checkout, which is item 14's argument in one line of output.
+
+    Two things came out of running it against real machines rather than
+    fixtures. **A session's `id` carries its provider**, so `id.prefix(8)`
+    printed `claude:1` for every row — invisible with one session on screen and
+    obvious with fourteen. And **a lookup that found nothing exited `0`**, which
+    tells a script "nowhere to send it" when the truth is "no such session".
+
+    **Only the probe leaves the main actor, and that is a correctness
+    constraint rather than a preference.** An earlier version blocked the main
+    thread on a semaphore while awaiting work that hopped back to the main
+    actor to finish — a deadlock. Sampling needs no actor; formatting happens
+    back where it started.
+
+    **`move` remains the separate decision.**
 
         little-herd machines [--json]
         little-herd sessions [--json]
