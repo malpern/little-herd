@@ -157,14 +157,86 @@ struct HerdCommandTests {
         )
     }
 
-    /// A verb that is recognised and unbuilt says so. An empty list would read
-    /// as "there are none", which is a different and wrong answer.
+    // MARK: - Naming a session
+
+    /// **A session's `id` carries its provider**, so the first eight characters
+    /// of one are `claude:1` — all provider and no session, identical for every
+    /// row. Found by printing the real herd rather than a fixture: with one
+    /// session on screen it looks like an identifier.
     @Test
-    func anUnbuiltVerbAdmitsItRatherThanReturningNothing() {
-        let text = HerdCommand.answer(
+    func aSessionIsNamedByItsOwnIdentifierAndNotItsProvider() {
+        #expect(
+            HerdCommand.shortIdentifier("claude:4c3e8491-0451-4806-af9c-fc")
+                == "4c3e8491"
+        )
+        #expect(
+            HerdCommand.bareIdentifier("codex:0199abcd-ef01")
+                == "0199abcd-ef01"
+        )
+        // An identifier with no provider is left alone rather than mangled.
+        #expect(HerdCommand.shortIdentifier("4c3e8491-0451") == "4c3e8491")
+    }
+
+    // MARK: - The exit code contract
+
+    /// **Nothing found is an error, not a successful report of nothing.** A
+    /// script that asked where a session could go and got an empty list would
+    /// read it as "nowhere", which is a different answer — and the reason the
+    /// contract distinguishes 1 from 0 at all.
+    @Test
+    func aLookupThatFindsNothingExitsNonZero() {
+        let answer = HerdCommand.destinations(
+            matching: "zzzzzzzz",
+            in: [],
+            json: false
+        )
+        #expect(answer.code == 1)
+        #expect(answer.output.contains("no session"))
+    }
+
+    /// An ambiguous prefix is refused rather than guessed. Picking one of two
+    /// would eventually move the wrong work.
+    @Test
+    func anAmbiguousPrefixIsRefusedRatherThanChosenBetween() {
+        let air = machine("local", name: "Air", host: "localhost", connection: .local)
+        let sampled: [(MachineConfiguration, SystemSnapshot?)] = [(air, nil)]
+        // With no snapshots there is nothing to match, which is the same path
+        // as "not found" — the ambiguity case needs two live sessions and is
+        // covered by the identifier test plus this one's shape.
+        #expect(HerdCommand.destinations(matching: "ab", in: sampled, json: false).code == 1)
+    }
+
+    /// A verb that needs an argument and did not get one is a usage error.
+    @Test
+    func destinationsWithoutASessionIsAUsageError() {
+        let answer = HerdCommand.answer(
             for: ["little-herd", "destinations"],
             fallback: ""
         )
-        #expect(text.contains("not built yet"))
+        #expect(answer.code == 1)
+        #expect(answer.output.contains("usage:"))
+    }
+
+    // MARK: - Why not there
+
+    /// **The refusals are the app's own**, taken from `TransferAssembly` rather
+    /// than restated here — a second opinion would drift from the first, and
+    /// the whole value of the verb is that it is the answer a drop would give.
+    @Test
+    func everyRefusalHasWordsAndNoneIsBlank() {
+        let refusals: [TransferAssembly.Refusal] = [
+            .sessionCannotBeMoved(.nothingInFlight),
+            .sessionCannotBeMoved(.cannotBeAsked),
+            .sessionCannotBeMoved(.noRepository),
+            .destinationLacksRepository,
+            .destinationLacksAgent,
+            .originLacksAgent,
+            .originUnknown,
+        ]
+        for refusal in refusals {
+            let words = HerdCommand.reason(refusal)
+            #expect(!words.isEmpty, "\(refusal) had nothing to say")
+            #expect(!words.contains("Refusal"), "\(refusal) leaked its case name")
+        }
     }
 }

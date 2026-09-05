@@ -22,14 +22,19 @@ enum LittleHerdEntryPoint {
     static func main() {
         switch HerdCommand.disposition(for: CommandLine.arguments) {
         case .respond(let output, let code):
-            let text = HerdCommand.answer(
+            let answer = HerdCommand.answer(
                 for: CommandLine.arguments,
                 fallback: output
             )
-            if !text.isEmpty {
-                FileHandle.standardOutput.write(Data((text + "\n").utf8))
+            if !answer.output.isEmpty {
+                let handle = answer.code == 0
+                    ? FileHandle.standardOutput
+                    : FileHandle.standardError
+                handle.write(Data((answer.output + "\n").utf8))
             }
-            exit(code)
+            // The verb's own verdict wins: `disposition` only knows whether a
+            // word is a verb, not whether the thing it asked for exists.
+            exit(answer.code == 0 ? code : answer.code)
         case .launchTheApp:
             LittleHerdApp.main()
         }

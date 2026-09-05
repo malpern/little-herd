@@ -158,19 +158,292 @@ extension HerdCommand {
     /// `machines` reads the same store the app writes, which is the whole of
     /// why this needs no daemon and no IPC: the herd's configuration is on
     /// disk, and both readers see it.
-    static func answer(for arguments: [String], fallback: String) -> String {
-        let verb = Array(arguments.dropFirst()).first ?? ""
+    static func answer(
+        for arguments: [String],
+        fallback: String
+    ) -> (output: String, code: Int32) {
+        let rest = Array(arguments.dropFirst())
+        let verb = rest.first ?? ""
         let json = wantsJSON(arguments)
+        let configurations = MachineConfigurationStore().machines
 
         switch verb {
         case "machines":
-            return machines(MachineConfigurationStore().machines, json: json)
-        case "sessions", "destinations":
-            // Both want a live probe, which is the next slice. Saying so beats
-            // printing an empty list that reads like an answer.
-            return "little-herd: “\(verb)” is not built yet"
+            return (machines(configurations, json: json), 0)
+
+        case "sessions":
+            return (sessions(sampleBlocking(configurations), json: json), 0)
+
+        case "destinations":
+            guard let wanted = rest.dropFirst().first(where: {
+                !$0.hasPrefix("-")
+            }) else {
+                return ("usage: little-herd destinations <session> [--json]", 1)
+            }
+            return destinations(
+                matching: wanted,
+                in: sampleBlocking(configurations),
+                json: json
+            )
+
         default:
-            return fallback
+            return (fallback, 1)
+        }
+    }
+
+    /// Finds the session, then asks where it could go.
+    ///
+    /// **A prefix is enough to name one.** These identifiers are UUIDs, and
+    /// nobody is going to type one — the app shows the first eight characters
+    /// and so does `sessions`, so that is what this accepts. An ambiguous
+    /// prefix is an error rather than a guess: picking one of two sessions for
+    /// somebody would eventually move the wrong work.
+    static func destinations(
+        matching wanted: String,
+        in sampled: [(MachineConfiguration, SystemSnapshot?)],
+        json: Bool
+    ) -> (output: String, code: Int32) {
+        let found = sampled.flatMap { configuration, snapshot in
+            (snapshot?.agentSessions ?? [])
+                .filter { bareIdentifier($0.id).hasPrefix(wanted) || $0.id.hasPrefix(wanted) }
+                .map { (configuration, $0) }
+        }
+
+        guard let (origin, session) = found.first else {
+            // Nothing found is an error: a script that asked about a
+            // session and got an empty list would read it as "nowhere
+            // to send it", which is a different answer.
+            return ("little-herd: no session starting “\(wanted)”", 1)
+        }
+        guard found.count == 1 else {
+            let where_ = found.map { "\(shortIdentifier($0.1.id)) on \($0.0.name)" }
+            return (
+                "little-herd: “\(wanted)” matches \(found.count) sessions: "
+                    + where_.joined(separator: ", "),
+                1
+            )
+        }
+
+        let herd = sampled.map { configuration, snapshot in
+            DestinationAccount(
+                machine: configuration.id,
+                name: configuration.name,
+                symbolName: "desktopcomputer",
+                report: snapshot?.destination,
+                mayHostSessions: configuration.mayHostSessions,
+                auth: .unverified,
+                isVerifying: false
+            )
+        }
+
+        return (
+            destinations(
+                session: session,
+                origin: origin.id,
+                herd: herd,
+                json: json
+            ),
+            0
+        )
+    }
+
+    /// Runs an async answer from a synchronous entry point.
+    ///
+    /// A command-line process has no run loop to await on, and the alternative
+    /// — making `main` async — starts the concurrency runtime before the
+    /// argument check, which is work done on every launch of the app for the
+    /// sake of two verbs.
+    /// Takes one sample from a synchronous entry point.
+    ///
+    /// **The work handed here must not need the main actor.** This blocks the
+    /// calling thread on a semaphore, and that thread is the main one — so a
+    /// task that hops back to the main actor to finish would wait for a thread
+    /// that is waiting for it. Only `probe` is run this way, and it touches
+    /// nothing isolated; the formatting happens after, back where it started.
+    nonisolated static func sampleBlocking(
+        _ configurations: [MachineConfiguration]
+    ) -> [(MachineConfiguration, SystemSnapshot?)] {
+        let semaphore = DispatchSemaphore(value: 0)
+        nonisolated(unsafe) var sampled: [(MachineConfiguration, SystemSnapshot?)] = []
+        Task.detached {
+            sampled = await probe(configurations)
+            semaphore.signal()
+        }
+        semaphore.wait()
+        return sampled
+    }
+}
+
+extension HerdCommand {
+    /// One sample of every machine that can be reached, taken concurrently.
+    ///
+    /// **The command re-probes rather than asking the running app**, which was
+    /// settled before any of this was written. Independence from the GUI is the
+    /// point: the app cannot run on the linux box at all, and a tool that only
+    /// answers while a menu-bar app is open is not the thing `ACCESS.md`
+    /// describes. The cost is a few seconds per verb, paid only when asked.
+    nonisolated static func probe(
+        _ configurations: [MachineConfiguration]
+    ) async -> [(MachineConfiguration, SystemSnapshot?)] {
+        await withTaskGroup(
+            of: (Int, MachineConfiguration, SystemSnapshot?).self
+        ) { group in
+            for (index, configuration) in configurations.enumerated() {
+                group.addTask {
+                    (index, configuration, await snapshot(of: configuration))
+                }
+            }
+            var results: [(Int, MachineConfiguration, SystemSnapshot?)] = []
+            for await result in group { results.append(result) }
+            // Concurrently sampled, reported in the order they were configured
+            // — a list whose rows move between runs is one nobody can diff.
+            return results.sorted { $0.0 < $1.0 }.map { ($0.1, $0.2) }
+        }
+    }
+
+    nonisolated private static func snapshot(
+        of configuration: MachineConfiguration
+    ) async -> SystemSnapshot? {
+        switch configuration.connection {
+        case .local:
+            return await MetricsSampler().sample()
+        case .ssh:
+            guard let platform = configuration.remotePlatform else { return nil }
+            return try? await RemoteMetricsSampler(
+                host: configuration.sshDestination,
+                platform: platform,
+                identityFile: configuration.identityFile
+            ).sample()
+        case .smb, .dsm:
+            // A share and a NAS have capacity and no sessions, and neither can
+            // host work — DSM restricts a shell to administrators and has no
+            // package manager. Nothing to probe for the verbs that exist here.
+            return nil
+        }
+    }
+
+
+    /// The part of a session's identifier a person could recognise or retype.
+    ///
+    /// **`id` carries the provider** — `claude:0d5f…` — so its first eight
+    /// characters are all provider and no session, and every row printed the
+    /// same `claude:1`. What identifies one is the transcript's own uuid, after
+    /// the colon. Caught by printing real sessions rather than fixtures: the
+    /// bug is invisible unless two of them are on screen together.
+    static func shortIdentifier(_ id: String) -> String {
+        String(bareIdentifier(id).prefix(8))
+    }
+
+    /// The identifier without its provider, which is what a prefix is matched
+    /// against — nobody is going to type `claude:` first.
+    static func bareIdentifier(_ id: String) -> String {
+        id.split(separator: ":", maxSplits: 1).last.map(String.init) ?? id
+    }
+
+    /// The agent sessions on each machine.
+    static func sessions(
+        _ sampled: [(MachineConfiguration, SystemSnapshot?)],
+        json: Bool
+    ) -> String {
+        if json {
+            let rows = sampled.flatMap { configuration, snapshot in
+                (snapshot?.agentSessions ?? []).map { session in
+                    [
+                        "machine": configuration.id.rawValue,
+                        "id": session.id,
+                        "short": shortIdentifier(session.id),
+                        "provider": session.provider.rawValue,
+                        "state": String(describing: session.state),
+                        "title": session.title ?? session.projectName,
+                        "directory": session.workingDirectory ?? "",
+                    ]
+                }
+            }
+            return jsonArray(rows)
+        }
+
+        var lines: [String] = []
+        for (configuration, snapshot) in sampled {
+            guard let snapshot else {
+                lines.append("\(configuration.name)  (not reachable)")
+                continue
+            }
+            let sessions = snapshot.agentSessions
+            guard !sessions.isEmpty else {
+                lines.append("\(configuration.name)  (no sessions)")
+                continue
+            }
+            lines.append(configuration.name)
+            for session in sessions {
+                let state = String(describing: session.state)
+                let name = session.title ?? session.projectName
+                lines.append(
+                    "  \(shortIdentifier(session.id))  \(state.padding(toLength: 10, withPad: " ", startingAt: 0))  \(name)"
+                )
+            }
+        }
+        return lines.isEmpty ? "no machines configured" : lines.joined(separator: "\n")
+    }
+
+    /// Where a session could go, and why not.
+    ///
+    /// **Answered by `TransferAssembly.request`, which is the function a drop
+    /// calls.** Reimplementing the reasoning here would produce a second
+    /// opinion that drifts from the first, and the whole value of this verb is
+    /// that it is the answer the app would actually give.
+    static func destinations(
+        session: AgentSession,
+        origin: MachineID,
+        herd: [DestinationAccount],
+        json: Bool
+    ) -> String {
+        let answers = herd
+            .filter { $0.machine != origin }
+            .map { account -> (String, String?) in
+                let request = TransferAssembly.request(
+                    session: session,
+                    from: origin,
+                    to: account.machine,
+                    in: herd,
+                    check: TransferAssembly.check
+                )
+                switch request {
+                case .success: return (account.name, nil)
+                case .failure(let refusal): return (account.name, reason(refusal))
+                }
+            }
+
+        if json {
+            return jsonArray(answers.map { name, refusal in
+                [
+                    "machine": name,
+                    "eligible": refusal == nil ? "true" : "false",
+                    "reason": refusal ?? "",
+                ]
+            })
+        }
+
+        guard !answers.isEmpty else { return "nowhere to send it — the herd is one machine" }
+        let width = answers.map(\.0.count).max() ?? 0
+        return answers.map { name, refusal in
+            let padded = name.padding(toLength: width, withPad: " ", startingAt: 0)
+            return "\(padded)  \(refusal ?? "can take it")"
+        }.joined(separator: "\n")
+    }
+
+    /// A refusal in the fewest words that still say what to do about it.
+    static func reason(_ refusal: TransferAssembly.Refusal) -> String {
+        switch refusal {
+        case .sessionCannotBeMoved(let why):
+            TransferEligibility.explanation(for: why)
+        case .destinationLacksRepository:
+            "no checkout of that repository"
+        case .destinationLacksAgent:
+            "no agent installed"
+        case .originLacksAgent:
+            "this machine has no agent to write the handoff"
+        case .originUnknown:
+            "the session is not in a repository this machine reports"
         }
     }
 }
