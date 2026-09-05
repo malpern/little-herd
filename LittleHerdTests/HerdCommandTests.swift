@@ -297,3 +297,144 @@ struct HerdCommandSilenceTests {
         #expect(text.contains("mini  (not reachable)"))
     }
 }
+
+/// `move`, the one verb that changes something.
+///
+/// **The exit code is the contract and it is what these are about.** A caller
+/// that cannot tell "I refused, nothing happened" from "something went wrong"
+/// will eventually retry a write that already succeeded, which for this verb
+/// means moving the same work twice.
+@Suite("Moving a session")
+struct HerdCommandMoveTests {
+    private func machine(
+        _ id: String,
+        _ short: String
+    ) -> MachineConfiguration {
+        MachineConfiguration(
+            id: MachineID(id), name: short, shortName: short, hostname: id,
+            hardwareSummary: "", platform: .macOS, connection: .ssh,
+            avatar: .calfMini, identityFile: nil, serverNames: [],
+            supportsGPU: false
+        )
+    }
+
+    private var herd: [MachineConfiguration] {
+        [machine("local", "Air"), machine("mac mini/malpern", "Mini"),
+         machine("linux", "Linux")]
+    }
+
+    // MARK: - Naming a machine
+
+    @Test
+    func aMachineIsFoundByShortNameCaseInsensitively() throws {
+        let found = try HerdCommand.machine(matching: "mini", in: herd).get()
+        #expect(found.id == MachineID("mac mini/malpern"))
+        let capitals = try HerdCommand.machine(matching: "MINI", in: herd).get()
+        #expect(capitals.id == MachineID("mac mini/malpern"))
+    }
+
+    /// **A prefix that fits two machines is refused rather than chosen
+    /// between.** The same rule as a session prefix, and for a worse reason:
+    /// guessing here sends work to a machine nobody named.
+    ///
+    /// `ai`, not `air`: this test asserted `air` first and failed, correctly.
+    /// `air` is a case-insensitive *exact* match for `Air`, so it is not
+    /// ambiguous at all — which is the neighbouring test's whole point, and
+    /// the two rules were written on the same afternoon disagreeing.
+    @Test
+    func anAmbiguousMachineIsRefused() {
+        let two = [machine("air", "Air"), machine("airlock", "Airlock")]
+        guard case .failure(let refused) = HerdCommand.machine(matching: "ai", in: two)
+        else {
+            Issue.record("expected a refusal")
+            return
+        }
+        #expect(refused.message.contains("matches 2"))
+    }
+
+    /// An exact name wins over a prefix, so a machine called `Air` is still
+    /// reachable when an `Airlock` exists.
+    @Test
+    func anExactNameBeatsALongerPrefix() throws {
+        let two = [machine("air", "Air"), machine("airlock", "Airlock")]
+        let found = try HerdCommand.machine(matching: "Air", in: two).get()
+        #expect(found.id == MachineID("air"))
+    }
+
+    @Test
+    func anUnknownMachineListsTheOnesThatExist() {
+        guard case .failure(let refused) =
+            HerdCommand.machine(matching: "nas", in: herd)
+        else {
+            Issue.record("expected a refusal")
+            return
+        }
+        #expect(refused.message.contains("Air"))
+        #expect(refused.message.contains("Mini"))
+    }
+
+    // MARK: - The exit-code contract
+
+    /// **`move` with no `--to` is a usage error, not a refusal.** Exit 1, not
+    /// 2: nothing was declined, the command was incomplete.
+    @Test
+    func moveWithoutADestinationIsAUsageError() {
+        let answer = HerdCommand.answer(for: ["little-herd", "move"], fallback: "")
+        #expect(answer.code == 1)
+        #expect(answer.output.contains("usage:"))
+    }
+
+    @Test
+    func moveIsAVerbAndNotAnUnknownWord() {
+        guard case .respond(_, let code) =
+            HerdCommand.disposition(for: ["little-herd", "move", "abc", "--to", "mini"])
+        else {
+            Issue.record("expected a response")
+            return
+        }
+        #expect(code == 0, "move must reach the answering path, not the unknown-verb path")
+    }
+
+    /// The plan says what would change, and names the branch — which is the
+    /// thing to go looking for if anything goes wrong later.
+    @Test
+    func theRefusedPlanNamesTheChangeAndTheBranch() {
+        let session = AgentSession(
+            id: "claude:c6df5704-0451-4806-af9c-fc4cd9e79121",
+            provider: .claude,
+            projectName: "little-herd",
+            state: .waiting,
+            updatedAt: .now,
+            progress: nil,
+            title: "Live transfer probe",
+            workingDirectory: "/Users/x/local-code/little-herd"
+        )
+        let plan = HerdCommand.Plan(
+            session: session,
+            origin: machine("local", "Air"),
+            destination: machine("mac mini/malpern", "Mini"),
+            branch: TransferAssembly.branch(for: session)
+        )
+        let text = HerdCommand.plannedChange(plan, json: false)
+        #expect(text.contains("Air"))
+        #expect(text.contains("Mini"))
+        #expect(text.contains("Live transfer probe"))
+        #expect(text.contains(TransferAssembly.branch(for: session)))
+        #expect(text.contains("--yes"))
+        #expect(text.contains("Nothing has been changed"))
+
+        // And the same facts survive the JSON, which is what a script reads.
+        let json = HerdCommand.plannedChange(plan, json: true)
+        #expect(json.contains("\"applied\": \"false\""))
+        #expect(json.contains("\"exit_reason\": \"confirmation_required\""))
+    }
+
+    /// The usage text has to mention `--yes`, because it is the whole
+    /// difference between a report and a change.
+    @Test
+    func theUsageSaysHowToConfirm() {
+        #expect(HerdCommand.usage.contains("move"))
+        #expect(HerdCommand.usage.contains("--yes"))
+        #expect(HerdCommand.usage.contains("2 refused"))
+    }
+}

@@ -34,9 +34,12 @@ nonisolated enum HerdCommand {
           machines        the machines in the herd, as configured
           sessions        agent sessions, per machine
           destinations    where a session could go, and why not
+          move            hand a session to another machine
 
-        Reads are automatic. Writes, when they exist, will print the change
-        and refuse without --yes. Exit 0 read, 1 error, 2 refused.
+        usage: little-herd move <session> --to <machine> [--yes] [--json]
+
+        Reads are automatic. `move` prints the change and refuses without
+        --yes. Exit 0 read or applied, 1 error, 2 refused — nothing changed.
         """
 
     /// **Anything that is not plainly a verb leaves the app alone.**
@@ -59,7 +62,7 @@ nonisolated enum HerdCommand {
         switch verb {
         case "help", "--help":
             return .respond(output: usage, code: 0)
-        case "machines", "sessions", "destinations":
+        case "machines", "sessions", "destinations", "move":
             // The verbs are recognised here and answered by the caller, which
             // is the only part that needs to read a machine.
             return .respond(output: "", code: 0)
@@ -186,6 +189,9 @@ extension HerdCommand {
                 json: json
             )
 
+        case "move":
+            return move(rest, configurations: configurations, json: json)
+
         default:
             return (fallback, 1)
         }
@@ -284,7 +290,7 @@ extension HerdCommand {
     /// semaphore is what earns it: the write happens before `signal`, the read
     /// after `wait`, so the two accesses cannot overlap. That ordering is the
     /// whole argument — take away the semaphore and this is unsound.
-    private nonisolated final class Handoff<Value>: @unchecked Sendable {
+    nonisolated final class Handoff<Value>: @unchecked Sendable {
         nonisolated(unsafe) var value: Value?
     }
 }

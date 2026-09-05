@@ -53,41 +53,8 @@ extension MonitorModel {
         transfers.prepare(request.transfer)
 
         Task {
-            // **Ask the destination whether it can sign in, before anything
-            // leaves this machine.**
-            //
-            // Measured on the first live transfers: the mini's token had
-            // expired six days earlier, and the transfer pushed a branch,
-            // fetched it on the far side, built a worktree, staged a brief and
-            // started an agent before failing on something that was knowable
-            // in one step. Everything needed to know it already existed —
-            // `AgentAuthVerifier`, and a `signedOut` state whose own comment
-            // calls it "a machine to sign in on" — and nothing consulted it.
-            //
-            // It costs a model call, which is why it is here and not on the
-            // thirty-second sample: this is the moment the answer changes a
-            // decision. Only a definite refusal stops it. A probe that times
-            // out reads as `unverified`, which means nothing was learned, and
-            // refusing on silence would ground the herd whenever a machine was
-            // slow.
-            if let target = machines.first(where: { $0.machine == destination }) {
-                await target.verifyAgentAuthentication()
-                if case .refused(let reason) = target.agentAuth {
-                    return transfers.fail(
-                        request.transfer,
-                        SuccessorOutcome(
-                            result: .couldNotStart,
-                            failingStep: nil,
-                            output: reason,
-                            // Nothing has been built or pushed yet, and this is
-                            // the one refusal that can still say so honestly.
-                            remnant: .nothing
-                        )
-                    )
-                }
-            }
-
-            guard let sourceRunner = departureRunner(for: origin) else {
+            guard let source = machines.first(where: { $0.machine == origin })
+            else {
                 return transfers.fail(
                     request.transfer,
                     SuccessorOutcome(
@@ -100,57 +67,35 @@ extension MonitorModel {
                 )
             }
 
-            let departed = await TransferPilot.depart(
-                steps: request.departure,
-                run: sourceRunner
+            // **The same three steps the command line takes**, in the same
+            // order, through the same code — see `TransferDriver`. What is left
+            // here is the wiring: which machines exist, how to reach them, and
+            // where the answer goes.
+            // Asked here rather than inside the driver: this probe also
+            // records what it learned on the machine itself, so the herd shows
+            // a machine that needs signing in. The driver only needs the answer.
+            var authRefusal: String?
+            if let target = machines.first(where: { $0.machine == destination }) {
+                await target.verifyAgentAuthentication()
+                if case .refused(let reason) = target.agentAuth {
+                    authRefusal = reason
+                }
+            }
+
+            let prepared = await TransferDriver.prepare(
+                request,
+                authRefusal: authRefusal,
+                departure: TransferRunners.departure(for: source.configuration)
             )
 
-            switch departed {
-            case .failure(let failure):
-                transfers.fail(
-                    request.transfer,
-                    SuccessorOutcome(
-                        result: .couldNotStart,
-                        failingStep: nil,
-                        output: String(describing: failure),
-                        // Where it stopped decides what survives, and only the
-                        // failure knows where it stopped.
-                        remnant: failure.remnant
-                    )
-                )
-            case .success(let commit):
+            switch prepared {
+            case .blocked(let outcome):
+                transfers.fail(request.transfer, outcome)
+            case .ready(let commit, let steps):
                 // Kept so the result can be read back: the diff is everything
                 // after this, and the branch carries the departure too.
                 transfers.record(departure: commit, for: request.transfer)
-                let arrival = TransferPilot.arrival(
-                    commit: commit,
-                    briefPath: request.briefPath,
-                    briefText: "",
-                    branch: request.transfer.branch,
-                    repository: request.destinationRepository,
-                    scratchRoot: TransferAssembly.scratchRoot,
-                    provider: request.provider,
-                    reportedAgentPath: request.destinationAgentPath,
-                    check: request.check,
-                    commitMessage: "Successor work on \(request.transfer.branch)"
-                )
-                switch arrival {
-                case .failure(let failure):
-                    transfers.fail(
-                        request.transfer,
-                        SuccessorOutcome(
-                            result: .couldNotStart,
-                            failingStep: nil,
-                            output: String(describing: failure),
-                            // The departure fully succeeded to get here: the
-                            // work is pushed, and only the destination was
-                            // refused.
-                            remnant: .pushedBranch
-                        )
-                    )
-                case .success(let steps):
-                    transfers.begin(request.transfer, steps: steps)
-                }
+                transfers.begin(request.transfer, steps: steps)
             }
         }
     }
@@ -196,38 +141,6 @@ extension MonitorModel {
             TransferDiffReader.parse(numstat: outputs[1], patch: outputs[2])
         )
     }
-
-    /// How to talk to one machine, or nothing if it is not one we can reach.
-    ///
-    /// **This Mac runs its departure directly.** It used to be refused, on the
-    /// grounds that a local departure "does not exist yet" — which was true and
-    /// made the ordinary case impossible: working on the machine in front of
-    /// you and handing the session to another one. The steps are shell text
-    /// either way, so the only difference is whether `ssh` is in front of them.
-    private func departureRunner(
-        for machine: MachineID
-    ) -> (@Sendable (TransferDeparture.Step) async -> SuccessorExecutor.StepOutput)? {
-        guard let model = machines.first(where: { $0.machine == machine })
-        else { return nil }
-        guard !model.isLocal else { return SuccessorLocal.departureRunner() }
-
-        let host = model.sshDestination
-        let identity = model.identityFile
-        return { step in
-            let result = await SSHCommandRunner.runReportingStatus(
-                host: host,
-                command: step.command,
-                identityFile: identity,
-                timeout: SuccessorSSH.timeout(
-                    for: step.purpose == .brief ? .agent : .worktree
-                )
-            )
-            return SuccessorExecutor.StepOutput(
-                text: result.output,
-                succeeded: result.succeeded
-            )
-        }
-    }
 }
 
 extension TransferAssembly {
@@ -238,7 +151,9 @@ extension TransferAssembly {
     /// of the repository root; what is missing is somebody to take that
     /// listing on the machine concerned. Until then every transfer is assumed
     /// to be this project, which is true of every transfer that has happened.
-    static let check = RepositoryCheck.xcode(scheme: "LittleHerd")
-    static let scratchRoot = NSString(string: "~/.little-herd/transfers")
+    /// `nonisolated` because the driver that reads them is, and it is shared
+    /// with the command line — neither value touches the main actor.
+    nonisolated static let check = RepositoryCheck.xcode(scheme: "LittleHerd")
+    nonisolated static let scratchRoot = NSString(string: "~/.little-herd/transfers")
         .expandingTildeInPath
 }
