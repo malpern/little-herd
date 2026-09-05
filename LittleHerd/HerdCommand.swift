@@ -380,7 +380,15 @@ extension HerdCommand {
         var lines: [String] = []
         for (configuration, snapshot) in sampled {
             guard let snapshot else {
-                lines.append("\(configuration.name)  (not reachable)")
+                // **"Not reachable" is a claim, and for a NAS it was a false
+                // one.** Nothing here probes a share or a DSM box — they hold
+                // capacity, run no agents, and cannot host work — so their
+                // silence is this command declining to ask rather than a
+                // machine failing to answer. Reporting the two the same way
+                // said the Synology was down while it was serving perfectly.
+                lines.append(
+                    "\(configuration.name)  \(unaskedOrUnreachable(configuration))"
+                )
                 continue
             }
             let sessions = snapshot.agentSessions
@@ -398,6 +406,16 @@ extension HerdCommand {
             }
         }
         return lines.isEmpty ? "no machines configured" : lines.joined(separator: "\n")
+    }
+
+
+    /// Why a machine produced no snapshot: because it was not asked, or
+    /// because it did not answer.
+    static func unaskedOrUnreachable(_ configuration: MachineConfiguration) -> String {
+        switch configuration.connection {
+        case .smb, .dsm: "(not asked — runs no agents)"
+        case .local, .ssh: "(not reachable)"
+        }
     }
 
     /// Where a session could go, and why not.

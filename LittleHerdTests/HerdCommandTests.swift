@@ -240,3 +240,60 @@ struct HerdCommandTests {
         }
     }
 }
+
+@Suite("Silence is not an outage")
+struct HerdCommandSilenceTests {
+    private func machine(
+        _ id: String,
+        connection: MachineConnection
+    ) -> MachineConfiguration {
+        MachineConfiguration(
+            id: MachineID(id), name: id, shortName: id, hostname: id,
+            hardwareSummary: "", platform: .macOS, connection: connection,
+            avatar: .calfMini, identityFile: nil, sshUser: nil,
+            serverNames: [], supportsGPU: false
+        )
+    }
+
+    /// **A NAS that was never asked must not be reported as down.**
+    ///
+    /// Nothing samples a share or a DSM box — they hold capacity, run no
+    /// agents, and cannot host work — so `sessions` gets no snapshot for them
+    /// and used to print "(not reachable)". Caught live, with the Synology
+    /// serving perfectly at the time: the command said a healthy machine was
+    /// unreachable, which is the class of wrong answer this project spends its
+    /// rules avoiding.
+    @Test
+    func aMachineThatWasNeverAskedSaysSo() {
+        #expect(
+            HerdCommand.unaskedOrUnreachable(machine("nas", connection: .dsm))
+                == "(not asked — runs no agents)"
+        )
+        #expect(
+            HerdCommand.unaskedOrUnreachable(machine("share", connection: .smb))
+                == "(not asked — runs no agents)"
+        )
+    }
+
+    /// A machine that *was* asked and did not answer is a different fact, and
+    /// keeps the words that describe it.
+    @Test
+    func aMachineThatWasAskedAndDidNotAnswerStillReadsAsUnreachable() {
+        #expect(
+            HerdCommand.unaskedOrUnreachable(machine("mini", connection: .ssh))
+                == "(not reachable)"
+        )
+    }
+
+    /// And the distinction reaches the output rather than living in a helper.
+    @Test
+    func theTwoReadDifferentlyInTheListing() {
+        let rows: [(MachineConfiguration, SystemSnapshot?)] = [
+            (machine("nas", connection: .dsm), nil),
+            (machine("mini", connection: .ssh), nil),
+        ]
+        let text = HerdCommand.sessions(rows, json: false)
+        #expect(text.contains("nas  (not asked — runs no agents)"))
+        #expect(text.contains("mini  (not reachable)"))
+    }
+}
