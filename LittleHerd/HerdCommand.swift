@@ -263,14 +263,29 @@ extension HerdCommand {
     nonisolated static func sampleBlocking(
         _ configurations: [MachineConfiguration]
     ) -> [(MachineConfiguration, SystemSnapshot?)] {
+        let sampled = Handoff<[(MachineConfiguration, SystemSnapshot?)]>()
         let semaphore = DispatchSemaphore(value: 0)
-        nonisolated(unsafe) var sampled: [(MachineConfiguration, SystemSnapshot?)] = []
         Task.detached {
-            sampled = await probe(configurations)
+            sampled.value = await probe(configurations)
             semaphore.signal()
         }
         semaphore.wait()
-        return sampled
+        return sampled.value ?? []
+    }
+
+    /// One value handed from a detached task back to the thread waiting for it.
+    ///
+    /// **A `nonisolated(unsafe) var` captured by the task compiled here and not
+    /// on CI**, whose toolchain is a release behind: "sending value of
+    /// non-Sendable type '() async -> ()' risks causing data races". A local
+    /// green suite is not a green build when the two compilers differ.
+    ///
+    /// `@unchecked` is doing real work rather than silencing a warning, and the
+    /// semaphore is what earns it: the write happens before `signal`, the read
+    /// after `wait`, so the two accesses cannot overlap. That ordering is the
+    /// whole argument — take away the semaphore and this is unsound.
+    private nonisolated final class Handoff<Value>: @unchecked Sendable {
+        nonisolated(unsafe) var value: Value?
     }
 }
 
