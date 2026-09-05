@@ -971,7 +971,27 @@ nonisolated enum AgentTaskProbe {
     codex_db="$HOME/.codex/state_5.sqlite"
     if command -v sqlite3 >/dev/null 2>&1 && [ -r "$codex_db" ]; then
       codex_cutoff_ms=$((little_herd_now_ms - little_herd_recent_window_ms))
-      sqlite3 -separator "$(printf '\t')" "$codex_db" "SELECT id, cwd, rollout_path, recency_at_ms FROM threads WHERE archived = 0 AND recency_at_ms >= $codex_cutoff_ms ORDER BY recency_at_ms DESC LIMIT 12;" 2>/dev/null | while IFS="$(printf '\t')" read -r codex_id codex_cwd codex_path codex_recency_ms; do
+      # **A Codex thread's name is in `name`, and `title` is a decoy.** `title`
+      # holds the entire first user message — four thousand characters of it in
+      # one live row, prompt-injection preamble and all — while `name` is the
+      # short label Codex itself shows: "Build waka M0 skeleton", "Upload tax
+      # returns to Drive". Reading neither is why a card fell back to its
+      # directory and offered "Work In Local Code Waka Read", which is Codex's
+      # own slug of that first message, round-tripped through a folder name and
+      # Title Cased. Seen in a tooltip, which is what sent anyone looking.
+      #
+      # Selected LAST and flattened, because it is free text: a tab would split
+      # a field and a newline would split a row, and this is parsed by `read`.
+      # Asked for only when the column exists — an older Codex without it would
+      # otherwise fail the whole query and report NO codex sessions at all,
+      # which is a much worse bug than a plain title.
+      codex_name_column=""
+      if sqlite3 "$codex_db" "PRAGMA table_info(threads);" 2>/dev/null \
+        | cut -d'|' -f2 | grep -qx name
+      then
+        codex_name_column=", replace(replace(COALESCE(name, ''), char(10), ' '), char(9), ' ')"
+      fi
+      sqlite3 -separator "$(printf '\t')" "$codex_db" "SELECT id, cwd, rollout_path, recency_at_ms$codex_name_column FROM threads WHERE archived = 0 AND recency_at_ms >= $codex_cutoff_ms ORDER BY recency_at_ms DESC LIMIT 12;" 2>/dev/null | while IFS="$(printf '\t')" read -r codex_id codex_cwd codex_path codex_recency_ms codex_name; do
         if [ -n "$codex_id" ] && [ -n "$codex_cwd" ] && [ -n "$codex_recency_ms" ]; then
           codex_updated_ms=$codex_recency_ms
           codex_signal=""
@@ -1070,6 +1090,11 @@ nonisolated enum AgentTaskProbe {
             codex_status=stalled
           fi
           codex_id64=$(printf '%s' "$codex_id" | base64 | tr -d '\n')
+          # Empty stays empty rather than becoming the base64 of nothing, so a
+          # thread Codex has not named yet still falls back to its project.
+          codex_name64=""
+          [ -n "${codex_name:-}" ] \
+            && codex_name64=$(printf '%s' "$codex_name" | base64 | tr -d '\n')
           codex_cwd64=$(printf "%s" "$codex_cwd" | base64 | tr -d '\n')
           # Codex records more about itself than Claude does: the size of the
           # context, the window it is allowed, the model, and the last tool it
@@ -1100,7 +1125,7 @@ nonisolated enum AgentTaskProbe {
           printf "agent_session=codex\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
             "$codex_id64" "$codex_status" "$codex_updated_ms" "$codex_cwd64" \
             "$codex_completed" "$codex_total" "$codex_current" "$codex_step64" \
-            "$codex_context" "" "$codex_tool" "" "$codex_model" "$codex_window"
+            "$codex_context" "$codex_name64" "$codex_tool" "" "$codex_model" "$codex_window"
         fi
       done
     fi

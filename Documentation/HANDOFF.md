@@ -1355,6 +1355,24 @@ failed, and the script exited without writing while the commit message
 described the change in full. Caught by reading the diff before pushing. **Read
 the diff, not the intention**, especially when a scripted edit is involved.
 
+**A Codex thread's name is in `name`. Its `title` column is a decoy and holds
+the entire first user message** — one live row carried four thousand characters
+of prompt-injection preamble in it, another twelve hundred words of a project
+brief. `name` is the short label Codex itself displays: *Build waka M0
+skeleton*, *Upload tax returns to Drive*, *KeyPath*. Little Herd read neither
+and emitted an empty title for every Codex session, so a card fell back to its
+**directory** — and the directory is Codex's own slug of that same first
+message. The result read back as *"Work In Local Code Waka Read"*: the user's
+opening words, round-tripped through a folder name and Title Cased. Found
+because it appeared in a tooltip and looked wrong, which is the only way it
+could have been found — no test can tell a plausible title from a real one.
+
+`name` is NULL until Codex names a thread, and falling back to the project is
+right for those. The column is asked for **only after `PRAGMA table_info`
+confirms it exists**: an older Codex without it would otherwise fail the whole
+query and report *no Codex sessions at all*, which is far worse than a poor
+title, and is exactly the kind of silent total loss this file keeps recording.
+
 **`settled` on the agent fan means the deck has finished coming *down*, not
 that the rise has finished.** It is set false the instant a deck goes up and
 stays false for as long as the fan is raised. A condition written as
