@@ -157,6 +157,7 @@
 		D90265E7A563F6351F566FA4 /* RepositoryCheckTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9386B33F3E8A7D3276195B4 /* RepositoryCheckTests.swift */; };
 		D91CA4B85E7162E4DB2649A6 /* LittleHerdApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66BA172D3CC6CD4B8AEBC144 /* LittleHerdApp.swift */; };
 		DBC33154702D72F57CE5703A /* MachineMetricDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1818CDEA86A48A63C3A209 /* MachineMetricDetailView.swift */; };
+		DC5192C2783981EBEFB48AFD /* RecedingBarsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AD8447725A42DFF2528EAF4 /* RecedingBarsTests.swift */; };
 		DD9FB7155E07ADB668E00B9E /* DevelopmentBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C90A9EB91ECF9751CF2883E8 /* DevelopmentBanner.swift */; };
 		DED22012974A8B709BB6B12D /* SynologyWiringTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3A27FA19E2D234113937C21 /* SynologyWiringTests.swift */; };
 		DF419DC26CF92734E3261880 /* MachineAgentActivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F2409153C594416FF09B3E1 /* MachineAgentActivityTests.swift */; };
@@ -234,6 +235,7 @@
 		48E107D7CC3B01B621E4483E /* RemoteUnavailability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteUnavailability.swift; sourceTree = "<group>"; };
 		4A48253B28C50E5973067EF8 /* TransferDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferDiff.swift; sourceTree = "<group>"; };
 		4A9878F0A2B20756EBC9C5CF /* AgentDestination.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDestination.swift; sourceTree = "<group>"; };
+		4AD8447725A42DFF2528EAF4 /* RecedingBarsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecedingBarsTests.swift; sourceTree = "<group>"; };
 		4B675E6E28982CA80D968D2E /* LocalProcessRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalProcessRunner.swift; sourceTree = "<group>"; };
 		4E82FFCE473CDBD3EFDA6F5D /* OverviewMetricTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewMetricTabs.swift; sourceTree = "<group>"; };
 		4F29F16289B54BBD5DC8DE5A /* MetricRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricRow.swift; sourceTree = "<group>"; };
@@ -550,6 +552,7 @@
 				0030CD269D45A066A95941B9 /* MetricHistoryTests.swift */,
 				BE23C778660407B336F50BA0 /* MetricsSamplerTests.swift */,
 				C1A0DC0F7A6B9443E5F6E450 /* PanelRenderHarness.swift */,
+				4AD8447725A42DFF2528EAF4 /* RecedingBarsTests.swift */,
 				F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */,
 				F9386B33F3E8A7D3276195B4 /* RepositoryCheckTests.swift */,
 				9964820C13B89705570C2A79 /* SecretCacheTests.swift */,
@@ -833,6 +836,7 @@
 				CDF0CF3F19E6741099BA1BCB /* MetricHistoryTests.swift in Sources */,
 				88873018BA18973DB4643815 /* MetricsSamplerTests.swift in Sources */,
 				A673853D135FCA0E042DEBE8 /* PanelRenderHarness.swift in Sources */,
+				DC5192C2783981EBEFB48AFD /* RecedingBarsTests.swift in Sources */,
 				8935F6CCBD6DFA02BEC41FA3 /* RemoteUnavailabilityTests.swift in Sources */,
 				D90265E7A563F6351F566FA4 /* RepositoryCheckTests.swift in Sources */,
 				0F4B67C29C60BD0E6BEF80D9 /* SecretCacheTests.swift in Sources */,

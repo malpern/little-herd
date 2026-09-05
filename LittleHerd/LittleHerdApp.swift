@@ -190,6 +190,21 @@ enum LittleHerdPreferences {
     /// security one, and dressing it as the latter would overclaim. On for
     /// anyone who wants a drop onto the wrong column to be recoverable.
     static let requiresDestinationApprovalKey = "requiresDestinationApproval"
+
+    /// **Experiment: the thermometers fall back while a fan is raised.**
+    ///
+    /// Off by default, and a preference rather than a build flag so the two
+    /// can be compared without a rebuild — this is a question about how a
+    /// thing feels, and the only way to answer it is to look at both.
+    ///
+    /// The problem is real: app icons at twenty points sit over a field of
+    /// coloured segments, and a bar floated across that field once read as
+    /// "one more segment" rather than as a progress bar. The risk is equally
+    /// real, and is why this is a flag: **the herd already had a hover dim and
+    /// it was taken out** for being a large gesture in answer to a small
+    /// question. The wager here is that receding the backdrop is a smaller
+    /// move than fading the subjects was.
+    static let recedesBarsUnderFanKey = "recedesBarsUnderFan"
     static let networkVolumeAccessOnboardingCompletedKey =
         "networkVolumeAccessOnboardingCompleted"
 

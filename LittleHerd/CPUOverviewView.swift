@@ -116,12 +116,26 @@ struct CPUOverviewView: View {
         #endif
     }
 
+    /// See `LittleHerdPreferences.recedesBarsUnderFanKey`. Off by default.
+    @AppStorage(LittleHerdPreferences.recedesBarsUnderFanKey)
+    private var recedesBarsUnderFan = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Whether anything is raised at all. A fan being out is what the recede
+    /// answers; a carry or a return counts, because the deck is up for those
+    /// too and the icons need the same room.
+    private var somethingIsRaised: Bool {
+        fanned != nil || carrying != nil || returning != nil
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: columnSpacing) {
             ForEach(Array(machines.enumerated()), id: \.element.id) { index, machine in
                 CPUThermometerColumn(
                     machine: machine,
                     metric: metric,
+                    receded: recedesBarsUnderFan && somethingIsRaised,
+                    reduceMotion: reduceMotion,
                     columnWidth: columnWidth,
                     avatarSize: avatarSize,
                     namespace: namespace,
@@ -819,12 +833,42 @@ nonisolated struct AgentCardVisibility: Equatable, Sendable {
 private struct CPUThermometerColumn: View {
     let machine: MachineMonitorModel
     let metric: OverviewMetric
+    /// Whether this column's reading should fall back behind a raised fan.
+    ///
+    /// **A machine in the red never recedes.** Everything else here is a
+    /// backdrop while you read a fan, but a reading that says something is
+    /// wrong is not backdrop — it is the one number that has to survive any
+    /// change of focus, and it costs a single condition to keep it.
+    var receded: Bool = false
+    var reduceMotion: Bool = false
     let columnWidth: CGFloat
     let avatarSize: CGFloat
     var namespace: Namespace.ID?
     var onSelectMetric: ((MachineID) -> Void)?
     var onSelectMachine: ((MachineID) -> Void)?
     var agents = AgentTokenContext()
+
+    /// The recede, with the one exemption that matters.
+    ///
+    /// **Reduced motion still recedes**, just without the scale — the point is
+    /// to take the chart out of the way, and doing that with opacity alone is
+    /// the gentler equivalent rather than nothing at all.
+    private var fallsBack: Bool {
+        receded && !isInTheRed
+    }
+
+    /// A reading that is shouting.
+    ///
+    /// **`MetricAlarm` already answers this and is the only thing that should.**
+    /// Its own comment says the mark on a tab borrows the thermometer's bands
+    /// "so the mark on a tab and the block on a bar cannot drift to two
+    /// different reds" — a third opinion here would be the drift it warns
+    /// about. It also folds in memory pressure, which a bar's value alone does
+    /// not know about, and a machine under pressure is exactly one you would
+    /// not want quietly stepping back.
+    private var isInTheRed: Bool {
+        MetricAlarm.severity(presentation) != nil
+    }
 
     var body: some View {
         // A real Button, not a tap gesture: the window is movable by its
@@ -900,6 +944,28 @@ private struct CPUThermometerColumn: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            // **Anchored at the bottom**, where the column meets the animal:
+            // the bars grow from that baseline, so scaling about the centre
+            // would lift the baseline off the animal's head and read as the
+            // whole column floating rather than falling back.
+            //
+            // Scale and opacity only — no blur. At 324 points the segments are
+            // 6 points tall, and blurring them turns a reading into a smear
+            // for a gain nobody asked for.
+            .scaleEffect(fallsBack && !reduceMotion ? 0.96 : 1, anchor: .bottom)
+            .opacity(fallsBack ? 0.75 : 1)
+            // Critically damped: only the thing under the pointer gets to
+            // overshoot. The timings match the fan's own, and its asymmetry —
+            // it rises with mass and settles calmer — so the two read as one
+            // movement rather than two.
+            .animation(
+                reduceMotion
+                    ? .easeOut(duration: 0.2)
+                    : (receded
+                        ? .spring(duration: 0.46, bounce: 0)
+                        : .spring(duration: 0.34, bounce: 0)),
+                value: fallsBack
+            )
             // Says the bar is a target. The hovered header used to do this
             // job by changing when you crossed a column, which told you the
             // app had noticed the pointer rather than what a click would do.
