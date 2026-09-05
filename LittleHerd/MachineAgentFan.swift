@@ -17,6 +17,14 @@ struct MachineAgentFan: View {
     let tile: CGFloat
     /// Opens the machine's AI page — where the ones that did not fit are.
     var onOpenAll: () -> Void = {}
+    /// Opening the machine itself, forwarded from the hover column.
+    ///
+    /// **That column covers the animal on purpose**, which is what kept the
+    /// deck from flickering — and it also means the animal's own button never
+    /// sees a click while a fan exists. Rather than punch a hole in the region
+    /// and bring the flicker back, the region hands the click on: a press over
+    /// the animal means the same thing whichever view happens to catch it.
+    var onOpenMachine: () -> Void = {}
     /// Carrying one of them: the session, and where it is now in the window.
     var onCarry: (AgentSession, CGFloat) -> Void = { _, _ in }
     var onDrop: () -> Void = {}
@@ -271,6 +279,9 @@ struct MachineAgentFan: View {
                     height: tile + max(rise, 0) + animalHeight
                 )
                 .contentShape(Rectangle())
+                // See `onOpenMachine`: the region catches the click that was
+                // meant for the animal underneath it, so it passes it on.
+                .onTapGesture { onOpenMachine() }
                 .offset(x: animalCentre - tile * 1.05)
         }
         .onAppear {

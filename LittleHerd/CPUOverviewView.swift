@@ -202,7 +202,16 @@ struct CPUOverviewView: View {
                 // The things you go and do after looking at a machine,
                 // put where you are already pointing — through AppKit, so the
                 // animal can be in the menu. See `AppKitContextMenu`.
-                .overlay {
+                // **Behind, never in front.** As an overlay this swallowed every
+                // left-click in the herd: the `NSView` sits above the buttons, its
+                // `hitTest` returns nil for anything but a right-click intending
+                // the event to fall through, and SwiftUI drops it rather than
+                // offering it to the button underneath. Measured — with the
+                // overlay made transparent to hit testing, machines became
+                // clickable again. As a background the buttons get the event
+                // first, and a right-click, which no `Button` consumes, still
+                // reaches the menu. `MachineAgentFan` already did it this way.
+                .background {
                     AppKitContextMenu(
                         items: MachineMenuItems.items(
                             for: machine.configuration,
@@ -386,6 +395,7 @@ struct CPUOverviewView: View {
                         width: width,
                         tile: avatarSize * MachineAgentFan.raisedScale,
                         onOpenAll: { onSelectAgents?(machine.machine) },
+                        onOpenMachine: { onSelectMachine?(machine.machine) },
                         onCarry: { session, x in
                             carrying = CarriedAgent(
                                 session: session,
