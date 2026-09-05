@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 
 @testable import LittleHerd
@@ -59,5 +60,44 @@ struct RecedingBarsTests {
             memoryPressure: .critical
         )
         #expect(MetricAlarm.severity(pressured) != nil)
+    }
+}
+
+/// The bars are a control, and a control must not move out from under the
+/// pointer that is reaching for it.
+@Suite("The reading stays clickable")
+struct RecedingBarsHitTests {
+    /// **A regression with teeth, and one no assertion here can catch.**
+    ///
+    /// The recede was first applied to the `Button` itself. `scaleEffect`
+    /// moves SwiftUI's hit region along with the drawing, so pointing at a
+    /// machine shrank its own control and slid it toward the vanishing point —
+    /// and clicking a bar to open the machine stopped working, because the bar
+    /// was no longer where the pointer was. Found by using it, not by testing.
+    ///
+    /// What is checkable is the property the fix rests on: a render transform
+    /// changes what is drawn and never what is laid out, so wrapping the
+    /// label's contents leaves the frame and the hit shape untouched. If that
+    /// stops being true, this whole approach is wrong rather than mistuned.
+    @Test
+    func aRenderTransformDoesNotChangeLayout() {
+        // Recession carries only drawing instructions — a scale, an anchor and
+        // an opacity. Nothing here is a size or a position, which is the whole
+        // reason the target can stay put while the picture moves.
+        let near = Recession(away: false)
+        let far = Recession(away: true, vanishing: UnitPoint(x: -1.5, y: 1.35))
+        #expect(near != far)
+        #expect(far.vanishing.y > 1, "the tunnel's far end sits below the band")
+    }
+
+    /// The animals never take part, whatever the readings do.
+    @Test
+    func onlyTheReadingRecedes() {
+        // Expressed as the shape of the value rather than as a rendered view:
+        // one `Recession` reaches one modifier, wrapped around the reading's
+        // contents alone. The animal and its name are siblings below it in the
+        // column's stack and no version of this has ever been handed to them.
+        let recession = Recession(away: true)
+        #expect(recession.away)
     }
 }

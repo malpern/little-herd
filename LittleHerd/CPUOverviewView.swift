@@ -121,108 +121,201 @@ struct CPUOverviewView: View {
     private var recedesBarsUnderFan = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Whether anything is raised at all. A fan being out is what the recede
-    /// answers; a carry or a return counts, because the deck is up for those
-    /// too and the icons need the same room.
+    /// Whether a fan is up to be *read* — which is the only thing the recede
+    /// answers.
+    ///
+    /// **A drag is deliberately excluded, and it is the interesting case.**
+    /// The deck is raised while a card is being carried too, so counting that
+    /// pushed the herd away at precisely the moment somebody was aiming at it:
+    /// you cannot pick a machine to drop on while the machines are at the far
+    /// end of a dark tunnel. Reading a fan is a passive, narrow moment and the
+    /// room can go; a carry is an active one and the room has to stay.
+    ///
+    /// `returning` counts as a carry for the same reason — the card is still
+    /// in the air on its way home.
     private var somethingIsRaised: Bool {
-        fanned != nil || carrying != nil || returning != nil
+        fanned != nil && carrying == nil && returning == nil
+    }
+
+    /// One column's aim, hoisted out of the body: `CPUOverviewView`'s view
+    /// builder is at the type checker's limit and pays for every expression
+    /// written inline there.
+    private func recession(forColumn index: Int) -> Recession {
+        herdRecession.converging(
+            column: index,
+            of: machines.count,
+            width: columnWidth,
+            spacing: columnSpacing
+        )
+    }
+
+
+    /// How far back the herd sits while a fan is raised.
+    ///
+    /// **One value for the whole row, because it is one object.** Applied per
+    /// column it was four objects: each drew its own dark veil, so the gaps
+    /// between them stayed the window's cream and you could count the columns
+    /// receding rather than watch a room move. One transform over the lot
+    /// gives one continuous dark space, which is the thing being described.
+    ///
+    /// The fan is unaffected — it is an overlay applied after this — so the
+    /// herd goes back and the agents stay at the front of the room.
+    private var herdRecession: Recession {
+        Recession(
+            away: recedesBarsUnderFan && somethingIsRaised && !somethingIsShouting,
+            reduceMotion: reduceMotion,
+            // Straight back, and slightly down: the far end of the tunnel sits
+            // below the herd rather than behind its middle, so the row tips
+            // away from you instead of contracting toward its own centre.
+            vanishing: UnitPoint(x: 0.5, y: 1.35)
+        )
+    }
+
+    /// **Nothing recedes while a machine is shouting.**
+    ///
+    /// The per-column version could exempt one machine and let its neighbours
+    /// go; one object cannot, so the rule becomes a herd-level one — and it is
+    /// the better rule anyway. A reading that says something is wrong is not
+    /// backdrop, and if any of them is saying it, this is not the moment to
+    /// move the room.
+    private var somethingIsShouting: Bool {
+        machines.contains { machine in
+            MetricAlarm.severity(
+                machine.metricPresentation(
+                    for: metric,
+                    isReporting: machine.state == .live || machine.isStorage
+                )
+            ) != nil
+        }
+    }
+
+    /// The point a column must scale toward so the whole row converges.
+    ///
+    /// **This is the difference between receding and shrinking.** Scaling each
+    /// column about its own edge makes four bars get smaller where they stand,
+    /// which reads as exactly that. Things that move away from you converge on
+    /// a vanishing point, so every column scales toward the same place on
+    /// screen — expressed here in that column's own unit space, since that is
+    /// what `scaleEffect(anchor:)` takes.
+    ///
+    /// Column `i` of `n` sits `(i − (n−1)/2)` steps from the middle, each step
+    /// being a column plus its spacing. Dividing by the column's own width
+    /// turns that into unit space, and `0.5 −` that puts the anchor where the
+    /// row's centre falls inside this column. The end columns therefore get
+    /// anchors well outside `0...1`, which is correct: their vanishing point is
+    /// not inside them.
+
+    /// One machine's column, lifted out of `body`.
+    ///
+    /// **Not a tidiness change.** This view builder sits at the Swift type
+    /// checker's limit: adding a single argument to the column tipped it into
+    /// "unable to type-check this expression in reasonable time", and the error
+    /// pointed at an unrelated overlay thirty lines away — naming neither the
+    /// cause nor the place. Anything added to the herd's layout from here on
+    /// belongs in a function, not inline.
+    @ViewBuilder
+    private func column(
+        _ index: Int,
+        _ machine: MachineMonitorModel
+    ) -> some View {
+            CPUThermometerColumn(
+                machine: machine,
+                metric: metric,
+                recession: recession(forColumn: index),
+                columnWidth: columnWidth,
+                avatarSize: avatarSize,
+                namespace: namespace,
+                onSelectMetric: onSelectMetric,
+                onSelectMachine: onSelectMachine,
+                agents: AgentTokenContext(
+                    agentCPU: agentCPU,
+                    padState: padState(for: machine.machine),
+                    onSelectAgents: onSelectAgents,
+                    // The deck does not stay behind while the fan is out:
+                    // it *is* what rose, and drawing both showed the same
+                    // agent twice, once peeking and once above.
+                    isFanned: fanned == machine.machine,
+                    announcing: announcing?.machine == machine.machine
+                        ? announcing?.session
+                        : nil,
+                    isCarried: activeDrag?.origin == machine.machine,
+                    wasRefused: refusal?.origin == machine.machine,
+                    cardSide: AgentCardSide.side(
+                        forMachineAt: index,
+                        inHerdOf: machines.count
+                    ),
+                    onDragChanged: { activity, dx in
+                        beginOrUpdate(from: machine.machine, activity: activity, by: dx)
+                    },
+                    onDragEnded: endDrag
+                )
+            )
+            // **The herd no longer dims for a hover.** Three machines
+            // fading every time the pointer crossed one was a large
+            // gesture for a small question, and the rise turns out to be
+            // enough on its own — an icon lifting out of an animal is
+            // already unambiguous about whose it is. Kept out rather than
+            // tuned down: a subtler fade is the same idea, quieter.
+            // An animal that could take what is being carried lifts to
+            // meet it; one that could not simply does not answer, which is
+            // a quieter no than a mark and needs no surface to paint on.
+            // **And it lights.** The lift alone was legible while you
+            // were watching the animal, and easy to miss while you were
+            // watching the card in your hand — which is where a person
+            // dragging is actually looking. A soft ground behind the
+            // column says "here" without drawing a box around it.
+            .background {
+                if welcomes(machine.machine) {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.14))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(
+                                    Color.accentColor.opacity(0.35),
+                                    lineWidth: 1
+                                )
+                        )
+                        .padding(.horizontal, -4)
+                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                }
+            }
+            .offset(y: welcomes(machine.machine) ? -5 : 0)
+            .animation(.spring(duration: 0.34, bounce: 0.38), value: carrying)
+            // The deck owns the hover now: its own region covers the
+            // animal as well, so there is no seam to fall through between
+            // pointing at a machine and reaching for its agents. Two
+            // adjacent regions here is what made them blink.
+            // The things you go and do after looking at a machine,
+            // put where you are already pointing — through AppKit, so the
+            // animal can be in the menu. See `AppKitContextMenu`.
+            // **Behind, never in front.** As an overlay this swallowed every
+            // left-click in the herd: the `NSView` sits above the buttons, its
+            // `hitTest` returns nil for anything but a right-click intending
+            // the event to fall through, and SwiftUI drops it instead of
+            // offering it to the button underneath. Measured — with the
+            // overlay made transparent to hit testing, machines became
+            // clickable again. As a background the buttons get the event
+            // first and a right-click, which no `Button` consumes, still
+            // reaches the menu. `MachineAgentFan` already did it this way.
+            .background {
+                AppKitContextMenu(
+                    items: MachineMenuItems.items(
+                        for: machine.configuration,
+                        onOpenPage: { onSelectMachine?(machine.machine) },
+                        onOpenAgents: { onSelectAgents?(machine.machine) },
+                        open: { NSWorkspace.shared.open($0) },
+                        run: { onRunCommand?($0, machine.machine) }
+                    )
+                )
+
+            }
+            .zIndex(activeDrag?.origin == machine.machine ? 1 : 0)
     }
 
     var body: some View {
         HStack(alignment: .top, spacing: columnSpacing) {
             ForEach(Array(machines.enumerated()), id: \.element.id) { index, machine in
-                CPUThermometerColumn(
-                    machine: machine,
-                    metric: metric,
-                    receded: recedesBarsUnderFan && somethingIsRaised,
-                    reduceMotion: reduceMotion,
-                    columnWidth: columnWidth,
-                    avatarSize: avatarSize,
-                    namespace: namespace,
-                    onSelectMetric: onSelectMetric,
-                    onSelectMachine: onSelectMachine,
-                    agents: AgentTokenContext(
-                        agentCPU: agentCPU,
-                        padState: padState(for: machine.machine),
-                        onSelectAgents: onSelectAgents,
-                        // The deck does not stay behind while the fan is out:
-                        // it *is* what rose, and drawing both showed the same
-                        // agent twice, once peeking and once above.
-                        isFanned: fanned == machine.machine,
-                        announcing: announcing?.machine == machine.machine
-                            ? announcing?.session
-                            : nil,
-                        isCarried: activeDrag?.origin == machine.machine,
-                        wasRefused: refusal?.origin == machine.machine,
-                        cardSide: AgentCardSide.side(
-                            forMachineAt: index,
-                            inHerdOf: machines.count
-                        ),
-                        onDragChanged: { activity, dx in
-                            beginOrUpdate(from: machine.machine, activity: activity, by: dx)
-                        },
-                        onDragEnded: endDrag
-                    )
-                )
-                // **The herd no longer dims for a hover.** Three machines
-                // fading every time the pointer crossed one was a large
-                // gesture for a small question, and the rise turns out to be
-                // enough on its own — an icon lifting out of an animal is
-                // already unambiguous about whose it is. Kept out rather than
-                // tuned down: a subtler fade is the same idea, quieter.
-                // An animal that could take what is being carried lifts to
-                // meet it; one that could not simply does not answer, which is
-                // a quieter no than a mark and needs no surface to paint on.
-                // **And it lights.** The lift alone was legible while you
-                // were watching the animal, and easy to miss while you were
-                // watching the card in your hand — which is where a person
-                // dragging is actually looking. A soft ground behind the
-                // column says "here" without drawing a box around it.
-                .background {
-                    if welcomes(machine.machine) {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.accentColor.opacity(0.14))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .strokeBorder(
-                                        Color.accentColor.opacity(0.35),
-                                        lineWidth: 1
-                                    )
-                            )
-                            .padding(.horizontal, -4)
-                            .transition(.opacity.combined(with: .scale(scale: 0.96)))
-                    }
-                }
-                .offset(y: welcomes(machine.machine) ? -5 : 0)
-                .animation(.spring(duration: 0.34, bounce: 0.38), value: carrying)
-                // The deck owns the hover now: its own region covers the
-                // animal as well, so there is no seam to fall through between
-                // pointing at a machine and reaching for its agents. Two
-                // adjacent regions here is what made them blink.
-                // The things you go and do after looking at a machine,
-                // put where you are already pointing — through AppKit, so the
-                // animal can be in the menu. See `AppKitContextMenu`.
-                // **Behind, never in front.** As an overlay this swallowed every
-                // left-click in the herd: the `NSView` sits above the buttons, its
-                // `hitTest` returns nil for anything but a right-click intending
-                // the event to fall through, and SwiftUI drops it rather than
-                // offering it to the button underneath. Measured — with the
-                // overlay made transparent to hit testing, machines became
-                // clickable again. As a background the buttons get the event
-                // first, and a right-click, which no `Button` consumes, still
-                // reaches the menu. `MachineAgentFan` already did it this way.
-                .background {
-                    AppKitContextMenu(
-                        items: MachineMenuItems.items(
-                            for: machine.configuration,
-                            onOpenPage: { onSelectMachine?(machine.machine) },
-                            onOpenAgents: { onSelectAgents?(machine.machine) },
-                            open: { NSWorkspace.shared.open($0) },
-                            run: { onRunCommand?($0, machine.machine) }
-                        )
-                    )
-                }
-                .zIndex(activeDrag?.origin == machine.machine ? 1 : 0)
+                column(index, machine)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -840,17 +933,112 @@ nonisolated struct AgentCardVisibility: Equatable, Sendable {
     }
 }
 
+/// How far back a column's reading sits, and toward where.
+///
+/// One value rather than three arguments: `CPUOverviewView`'s body is at the
+/// type checker's limit, and each argument added to the column is paid for
+/// there — the first attempt tipped it over and the error pointed at an
+/// unrelated overlay thirty lines away, naming neither the cause nor the place.
+struct Recession: Equatable {
+    var away = false
+    var reduceMotion = false
+    /// The point this column scales toward, in its own unit space.
+    var vanishing: UnitPoint = .bottom
+
+    /// The same recession, aimed so that every column converges on one point.
+    ///
+    /// **This is the difference between receding and shrinking.** Scaling each
+    /// column about its own edge makes four bars get smaller where they stand,
+    /// which is exactly what it was called the first time. Things that move
+    /// away converge on a vanishing point, so each column scales toward the
+    /// same place on screen — expressed in that column's own unit space, since
+    /// that is what `scaleEffect(anchor:)` takes.
+    ///
+    /// Column `i` of `n` sits `(i − (n−1)/2)` steps off centre, each step a
+    /// column plus its spacing; dividing by the column's width puts that in
+    /// unit space. The end columns get anchors well outside `0...1`, which is
+    /// correct — their vanishing point is not inside them.
+    func converging(
+        column index: Int,
+        of count: Int,
+        width: CGFloat,
+        spacing: CGFloat
+    ) -> Recession {
+        guard count > 1, width > 0 else { return self }
+        // Explicit types at each step: as one expression this defeats the
+        // type checker outright.
+        let middle: CGFloat = CGFloat(count - 1) / 2
+        let stepsFromCentre: CGFloat = CGFloat(index) - middle
+        let stride: CGFloat = width + spacing
+        let offsetInColumns: CGFloat = stepsFromCentre * stride / width
+        let x: CGFloat = 0.5 - offsetInColumns
+        var aimed = self
+        // Below the readings, toward the animals: the far end of the tunnel is
+        // down there, so the band tips away rather than closing on its middle.
+        aimed.vanishing = UnitPoint(x: x, y: 1.35)
+        return aimed
+    }
+
+    /// Shared by the columns and the veil so the two cannot drift apart —
+    /// a band that darkened on one curve while its bars moved on another
+    /// would read as two effects rather than one.
+    var curve: Animation {
+        reduceMotion
+            ? .easeOut(duration: 0.2)
+            : .spring(duration: away ? 0.46 : 0.34, bounce: 0)
+    }
+}
+
+/// The reading, sliding back down a dark tunnel while a fan is raised.
+///
+/// Two things separate receding from shrinking, and the first attempt had
+/// neither. Every column scales toward **one shared vanishing point** rather
+/// than its own edge: four bars getting smaller where they stand read as
+/// exactly that, which is what it was called. And it goes **dark rather than
+/// transparent** — this window's ground is cream, so opacity alone walks the
+/// segments toward a pale wash, the opposite of distance in an unlit space. A
+/// black veil dims everything uniformly and leaves the lit blocks the
+/// brightest thing left, so they keep glowing as they go.
+private struct RecedingReading: ViewModifier {
+    let recession: Recession
+
+    private var away: Bool { recession.away }
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(
+                away && !recession.reduceMotion ? 0.62 : 1,
+                anchor: away ? recession.vanishing : .bottom
+            )
+            // **The air between here and there, and nothing else.** An
+            // earlier version laid a black veil across the whole band to make
+            // an unlit tunnel, which worked and cost too much: it darkened the
+            // window's own ground, so the room changed colour every time a
+            // pointer crossed a machine. The ground stays cream and the
+            // readings recede into it — which is what distance looks like in
+            // daylight anyway, things going pale rather than going black.
+            .opacity(away ? 0.14 : 1)
+            // **A reading that has gone is not something to click.** While the
+            // fan is up the bars are backdrop, and leaving them live meant
+            // aiming at a faint, shrunken target that had moved — so they stop
+            // taking clicks until they come forward again. The animal keeps
+            // its own click throughout: it never recedes and it is how you
+            // open the machine.
+            .allowsHitTesting(!away)
+            .animation(recession.curve, value: away)
+    }
+}
+
 private struct CPUThermometerColumn: View {
     let machine: MachineMonitorModel
     let metric: OverviewMetric
-    /// Whether this column's reading should fall back behind a raised fan.
+    /// How far back this column's reading sits, and toward where.
     ///
-    /// **A machine in the red never recedes.** Everything else here is a
-    /// backdrop while you read a fan, but a reading that says something is
-    /// wrong is not backdrop — it is the one number that has to survive any
-    /// change of focus, and it costs a single condition to keep it.
-    var receded: Bool = false
-    var reduceMotion: Bool = false
+    /// **Only the reading moves.** The animal and its name stay where they
+    /// are — they are the machine's identity and what you are pointing at, so
+    /// a herd whose animals slid away would be answering a different question
+    /// than the one asked.
+    var recession = Recession()
     let columnWidth: CGFloat
     let avatarSize: CGFloat
     var namespace: Namespace.ID?
@@ -858,27 +1046,6 @@ private struct CPUThermometerColumn: View {
     var onSelectMachine: ((MachineID) -> Void)?
     var agents = AgentTokenContext()
 
-    /// The recede, with the one exemption that matters.
-    ///
-    /// **Reduced motion still recedes**, just without the scale — the point is
-    /// to take the chart out of the way, and doing that with opacity alone is
-    /// the gentler equivalent rather than nothing at all.
-    private var fallsBack: Bool {
-        receded && !isInTheRed
-    }
-
-    /// A reading that is shouting.
-    ///
-    /// **`MetricAlarm` already answers this and is the only thing that should.**
-    /// Its own comment says the mark on a tab borrows the thermometer's bands
-    /// "so the mark on a tab and the block on a bar cannot drift to two
-    /// different reds" — a third opinion here would be the drift it warns
-    /// about. It also folds in memory pressure, which a bar's value alone does
-    /// not know about, and a machine under pressure is exactly one you would
-    /// not want quietly stepping back.
-    private var isInTheRed: Bool {
-        MetricAlarm.severity(presentation) != nil
-    }
 
     var body: some View {
         // A real Button, not a tap gesture: the window is movable by its
@@ -949,33 +1116,25 @@ private struct CPUThermometerColumn: View {
                         .accessibilityHidden(!showsCapacity)
                     }
                 }
+                // **Inside the frame, and inside the hit shape.**
+                //
+                // This started on the `Button` itself and broke clicking the
+                // bars, which is worse than it sounds: `scaleEffect` moves
+                // SwiftUI's hit region along with the drawing, so pointing at
+                // a machine shrank its own control and slid it toward the
+                // vanishing point — out from under the pointer that was
+                // asking for it. You cannot click a thing that retreats
+                // because you looked at it.
+                //
+                // A render transform changes no layout, so wrapping only the
+                // contents leaves the frame and `contentShape` exactly where
+                // they were: the reading recedes, the target does not move.
+                .modifier(RecedingReading(recession: recession))
                 .frame(maxWidth: .infinity)
                 .frame(height: DashboardMetrics.thermometerColumnHeight)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            // **Anchored at the bottom**, where the column meets the animal:
-            // the bars grow from that baseline, so scaling about the centre
-            // would lift the baseline off the animal's head and read as the
-            // whole column floating rather than falling back.
-            //
-            // Scale and opacity only — no blur. At 324 points the segments are
-            // 6 points tall, and blurring them turns a reading into a smear
-            // for a gain nobody asked for.
-            .scaleEffect(fallsBack && !reduceMotion ? 0.96 : 1, anchor: .bottom)
-            .opacity(fallsBack ? 0.75 : 1)
-            // Critically damped: only the thing under the pointer gets to
-            // overshoot. The timings match the fan's own, and its asymmetry —
-            // it rises with mass and settles calmer — so the two read as one
-            // movement rather than two.
-            .animation(
-                reduceMotion
-                    ? .easeOut(duration: 0.2)
-                    : (receded
-                        ? .spring(duration: 0.46, bounce: 0)
-                        : .spring(duration: 0.34, bounce: 0)),
-                value: fallsBack
-            )
             // Says the bar is a target. The hovered header used to do this
             // job by changing when you crossed a column, which told you the
             // app had noticed the pointer rather than what a click would do.
