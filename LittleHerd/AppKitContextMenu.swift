@@ -10,7 +10,25 @@ import SwiftUI
 ///
 /// Everything a menu does for free is kept: keyboard navigation, Escape,
 /// submenus, VoiceOver, and the system's own drawing.
-struct AppKitContextMenu: NSViewRepresentable {
+struct AppKitContextMenu: View {
+    let items: [AppKitMenuItem]
+
+    /// Under `ImageRenderer` the `NSView` cannot be flattened and SwiftUI
+    /// draws a prohibition sign in its place, over the animal this menu is
+    /// attached to. It has nothing to draw anyway. See
+    /// `EnvironmentValues.isRenderingStillImage`.
+    @Environment(\.isRenderingStillImage) private var isRenderingStillImage
+
+    var body: some View {
+        if isRenderingStillImage {
+            Color.clear.allowsHitTesting(false)
+        } else {
+            ContextMenuBridge(items: items)
+        }
+    }
+}
+
+private struct ContextMenuBridge: NSViewRepresentable {
     let items: [AppKitMenuItem]
 
     func makeNSView(context: Context) -> ContextMenuHostView {
