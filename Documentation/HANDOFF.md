@@ -2441,6 +2441,61 @@ the only part drawn.
     macOS guests only, and a redacted shot would be the single one here that was
     — so it goes without rather than break the rule that every shot is staged.
 
+    **What setting it up actually cost, recovered from a branch that never
+    landed.** The paragraphs above say what Sunshine and Moonlight are for
+    and why they sit where they do in the guide; this is the part that was
+    learned the expensive way on 2 September and was sitting unmerged on
+    `claude/session-7229dd` until 5 September. None of it is guessable and
+    none of it is in the documentation either tool ships.
+
+    **Streaming the Linux box's desktop to a Mac: Sunshine and Moonlight,
+    and the four things that were not guessable.** Set up 2 September 2026
+    so Omarchy could be used from the Air. Bare metal is not an option on
+    that Mac — it is a Mac17,3 / M5, and Asahi is only now cutting an M3
+    release with M4 and M5 still in bring-up — and Omarchy is x86_64
+    upstream, so a VM means an unofficial ARM fork. Streaming the herd
+    member that already runs Omarchy avoids both.
+
+    Sunshine is in Omarchy's own repo, so it is a `pacman -S`, not an AUR
+    build. It has to run as a *user* service, inside the Hyprland session; a
+    system unit sees no `WAYLAND_DISPLAY` and captures nothing. It picked
+    `wlgrab` over `zwlr_screencopy` with dmabuf, so frames reach the VAAPI
+    encoder without a copy through system memory, and the 780M offers H.264,
+    HEVC and AV1 in hardware. The GLKVM's HDMI cable is load-bearing: it
+    keeps a 2560x1440 mode alive, which is what a dummy plug would otherwise
+    be for.
+
+    - **`hyprctl keyword` is refused on Hyprland 0.56.2** — "keyword can't
+      work with non-legacy parsers. Use eval." That build uses the Lua
+      config parser, and its `eval` takes Lua, not config lines. Every
+      recipe online that reaches for `hyprctl keyword monitor` is therefore
+      wrong here. `wlr-randr` is the working route (`zwlr_output_manager_v1`
+      is compiled in), verified live switching 2560x1440@59.951 to
+      1920x1080@60 and back with scale and position preserved.
+    - **Sunshine's stock `apps.json` is written for X11 and is broken twice
+      over.** Its "Low Res Desktop" prep command runs `xrandr`, inert under
+      Wayland, and names connector `HDMI-1` when this box has `HDMI-A-1`.
+      Its `undo` restores 1920x1200, a mode the display does not offer — so
+      it was wrong even on X11. A failing prep command blocks the launch.
+    - **Moonlight's tile labels are painted into the box art, not rendered
+      from the app name.** Two entries sharing `image-path: desktop.png`
+      render as two tiles both reading DESKTOP no matter what they are
+      called. Renaming looked like it had failed; nothing was wrong. The
+      tell was `Steam Big Picture` displaying as STEAM — neither the first
+      word nor the last of anything being truncated. Any app added needs its
+      own 600x800 image; the gradient corners are gray(33), gray(64),
+      gray(86), gray(117).
+    - **Moonlight must be launched as an app bundle.** Homebrew links
+      `/opt/homebrew/bin/Moonlight` into `Contents/MacOS/`, and Qt resolves
+      its plugin path relative to the executable, so through the symlink it
+      never finds `qtquickcontrols2plugin` and the GUI fails to load. `open
+      -a Moonlight`.
+
+    The host is reached over Tailscale, and `ufw` on that box is active —
+    inbound is allowed on `tailscale0` only, so nothing new faces the LAN or
+    the internet. mDNS does not cross the tailnet, so away from home the
+    host is added by IP.
+
     **The order is what it pays back, not what it depends on, and it was got
     wrong twice.** The first order was a build order wearing a reader's
     clothes — reach, connect, tools — which put SSH keys and file permissions
