@@ -12,6 +12,20 @@ import SwiftUI
 /// submenus, VoiceOver, and the system's own drawing.
 struct AppKitContextMenu: View {
     let items: [AppKitMenuItem]
+    /// What to say when the pointer rests here.
+    ///
+    /// **A `.help` on the view underneath does not survive this one.** An agent
+    /// card has carried `.help` since it was built and has had no tooltip since
+    /// the day this menu was laid over it — verified by resting on a card for
+    /// five seconds and getting nothing. Hover itself arrives perfectly well
+    /// (the project name above the row is driven by `onHover` on that same
+    /// icon), so this is not the swallowing that cost the herd its click; it is
+    /// that a tooltip belongs to whichever view is on top, and this one is.
+    ///
+    /// So it is set here, natively, rather than left to SwiftUI to route
+    /// through a representable. Empty means no tooltip, which is what every
+    /// other use of this view wants.
+    var toolTip: String?
 
     /// Under `ImageRenderer` the `NSView` cannot be flattened and SwiftUI
     /// draws a prohibition sign in its place, over the animal this menu is
@@ -23,22 +37,27 @@ struct AppKitContextMenu: View {
         if isRenderingStillImage {
             Color.clear.allowsHitTesting(false)
         } else {
-            ContextMenuBridge(items: items)
+            ContextMenuBridge(items: items, toolTip: toolTip)
         }
     }
 }
 
 private struct ContextMenuBridge: NSViewRepresentable {
     let items: [AppKitMenuItem]
+    let toolTip: String?
 
     func makeNSView(context: Context) -> ContextMenuHostView {
         let view = ContextMenuHostView()
         view.items = items
+        view.toolTip = toolTip
         return view
     }
 
     func updateNSView(_ view: ContextMenuHostView, context: Context) {
         view.items = items
+        // A card's tooltip is its session's title, and a session renames
+        // itself as it works — so this is a change to carry, not a one-off.
+        if view.toolTip != toolTip { view.toolTip = toolTip }
     }
 }
 

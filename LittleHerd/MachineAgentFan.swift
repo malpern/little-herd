@@ -513,7 +513,8 @@ struct MachineAgentFan: View {
                             origin: origins[card.session.id],
                             moveTo: moveTo(card.session),
                             onOpenAgents: onOpenAll
-                        )
+                        ),
+                        toolTip: card.session.displayTitle
                     )
                 }
             }
