@@ -35,6 +35,20 @@ struct CPUOverviewView: View {
     /// nobody sees and a timer nobody can replay.
     @Environment(\.controlActiveState) private var windowActivity
 
+    /// A deck held up for a render, with no pointer in the room.
+    ///
+    /// **The harness could not draw a hover state at all**, which is why every
+    /// constant in the fan and every value in the recede was settled by
+    /// launching the app and looking — the slowest loop in this project, and
+    /// the one that let a broken click ship in `v0.1.60`. Hover is a pointer
+    /// fact and `ImageRenderer` has no pointer; the state it *produces* is an
+    /// ordinary value, so it can simply be handed in. Nil everywhere but the
+    /// harness, and read only where `fanned` is read.
+    var rendersFanFor: MachineID?
+    /// And the card the pointer would be on, passed straight through to the
+    /// fan — see `MachineAgentFan.rendersNameFor`.
+    var rendersNameFor: String?
+
     /// The machine whose deck is raised, and why it went up.
     ///
     /// **Two reasons, and they differ in one visible way.** Pointing at a
@@ -134,8 +148,14 @@ struct CPUOverviewView: View {
     /// `returning` counts as a carry for the same reason — the card is still
     /// in the air on its way home.
     private var somethingIsRaised: Bool {
-        fanned != nil && carrying == nil && returning == nil
+        raisedMachine != nil && carrying == nil && returning == nil
     }
+
+    /// Which deck is up: the pointer's answer, or the one a render was asked
+    /// for. Every read of `fanned` outside the handlers that set it goes
+    /// through here, so a rendered fan and a hovered one are the same state
+    /// rather than two that can drift.
+    private var raisedMachine: MachineID? { fanned ?? rendersFanFor }
 
     /// One column's aim, hoisted out of the body: `CPUOverviewView`'s view
     /// builder is at the type checker's limit and pays for every expression
@@ -234,7 +254,7 @@ struct CPUOverviewView: View {
                     // The deck does not stay behind while the fan is out:
                     // it *is* what rose, and drawing both showed the same
                     // agent twice, once peeking and once above.
-                    isFanned: fanned == machine.machine,
+                    isFanned: raisedMachine == machine.machine,
                     announcing: announcing?.machine == machine.machine
                         ? announcing?.session
                         : nil,
@@ -529,7 +549,7 @@ struct CPUOverviewView: View {
                             $0.from == machine.machine && !$0.goingHome
                                 ? [$0.session.id] : []
                         } ?? [],
-                        raised: fanned == machine.machine
+                        raised: raisedMachine == machine.machine
                             || carrying?.from == machine.machine
                             || returning == machine.machine,
                         rise: deckRise,
@@ -557,7 +577,9 @@ struct CPUOverviewView: View {
                             onOpenAgents: { onSelectAgents?(machine.machine) },
                             open: { NSWorkspace.shared.open($0) },
                             run: { onRunCommand?($0, machine.machine) }
-                        )
+                        ),
+                        rendersNameFor: rendersNameFor,
+                        rendersOpen: rendersFanFor == machine.machine
                     )
                     .offset(y: fanY)
                     // **The deck is part of its machine's target.** Reaching
@@ -572,7 +594,7 @@ struct CPUOverviewView: View {
                             lowerFan()
                         }
                     }
-                    .zIndex(fanned == machine.machine ? 1 : 0)
+                    .zIndex(raisedMachine == machine.machine ? 1 : 0)
                 }
             }
         }

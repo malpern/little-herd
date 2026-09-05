@@ -1001,3 +1001,180 @@ extension PanelRenderHarness {
         try frame(overHome, named: "overview-drag-over-origin")
     }
 }
+
+// MARK: - The hover states, which nothing could draw until now
+
+/// The fan raised, and a card named, without a pointer in the room.
+///
+/// **Every constant in the fan and every value in the recede was settled by
+/// launching the app and looking at it**, because hover is a pointer fact and
+/// `ImageRenderer` has no pointer. That loop is slow enough that a broken
+/// click shipped in `v0.1.60` between two looks. The state hover *produces* is
+/// an ordinary value, so `rendersFanFor` and `rendersNameFor` hand it in and
+/// these draw the frame the animation ends on — which is the frame worth
+/// judging anyway.
+///
+/// Asserts nothing about how it looks. It cannot: taste is not a predicate.
+/// What it guarantees is that all three states build and render, and that
+/// there is something to look at.
+extension PanelRenderHarness {
+    @Test
+    func renderTheRaisedFanAndTheNamedCard() throws {
+        let defaults = UserDefaults.standard
+        let key = LittleHerdPreferences.recedesBarsUnderFanKey
+        let before = defaults.object(forKey: key)
+        defaults.set(true, forKey: key)
+        defer {
+            if let before { defaults.set(before, forKey: key) }
+            else { defaults.removeObject(forKey: key) }
+        }
+
+        func machine(
+            _ id: String,
+            _ name: String,
+            _ avatar: HerdwareAvatar,
+            cpu: Double,
+            sessions: [AgentSession]
+        ) -> MachineMonitorModel {
+            let model = MachineMonitorModel(
+                configuration: MachineConfiguration(
+                    id: MachineID(id),
+                    name: name,
+                    shortName: name,
+                    hostname: "\(id).local",
+                    hardwareSummary: name,
+                    platform: .macOS,
+                    connection: .ssh,
+                    avatar: avatar,
+                    identityFile: nil,
+                    serverNames: [],
+                    supportsGPU: false
+                )
+            )
+            model.apply(
+                SystemSnapshot(
+                    timestamp: .now,
+                    readings: [.cpu: MetricReading(value: cpu)],
+                    agentSessions: sessions
+                )
+            )
+            return model
+        }
+
+        /// **Project names, not titles, and real ones.** The label draws
+        /// `projectName`, and the two longest checkouts on this Mac are what
+        /// decides whether it truncates in ordinary use rather than in a
+        /// contrived case.
+        func session(
+            _ id: String,
+            _ provider: AgentTaskProvider,
+            project: String
+        ) -> AgentSession {
+            AgentSession(
+                id: id,
+                provider: provider,
+                projectName: project,
+                state: .active,
+                updatedAt: .now,
+                progress: nil,
+                title: "whatever it is doing",
+                activity: nil,
+                model: "claude-opus-5",
+                workingDirectory: "/Users/x/local-code/\(project)"
+            )
+        }
+
+        let machines = [
+            machine("air", "Air", .chickLaptop, cpu: 51, sessions: [
+                session("a", .claude, project: "little-herd"),
+                session("b", .claude, project: "destination-eligibility"),
+                session("c", .codex, project: "m2"),
+            ]),
+            machine("mini", "Mini", .calfMini, cpu: 22, sessions: [
+                session("d", .codex, project: "add-secret"),
+            ]),
+            machine("linux", "Linux", .ponyTower, cpu: 3, sessions: []),
+            machine("nas", "Synology", .pigletNAS, cpu: 6, sessions: []),
+        ]
+
+        let size = CGSize(width: 324, height: 222)
+
+        try render(
+            CPUOverviewView(machines: machines, metric: .cpu),
+            size: size,
+            named: "hover-0-at-rest"
+        )
+
+        try render(
+            CPUOverviewView(
+                machines: machines,
+                metric: .cpu,
+                rendersFanFor: MachineID("air")
+            ),
+            size: size,
+            named: "hover-1-fan-up"
+        )
+
+        // The shortest name, in the middle of the fan.
+        try render(
+            CPUOverviewView(
+                machines: machines,
+                metric: .cpu,
+                rendersFanFor: MachineID("air"),
+                rendersNameFor: "c"
+            ),
+            size: size,
+            named: "hover-2-named-short"
+        )
+
+        // The longest, on the card nearest the window's edge — both ways this
+        // can go wrong at once.
+        try render(
+            CPUOverviewView(
+                machines: machines,
+                metric: .cpu,
+                rendersFanFor: MachineID("air"),
+                rendersNameFor: "b"
+            ),
+            size: size,
+            named: "hover-3-named-long"
+        )
+
+        // One agent on a machine at the other end of the herd, where the fan
+        // is narrow and the label has a window edge on its right.
+        try render(
+            CPUOverviewView(
+                machines: machines,
+                metric: .cpu,
+                rendersFanFor: MachineID("mini"),
+                rendersNameFor: "d"
+            ),
+            size: size,
+            named: "hover-4-single-card"
+        )
+
+        // **The last column, with the longest name.** The label is anchored
+        // over its card and is wider than a column, so the rightmost machine
+        // is where it would run off the window — the one case the clamp
+        // exists for, and the one no amount of looking at the middle of the
+        // herd would find.
+        let edge = [
+            machine("air", "Air", .chickLaptop, cpu: 51, sessions: []),
+            machine("mini", "Mini", .calfMini, cpu: 22, sessions: []),
+            machine("linux", "Linux", .ponyTower, cpu: 3, sessions: []),
+            machine("nas", "Synology", .pigletNAS, cpu: 6, sessions: [
+                session("e", .claude, project: "destination-eligibility"),
+            ]),
+        ]
+        try render(
+            CPUOverviewView(
+                machines: edge,
+                metric: .cpu,
+                rendersFanFor: MachineID("nas"),
+                rendersNameFor: "e"
+            ),
+            size: size,
+            named: "hover-5-right-edge"
+        )
+    }
+}

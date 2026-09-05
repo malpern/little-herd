@@ -90,6 +90,24 @@ struct MachineAgentFan: View {
     /// session finishing renumbers everything after it, and an index would
     /// silently start describing a different agent.
     @State private var named: String?
+    /// A card named for a render, for the same reason as
+    /// `CPUOverviewView.rendersFanFor`: the pointer is the only way to reach
+    /// this state and a renderer has no pointer.
+    var rendersNameFor: String?
+    /// This deck, drawn open, for a render.
+    ///
+    /// **A renderer takes one frame and the fan opens over half a second.**
+    /// `spread` climbs from nought on appear and is carried the rest of the
+    /// way by a spring, neither of which happens inside `ImageRenderer` — so a
+    /// fan asked to be up in a render would draw as a closed deck. This says
+    /// *where the animation ends*, which is the only frame worth looking at
+    /// anyway.
+    var rendersOpen = false
+
+    /// How far open the deck is drawn: the animation's own value, or its end.
+    private var openness: CGFloat { rendersOpen ? 1 : spread }
+    /// And whether it has arrived, which the count and the name both wait for.
+    private var landed: Bool { rendersOpen ? true : settled }
 
     /// **A spring with some mass in it.** Longer and looser than the app's
     /// usual 0.22s, and allowed to overshoot: these are objects being lifted
@@ -224,7 +242,7 @@ struct MachineAgentFan: View {
                 icon(for: card, isLast: card.index == placed.count - 1)
             }
 
-            if let overflow = fan.overflow, spread > 0.4 {
+            if let overflow = fan.overflow, openness > 0.4 {
                 Button(action: onOpenAll) {
                     Text("+\(overflow.count)")
                         .font(.system(size: tile * 0.34, weight: .semibold, design: .rounded))
@@ -341,8 +359,8 @@ struct MachineAgentFan: View {
     /// the window at the ends of the row where they would otherwise run off.
     @ViewBuilder
     private var projectName: some View {
-        let card = placed.first { $0.session.id == named }
-        let showing = card != nil && raised && settled && carrying == nil
+        let card = placed.first { $0.session.id == (named ?? rendersNameFor) }
+        let showing = card != nil && raised && landed && carrying == nil
         // The machine's own name is `.caption.weight(.medium)` under its
         // animal, and this is the same kind of fact about the same kind of
         // thing — one row up, for one agent instead of one machine — so it is
@@ -399,20 +417,20 @@ struct MachineAgentFan: View {
                 // so it goes the instant they begin to fan out: by then you
                 // can see them, and a number counting things in front of you
                 // is just more to read.
-                if isLast, sessions.count > 1, settled {
+                if isLast, sessions.count > 1, landed {
                     AgentDeckCountMark(count: sessions.count, iconSize: tile)
                 }
             }
             // No card. The icon is already one.
-            .opacity(index == 0 ? 1 : 0.85 + 0.15 * spread)
+            .opacity(index == 0 ? 1 : 0.85 + 0.15 * openness)
             .shadow(
-                color: .black.opacity(0.22 + 0.02 * spread),
-                radius: tile * (0.068 + 0.092 * spread),
-                y: 1 + spread
+                color: .black.opacity(0.22 + 0.02 * openness),
+                radius: tile * (0.068 + 0.092 * openness),
+                y: 1 + openness
             )
             // Each icon starts where the deck was — stacked at the animal,
             // smaller and lower — and travels to its place.
-            .scaleEffect(restingShare + (1 - restingShare) * spread)
+            .scaleEffect(restingShare + (1 - restingShare) * openness)
             // **Each icon carries its own weight.** They leave the animal a
             // beat apart and settle a beat apart, which is what a handful of
             // objects does and what one sheet of glass does not.
@@ -425,9 +443,9 @@ struct MachineAgentFan: View {
             )
             .offset(
                 x: stackedX(index)
-                    + (card.rect.minX - stackedX(index)) * spread
+                    + (card.rect.minX - stackedX(index)) * openness
                     + (carrying == index ? carried.width : 0),
-                y: stackedY(index) * (1 - spread)
+                y: stackedY(index) * (1 - openness)
                     + (carrying == index ? carried.height : 0)
             )
             // Lifted while it is in hand, and above its neighbours.
