@@ -1,10 +1,12 @@
 # Little Herd — handoff
 
-**State:** `v0.1.62` is released and installed on this Mac. `0.1.61` was the
+**State:** `v0.1.63` is released and installed on this Mac. `0.1.61` was the
 first build that could move work: `startsTransfers` is `true`, a session has
 been transferred from this Mac to the mini twice, and the read half of the
-command line ships with it. `0.1.62` adds the project name on a hovered agent,
-and the harness that can finally draw a hover state.
+command line ships with it. `0.1.62` added a name on a hovered agent and
+the harness that can finally draw a hover state; `0.1.63` fixed what that name
+said, gave the cards their tooltips back, and taught Little Herd what Codex
+calls a thread.
 
 **The transfer is on.** `endDrag()` reports an accepted drop,
 `MonitorModel.beginTransfer` runs the whole seven-step move, a strip in the
@@ -112,6 +114,7 @@ ten more between 27 and 29 August, and six of them are the transfer:
     0.1.60  a strip to watch it and stop it; a machine is an account on a host
     0.1.61  transfers on, and Little Herd answers questions from a shell
     0.1.62  a hovered agent names its project, in the band the readings vacate
+    0.1.63  it names the *work* instead — the folder was the wrong answer
 
 0.1.61 is the one that matters: the diff window, the progress bar across the
 foot of the card, both context menus rebuilt in AppKit because SwiftUI drops
