@@ -1061,14 +1061,17 @@ extension PanelRenderHarness {
             return model
         }
 
-        /// **Project names, not titles, and real ones.** The label draws
-        /// `projectName`, and the two longest checkouts on this Mac are what
-        /// decides whether it truncates in ordinary use rather than in a
-        /// contrived case.
+        /// **Real names off the real herd, because length is the whole
+        /// question.** The label draws `displayTitle`, which is a sentence
+        /// fragment rather than the one word a project name used to be — so
+        /// what decides whether it truncates in ordinary use is how long the
+        /// names people actually give their work are, not a placeholder.
+        /// Every title below was read off this Mac on 5 September.
         func session(
             _ id: String,
             _ provider: AgentTaskProvider,
-            project: String
+            project: String,
+            title: String?
         ) -> AgentSession {
             AgentSession(
                 id: id,
@@ -1077,7 +1080,7 @@ extension PanelRenderHarness {
                 state: .active,
                 updatedAt: .now,
                 progress: nil,
-                title: "whatever it is doing",
+                title: title,
                 activity: nil,
                 model: "claude-opus-5",
                 workingDirectory: "/Users/x/local-code/\(project)"
@@ -1086,12 +1089,19 @@ extension PanelRenderHarness {
 
         let machines = [
             machine("air", "Air", .chickLaptop, cpu: 51, sessions: [
-                session("a", .claude, project: "little-herd"),
-                session("b", .claude, project: "destination-eligibility"),
-                session("c", .codex, project: "m2"),
+                session("a", .claude, project: "little-herd", title: "Little Herder"),
+                // The long one, and not invented: this is what the spawned
+                // task for the DNS watchdog was called.
+                session("b", .claude, project: "destination-eligibility",
+                        title: "Stop watchdog-vercel throwing on network blips"),
+                session("c", .codex, project: "m2", title: "Matt's gym scheduling app"),
             ]),
             machine("mini", "Mini", .calfMini, cpu: 22, sessions: [
-                session("d", .codex, project: "add-secret"),
+                // **No title at all**, which is a live case rather than a
+                // hypothetical — Codex leaves `name` NULL until it names a
+                // thread — and the one that proves the project is still the
+                // fallback rather than having been thrown away.
+                session("d", .codex, project: "add-secret", title: nil),
             ]),
             machine("linux", "Linux", .ponyTower, cpu: 3, sessions: []),
             machine("nas", "Synology", .pigletNAS, cpu: 6, sessions: []),
@@ -1163,7 +1173,8 @@ extension PanelRenderHarness {
             machine("mini", "Mini", .calfMini, cpu: 22, sessions: []),
             machine("linux", "Linux", .ponyTower, cpu: 3, sessions: []),
             machine("nas", "Synology", .pigletNAS, cpu: 6, sessions: [
-                session("e", .claude, project: "destination-eligibility"),
+                session("e", .claude, project: "destination-eligibility",
+                        title: "Stop watchdog-vercel throwing on network blips"),
             ]),
         ]
         try render(

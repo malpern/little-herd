@@ -347,14 +347,23 @@ struct MachineAgentFan: View {
         }
     }
 
-    /// The project a card belongs to, named above the row while it is pointed
-    /// at.
+    /// What a card is working on, named above the row while it is pointed at.
     ///
-    /// **A card is twenty points wide and a project name is not.** The icon
-    /// says which agent, its position says which machine, and the one thing
-    /// nothing on screen said was *what it is working on* — a herd of
-    /// identical marks with the answer buried in a right-click menu. The
-    /// tooltip has it, four seconds late; this has it as you arrive.
+    /// **A card is twenty points wide and the name of a piece of work is not.**
+    /// The icon says which agent, its position says which machine, and the one
+    /// thing nothing on screen said was *what it is working on* — a herd of
+    /// identical marks with the answer buried in a right-click menu.
+    ///
+    /// **`displayTitle`, not `projectName`, and that was a correction made by
+    /// reading the real herd.** The project is the last component of a working
+    /// directory, which is a good name only when somebody happened to start
+    /// the session inside a project. A third of this herd did not: one Claude
+    /// session runs in `~/local-code` and was labelled *"local code"*, and
+    /// every Codex session runs in a dated folder Codex slugs from the opening
+    /// message, so those read *"work in local code wa…"*. `displayTitle` is
+    /// the session's own name and falls back to the project when there is
+    /// none — so the project stays, as the answer of last resort rather than
+    /// the first one.
     ///
     /// **It goes where the readings just went.** The band above the row is a
     /// thermometer that has receded to almost nothing by the time a card can
@@ -387,7 +396,7 @@ struct MachineAgentFan: View {
         // animal, and this is the same kind of fact about the same kind of
         // thing — one row up, for one agent instead of one machine — so it is
         // the same type rather than a second opinion about how a name looks.
-        Text(card?.session.projectName ?? " ")
+        Text(card?.session.displayTitle ?? " ")
             .font(.caption.weight(.medium))
             .foregroundStyle(.primary)
             .lineLimit(1)
@@ -409,7 +418,13 @@ struct MachineAgentFan: View {
             .animation(reduceMotion ? nil : .spring(duration: 0.26, bounce: 0), value: named)
     }
 
-    private static let nameWidth: CGFloat = 132
+    /// Wider than it was: a project name is one word and the name of a piece
+    /// of work is a sentence fragment. Still under half the window, so the
+    /// clamp is what handles the ends of the row rather than this. What will
+    /// not fit truncates, and the card's tooltip carries the whole of it —
+    /// which is the pair working as it should, rather than saying one thing
+    /// twice.
+    private static let nameWidth: CGFloat = 176
     private static let nameHeight: CGFloat = 15
     /// Clear of the icons without drifting into the band's middle, where it
     /// would read as a heading for the whole herd rather than a label on one
