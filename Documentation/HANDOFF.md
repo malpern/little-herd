@@ -2967,14 +2967,19 @@ the only part drawn.
     plain herd after a week of use, and whether the flag comes out on or is
     deleted. No test decides that.
 
-    **Two things are still open and both want a pointer.** A card has had **no
-    tooltip since its context menu was added** — `.help` is on it and does not
-    fire — and moving that menu to `.background`, which is exactly what fixed
-    the columns, **stops a card's right-click menu opening at all**. So the two
-    cases are not the same bug and the column's fix does not generalise. And
-    the label itself has still only been seen in a render: synthetic pointer
-    events raised the deck twice and then stopped being delivered at all, while
-    clicks kept working, so the live look has not been signed off by anyone.
+    **Seen working in the running app on 5 September**, on the shipped 0.1.62
+    build — which had to be done by hand, because synthetic pointer events
+    raised the deck twice and then stopped being delivered at all while clicks
+    kept working. Worth knowing before anyone plans to QA a hover state by
+    driving the mouse: it is not reliable here, and the render seam above is
+    the repeatable path.
+
+    **Two things about the cards are still open, and both want a pointer.** A
+    card has had **no tooltip since its context menu was added** — `.help` is on
+    it and does not fire — and moving that menu to `.background`, which is
+    exactly what fixed the columns, **stops a card's right-click menu opening at
+    all**. So the two cases are not the same bug and the column's fix does not
+    generalise.
 
 ## Keeping this file honest
 
