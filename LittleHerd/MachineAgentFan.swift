@@ -85,6 +85,11 @@ struct MachineAgentFan: View {
     @State private var settling: Task<Void, Never>?
     @State private var carrying: Int?
     @State private var carried: CGSize = .zero
+    /// The card the pointer is on, by session id. Named rather than indexed
+    /// because the deck reshuffles under a pointer that has not moved — a
+    /// session finishing renumbers everything after it, and an index would
+    /// silently start describing a different agent.
+    @State private var named: String?
 
     /// **A spring with some mass in it.** Longer and looser than the app's
     /// usual 0.22s, and allowed to overshoot: these are objects being lifted
@@ -254,6 +259,10 @@ struct MachineAgentFan: View {
             height: tile + max(rise, 0),
             alignment: .topLeading
         )
+        // After the frame, so the label is placed against the fan's own
+        // origin — the point the icons' offsets are measured from — rather
+        // than against whatever the stack of offset icons happens to size to.
+        .overlay(alignment: .topLeading) { projectName }
         // **A target that does not move when the icons do.**
         //
         // Hover otherwise lands on the icons themselves, and the first thing
@@ -308,6 +317,69 @@ struct MachineAgentFan: View {
                 settled = true
             }
         }
+    }
+
+    /// The project a card belongs to, named above the row while it is pointed
+    /// at.
+    ///
+    /// **A card is twenty points wide and a project name is not.** The icon
+    /// says which agent, its position says which machine, and the one thing
+    /// nothing on screen said was *what it is working on* — a herd of
+    /// identical marks with the answer buried in a right-click menu. The
+    /// tooltip has it, four seconds late; this has it as you arrive.
+    ///
+    /// **It goes where the readings just went.** The band above the row is a
+    /// thermometer that has receded to almost nothing by the time a card can
+    /// be hovered, so the name costs no space and takes none from anything
+    /// still being read — the recede pays for itself rather than only looking
+    /// like depth. Drawn outside the fan's own frame, which is what the
+    /// resting icons taught: it still draws, and a label wants no hit region
+    /// anyway.
+    ///
+    /// Anchored over the card rather than over the machine, so the name and
+    /// the thing it names are plainly the same object, and nudged back inside
+    /// the window at the ends of the row where they would otherwise run off.
+    @ViewBuilder
+    private var projectName: some View {
+        let card = placed.first { $0.session.id == named }
+        let showing = card != nil && raised && settled && carrying == nil
+        // The machine's own name is `.caption.weight(.medium)` under its
+        // animal, and this is the same kind of fact about the same kind of
+        // thing — one row up, for one agent instead of one machine — so it is
+        // the same type rather than a second opinion about how a name looks.
+        Text(card?.session.projectName ?? " ")
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.primary)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .multilineTextAlignment(.center)
+            .frame(width: Self.nameWidth, height: Self.nameHeight)
+            .opacity(showing ? 1 : 0)
+            // Up as it arrives, so the name reads as coming forward out of the
+            // band the readings left rather than switching on in it.
+            .offset(
+                x: nameX(for: card),
+                y: -(Self.nameHeight + Self.nameGap) + (showing ? 0 : 3)
+            )
+            .allowsHitTesting(false)
+            .animation(
+                reduceMotion ? nil : .spring(duration: 0.26, bounce: 0),
+                value: showing
+            )
+            .animation(reduceMotion ? nil : .spring(duration: 0.26, bounce: 0), value: named)
+    }
+
+    private static let nameWidth: CGFloat = 132
+    private static let nameHeight: CGFloat = 15
+    /// Clear of the icons without drifting into the band's middle, where it
+    /// would read as a heading for the whole herd rather than a label on one
+    /// card.
+    private static let nameGap: CGFloat = 6
+
+    private func nameX(for card: Placed?) -> CGFloat {
+        guard let card else { return animalCentre - Self.nameWidth / 2 }
+        let ideal = card.rect.midX - Self.nameWidth / 2
+        return min(max(ideal, 4), max(width - Self.nameWidth - 4, 4))
     }
 
     @ViewBuilder
@@ -406,6 +478,17 @@ struct MachineAgentFan: View {
                 }
             }
             .gesture(carry(card.session, index: index, restingAt: card.rect.midX))
+            // Which one is being pointed at, for the name above the row. Safe
+            // to hang off the icon — the *deck's* hover is answered by the
+            // fixed column over the animal, so this one moving cannot put the
+            // fan away underneath itself.
+            .onHover { over in
+                if over {
+                    named = card.session.id
+                } else if named == card.session.id {
+                    named = nil
+                }
+            }
             .help(Text(card.session.displayTitle))
             .accessibilityLabel(Text(card.session.displayTitle))
     }

@@ -1017,7 +1017,7 @@ private struct RecedingReading: ViewModifier {
             // pointer crossed a machine. The ground stays cream and the
             // readings recede into it — which is what distance looks like in
             // daylight anyway, things going pale rather than going black.
-            .opacity(away ? 0.14 : 1)
+            .opacity(away ? 0.05 : 1)
             // **A reading that has gone is not something to click.** While the
             // fan is up the bars are backdrop, and leaving them live meant
             // aiming at a faint, shrunken target that had moved — so they stop

@@ -1,21 +1,16 @@
 # Little Herd — handoff
 
-**State:** `v0.1.60` is released and `main` carries thirteen commits beyond
-it, unreleased: the diff window, the progress bar on a card, both context menus
-rebuilt in AppKit, and the guide reordered. 627 tests pass on this Mac.
+**State:** `v0.1.61` is released and installed on this Mac. It is the first
+build that can move work: `startsTransfers` is `true`, a session has been
+transferred from this Mac to the mini twice, and the read half of the command
+line ships with it.
 
-**The transfer is built, wired, and switched off — and the reason it is off
-has expired.** `endDrag()` reports an accepted drop, `MonitorModel.beginTransfer`
-runs the whole seven-step move, a strip in the header band says which step it is
-in and offers to stop it, the card carries a progress bar across its foot, and a
-finished transfer opens a window showing the diff that came back.
-`DashboardChrome.startsTransfers` is still `false`, and its comment still gives
-the reason as *"there is nothing on screen yet to say a transfer is happening,
-how far it has got, or to call it off"* — all three of those now exist. **The
-next decision on this project is whether to turn that word to `true`**, and
-nothing but a live run stands in the way. Development builds rehearse the strip
-on a timer instead (`rehearsesTransfers`), which is how the wording and timing
-were judged.
+**The transfer is on.** `endDrag()` reports an accepted drop,
+`MonitorModel.beginTransfer` runs the whole seven-step move, a strip in the
+header band says which step it is in and offers to stop it, the card carries a
+progress bar across its foot, and a finished transfer opens a window showing the
+diff that came back. Development builds rehearse the strip on a timer instead
+(`rehearsesTransfers`), which is how the wording and timing were judged.
 
 **The dashboard follows the website's miniature of it: four metric tabs along
 the bottom, and a header that says one thing.** The pull-down they replace is
@@ -114,11 +109,12 @@ ten more between 27 and 29 August, and six of them are the transfer:
     0.1.58  the transfer machinery: departure, pilot, successor, coordinator
     0.1.59  a drop reaches the transfer, with the door held shut
     0.1.60  a strip to watch it and stop it; a machine is an account on a host
+    0.1.61  transfers on, and Little Herd answers questions from a shell
 
-and on `main`, unreleased: the diff window that says what came back, a progress
-bar across the foot of the card, both context menus rebuilt in AppKit because
-SwiftUI drops their icons, Settings saying each thing once, and the guide
-reordered to start where a Mac user already is.
+0.1.61 is the one that matters: the diff window, the progress bar across the
+foot of the card, both context menus rebuilt in AppKit because SwiftUI drops
+their icons, the six fixes that turning transfers on actually needed, and the
+read verbs (`machines`, `sessions`, `destinations`).
 
 **0.1.33 shipped a bug that could take a machine off the dashboard entirely** —
 an empty directory aborting the probe under zsh. Nothing in this herd tripped
@@ -1331,6 +1327,32 @@ right-clicking was the only one that could not be. **A bug that spares the empty
 case is a bug that will be found by a user**, because the empty case is what a
 developer tests with.
 
+**The fix for that shipped a worse bug, and the shape of it is the fact worth
+keeping: an `.overlay` holding an `NSViewRepresentable` swallows left-clicks
+even when the AppKit view's `hitTest` returns `nil` for them.** The menu was
+given to every column by wrapping each one in `.overlay { AppKitContextMenu }`.
+The right-click worked; clicking a machine to open it stopped working entirely,
+on every machine, and shipped that way in `v0.1.60`. Returning `nil` from
+`hitTest` is enough for AppKit — the event goes on to the next responder — but
+SwiftUI does not then offer it to the button drawn *underneath* the overlay. It
+drops it. **`.background` instead of `.overlay` fixes it**, which is the whole
+change: the representable sits behind the button rather than in front of it, and
+both gestures arrive.
+
+Five guesses at this were wrong before anything was measured — the scale on the
+receding bars, an `allowsHitTesting`, the hover column, the z-order, the
+button's own content shape. What found it was a click probe that logged every
+press: pointing at a machine and clicking produced **an empty log**, which said
+the button was never reached at all and ruled out everything inside it in one
+step. The lesson is this project's own — instrument rather than guess again —
+and it cost an evening for want of doing it first.
+
+**And the commit that fixed it did not contain the fix.** The edit was made by a
+script that asserted on the text it expected before writing, the assertion
+failed, and the script exited without writing while the commit message
+described the change in full. Caught by reading the diff before pushing. **Read
+the diff, not the intention**, especially when a scripted edit is involved.
+
 **A progress bar has to be weighted by how long each step takes, not by how many
 there are.** Six equal segments put the fill at a third for the whole of the
 agent's work — often most of a transfer, sometimes half an hour of it — then
@@ -1646,9 +1668,8 @@ worktree blocked every later transfer of the same session. **Every one was
 invisible to a green suite of ~670 tests and obvious within a minute of running
 the thing.** That ratio is the single most useful fact in this file.
 
-**Still unreleased.** The shipped build is `v0.1.60` and cannot transfer at
-all, so the website's promise is kept by `main` and not by anything anyone can
-download.
+**Released as `v0.1.61` on 3 September**, so the website's promise is now kept
+by a build people can download rather than only by `main`.
 
 The three items that were the critical path are essentially closed, and what
 replaced them is one decision and its consequences:
@@ -2878,6 +2899,36 @@ the only part drawn.
     asks the running app, which is faster and needs IPC. **Re-probe**:
     independence from the GUI is the entire point, and a tool that only works
     while a menu-bar app is open is not the thing `ACCESS.md` describes.
+
+16. **The readings recede while a fan is up, behind a flag, and it needs to be
+    lived with before it ships on.** `LittleHerdPreferences.recedesBarsUnderFanKey`
+    — off by default, on for this Mac. Pointing at a machine sends the whole
+    band of thermometers back down a tunnel: one converging vanishing point for
+    the herd rather than one per column, scaled to 0.62 and faded to **5%**,
+    while the animals and their names stay exactly where they are.
+
+    **Six rounds of correction, every one of them from looking.** It started as
+    a 10% shrink that read as "the bars got smaller"; it became per-column and
+    read as four separate rooms; a black veil made the tunnel dark and changed
+    the window's own ground colour every time a pointer crossed a machine, so
+    the readings recede into cream instead — which is what distance looks like
+    in daylight anyway. The bars stay clickable until they go, and stop being
+    clickable once they have: a faint, shrunken target that has moved is not a
+    control. **A machine in the red never recedes at all** — a reading that says
+    something is wrong is not backdrop.
+
+    **The recede empties a band, and the band now carries the project name.**
+    Hovering a card names the project it is working on, in the space the
+    thermometers just left, anchored over the card and in the same type as a
+    machine's own name. The card is twenty points wide; before this, what an
+    agent was *working on* lived only in a right-click menu and a four-second
+    tooltip. That the effect pays for the label is the argument for keeping it —
+    an ornament that clears room for a fact is not only an ornament.
+
+    **What is left is judgement, not code:** whether this is better than the
+    plain herd after a week of use, and whether the flag comes out on or is
+    deleted. The render harness cannot draw a hover state, so no test decides
+    this.
 
 ## Keeping this file honest
 
