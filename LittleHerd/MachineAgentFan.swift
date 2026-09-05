@@ -106,8 +106,10 @@ struct MachineAgentFan: View {
 
     /// How far open the deck is drawn: the animation's own value, or its end.
     private var openness: CGFloat { rendersOpen ? 1 : spread }
-    /// And whether it has arrived, which the count and the name both wait for.
-    private var landed: Bool { rendersOpen ? true : settled }
+    /// And whether the deck is at rest, which is when the count mark is
+    /// drawn. A forced-open render is not at rest, and saying so is what keeps
+    /// the render honest: the app draws no count on a raised deck either.
+    private var landed: Bool { rendersOpen ? false : settled }
 
     /// **A spring with some mass in it.** Longer and looser than the app's
     /// usual 0.22s, and allowed to overshoot: these are objects being lifted
@@ -360,7 +362,18 @@ struct MachineAgentFan: View {
     @ViewBuilder
     private var projectName: some View {
         let card = placed.first { $0.session.id == (named ?? rendersNameFor) }
-        let showing = card != nil && raised && landed && carrying == nil
+        // **Not `landed`, and that was the whole bug.** `settled` reads like
+        // "the rise has finished" and means the opposite — it is the deck
+        // having finished coming *down*, and it is false for the entire time a
+        // fan is up. Pairing it with `raised` made a condition that could
+        // never hold, so the label never drew while every part of it worked:
+        // the hover fired, the card was found, the geometry was right. Found
+        // by printing the pointer and the card rects, after two reasoned
+        // answers about which view was swallowing the event were both wrong.
+        //
+        // There was nothing to wait for anyway. The pointer cannot be on a
+        // card until the card is there.
+        let showing = card != nil && raised && carrying == nil
         // The machine's own name is `.caption.weight(.medium)` under its
         // animal, and this is the same kind of fact about the same kind of
         // thing — one row up, for one agent instead of one machine — so it is

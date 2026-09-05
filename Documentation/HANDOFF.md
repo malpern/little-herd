@@ -1353,6 +1353,29 @@ failed, and the script exited without writing while the commit message
 described the change in full. Caught by reading the diff before pushing. **Read
 the diff, not the intention**, especially when a scripted edit is involved.
 
+**`settled` on the agent fan means the deck has finished coming *down*, not
+that the rise has finished.** It is set false the instant a deck goes up and
+stays false for as long as the fan is raised. A condition written as
+`raised && settled` therefore never holds — which is how the project-name label
+came to draw nowhere at all while the hover fired, the card was found and the
+geometry was correct. Two evenings of this project have now been spent blaming
+a layering problem for a state problem.
+
+**It was found by printing the pointer and the card rects, after two reasoned
+answers were wrong**, and the log said `point=(92.0, 21.5)` landing squarely
+inside card 1's rect with a real session id attached. Both wrong answers were
+plausible and neither survived one line of output. This is the third entry in
+this file whose moral is the same: instrument first.
+
+**A render seam that does not reproduce the app's state will certify behaviour
+the app does not have.** `rendersOpen` was written to force a deck open for a
+render, and it also forced `landed` **true** — reasoning that a rendered deck
+has finished arriving. The app's raised deck is never `landed`, so the harness
+drew the label happily while the app could not, and the picture said the
+feature worked. It now reports `landed` as *false* when forced open, matching
+the app, and the count mark correctly disappears from a raised render. A seam
+is only worth having if it lies about nothing.
+
 **A progress bar has to be weighted by how long each step takes, not by how many
 there are.** Six equal segments put the fill at a third for the whole of the
 agent's work — often most of a transfer, sometimes half an hour of it — then
@@ -2925,10 +2948,25 @@ the only part drawn.
     tooltip. That the effect pays for the label is the argument for keeping it —
     an ornament that clears room for a fact is not only an ornament.
 
+    **The harness can draw a hover state now** — `rendersFanFor`,
+    `rendersNameFor` and `rendersOpen` hand in the state a pointer would
+    produce, and `hover-0`…`hover-5` cover the cases worth seeing, including
+    the longest name on the card nearest an edge and a fan on the last column,
+    where the label is wider than its column and only the clamp keeps it in
+    the window. All of them are right.
+
     **What is left is judgement, not code:** whether this is better than the
     plain herd after a week of use, and whether the flag comes out on or is
-    deleted. The render harness cannot draw a hover state, so no test decides
-    this.
+    deleted. No test decides that.
+
+    **Two things are still open and both want a pointer.** A card has had **no
+    tooltip since its context menu was added** — `.help` is on it and does not
+    fire — and moving that menu to `.background`, which is exactly what fixed
+    the columns, **stops a card's right-click menu opening at all**. So the two
+    cases are not the same bug and the column's fix does not generalise. And
+    the label itself has still only been seen in a render: synthetic pointer
+    events raised the deck twice and then stopped being delivered at all, while
+    clicks kept working, so the live look has not been signed off by anyone.
 
 ## Keeping this file honest
 
