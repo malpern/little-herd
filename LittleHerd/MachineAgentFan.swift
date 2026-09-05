@@ -30,6 +30,14 @@ struct MachineAgentFan: View {
     var onDrop: () -> Void = {}
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// **The name rides the recede's flag, because the recede is what makes
+    /// room for it.** With the readings still forward, the band the label sits
+    /// in is full of thermometer, and the name lands on top of a live chart —
+    /// seen in a render of the default configuration, which is the one almost
+    /// everybody has. The two are one feature: the effect earns its keep by
+    /// clearing the space, and without the effect there is no space.
+    @AppStorage(LittleHerdPreferences.recedesBarsUnderFanKey)
+    private var recedesBarsUnderFan = false
     /// 0 while the icons are still stacked behind the animal, 1 once they have
     /// risen and spread. Animated on appear, so the fan comes *out of* the
     /// machine rather than materialising above it — a cross-fade at the
@@ -374,6 +382,7 @@ struct MachineAgentFan: View {
         // There was nothing to wait for anyway. The pointer cannot be on a
         // card until the card is there.
         let showing = card != nil && raised && carrying == nil
+            && recedesBarsUnderFan
         // The machine's own name is `.caption.weight(.medium)` under its
         // animal, and this is the same kind of fact about the same kind of
         // thing — one row up, for one agent instead of one machine — so it is

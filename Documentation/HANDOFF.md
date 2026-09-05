@@ -2940,7 +2940,12 @@ the only part drawn.
     control. **A machine in the red never recedes at all** — a reading that says
     something is wrong is not backdrop.
 
-    **The recede empties a band, and the band now carries the project name.**
+    **The recede empties a band, and the band now carries the project name —
+    and the two ride the same flag, which a render is what settled.** The name
+    shipped ungated at first, so with the readings still forward it drew on top
+    of a live chart. That is the *default* configuration, the one almost
+    everybody has, and nothing but rendering it would have shown it: the flag
+    was on for every look taken by the person who wrote it.
     Hovering a card names the project it is working on, in the space the
     thermometers just left, anchored over the card and in the same type as a
     machine's own name. The card is twenty points wide; before this, what an
@@ -2950,10 +2955,11 @@ the only part drawn.
 
     **The harness can draw a hover state now** — `rendersFanFor`,
     `rendersNameFor` and `rendersOpen` hand in the state a pointer would
-    produce, and `hover-0`…`hover-5` cover the cases worth seeing, including
-    the longest name on the card nearest an edge and a fan on the last column,
-    where the label is wider than its column and only the clamp keeps it in
-    the window. All of them are right.
+    produce, and `hover-0`…`hover-6` cover the cases worth seeing: the longest
+    name on the card nearest an edge, a fan on the last column where the label
+    is wider than its column and only the clamp keeps it in the window, and
+    **the flag turned off**, which is the one that found a defect rather than
+    confirming a success.
 
     **What is left is judgement, not code:** whether this is better than the
     plain herd after a week of use, and whether the flag comes out on or is

@@ -1176,5 +1176,23 @@ extension PanelRenderHarness {
             size: size,
             named: "hover-5-right-edge"
         )
+
+        // **The default, which is the case almost everybody sees, and the
+        // render that caught a real defect.** The name used to draw whatever
+        // the flag said, so with the readings still forward it landed on top
+        // of a live chart. It rides the same flag now, and this render is the
+        // proof: a raised fan, a card named, and no label — because with the
+        // bars where they are there is nowhere to put one.
+        defaults.set(false, forKey: key)
+        try render(
+            CPUOverviewView(
+                machines: machines,
+                metric: .cpu,
+                rendersFanFor: MachineID("air"),
+                rendersNameFor: "b"
+            ),
+            size: size,
+            named: "hover-6-no-recede-means-no-name"
+        )
     }
 }
