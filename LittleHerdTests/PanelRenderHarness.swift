@@ -44,6 +44,15 @@ struct PanelRenderHarness {
             content: view
                 .frame(width: size.width, height: size.height)
                 .background(Color(nsColor: .windowBackgroundColor))
+                // Without this every `NSViewRepresentable` in the picture is a
+                // yellow square with a red no-entry sign through it, drawn
+                // over the thing it is attached to. The overview carries one
+                // per machine — the right-click menu — so the herd rendered
+                // as four prohibition signs on a yellow ground for weeks, and
+                // it reads so exactly like a missing asset catalog that the
+                // catalog is the first place anyone looks. See
+                // `EnvironmentValues.isRenderingStillImage`.
+                .environment(\.isRenderingStillImage, true)
         )
         renderer.scale = 2
 
@@ -396,6 +405,8 @@ struct CredentialsSheetRenderHarness {
             )
             .frame(width: Self.sheetSize.width, height: Self.sheetSize.height)
             .background(Color(nsColor: .windowBackgroundColor))
+            // The same reason as the other funnel above.
+            .environment(\.isRenderingStillImage, true)
         )
         renderer.scale = 2
         let image = try #require(renderer.nsImage, "\(name) rendered nothing")

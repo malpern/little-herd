@@ -97,7 +97,30 @@ nonisolated enum WindowPlacement {
     }
 }
 
-struct DashboardWindowBridge: NSViewRepresentable {
+struct DashboardWindowBridge: View {
+    let presentation: DashboardWindowPresentation
+    let reduceMotion: Bool
+    let dashboardContentSize: NSSize
+
+    /// There is no window to bridge to under `ImageRenderer`, and the
+    /// representable draws a prohibition sign across whatever it is attached
+    /// to. See `EnvironmentValues.isRenderingStillImage`.
+    @Environment(\.isRenderingStillImage) private var isRenderingStillImage
+
+    var body: some View {
+        if isRenderingStillImage {
+            Color.clear.allowsHitTesting(false)
+        } else {
+            WindowObserverBridge(
+                presentation: presentation,
+                reduceMotion: reduceMotion,
+                dashboardContentSize: dashboardContentSize
+            )
+        }
+    }
+}
+
+private struct WindowObserverBridge: NSViewRepresentable {
     let presentation: DashboardWindowPresentation
     let reduceMotion: Bool
     let dashboardContentSize: NSSize

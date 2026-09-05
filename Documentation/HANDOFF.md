@@ -152,7 +152,8 @@ to a green suite. **Render a view before shipping it.** It now also draws the
 three hovered headers at the 68 points the header area gives them, which is
 where the CPU one was caught still reporting cores.
 
-Four things it cannot see. It renders neither `ScrollView` nor a lazy stack —
+Four things it cannot see, and one it used to draw wrong. It renders neither
+`ScrollView` nor a lazy stack —
 the first version wrapped both, wrote a blank image and reported success — nor
 a `Form`, which is why the sign-in sheet renders with a blank band where its
 fields are. **A `.borderless` or `.link` button draws as a yellow no-entry
@@ -164,7 +165,9 @@ hover has to be checked in the running app: the AI panel's section chevrons are
 unverified by eye. Tooltips no longer need the eye — read `AXHelp` off the
 running app's accessibility tree instead, which is the same string macOS shows
 and can be had for every machine in one command. See the method notes; the
-mouse turned out to be the least reliable instrument in the room.
+mouse turned out to be the least reliable instrument in the room. The one it
+drew wrong was every `NSViewRepresentable` in a fixture, including the herd's
+own right-click menu — see the fact below; the fixtures are honest again.
 
 **The Synology hardware is fixed.** Drive 2 was replaced on 17 August 2026 — a WD40EFZZ
 (4 TB, CMR) for the WD30EFRX that had shed 231 uncorrectable sectors. Pool
@@ -1368,6 +1371,43 @@ alternative to judging a live control from a screenshot of it.**
 `ImageRenderer`** and is an ordinary spinner in the app. One more thing the
 harness cannot draw; the transfer strip's five states were drawn there and that
 one was checked live.
+
+**And so does every `NSViewRepresentable` — which is what had the overview
+fixtures coming out yellow.** `ImageRenderer` cannot flatten a platform view:
+it fills the space with system yellow, draws a red no-entry sign through it,
+logs `Unable to render flattened version of PlatformViewRepresentableAdaptor`,
+and returns a successful render. The herd carries one representable per machine
+— the AppKit right-click menu, mounted as a `.background` behind each column —
+so `overview-agent-badges` and every other overview fixture spent weeks as four
+prohibition signs on a yellow ground, and the harness could not have caught a
+visual defect in the thing it was covering up.
+
+**It reads exactly like a missing asset catalog, and it is not one.** Two of
+the four avatars drew correctly and two did not, the ground was a flat colour
+where a colour set should have been, and that is a very good impression of a
+test host that cannot find `Assets.car`. The first hour went there. What
+settles it in a minute instead: ask for the assets directly from inside the
+test host — `NSImage(named:)` and `NSColor(named:)` on every one of them —
+and, if they all resolve, render the suspect view *and* its bare parts side by
+side. The parts drew perfectly; only the composition was yellow. **When a
+render disagrees with a direct lookup, believe the lookup and go looking for
+what is drawn on top.**
+
+The fix is `EnvironmentValues.isRenderingStillImage`, set by both of the
+harness's render funnels and read by `AppKitContextMenu` and
+`DashboardWindowBridge`, which stand aside as `Color.clear` under a render.
+Neither draws anything on screen — one is there for the events, the other for
+the window — so this is not a stand-in for the picture, it *is* the picture.
+**Anything new conforming to `NSViewRepresentable` has to read that flag too**,
+or it will put a prohibition sign over whatever it is attached to.
+`StillImageRenderingTests` guards it: it draws the placeholder on purpose to
+learn its two colours — they are system colours, a literal would drift, and the
+app draws that same yellow itself in a warning thermometer, so the signature is
+the red ring *lying on* that yellow — and then fails if the overview render
+contains one. Verified by taking the flag back out and watching it fail. The
+diff window's two panes are still placeholders and are meant to be: those are
+SwiftUI's own platform views for lazy containers, which no flag of ours
+reaches.
 
 **`-only-testing` with a bare Swift Testing function name runs nothing and
 reports success.** `-only-testing:LittleHerdTests/SuiteName/testName` matches no
