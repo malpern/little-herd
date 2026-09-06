@@ -294,3 +294,93 @@ struct DestinationAuthTests {
         #expect(reason.contains("expired"))
     }
 }
+
+/// What the departing session is called when it is asked for its brief.
+///
+/// **The bug this suite exists for shipped because every fixture was clean.**
+/// `AgentSession.id` is `claude:<uuid>` on a real herd, and the only session
+/// ever transferred live was built by hand in `LiveTransferHarness` with a
+/// bare uuid — so `--resume` got a name that worked, twice, and nobody learned
+/// that the assembly passes `id` straight through. The first real session
+/// handed to `little-herd move` failed on the brief step with no output at
+/// all, because `claude --resume claude:<uuid>` matches nothing and says
+/// nothing.
+@Suite("Resuming the departing session")
+struct DepartureIdentifierTests {
+    private func session(id: String) -> AgentSession {
+        AgentSession(
+            id: id,
+            provider: .claude,
+            projectName: "little-herd",
+            state: .waiting,
+            updatedAt: .now,
+            progress: nil,
+            workingDirectory: "/Users/a/local-code/little-herd"
+        )
+    }
+
+    @Test
+    func theProviderIsNotPartOfTheName() {
+        #expect(
+            session(id: "claude:256a6c0f-ca77-463a-b903-dbb4ff6d4831").bareIdentifier
+                == "256a6c0f-ca77-463a-b903-dbb4ff6d4831"
+        )
+        // An identifier that never carried one is left alone rather than
+        // mangled — which is what every fixture looked like.
+        #expect(session(id: "256a6c0f-ca77").bareIdentifier == "256a6c0f-ca77")
+        // A uuid contains no colon, so splitting once is enough; a second one
+        // would belong to the identifier and must survive.
+        #expect(session(id: "codex:a:b").bareIdentifier == "a:b")
+    }
+
+    /// **The assertion that matters is on the command**, not on the helper: the
+    /// helper existed and was correct, and the assembly simply did not call it.
+    @Test
+    func theBriefResumesAnIdentifierWithNoProviderInIt() throws {
+        let herd = [
+            DestinationAccount(
+                machine: MachineID("air"), name: "Air", symbolName: "laptopcomputer",
+                report: DestinationReport(
+                    installations: [
+                        AgentInstallation(provider: .claude, version: "1",
+                                          path: "/Users/a/.local/bin/claude")
+                    ],
+                    checkouts: ["little-herd": "/Users/a/local-code/little-herd"]
+                ),
+                mayHostSessions: true, auth: .unverified, isVerifying: false
+            ),
+            DestinationAccount(
+                machine: MachineID("mini"), name: "Mini", symbolName: "desktopcomputer",
+                report: DestinationReport(
+                    installations: [
+                        AgentInstallation(provider: .claude, version: "1",
+                                          path: "/Users/b/.local/bin/claude")
+                    ],
+                    checkouts: ["little-herd": "/Users/b/local-code/little-herd"]
+                ),
+                mayHostSessions: true, auth: .unverified, isVerifying: false
+            ),
+        ]
+
+        let request = try #require(
+            try? TransferAssembly.request(
+                session: session(id: "claude:256a6c0f-ca77-463a-b903-dbb4ff6d4831"),
+                from: MachineID("air"),
+                to: MachineID("mini"),
+                in: herd,
+                check: .xcode(scheme: "LittleHerd")
+            ).get()
+        )
+
+        let brief = try #require(
+            request.departure.first {
+                $0.purpose == .brief && $0.command.contains("--resume")
+            }
+        )
+        #expect(brief.command.contains("256a6c0f-ca77-463a-b903-dbb4ff6d4831"))
+        #expect(
+            !brief.command.contains("claude:256a6c0f"),
+            "the provider reached --resume, which is the whole bug"
+        )
+    }
+}

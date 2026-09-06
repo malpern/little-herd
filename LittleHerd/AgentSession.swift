@@ -343,6 +343,22 @@ nonisolated struct AgentSession: Equatable, Identifiable, Sendable {
         return title
     }
 
+    /// The transcript's own identifier, without the provider in front of it.
+    ///
+    /// **`id` is `claude:<uuid>`, and that prefix is not part of any name an
+    /// agent knows.** `claude --resume claude:<uuid>` finds nothing. The
+    /// command line learned this early — the first eight characters of an `id`
+    /// are all provider, so every row printed the same `claude:1` — and the
+    /// transfer never did, because the only session ever moved live was a
+    /// fixture built by hand with a bare uuid in it. The first real session
+    /// handed to `move` failed on the brief with no output at all.
+    ///
+    /// It lives here so there is one description of it rather than one per
+    /// caller, which is how those two came to disagree.
+    var bareIdentifier: String {
+        id.split(separator: ":", maxSplits: 1).last.map(String.init) ?? id
+    }
+
     /// The line under the title, when there is something specific to put there.
     ///
     /// Nil rather than a restatement of the state. It used to say "Waiting for

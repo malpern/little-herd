@@ -149,6 +149,7 @@ extension HerdCommand {
             var authRefusal: String?
             if !request.destinationAgentPath.isEmpty {
                 log("checking \(destination.shortName) can sign in")
+                log("agent: \(request.destinationAgentPath)")
                 let state = await AgentAuthVerifier.verify(
                     install: AgentInstallation(
                         provider: request.provider,
@@ -164,10 +165,29 @@ extension HerdCommand {
                 if case .refused(let why) = state { authRefusal = why }
             }
 
+            // **Wrapped so a failure names the command that failed.** The
+            // first live run through this verb reported `departure(.brief, "")`
+            // — the right step and nothing else, because `SuccessorLocal`
+            // returns exactly an empty string when a process will not start,
+            // and an empty string is indistinguishable from a command that ran
+            // and said nothing. A tool that runs commands on your machines
+            // should be able to tell you which one it was.
+            let inner = TransferRunners.departure(for: origin)
             let prepared = await TransferDriver.prepare(
                 request,
                 authRefusal: authRefusal,
-                departure: TransferRunners.departure(for: origin)
+                departure: { step in
+                    log("\(step.purpose)")
+                    let out = await inner(step)
+                    if !out.succeeded {
+                        log("failed: \(step.command)")
+                        let said = out.text.trimmingCharacters(
+                            in: .whitespacesAndNewlines
+                        )
+                        log(said.isEmpty ? "it said nothing at all" : "said: \(said)")
+                    }
+                    return out
+                }
             )
 
             switch prepared {
@@ -198,12 +218,24 @@ extension HerdCommand {
                     "branch": request.transfer.branch,
                     "left_a_branch": phase.leftABranch ? "true" : "false",
                     "detail": phase.detail,
+                    "output": result.output,
                 ]]),
                 result.result == SuccessorOutcome.Result.landed ? 0 : 1
             )
         }
 
         var lines = ["", phase.detail]
+        // **And what it actually said.** `detail` is the sentence for the
+        // *state* — "It never started, so nothing was changed anywhere" — and
+        // the dashboard pairs it with the output in a window. Printing only
+        // the sentence made the first live run through this verb report a
+        // refusal with no reason attached, which is a tool that knows why and
+        // will not say.
+        let said = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !said.isEmpty {
+            lines.append("")
+            lines.append(contentsOf: said.split(separator: "\n").map { "  \($0)" })
+        }
         if phase.leftABranch {
             lines.append("")
             lines.append("  branch  \(request.transfer.branch)")

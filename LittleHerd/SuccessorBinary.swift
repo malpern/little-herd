@@ -19,7 +19,24 @@ nonisolated enum SuccessorBinary {
     /// `env: node: No such file or directory` under a non-interactive shell,
     /// which is the same PATH lesson the probe already learned.
     static let allowedSuffixes: [AgentTaskProvider: [String]] = [
-        .claude: ["/.local/bin/claude", "/.claude/local/claude"],
+        // **The third is the Claude desktop app's own copy**, and it is where
+        // the mini actually keeps its agent: the herd reported
+        // `~/Library/Application Support/Claude/claude-code/<version>/claude.app/
+        // Contents/MacOS/claude`, which every transfer to that machine was
+        // refused for. Found by moving a real session rather than a fixture —
+        // the departure succeeded, the branch was pushed, and the arrival was
+        // turned away at the last gate.
+        //
+        // The version is deliberately not in the suffix: it changes under you,
+        // and pinning it would mean this refusing again on the next update. The
+        // bundle path is specific enough to be worth the same trust as the
+        // other two, and it was measured the same way — run over plain ssh on
+        // the mini, and it answered.
+        .claude: [
+            "/.local/bin/claude",
+            "/.claude/local/claude",
+            "/claude.app/Contents/MacOS/claude",
+        ],
         .codex: ["/.local/bin/codex"],
     ]
 

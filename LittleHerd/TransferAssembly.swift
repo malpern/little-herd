@@ -100,7 +100,10 @@ nonisolated enum TransferAssembly {
                     // only the path the departure operates on changes.
                     repository: directory,
                     branch: branch,
-                    sessionIdentifier: session.id,
+                    // Without the provider: see `bareIdentifier`. Passing
+                    // `id` asked an agent to resume a session whose name began
+                    // `claude:`, which it has never heard of.
+                    sessionIdentifier: session.bareIdentifier,
                     provider: session.provider,
                     agentExecutable: sourceInstallation.path,
                     briefPath: briefPath,

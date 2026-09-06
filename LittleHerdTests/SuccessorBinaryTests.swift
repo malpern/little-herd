@@ -59,3 +59,46 @@ struct SuccessorBinaryTests {
         #expect(SuccessorBinary.accept("/opt/homebrew/bin/codex", for: .codex) == nil)
     }
 }
+
+/// Where this herd's agents actually live.
+///
+/// **The allowlist is a security boundary and it was also wrong**, which is an
+/// uncomfortable pair: the mini keeps its agent inside the Claude desktop
+/// app's bundle, so every transfer to it was refused at the last gate after
+/// the work had already been pushed. Measured over plain ssh before being
+/// added, which is the rule the list is kept by.
+@Suite("The desktop app's own agent")
+struct SuccessorBinaryBundleTests {
+    private static let mini =
+        "/Users/malpern/Library/Application Support/Claude/claude-code/"
+        + "2.1.255/claude.app/Contents/MacOS/claude"
+
+    @Test
+    func theBundledAgentIsAccepted() {
+        #expect(SuccessorBinary.accept(Self.mini, for: .claude) == Self.mini)
+    }
+
+    /// **The version is not part of the rule.** It changes on its own, and a
+    /// suffix carrying one would refuse again the next time the app updated —
+    /// after the branch had been pushed, which is the expensive place to fail.
+    @Test
+    func aDifferentVersionOfItIsStillAccepted() {
+        let later = Self.mini.replacingOccurrences(of: "2.1.255", with: "9.9.9")
+        #expect(SuccessorBinary.accept(later, for: .claude) == later)
+    }
+
+    /// And it is still a boundary: the bundle path is what is trusted, not the
+    /// name at the end of it.
+    @Test
+    func somethingElseInsideTheBundleIsStillRefused() {
+        #expect(
+            SuccessorBinary.accept(
+                "/Users/x/Library/Application Support/Claude/claude.app/Contents/MacOS/sh",
+                for: .claude
+            ) == nil
+        )
+        #expect(SuccessorBinary.accept("/tmp/claude", for: .claude) == nil)
+        // A codex path is not a claude path, whatever it ends in.
+        #expect(SuccessorBinary.accept(Self.mini, for: .codex) == nil)
+    }
+}
