@@ -1,6 +1,11 @@
 # Little Herd — handoff
 
-**State:** `v0.1.63` is released and installed on this Mac. `0.1.61` was the
+**State:** `v0.1.64` is released and installed on this Mac. It is the first
+build whose transfer works against a real session: until it, the agent
+identifier reached `--resume` with its provider still on the front, and the
+mini's agent — which lives inside the Claude desktop app's bundle — was refused
+by the binary allowlist after the branch had already been pushed. Both were
+found by moving a session from the command line, which is why that verb exists. `0.1.61` was the
 first build that could move work: `startsTransfers` is `true`, a session has
 been transferred from this Mac to the mini twice, and the read half of the
 command line ships with it. `0.1.62` added a name on a hovered agent and
@@ -116,6 +121,8 @@ ten more between 27 and 29 August, and six of them are the transfer:
     0.1.62  a hovered agent names its project, in the band the readings vacate
     0.1.63  it names the *work* instead — the folder was the wrong answer; a
             card gets its tooltip back and Codex threads their real names
+    0.1.64  a session can be moved from a shell, and a transfer to the mini
+            works for the first time
 
 0.1.61 is the one that matters: the diff window, the progress bar across the
 foot of the card, both context menus rebuilt in AppKit because SwiftUI drops
@@ -1358,6 +1365,39 @@ script that asserted on the text it expected before writing, the assertion
 failed, and the script exited without writing while the commit message
 described the change in full. Caught by reading the diff before pushing. **Read
 the diff, not the intention**, especially when a scripted edit is involved.
+
+**A session's identifier carries its provider, and the transfer handed the
+whole thing to `--resume`.** `AgentSession.id` is `claude:<uuid>` on a real
+herd. An agent asked to resume a session whose name begins `claude:` has never
+heard of it, **exits without a word**, and the departure reports
+`departure(.brief, "")` — the right step and nothing else, because
+`SuccessorLocal` returns exactly an empty string when a process will not start,
+which is indistinguishable from a command that ran and said nothing.
+
+**It survived two live transfers and ~700 tests because every fixture was
+clean.** `LiveTransferHarness` builds its session by hand with a bare uuid in
+it, so `--resume` was handed a name that worked, twice, and nobody learned that
+the assembly passes `id` straight through. The command line had already met
+this trap from the other side — `id.prefix(8)` printed `claude:1` for every row
+— and stripped the provider in its own helper that the transfer never called.
+There is one description of it now, on the session.
+
+**And the binary allowlist was right and wrong at once.** `SuccessorBinary`
+accepts an agent path only if it ends in a location measured working, because
+the path is a *claim by the destination* and executing it unchecked would make
+a compromised machine choose what the source runs on it. Sound — and it did not
+know that the mini keeps its agent inside the Claude desktop app's bundle
+(`~/Library/Application Support/Claude/claude-code/<version>/claude.app/
+Contents/MacOS/claude`), so every transfer to that machine was refused **at the
+last gate, after the branch had been pushed**. The bundle suffix was measured
+over plain ssh before being added, which is the rule that list is kept by, and
+the version is deliberately not part of it: pinning one would reintroduce the
+same refusal on the next update, again after the push.
+
+**Both were found by moving a real session and neither could have been found by
+a test.** That is now the second time this project has learned the same thing:
+six transfer bugs from one live run in September, two more from one in
+September's successor. A green suite says the fixtures are consistent.
 
 **"Unmerged" and "not in main" are different questions, and `git cherry` is
 what tells them apart.** A review of this repo on 5 September found 51 local
@@ -2984,7 +3024,27 @@ the only part drawn.
     actor to finish — a deadlock. Sampling needs no actor; formatting happens
     back where it started.
 
-    **`move` remains the separate decision.**
+    **`move` shipped on 6 September, and the decision it was waiting on was
+    made rather than avoided.** The objection was never difficulty: a verb
+    removes the human gesture by construction, so an agent that can call it can
+    send its own work to another machine and spend tokens there with nobody
+    dragging anything. The answer is the rule the rest of this house already
+    uses, copied from `attgw` and `yarm` — the change is printed and refused
+    without `--yes`, and the exit code carries the contract: `0` applied, `1`
+    error, `2` refused and *nothing changed*, so that "I declined" cannot be
+    read as "I did it".
+
+    **It is not a second implementation, and that is the point.**
+    `TransferDriver` holds the order the whole thing depends on — ask whether
+    the destination can sign in, depart, plan the arrival — and
+    `TransferRunners` holds how to run a command on a given machine. Both were
+    private to `MonitorModel`, which was fine while a drag was the only caller.
+    A transfer started from a shell is evidence about a transfer started by a
+    drop only if they are the same code; otherwise the end-to-end test tests
+    itself.
+
+    **What is left of this item is `transfers`** — what is in flight — and
+    nothing else.
 
         little-herd machines [--json]
         little-herd sessions [--json]
