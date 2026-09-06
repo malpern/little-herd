@@ -401,8 +401,8 @@ struct MachineAgentFan: View {
             .foregroundStyle(.primary)
             .lineLimit(1)
             .truncationMode(.tail)
-            .multilineTextAlignment(.center)
-            .frame(width: Self.nameWidth, height: Self.nameHeight)
+            .multilineTextAlignment(.leading)
+            .frame(width: Self.nameWidth, height: Self.nameHeight, alignment: .leading)
             .opacity(showing ? 1 : 0)
             // Up as it arrives, so the name reads as coming forward out of the
             // band the readings left rather than switching on in it.
@@ -431,10 +431,22 @@ struct MachineAgentFan: View {
     /// card.
     private static let nameGap: CGFloat = 6
 
+    /// The label's left edge: the **card's** left edge.
+    ///
+    /// **It used to be centred on the card, and that read as belonging to the
+    /// wrong one.** A name is wider than the twenty points a card occupies, so
+    /// centring spreads it either side, and the clamp that keeps it inside the
+    /// window then slides it further — enough that pointing at the second icon
+    /// put its name back over the first. Lining the text up under the icon it
+    /// names says which one it is before you have read a word of it.
+    ///
+    /// The clamp stays, and only for the case it was written for: a card near
+    /// the right edge whose label would otherwise run off. There the label
+    /// gives up the alignment rather than the window, because a name half
+    /// outside the window cannot be read at all.
     private func nameX(for card: Placed?) -> CGFloat {
         guard let card else { return animalCentre - Self.nameWidth / 2 }
-        let ideal = card.rect.midX - Self.nameWidth / 2
-        return min(max(ideal, 4), max(width - Self.nameWidth - 4, 4))
+        return min(max(card.rect.minX, 4), max(width - Self.nameWidth - 4, 4))
     }
 
     @ViewBuilder
