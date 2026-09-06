@@ -1207,3 +1207,63 @@ extension PanelRenderHarness {
         )
     }
 }
+
+// MARK: - What fills a disk
+
+/// The folder browser, with the names people actually have.
+///
+/// **This is a layout question and nothing else answers it.** The listing used
+/// to carry a Date Modified column between the name and the size, and the
+/// names paid for it: `Application Support` came out as `Ap…ort` and
+/// `Developer` as `De…per` in a panel three hundred points wide. Whether
+/// removing the column is enough is a thing to look at, so here it is.
+extension PanelRenderHarness {
+    @Test
+    func renderTheFolderBrowser() throws {
+        let store = FolderSizeStore(
+            fileURL: URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent("browser-render-\(UUID().uuidString).json")
+        )
+        let machine = MachineID("local")
+        let root = "/Users/x/Library"
+
+        // Real names off this Mac's own Library, longest first, because the
+        // long ones are the whole question.
+        let entries = [
+            ("Developer", 11_000_000_000.0),
+            ("Application Support", 2_000_000_000.0),
+            ("Containers", 1_400_000_000.0),
+            ("Group Containers", 900_000_000.0),
+            ("Audio", 510_600_000.0),
+            ("Logs", 206_900_000.0),
+            ("Apple", 58_500_000.0),
+            ("Trial", 50_200_000.0),
+        ].map { name, size in
+            FolderEntry(
+                name: name,
+                path: "\(root)/\(name)",
+                sizeBytes: size,
+                isDirectory: true,
+                modifiedAt: Date()
+            )
+        }
+        store.record(entries, machine: machine, path: root)
+
+        let browser = FolderBrowserModel(
+            machine: machine,
+            availability: .available(FolderSizeScanner(location: .local)),
+            store: store
+        )
+        // Opens from what was written down rather than measuring anything —
+        // see `expand`, which prefers a remembered scan.
+        browser.toggle(root, isRoot: true)
+        #expect(!browser.rows.isEmpty, "nothing to draw")
+
+        try render(
+            FolderBrowserView(model: browser, path: root, isLocal: true)
+                .padding(.horizontal, 10),
+            size: CGSize(width: 300, height: 230),
+            named: "folder-browser"
+        )
+    }
+}

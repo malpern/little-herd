@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// What is taking up a volume, laid out the way the Finder lays it out.
@@ -8,8 +9,12 @@ import SwiftUI
 /// expensive, and a progress bar with a count is more honest than a spinner
 /// that could mean anything.
 struct FolderBrowserView: View {
+    @Environment(\.isRenderingStillImage) private var isRenderingStillImage
     @Bindable var model: FolderBrowserModel
     let path: String
+    /// Passed down to the rows so a right-click can offer the Finder only when
+    /// the Finder could actually find it. See `FolderRowView.isLocal`.
+    var isLocal = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -91,8 +96,19 @@ struct FolderBrowserView: View {
             HStack {
                 Text("Measured \(FolderDateFormatter.string(for: measuredAt).lowercased())")
                 Spacer()
-                Button("Refresh") { model.refresh(path) }
-                    .buttonStyle(.link)
+                // **A `.link` button is one of the styles `ImageRenderer`
+                // cannot flatten**, and it paints a yellow square with a red
+                // no-entry sign in its place — the same placeholder that had
+                // the whole herd rendering yellow until the menus were taught
+                // to stand aside. The flag's own note says anything else with
+                // a representable underneath has to read it too; this is the
+                // second thing that does.
+                if isRenderingStillImage {
+                    Text("Refresh")
+                } else {
+                    Button("Refresh") { model.refresh(path) }
+                        .buttonStyle(.link)
+                }
             }
             .font(.caption2)
             .foregroundStyle(.secondary)
@@ -117,7 +133,7 @@ struct FolderBrowserView: View {
                 FolderColumnHeader(sort: $model.sort)
             }
             ForEach(model.rows) { row in
-                FolderRowView(row: row, model: model)
+                FolderRowView(row: row, model: model, isLocal: isLocal)
             }
         }
     }
@@ -131,8 +147,6 @@ private struct FolderColumnHeader: View {
         HStack(spacing: 8) {
             heading(.name)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            heading(.dateModified)
-                .frame(width: 68, alignment: .trailing)
             heading(.size)
                 .frame(width: 58, alignment: .trailing)
         }
@@ -162,6 +176,14 @@ private struct FolderColumnHeader: View {
 private struct FolderRowView: View {
     let row: FolderBrowserModel.Row
     let model: FolderBrowserModel
+    /// Whether these paths are on the Mac this app is running on.
+    ///
+    /// **The Finder can only open what is here.** Every other machine in the
+    /// herd is measured over SSH, and a path from the mini either does not
+    /// exist on this Mac or — worse — exists and is something else entirely.
+    /// Revealing the wrong folder with the right name is the kind of wrong
+    /// answer that gets believed, so the item is absent rather than broken.
+    let isLocal: Bool
 
     var body: some View {
         HStack(spacing: 6) {
@@ -179,16 +201,16 @@ private struct FolderRowView: View {
                 .font(.system(size: 10))
                 .foregroundStyle(MetricKind.disk.color)
 
+            // **Truncating at the end, not the middle.** Middle truncation is
+            // right when both ends identify a thing — a path does — and wrong
+            // for a single name, where the front is what you read: with the
+            // date column gone these fit anyway, and when one does not,
+            // "Application Sup…" beats "Ap…ort".
             Text(row.entry.name)
                 .lineLimit(1)
-                .truncationMode(.middle)
+                .truncationMode(.tail)
 
             Spacer(minLength: 8)
-
-            Text(row.entry.modifiedAt.map { FolderDateFormatter.string(for: $0) } ?? "—")
-                .foregroundStyle(.secondary)
-                .frame(width: 68, alignment: .trailing)
-                .lineLimit(1)
 
             // .byteCount renders nothing as "Zero kB", which reads as a fault
             // rather than an empty folder.
@@ -206,6 +228,33 @@ private struct FolderRowView: View {
         .onTapGesture {
             guard row.entry.isDirectory else { return }
             model.toggle(row.entry.path)
+        }
+        // **SwiftUI's own `.contextMenu`, deliberately, and not this project's
+        // `AppKitContextMenu`.** That one exists because `NSMenuItem` can draw
+        // an image where SwiftUI drops it — and it is hosted in an overlay,
+        // which has twice now swallowed the events of whatever it covers: the
+        // herd lost its click that way, and an agent card its tooltip. These
+        // items carry no icons, so none of that is worth paying for, and the
+        // row underneath keeps the tap that opens it.
+        .contextMenu {
+            if isLocal {
+                Button("Open in Finder") {
+                    // Selecting rather than opening: for a folder this reveals
+                    // it inside its parent with the folder highlighted, which
+                    // is what "where is this?" means, and for a file it is the
+                    // only sensible answer.
+                    NSWorkspace.shared.activateFileViewerSelecting(
+                        [URL(fileURLWithPath: row.entry.path)]
+                    )
+                }
+            }
+            Button("Copy Path") {
+                // Always offered, because it is the one thing that is useful
+                // whichever machine this is: a path from the mini is what you
+                // paste after `ssh mini`.
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(row.entry.path, forType: .string)
+            }
         }
     }
 }

@@ -399,7 +399,11 @@ struct MachineStoragePane: View {
                 .onTapGesture { browser.toggle(scanPath, isRoot: true) }
 
                 if browser.isExpanded(scanPath) {
-                    FolderBrowserView(model: browser, path: scanPath)
+                    FolderBrowserView(
+                        model: browser,
+                        path: scanPath,
+                        isLocal: machine.isLocal
+                    )
                         .padding(.leading, 10)
                 }
             }
