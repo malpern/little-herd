@@ -34,6 +34,8 @@ nonisolated enum HerdCommand {
           machines        the machines in the herd, as configured
           sessions        agent sessions, per machine
           destinations    where a session could go, and why not
+          transfers       work carried out of this repository, and whether
+                          anybody kept it
           move            hand a session to another machine
 
         usage: little-herd move <session> --to <machine> [--yes] [--json]
@@ -62,7 +64,7 @@ nonisolated enum HerdCommand {
         switch verb {
         case "help", "--help":
             return .respond(output: usage, code: 0)
-        case "machines", "sessions", "destinations", "move":
+        case "machines", "sessions", "destinations", "move", "transfers":
             // The verbs are recognised here and answered by the caller, which
             // is the only part that needs to read a machine.
             return .respond(output: "", code: 0)
@@ -188,6 +190,9 @@ extension HerdCommand {
                 in: sampleBlocking(configurations),
                 json: json
             )
+
+        case "transfers":
+            return transfers(json: json)
 
         case "move":
             return move(rest, configurations: configurations, json: json)

@@ -157,6 +157,7 @@
 		D055E99491EB7222709A5794 /* AgentCompactionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C06FF4AFEC0C873B1820587 /* AgentCompactionTests.swift */; };
 		D061C40AD9174F6A7106CA98 /* ContainerAttributionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC923C97EA4CE402D1F47E6 /* ContainerAttributionTests.swift */; };
 		D2F2948B293526C6E04CC41B /* AgentMoveMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38B045383125EA4D512F0D88 /* AgentMoveMenu.swift */; };
+		D79C8F28FEA6251CB5A36EA5 /* HerdCommandTransfers.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB8267D1BDDD205995B5B593 /* HerdCommandTransfers.swift */; };
 		D8DFEA05123844483DAF9171 /* SynologyDSMTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6E8B58BFECC711998639C6 /* SynologyDSMTests.swift */; };
 		D90265E7A563F6351F566FA4 /* RepositoryCheckTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9386B33F3E8A7D3276195B4 /* RepositoryCheckTests.swift */; };
 		D91CA4B85E7162E4DB2649A6 /* LittleHerdApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66BA172D3CC6CD4B8AEBC144 /* LittleHerdApp.swift */; };
@@ -333,6 +334,7 @@
 		C6FAEEFDB123F68F905CA2DB /* StillImageRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StillImageRendering.swift; sourceTree = "<group>"; };
 		C8B5E475A4DF178283F4418E /* SuccessorRunTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessorRunTests.swift; sourceTree = "<group>"; };
 		C90A9EB91ECF9751CF2883E8 /* DevelopmentBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentBanner.swift; sourceTree = "<group>"; };
+		CB8267D1BDDD205995B5B593 /* HerdCommandTransfers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdCommandTransfers.swift; sourceTree = "<group>"; };
 		CD88947F9BC77489C83CD330 /* AgentDragSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDragSessionTests.swift; sourceTree = "<group>"; };
 		CE6423E97058743B9C08DD97 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D008220E0A0FEC672DD4198B /* TransferRemnantTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferRemnantTests.swift; sourceTree = "<group>"; };
@@ -437,6 +439,7 @@
 				C6AE1D932764BCE8C5F27FD5 /* HerdColumns.swift */,
 				025CEE59D30B500DFF89F77E /* HerdCommand.swift */,
 				4F4B9EC8122E0BAFAB6FD19B /* HerdCommandMove.swift */,
+				CB8267D1BDDD205995B5B593 /* HerdCommandTransfers.swift */,
 				B216258773940FD0422DACC2 /* HerdStyle.swift */,
 				D56F2E897732951FB02B9B7F /* HerdwareAvatar.swift */,
 				F82C710E619943CBDCBE3355 /* HerdWorkload.swift */,
@@ -746,6 +749,7 @@
 				6AB7CD21519D28D1089C7122 /* HerdColumns.swift in Sources */,
 				A5EE002AE56504F17741530C /* HerdCommand.swift in Sources */,
 				7F23359F51DA1A45F2F1CF24 /* HerdCommandMove.swift in Sources */,
+				D79C8F28FEA6251CB5A36EA5 /* HerdCommandTransfers.swift in Sources */,
 				6A65C3FDEED92059FB1C9835 /* HerdStyle.swift in Sources */,
 				5CB3283CDCE6D84BF5D5D30B /* HerdWorkload.swift in Sources */,
 				3A45C65052806FE4A571A349 /* HerdwareAvatar.swift in Sources */,

@@ -438,3 +438,101 @@ struct HerdCommandMoveTests {
         #expect(HerdCommand.usage.contains("2 refused"))
     }
 }
+
+/// `transfers` — work carried out of a repository.
+@Suite("Carried work")
+struct HerdCommandTransfersTests {
+    /// **A commit subject can contain a tab**, because a subject can contain
+    /// anything somebody typed. Splitting on every tab would put half a
+    /// sentence in the date column; the split is bounded so the remainder is
+    /// the subject whatever is in it.
+    @Test
+    func aSubjectContainingATabSurvivesIntact() {
+        let refs = "origin/transfer/a\t2026-09-06\tSuccessor work\ton the branch"
+        let rows = HerdCommand.carriedWork(fromRefs: refs, mergedRefs: "")
+        #expect(rows.count == 1)
+        #expect(rows.first?.date == "2026-09-06")
+        #expect(rows.first?.subject == "Successor work\ton the branch")
+    }
+
+    @Test
+    func mergedIsReadFromTheSecondListRatherThanGuessed() {
+        let refs = """
+            origin/transfer/kept\t2026-09-06\tone
+            origin/transfer/waiting\t2026-09-05\ttwo
+            """
+        let rows = HerdCommand.carriedWork(
+            fromRefs: refs,
+            mergedRefs: "origin/transfer/kept\n"
+        )
+        #expect(rows.first { $0.branch.hasSuffix("kept") }?.merged == true)
+        #expect(rows.first { $0.branch.hasSuffix("waiting") }?.merged == false)
+    }
+
+    /// The name is the part somebody chose, without the plumbing around it.
+    @Test
+    func theNameDropsTheRemoteAndThePrefix() {
+        let rows = HerdCommand.carriedWork(
+            fromRefs: "origin/transfer/linux-memory-issues\t2026-09-06\tx",
+            mergedRefs: ""
+        )
+        #expect(rows.first?.shortName == "linux-memory-issues")
+
+        let local = HerdCommand.carriedWork(
+            fromRefs: "transfer/linux-memory-issues\t2026-09-06\tx",
+            mergedRefs: ""
+        )
+        #expect(local.first?.shortName == "linux-memory-issues")
+    }
+
+    /// A malformed line is skipped rather than crashing or half-parsed.
+    @Test
+    func aLineWithoutAllThreeFieldsIsIgnored() {
+        let rows = HerdCommand.carriedWork(
+            fromRefs: "origin/transfer/a\t2026-09-06\tfine\nrubbish\n",
+            mergedRefs: ""
+        )
+        #expect(rows.count == 1)
+    }
+
+    /// **Nothing carried is not an error**, unlike `destinations`, where an
+    /// empty answer would be read as "nowhere to send it". Here the empty
+    /// answer is simply true.
+    @Test
+    func anEmptyRepositorySaysSoAndIsStillASuccess() {
+        let text = HerdCommand.transfers([], json: false)
+        #expect(text.contains("no work has been carried"))
+    }
+
+    @Test
+    func transfersIsAVerb() {
+        guard case .respond(_, let code) =
+            HerdCommand.disposition(for: ["little-herd", "transfers"])
+        else {
+            Issue.record("expected a response")
+            return
+        }
+        #expect(code == 0)
+        #expect(HerdCommand.usage.contains("transfers"))
+    }
+}
+
+extension HerdCommandTransfersTests {
+    /// **A pushed branch exists twice and is one piece of work.** Listing the
+    /// local ref and the remote one both showed every transfer twice — and with
+    /// different subjects, because the successor's commit is on the remote
+    /// while the local ref is still at the departure. It read as one transfer
+    /// that had happened twice and disagreed with itself.
+    @Test
+    func aBranchThatExistsLocallyAndOnTheRemoteIsOneRow() {
+        let refs = """
+            origin/transfer/x\t2026-09-06\tSuccessor work on transfer/x
+            transfer/x\t2026-09-06\tCarry x
+            """
+        let rows = HerdCommand.carriedWork(fromRefs: refs, mergedRefs: "")
+        #expect(rows.count == 1)
+        // The one that got furthest: refs arrive newest first, and the
+        // successor's commit is what somebody wants to see.
+        #expect(rows.first?.subject == "Successor work on transfer/x")
+    }
+}
