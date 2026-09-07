@@ -144,7 +144,7 @@ struct DashboardView: View {
                                     let phase = model.transfers.phase(for: transfer)
                                 else { return nil }
                                 switch phase {
-                                case .preparing, .running:
+                                case .fixing, .preparing, .running:
                                     return .working(phase.progress)
                                 case .finished(let outcome):
                                     return outcome.result == .landed

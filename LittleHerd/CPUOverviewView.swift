@@ -311,15 +311,33 @@ struct CPUOverviewView: View {
             // column says "here" without drawing a box around it.
             .background {
                 if welcomes(machine.machine) {
+                    // Amber for a machine that will be set up first, the app's
+                    // accent for one that is ready — a colour is the cheapest
+                    // way to say "this needs a clone" while your eye is on the
+                    // card in your hand, not on the animal.
+                    let setup = needsSetup(machine.machine)
+                    let tint: Color = setup ? .orange : .accentColor
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.accentColor.opacity(0.14))
+                        .fill(tint.opacity(0.14))
                         .overlay(
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(
-                                    Color.accentColor.opacity(0.35),
-                                    lineWidth: 1
-                                )
+                                .strokeBorder(tint.opacity(0.35), lineWidth: 1)
                         )
+                        .overlay(alignment: .top) {
+                            if setup {
+                                // A small badge, so the amber is not the only
+                                // tell for anyone who does not separate the two
+                                // by colour.
+                                Label("Sets up first", systemImage: "wrench.and.screwdriver")
+                                    .labelStyle(.titleAndIcon)
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundStyle(.orange)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(.background.opacity(0.85), in: Capsule())
+                                    .offset(y: -10)
+                            }
+                        }
                         .padding(.horizontal, -4)
                         .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 }
@@ -454,6 +472,29 @@ struct CPUOverviewView: View {
 
     /// Whether this machine is the one an agent is being held over, and would
     /// take it.
+    /// Whether a machine the drag is over lifted despite a gap — one a drop
+    /// will *set up* before transferring, rather than take as it is.
+    ///
+    /// The distinction the amber says out loud: a welcoming machine is ready,
+    /// this one needs a clone or an install first. It still lights and lifts —
+    /// it can take the work — but it should not look identical to one that can
+    /// take it now.
+    private func needsSetup(_ machine: MachineID) -> Bool {
+        guard let carrying, carrying.over == machine else { return false }
+        if DashboardChrome.rehearsesTransfers, !DashboardChrome.startsTransfers {
+            return false
+        }
+        return AgentDropEligibility.disposition(
+            of: machine,
+            carrying: MachineAgentActivity(
+                provider: carrying.session.provider, sessions: [carrying.session]
+            ),
+            from: carrying.from,
+            in: herd,
+            requiresApproval: requiresDestinationApproval
+        ) == .fixable
+    }
+
     private func welcomes(_ machine: MachineID) -> Bool {
         guard let carrying, carrying.over == machine else { return false }
         // A rehearsal answers from every machine, for the reason in
@@ -462,8 +503,10 @@ struct CPUOverviewView: View {
         if DashboardChrome.rehearsesTransfers, !DashboardChrome.startsTransfers {
             return machine != carrying.from
         }
-        return AgentDropEligibility.canAccept(
-            machine,
+        // Lights for a fixable machine as well as a ready one — both lift, and
+        // `needsSetup` picks the amber that tells them apart.
+        return AgentDropEligibility.disposition(
+            of: machine,
             carrying: MachineAgentActivity(
                 provider: carrying.session.provider,
                 sessions: [carrying.session]
@@ -471,7 +514,7 @@ struct CPUOverviewView: View {
             from: carrying.from,
             in: herd,
             requiresApproval: requiresDestinationApproval
-        )
+        ) != .refuse
     }
 
     /// Raises a machine's deck because something just started on it, for long
@@ -803,8 +846,12 @@ struct CPUOverviewView: View {
             return machine != carrying?.from
         }
 
-        return AgentDropEligibility.canAccept(
-            machine,
+        // **`disposition`, not `canAccept`.** A machine that only needs a
+        // clone or an install lifts to meet the drag too — the drop sets it up
+        // first. `canAccept` stays "ready as it is", which other callers mean;
+        // the drag means "could take it, now or after setup".
+        return AgentDropEligibility.disposition(
+            of: machine,
             carrying: MachineAgentActivity(
                 provider: session.provider,
                 sessions: [session]
@@ -812,7 +859,7 @@ struct CPUOverviewView: View {
             from: carrying?.from ?? machine,
             in: herd,
             requiresApproval: requiresDestinationApproval
-        )
+        ) != .refuse
     }
 
     private func padState(for machine: MachineID) -> AgentPadState {

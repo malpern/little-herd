@@ -15,7 +15,7 @@ nonisolated enum TransferTint: Equatable {
 extension TransferPhase {
     var tint: TransferTint {
         switch self {
-        case .preparing, .running: .working
+        case .fixing, .preparing, .running: .working
         case .finished(let outcome):
             switch outcome.result {
             case .landed: .landed

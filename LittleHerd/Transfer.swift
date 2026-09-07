@@ -26,6 +26,12 @@ nonisolated struct Transfer: Hashable, Sendable {
 /// "did it work" — rather than for the step index, because the interface shows
 /// this and the steps are an implementation detail that changes.
 nonisolated enum TransferPhase: Equatable, Sendable {
+    /// Making the destination ready before anything is sent — cloning the
+    /// checkout, or installing the agent. Ahead of `preparing`, because it is
+    /// what lets a machine that could not host the work host it at all; `--fix`
+    /// and a drop onto a machine marked "needs setup" both land here. The label
+    /// is the machine, so the strip can say which one is being set up.
+    case fixing(machine: String)
     /// Asked for, nothing sent yet: the source is still quiescing the session
     /// and writing down what it was doing.
     case preparing
@@ -48,6 +54,7 @@ nonisolated enum TransferPhase: Equatable, Sendable {
     /// bookkeeping either side is a sliver.
     var progress: Double {
         switch self {
+        case .fixing: 0.02
         case .preparing: 0.04
         case .running(let purpose):
             switch purpose {
@@ -65,7 +72,7 @@ nonisolated enum TransferPhase: Equatable, Sendable {
     /// Whether calling it off is still meaningful.
     var isCancellable: Bool {
         switch self {
-        case .preparing, .running: true
+        case .fixing, .preparing, .running: true
         case .finished: false
         }
     }
@@ -73,6 +80,7 @@ nonisolated enum TransferPhase: Equatable, Sendable {
     /// What to say about it in one line.
     var summary: String {
         switch self {
+        case .fixing(let machine): "Setting up \(machine)"
         case .preparing: "Writing down where it got to"
         case .running(.worktree): "Fetching the branch"
         case .running(.prompt): "Handing over the brief"
@@ -100,6 +108,8 @@ nonisolated enum TransferPhase: Equatable, Sendable {
     /// no space for.
     var detail: String {
         switch self {
+        case .fixing(let machine):
+            "Cloning or installing on \(machine) so it can take the work."
         case .preparing:
             "Asking the session to write down where it got to."
         case .running(let purpose):
@@ -170,7 +180,7 @@ nonisolated enum TransferPhase: Equatable, Sendable {
     /// `.pushedBranch`.
     var leftABranch: Bool {
         switch self {
-        case .preparing: false
+        case .fixing, .preparing: false
         case .running: true
         case .finished(let outcome): outcome.remnant != .nothing
         }
@@ -180,7 +190,7 @@ nonisolated enum TransferPhase: Equatable, Sendable {
     /// message to be dismissed — it is work waiting to be read.
     var wantsAttention: Bool {
         switch self {
-        case .preparing, .running: false
+        case .fixing, .preparing, .running: false
         case .finished(let outcome):
             switch outcome.result {
             case .landed, .checkFailed, .agentFailed, .couldNotStart: true

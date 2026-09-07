@@ -35,6 +35,24 @@ extension MonitorModel {
             return
         }
 
+        // **A machine with a fixable gap is prepared first, on screen.** A
+        // drop can land on one that lacks the checkout or the agent — it lifted
+        // to meet the drag for exactly this — and here the remedy runs before
+        // the transfer, shown as its own phase in the same card. The drop is
+        // the consent: the machine was visibly marked as needing setup, the
+        // fix is a phase you can watch and Stop, and nothing runs silently the
+        // way the command line's `--fix` guards against with `--yes`.
+        let disposition = AgentDropEligibility.disposition(
+            of: destination,
+            carrying: MachineAgentActivity(provider: session.provider, sessions: [session]),
+            from: origin,
+            in: machines.map(\.destinationAccount)
+        )
+        if disposition == .fixable {
+            fixThenTransfer(session: session, from: origin, to: destination)
+            return
+        }
+
         let assembled = TransferAssembly.request(
             session: session,
             from: origin,
@@ -174,4 +192,110 @@ extension TransferAssembly {
     nonisolated static let check = RepositoryCheck.xcode(scheme: "LittleHerd")
     nonisolated static let scratchRoot = NSString(string: "~/.little-herd/transfers")
         .expandingTildeInPath
+}
+
+extension MonitorModel {
+    /// Prepare a machine that lifted to meet the drag but was not ready, then
+    /// transfer onto it.
+    ///
+    /// **Its own card from the first frame.** A fixing phase is registered
+    /// before anything runs, so the animal the card sits on shows the work
+    /// starting rather than a beat of nothing — and the strip says which
+    /// machine is being set up. The remedy is computed here because the clone
+    /// needs the source's remote, read from the machine that has the checkout.
+    func fixThenTransfer(
+        session: AgentSession,
+        from origin: MachineID,
+        to destination: MachineID
+    ) {
+        let branch = TransferAssembly.branch(for: session)
+        let destinationModel = machines.first { $0.machine == destination }
+        let name = destinationModel?.shortName ?? "the machine"
+        let placeholder = Transfer(
+            origin: origin, destination: destination, branch: branch,
+            title: session.title ?? session.projectName,
+            repository: session.workingDirectory ?? ""
+        )
+        transfers.fixing(placeholder, machine: name)
+
+        Task {
+            guard let originModel = machines.first(where: { $0.machine == origin }),
+                  let destinationModel
+            else {
+                return transfers.fail(placeholder, SuccessorOutcome(
+                    result: .couldNotStart, failingStep: nil,
+                    output: "Couldn’t reach one of the machines.", remnant: .nothing
+                ))
+            }
+
+            let herd = machines.map(\.destinationAccount)
+            let activity = MachineAgentActivity(provider: session.provider, sessions: [session])
+            let eligibility = AgentDropEligibility.eligibility(
+                of: destination, carrying: activity, from: origin, in: herd
+            )
+            let slug = AgentDropEligibility.repository(of: activity, from: origin, in: herd)
+            // The remote, read from the source. A clone the source cannot name
+            // becomes an explanation, and a machine that only looked fixable
+            // fails here rather than in the middle of a transfer.
+            let originURL = await self.gitRemoteURL(
+                of: session.workingDirectory, on: originModel
+            )
+            let remedy = TransferRemedy.remedy(
+                for: eligibility, machine: name, provider: session.provider,
+                originURL: originURL, slug: slug
+            )
+
+            switch remedy {
+            case .none:
+                break  // Already ready after all; fall through to the transfer.
+            case .explain(let text):
+                return transfers.fail(placeholder, SuccessorOutcome(
+                    result: .couldNotStart, failingStep: nil,
+                    output: text, remnant: .nothing
+                ))
+            case .offer(_, let command):
+                let ran = await TransferRunners.remedyRunner(
+                    for: destinationModel.configuration
+                )(command)
+                guard ran.succeeded else {
+                    return transfers.fail(placeholder, SuccessorOutcome(
+                        result: .couldNotStart, failingStep: nil,
+                        output: "The setup did not complete on \(name). "
+                            + ran.output.suffix(400),
+                        remnant: .nothing
+                    ))
+                }
+                // The clone or install changed the machine; re-probe it so the
+                // transfer sees the new checkout at its real path rather than
+                // the report that predates the fix.
+                if let sampler = destinationModel.configuration.remotePlatform.map({
+                    RemoteMetricsSampler(
+                        host: destinationModel.configuration.sshDestination,
+                        platform: $0,
+                        identityFile: destinationModel.configuration.identityFile
+                    )
+                }), let snapshot = try? await sampler.sample() {
+                    destinationModel.apply(snapshot)
+                }
+            }
+
+            // The machine is ready now. Hand back to the ordinary path, which
+            // re-assembles against the refreshed herd and runs the transfer —
+            // the fixing card it already put up carries straight into it.
+            self.transfers.dismiss(placeholder)
+            self.beginTransfer(of: session, from: origin, to: destination)
+        }
+    }
+
+    /// The `origin` remote of the checkout a directory sits in, read on the
+    /// machine that has it. Nil when the source is remote and unreachable or
+    /// has no remote — a clone then cannot be offered.
+    func gitRemoteURL(of directory: String?, on model: MachineMonitorModel) async -> String? {
+        guard let directory, !directory.isEmpty else { return nil }
+        let command = "git -C \(RemoteShell.quoted(directory)) remote get-url origin"
+        let out = await TransferRunners.command(for: model.configuration)(command)
+        guard out.succeeded else { return nil }
+        let url = out.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        return url.isEmpty ? nil : url
+    }
 }

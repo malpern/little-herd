@@ -55,6 +55,15 @@ final class TransferCoordinator {
         order.insert(transfer, at: 0)
     }
 
+    /// The card appears already setting the machine up, ahead of the departure.
+    /// Registered the same way `prepare` does, so a fix and a plain move share
+    /// one card rather than the fix flashing a second one.
+    func fixing(_ transfer: Transfer, machine: String) {
+        transfers[transfer] = .fixing(machine: machine)
+        order.removeAll { $0 == transfer }
+        order.insert(transfer, at: 0)
+    }
+
     /// Ends one that never reached the destination.
     func fail(_ transfer: Transfer, _ outcome: SuccessorOutcome) {
         guard transfers[transfer]?.isCancellable == true else { return }

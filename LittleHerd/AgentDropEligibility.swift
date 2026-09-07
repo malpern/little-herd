@@ -48,6 +48,51 @@ nonisolated enum AgentDropEligibility {
         )
     }
 
+    /// What a drag can do with a machine: take it as it is, offer to make it
+    /// ready first, or not land on it at all.
+    ///
+    /// **Three states, because a gap is not one thing.** A machine that lacks
+    /// the checkout or an agent Little Herd can install is one a drop can
+    /// *prepare* — so it should lift to meet the drag, and the drop offers the
+    /// fix. A machine whose gap needs a browser or an Apple Account cannot be
+    /// prepared from here and stays put, the way an ineligible machine always
+    /// has. The eligible case is unchanged.
+    enum DropDisposition: Equatable, Sendable {
+        case ready
+        case fixable
+        case refuse
+    }
+
+    /// **Optimistic about a checkout, honest at the drop.** Whether a missing
+    /// checkout can be cloned depends on the source having a remote, which is a
+    /// URL this cannot read during a drag without a command per frame. So a
+    /// missing checkout is `fixable` here and the real remedy — clone or,
+    /// if the source has no remote, an explanation — is computed when the card
+    /// lands. A missing agent is `fixable` only for a provider whose install is
+    /// one non-interactive command, because that is the only kind `--fix` runs.
+    static func disposition(
+        of machine: MachineID,
+        carrying activity: MachineAgentActivity,
+        from origin: MachineID,
+        in herd: [DestinationAccount],
+        requiresApproval: Bool = false
+    ) -> DropDisposition {
+        let e = eligibility(
+            of: machine, carrying: activity, from: origin,
+            in: herd, requiresApproval: requiresApproval
+        )
+        if e.isEligible { return .ready }
+        switch e {
+        case .noCheckout:
+            return .fixable
+        case .noAgent:
+            return TransferRemedy.installCommand(for: activity.provider) != nil
+                ? .fixable : .refuse
+        case .eligible, .signedOut, .excluded, .unknown:
+            return .refuse
+        }
+    }
+
     static func canAccept(
         _ machine: MachineID,
         carrying activity: MachineAgentActivity,
@@ -56,11 +101,8 @@ nonisolated enum AgentDropEligibility {
         requiresApproval: Bool = false
     ) -> Bool {
         eligibility(
-            of: machine,
-            carrying: activity,
-            from: origin,
-            in: herd,
-            requiresApproval: requiresApproval
+            of: machine, carrying: activity, from: origin,
+            in: herd, requiresApproval: requiresApproval
         )
         .isEligible
     }
