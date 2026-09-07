@@ -84,6 +84,11 @@ extension HerdCommand {
         UserDefaults.standard.bool(forKey: LittleHerdPreferences.carriesTranscriptKey)
     }
 
+    /// Whether the carry would go unscrubbed. Off unless deliberately turned on.
+    static var carriesUnscrubbed: Bool {
+        UserDefaults.standard.bool(forKey: LittleHerdPreferences.carriesUnscrubbedTranscriptKey)
+    }
+
     /// **Consent, in the plan.** A transcript is everything the session ever
     /// saw — file contents, command output, whatever was pasted — and the
     /// brief is a summary an agent chose to write. That difference belongs in
@@ -94,10 +99,12 @@ extension HerdCommand {
         guard carriesTranscript, TranscriptCarry.canCarry(plan.session) else { return "" }
         return """
 
-            This will carry the session's TRANSCRIPT to \(plan.destination.shortName) — \
-            its whole history, including everything it read and every command's \
-            output — and the successor will resume it rather than start from a \
-            brief. Turn off the carriesTranscript preference to send a brief instead.
+            This will carry the session's TRANSCRIPT to \(plan.destination.shortName) \
+            — its whole history — and the successor will resume it rather than start \
+            from a brief. \(carriesUnscrubbed
+                ? "It will be sent UNSCRUBBED: every byte the session saw, secrets included."
+                : "Recognisable secrets are scrubbed first, which is best-effort and not a guarantee.") \
+            Turn off the carriesTranscript preference to send a brief instead.
             """
     }
 
@@ -239,7 +246,8 @@ extension HerdCommand {
                     sourceCommand: TransferRunners.command(for: origin),
                     copy: TransferRunners.copy(to: destination),
                     destinationHome: NSHomeDirectory(),
-                    scratchRoot: TransferAssembly.scratchRoot
+                    scratchRoot: TransferAssembly.scratchRoot,
+                    redacts: !carriesUnscrubbed
                 ) : nil,
                 departure: { step in
                     log("\(step.purpose)")

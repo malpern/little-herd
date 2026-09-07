@@ -242,7 +242,11 @@ struct DriverCarryTests {
                 return copies
             },
             destinationHome: "/Users/b",
-            scratchRoot: "/Users/b/.little-herd/transfers"
+            scratchRoot: "/Users/b/.little-herd/transfers",
+            // These fixtures test where a file lands and why a carry declines, using
+            // paths that do not exist on disk. Scrubbing reads the file, so it is turned
+            // off here; the scrub has its own suite, and its default has its own test.
+            redacts: false
         )
     }
 
@@ -328,7 +332,8 @@ struct CarryOrderingTests {
             sourceCommand: { _ in ("", true) },
             copy: { _, _, _ in copies },
             destinationHome: "/Users/b",
-            scratchRoot: "/Users/b/.little-herd/transfers"
+            scratchRoot: "/Users/b/.little-herd/transfers",
+            redacts: false  // ordering test; the scrub has its own suite
         )
     }
 

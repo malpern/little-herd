@@ -1,6 +1,8 @@
 # Little Herd — handoff
 
-**State:** `v0.1.66` is released and installed on this Mac. It is the first
+**State:** `v0.1.67` is released and installed on this Mac. Items 13, 14, 15
+and 17 closed on 6–7 September and have been pruned from **Next**; what was
+learned doing them is in **Hard-won facts**, which is where it stays. It is the first
 build whose transfer works against a real session: until it, the agent
 identifier reached `--resume` with its provider still on the front, and the
 mini's agent — which lives inside the Claude desktop app's bundle — was refused
@@ -127,6 +129,9 @@ ten more between 27 and 29 August, and six of them are the transfer:
             own sign-in probes; `transfers` says what has been carried
     0.1.66  sign-in verification works again; a session's transcript can be
             carried and resumed instead of briefed (off by default)
+    0.1.67  a machine that is not ready can be made ready — a clone or an
+            install offered from the CLI or a drop; a carried transcript is
+            scrubbed of recognisable secrets before it leaves
 
 0.1.61 is the one that matters: the diff window, the progress bar across the
 foot of the card, both context menus rebuilt in AppKit because SwiftUI drops
@@ -1678,6 +1683,65 @@ without cleaning up blocks every later transfer of that session with "already
 exists". Anything that creates a fixed path on somebody else's machine has to
 remove before it creates, not merely after it finishes.
 
+**A carried transcript resumes wherever it is placed, and the paths recorded
+inside it are never consulted.** The first write-up of the carry reasoned
+the opposite — that 5,954 records holding an absolute `cwd` would need both
+machines to share a layout — and that was wrong. The lookup is the file's
+location plus the identifier: `~/.claude/projects/` and the working
+directory with every `/` and `.` turned into a dash. Tested by resuming one
+under a deliberately mismatched path; it resumed with its history intact. So
+a carry needs no shared account or layout, and the transcript goes under
+wherever the successor will run.
+
+**A stale memory in a carried session cannot reach the wrong tree, because
+the permission boundary stops it.** The fear was a successor editing a path
+it remembers on a machine where that path also exists at a different commit.
+Tested twice: a file was planted at the remembered path, the session resumed
+in a scratch directory with `acceptEdits` and no shell, and asked to append
+to "the file it created". The planted file was untouched, and a direct Write
+to that absolute path answered "permission not granted". In `-p` mode an
+edit outside the resumed directory needs a permission nobody is there to
+give.
+
+**A session can be too big to brief, and the brief runs first.** Asking a 24
+MB session to write its handover returns `Prompt is too long` — so the
+summary step fails for exactly the sessions with the most to lose. The carry
+therefore happens before the departure, and a carried session is not briefed
+at all.
+
+**`--session-id` is create-only: the second use of one fails for ever.**
+Pinning the sign-in probe's session id bounded its litter and broke the
+probe, which failed with "Session ID … is already in use" from the second
+call onward and read as a machine that could not sign in. Shipped that way
+in 0.1.65. Deleting the pinned transcript first clears the id — measured —
+so the probe now clears before it creates.
+
+**The thing being checked must not choose its own exam.** A repository may
+name its check in a `.little-herd.toml`, but the declaration is read into
+the same closed set detection produces: it names a check and fills one
+quoted blank, and no path through the parser yields a first command word
+other than `xcodebuild`, `swift`, `cargo`, `npm` or `make`. The test that
+proves this asserts the produced executable over hostile input — an earlier
+"unknown kind returns nil" test passed while a command-carrying hole was
+open.
+
+**Offer only what finishes over SSH; name the rest and stop.** A missing
+checkout is a clone and a missing Claude is one installer, so both can be
+offered. A sign-in needs a browser and an Xcode is fifteen gigabytes behind
+an Apple Account, so both are explained. The distinction is a type rather
+than a convention — an `explain` carries no command — and only two
+eligibility cases may ever produce an offer.
+
+**Scrubbing a transcript is best-effort by nature, and the cost is in the
+regex, not the copying.** A secret is a fact about a string, not a shape, so
+prose quoting a password is indistinguishable from prose quoting a word.
+What can be caught is the shape that occurs here — `KEY=value` from `sops
+-d`, known token prefixes, PEM blocks. Measured on a real 30 MB transcript:
+55 of 11,490 records carried something. Compiling the patterns inside the
+loop took **308 seconds**; hoisting them and prefiltering whole lines on
+literal tells before parsing is what makes it usable, and a prefilter
+testing for `"gh"` or `"AC"` skips nothing because those occur in ordinary
+prose.
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -2906,384 +2970,6 @@ the only part drawn.
     mentions swap only while swap is being written, so a machine that is not
     asked simply says nothing, which is what it should say.
 
-13. **The verifier is ahead of the thing that needs it, and the I/O half of it
-    has no tests.** Written 25 August, and worth being honest about. Its pure
-    parts — `AgentAuthProbe`, the eligibility states, the presentation — are
-    covered and were verified by breaking them. `AgentAuthVerifier`,
-    `ProbeWatchdog`, `runCapturingAll` and `runLocally` are referenced by no
-    test at all, and that is roughly a hundred and ninety lines of process and
-    concurrency plumbing in which **four bugs were found by running it and
-    none by the suite**: stdin inherited rather than closed, no watchdog at
-    all, silence read as a refusal, and a cancelled probe that did not stop
-    the work it started.
-
-    That last one is the shape of the risk. The comment claimed cancellation
-    and the code did not do it, and only an experiment against another machine
-    said so. If more is built here, build it a test harness first — a fake
-    agent script that can be made to hang, refuse, or answer is most of one.
-
-    **The harness exists now, and the local half is covered.**
-    `AgentAuthVerifierTests` is ten tests driving real subprocesses, built on
-    3 September. No abstraction was needed: `AgentAuthProbe.command` quotes
-    `install.path` into `/bin/sh`, so an `AgentInstallation` pointed at a
-    script is a real agent doing whatever the script says. Each test was
-    checked by breaking what it covers — deleting the null-device stdin
-    reddens one, discarding standard error reddens three, and removing the
-    SIGKILL escalation leaves the child alive through SIGTERM with the read
-    blocked for the full thirty seconds.
-
-    **`SSHCommandRunner.runCapturingAll` is covered as of 6 September, and the
-    objection that kept it uncovered was answered by not using ssh.** The
-    recorded blocker was that it needs a live host and that `localhost` would
-    test this Mac's sshd rather than the runner. Both true. The executable is a
-    parameter now, defaulting to `/usr/bin/ssh` in every caller, so a script
-    stands in for it — which is exactly the "fake agent that can be made to
-    hang, refuse, or answer" this item asked for, one level down.
-
-    Seven tests, and each was checked by breaking what it covers rather than by
-    being believed: inheriting stdin instead of closing it reddens the drain
-    test after fifteen seconds, keeping only standard output reddens the
-    refusal test, and neutering the watchdog reddens both hang tests **after a
-    hundred and twenty seconds**, which is the failure it exists to prevent
-    demonstrating itself. They cover the four bugs this item lists — stdin,
-    the watchdog, silence, and output surviving a timeout — plus the host guard
-    and a missing executable.
-
-    **And on 6 September it hung, reproducibly, which is the first evidence
-    that the untested half is not merely uncovered.** `little-herd move`
-    reached the sign-in probe, printed the agent path it was about to ask
-    about, and then stopped for twenty-seven minutes. A `sample` of the process
-    says what state it was in: the main thread parked in
-    `_dispatch_semaphore_wait_slow`, **every worker thread idle** in
-    `__workq_kernreturn`, and **no `ssh` process in the tree at all**. Nothing
-    was running and nothing was spinning; the task was suspended on a
-    continuation that never resumed, before a process was ever spawned.
-
-    The probe's own 90-second watchdog cannot help with this — whatever failed
-    happened before the watchdog started — and the same command answers in six
-    seconds when run by hand over plain ssh, so the far side is fine. It is
-    intermittent: an earlier transfer that same evening went through this code
-    and landed.
-
-    **Explained the same evening, and it was not the runner.** Called from a
-    test, with nothing blocking anything, `verify` answers against that same
-    machine in **seven seconds**. What hung was `move`, which parked the main
-    thread on a semaphore while a detached task awaited it — so this item's
-    untested half is still untested, and is exonerated of this.
-
-    The lesson was already in item 15, from the opposite direction: an earlier
-    CLI "blocked the main thread on a semaphore while awaiting work that hopped
-    back to the main actor to finish — a deadlock". `sampleBlocking` survives
-    that because a probe touches nothing which needs the main thread; a
-    transfer reaches further, and reached far enough to find the same wall.
-    `move` pumps the run loop now instead of parking on it, and keeps the bound
-    as a backstop rather than as the fix.
-
-    **Two hours of it were spent on the wrong half**, and the thing that split
-    the question in one step was `LiveAuthProbeHarness` — six lines calling
-    `verify` from a test. Where a live component is suspected, put it somewhere
-    nothing else is holding a lock before reading its code.
-
-    **And a gated suite reports a skip as a pass.** `LITTLE_HERD_LIVE=1
-    xcodebuild test` does not reach the test process at all — xcodebuild passes
-    only `TEST_RUNNER_`-prefixed variables through — so the harness was skipped
-    and the run printed "1 test in 1 suite passed after 0.001 seconds". That is
-    the vacuous-success trap this file already records for `-only-testing`,
-    wearing different clothes: **use `TEST_RUNNER_LITTLE_HERD_LIVE=1`**, and
-    disbelieve any live test that finishes in a millisecond.
-
-
-14. **A destination is eligible for a piece of *work*, not eligible in
-    general — and nothing in the model says so yet.** Raised 3 September, after
-    the live run turned out to be impossible on this herd for reasons that have
-    nothing to do with this herd.
-
-    Everything `DestinationEligibility` asks is **machine-level**: does this
-    account have an agent, a checkout, credentials. Those six answers are well
-    shaped — each names its own remedy, `noAgent` being "a machine to install
-    something on" and `signedOut` "a machine to sign in on". What is missing is
-    **work-level**: whether this machine can do *this* work. Xcode is the
-    obvious case and the general one — a Rust repo wants cargo, a Node repo the
-    right Node, a repo with a devcontainer wants Docker. A machine that is a
-    perfect destination for one repository is useless for another, and the
-    model cannot currently express that at all.
-
-    **Only the repository can say what it needs.** Little Herd can infer that a
-    Claude session wants Claude; it cannot infer that this project wants Xcode
-    and the next one wants Python 3.12. So: **detect by default, declare to
-    override** — `.xcodeproj` means xcodebuild, `Cargo.toml` means cargo, and a
-    `[transfer]` block in the repository settles anything ambiguous. The
-    constraint that matters is one this file already holds in another form:
-    **the check must never be chosen by the thing being checked.** The
-    successor cannot pick its own exam, for the same reason the launcher
-    verifies the brief rather than the agent verifying it.
-
-    **The pre-flight falls out of the check for free, and must not be declared
-    twice.** If the check is `xcodebuild test -scheme LittleHerd`, then
-    `command -v xcodebuild` is the pre-flight, taken from the check's first
-    word. Two lists of one fact drift — that is how the fan and the resting
-    deck came to disagree, and how two menu implementations did.
-
-    **Remedies are a spectrum and only some can be offered.** The cloning
-    decision is the precedent — an offer, confirmed once, never a side effect —
-    but the costs differ by orders of magnitude:
-
-    - a missing **checkout** is minutes and gigabytes: offer it
-    - a missing **agent CLI** is one installer: offer it
-    - missing **credentials** need a browser: explain, never attempt
-    - a missing **Xcode** is 15 GB and an Apple Account: explain, never attempt
-
-    The rule: **offer only what can be completed non-interactively over SSH,
-    and otherwise name the gap and stop.** That also disposes of the platform
-    question without teaching Little Herd anything about operating systems — it
-    does not have to decide whether the linux box *could ever* run `xcodebuild`,
-    only report that it does not have it and offer no install it cannot
-    perform.
-
-    **Requirements scale with what is asked for, and the messaging has to.**
-    Watching needs no agent binary anywhere — the app reads transcripts, which
-    is the "no agent to install on the other machines" line the website leads
-    with. Only *moving* work needs a CLI, on both ends. So a missing
-    prerequisite surfaces at the drag, about the machine it concerns, and never
-    as a checklist at launch. Most people will never see one.
-
-    **The wiring shipped on 6 September, and it was the only part missing.**
-    `RepositoryCheckDetector` could already name a check from a listing of a
-    repository root, and `requiredExecutable` could already derive the
-    pre-flight from that check — the first word of the first command, so the
-    two cannot drift. Nothing ever took the listing. Every transfer ran
-    `TransferAssembly.check`, a constant reading `xcodebuild test -scheme
-    LittleHerd`, which is true of this project and of nothing else and would
-    have run Xcode's tests against a Rust repository without noticing.
-
-    `RepositoryCheckProbe` asks the two questions and `TransferDriver` asks
-    them **before the departure**, for the same reason the sign-in probe is
-    there: the expensive place to learn a machine cannot do the work is
-    after the branch has been pushed. Both callers get it, because both go
-    through the driver.
-
-    Three rules it follows, each already argued for above:
-
-    - **A missing tool is named and nothing is offered.** Xcode is fifteen
-      gigabytes and an Apple Account, so there is no version of that ending
-      in an install, and Little Herd never has to decide whether a machine
-      *could* run something — only report that it does not.
-    - **Silence claims nothing.** A machine that cannot be listed has not
-      said it is unsuitable, and refusing on silence would ground the herd
-      whenever one was slow.
-    - **Nothing to run asks nothing.** `.none` is a real answer, so a
-      repository with no check is not then asked whether it has the tool for
-      it.
-
-    Verified against this herd rather than reasoned about: the mini lists a
-    `.xcodeproj` and has `xcodebuild` at `/usr/bin/xcodebuild`; **linux has
-    neither**, and is now named as a gap rather than being handed work it
-    cannot verify.
-
-    **The declaration half shipped on 6 September; the remedies remain.** A
-    repository names its own check in a `.little-herd.toml` with a
-    `[transfer]` block — `RepositoryCheck.declared(inTOML:)` reads it into
-    the *same closed set* detection produces, so it names a check and never
-    a command: the executable is always one of five and the repository fills
-    only a quoted argument, which a test proves by asserting the produced
-    executable over hostile input (and which was strengthened after a weaker
-    "unknown kind is nil" version let a hole through). The declaration is
-    read on the destination and wins over detection when valid, falls back
-    when malformed. Its live value could not be shown on this herd, because
-    nothing here is detected wrongly — it is unit-verified, and the case it
-    exists for is a repository that is more than one thing.
-
-    **The remedies are named on 7 September; running them is the last piece.**
-    `TransferRemedy` turns an eligibility gap into either an offer — a clone
-    for a missing checkout, the one-line installer for a missing Claude — or
-    an explanation, for a gap only a person can close: a sign-in needs a
-    browser, an Xcode is fifteen gigabytes behind an Apple Account, a Codex has
-    no single-command install. The line is a type, not a convention: an
-    `explain` carries no command, so a caller cannot run one by mistake, and a
-    test proves only two eligibility cases ever offer by opening a hole and
-    watching it fail. `destinations` shows the fix and its exact command under
-    each ineligible machine; the clone reads its remote from the source when
-    the source is this Mac, and a remote source offers no clone rather than
-    reading a URL over ssh a path that has not been run live.
-
-    **Executing a remedy shipped on 7 September as `move --fix`, and item 14 is
-    closed.** `--fix` runs the offered command on the destination and then
-    moves. Its consent is the move's, made heavier: without `--yes` it prints
-    the exact command it would run on the other machine and exits 2, nothing
-    touched; a gap only a person can close is said in the plan and `--fix`
-    stops; an eligible destination shows no fix line, so `--fix` on one is a
-    quiet no-op. After the remedy runs the herd is re-sampled rather than
-    assumed — the clone changed the machine and the snapshot in hand predates
-    it, and a fresh probe both updates it and confirms the fix took, so a clone
-    that failed quietly refuses the move cleanly rather than pushing into
-    nothing. The remedy has a twenty-minute budget, not the pre-flight's ten
-    seconds, because it is the one command the tool runs that is meant to be
-    slow. Verified to the edge of a real change and no further: the plan for
-    cloning onto the linux box shows the command and refuses without `--yes`,
-    and running it clones onto that machine — the heavy consent the gate
-    exists for — so it is left for a person to trigger.
-
-    **The drag has it too, as of 7 September, which closes the asymmetry with
-    the command line.** The drop decides three ways: a ready machine is
-    unchanged; a machine whose gap `--fix` could close is `fixable` and lifts
-    to meet the drag in amber with a "Sets up first" badge, so it does not look
-    like one that can take the work now; a gap only a person can close stays
-    put. `canAccept` still means "ready as it is" — two existing tests caught
-    the first version widening it, and only the drag reads the wider
-    `disposition`. Dropping runs the remedy as its own phase, `.fixing`, ahead
-    of `preparing`, so the strip reads "Setting up Linux" with the bar moving
-    from the first frame; the machine is then re-probed rather than assumed.
-    The drop is the consent: the machine was visibly marked, the phase can be
-    watched and stopped, and nothing runs silently. Unit-verified; the live
-    drop-onto-linux clones onto that machine and is the person's to trigger.
-
-    **Ask work facts on the drag, not on the timer.** Machine facts are cheap
-    and already sampled every thirty seconds. Twenty `command -v` calls per
-    sample would go into the shell script this file calls the most dangerous
-    file in the app, for an answer that changes almost never.
-    `AgentAuthVerifier` set the precedent: it costs something, so it is asked
-    deliberately, at the moment the answer would change a decision.
-
-    **An open question that would widen everything.** The brief is deliberately
-    prose rather than a serialised session — so does the destination need the
-    *same* agent, or merely *an* agent? If a Claude handoff can be picked up by
-    Codex, eligibility widens a long way for almost nothing, since the design
-    already refuses to carry anything provider-specific. Worth deciding on
-    purpose rather than discovering by accident.
-
-    **What this herd looks like, as the concrete instance of all of the
-    above.** As of 3 September the Air has the CLI installed, so air ↔ mini
-    transfers work in both directions and have been run:
-
-        Air     ~/.local/bin/claude   little-herd ✓   xcodebuild ✓
-        Mini    ~/.local/bin/claude   little-herd ✓   xcodebuild ✓
-        Linux   ~/.local/bin/claude   no checkout     no xcodebuild
-
-    A source needs an agent to write its brief; a destination needs an agent, a
-    checkout, and the toolchain the check will use. **Linux is the standing
-    example of why item 14 exists**: it has an agent and could host work, and
-    the hardcoded `xcodebuild` check makes it permanently ineligible for this
-    repository while telling the user nothing about why.
-
-    **The destination's sign-in is now asked at the drag**, which is the first
-    piece of this item to ship. It is the remedy that can only be explained,
-    never offered — signing in needs a browser — and the cost of not asking was
-    measured: a transfer pushed a branch, built a remote worktree and started an
-    agent before failing on a token that had expired six days earlier.
-
-    **Order to build it in:** the per-repository check first, because it
-    unblocks every other repository and makes the pre-flight free; then split
-    the eligibility answer into machine-level and work-level so the interface
-    can say *"the mini has the repo and the agent, but not the toolchain this
-    work needs"* rather than a flat no; then offers, only where they can be
-    completed; then the provider question.
-
-15. **A command-line interface, because the herd is legible to a pair of eyes
-    and to nothing else.** Raised 3 September, out of not being able to finish
-    item 3: the last unverified step was a drag, and there is no second way in.
-
-    **The core is already shaped for it.** Every one of the thirteen files the
-    transfer runs through — `TransferAssembly`, `TransferPilot`,
-    `TransferDeparture`, `SuccessorRun`, `SuccessorLaunch`, `SuccessorExecutor`,
-    `SuccessorSSH`, `SuccessorLocal`, `RepositoryCheck`, `AgentDestination`,
-    `AgentDropEligibility`, `TransferEligibility`, `Transfer` — imports neither
-    SwiftUI nor AppKit. `LiveTransferHarness` drives a complete transfer through
-    them without a view. This is a wrapper, not a refactor.
-
-    **It is also the one capability here that breaks a rule the rest of this
-    setup keeps.** `~/.config/agent/ACCESS.md` opens by saying every tool is
-    "CLI + on-disk creds + a wrapper on `$PATH` — deliberately not MCP — so it
-    works identically in any agent or shell". Little Herd is GUI-only, so it is
-    the only thing in the herd an agent cannot reach. And **linux can never run
-    a menu-bar app**, so today it can host work and initiate none; no amount of
-    interface work fixes that.
-
-    **`machines` ships as of 3 September**, and the app is the command rather
-    than a second target: standing in front of SwiftUI's generated `main` costs
-    one enum, where a separate executable would have wanted the shared code in a
-    library first — sixty-odd files moved before knowing whether anybody wants
-    this. `MachineConfigurationStore` reads the same defaults the app writes,
-    which is why there is no daemon and no IPC.
-
-    **The guard on what counts as a verb is load-bearing, and testing it proved
-    more than the comment claimed.** The entry point runs on every launch,
-    including the ones Launch Services and `xctest` begin with their own
-    `-`-prefixed arguments. Removing `!verb.hasPrefix("-")` does not fail an
-    assertion — the test host *is* this app, so it reads a runner argument as an
-    unknown verb, prints usage and exits, and the whole suite dies with "Early
-    unexpected exit, operation never finished bootstrapping". Anything added to
-    that entry point has to keep that property.
-
-    **All three read verbs ship as of 3 September.** `destinations` answers with
-    `TransferAssembly.request` — the function a drop calls — rather than
-    restating the reasoning, so the command cannot drift from the app. Against
-    this herd it says the mini can take the work and linux cannot for want of a
-    checkout, which is item 14's argument in one line of output.
-
-    Two things came out of running it against real machines rather than
-    fixtures. **A session's `id` carries its provider**, so `id.prefix(8)`
-    printed `claude:1` for every row — invisible with one session on screen and
-    obvious with fourteen. And **a lookup that found nothing exited `0`**, which
-    tells a script "nowhere to send it" when the truth is "no such session".
-
-    **Only the probe leaves the main actor, and that is a correctness
-    constraint rather than a preference.** An earlier version blocked the main
-    thread on a semaphore while awaiting work that hopped back to the main
-    actor to finish — a deadlock. Sampling needs no actor; formatting happens
-    back where it started.
-
-    **`move` shipped on 6 September, and the decision it was waiting on was
-    made rather than avoided.** The objection was never difficulty: a verb
-    removes the human gesture by construction, so an agent that can call it can
-    send its own work to another machine and spend tokens there with nobody
-    dragging anything. The answer is the rule the rest of this house already
-    uses, copied from `attgw` and `yarm` — the change is printed and refused
-    without `--yes`, and the exit code carries the contract: `0` applied, `1`
-    error, `2` refused and *nothing changed*, so that "I declined" cannot be
-    read as "I did it".
-
-    **It is not a second implementation, and that is the point.**
-    `TransferDriver` holds the order the whole thing depends on — ask whether
-    the destination can sign in, depart, plan the arrival — and
-    `TransferRunners` holds how to run a command on a given machine. Both were
-    private to `MonitorModel`, which was fine while a drag was the only caller.
-    A transfer started from a shell is evidence about a transfer started by a
-    drop only if they are the same code; otherwise the end-to-end test tests
-    itself.
-
-    **What is left of this item is `transfers`** — what is in flight — and
-    nothing else.
-
-        little-herd machines [--json]
-        little-herd sessions [--json]
-        little-herd destinations <session> [--json]   ← why yes, and why not there
-        little-herd transfers [--json]
-        little-herd move <session> --to <machine> [--yes]
-
-    The read half carries no policy question, and `destinations` is the useful
-    one: it is item 14's eligibility answer made legible to something other than
-    a pointer. It would have halved the debugging that found six transfer bugs
-    in one afternoon.
-
-    **The objection, which is about policy rather than code.** Every transfer
-    today begins with a human gesture, and a CLI removes that by construction —
-    an agent that can call `move` can send its own work to another machine,
-    spend tokens there and push branches, with nobody dragging anything. That is
-    a real escalation and should be decided rather than arrived at. The house
-    rule already answers it, and the answer should be copied verbatim from
-    `attgw` and `yarm`: reads are automatic, **every mutation prints the change
-    and refuses without `--yes`**, and the exit code carries the contract —
-    `0` applied or read, `1` error, `2` refused and *nothing changed*, which
-    exists precisely so a refusal cannot be mistaken for an application.
-
-    **One wrinkle to settle before writing any of it.** Machine configuration
-    lives in the app's `UserDefaults` (`machineConfigurationsV1`) and
-    eligibility needs a live probe. The CLI either re-probes itself — slower,
-    but works with the app closed, and on linux where it cannot run at all — or
-    asks the running app, which is faster and needs IPC. **Re-probe**:
-    independence from the GUI is the entire point, and a tool that only works
-    while a menu-bar app is open is not the thing `ACCESS.md` describes.
-
 16. **The readings recede while a fan is up, behind a flag, and it needs to be
     lived with before it ships on.** `LittleHerdPreferences.recedesBarsUnderFanKey`
     — off by default, on for this Mac. Pointing at a machine sends the whole
@@ -3360,159 +3046,6 @@ the only part drawn.
     Moving that menu to `.background` would also have "fixed" it and is the
     wrong answer: tried, and there a card's right-click menu **never opens at
     all**. The fix the columns needed does not generalise one level down.
-
-17. **Carry the transcript instead of writing a brief — built, wired, and
-    landed live, behind a flag; the first item this project took up with the
-    already done.** Raised 6 September out of stepping back from the
-    transfer rather than out of a bug.
-
-    **The brief is the weakest step by evidence, not by taste.** It is the
-    only step that spends a model call on the source. It is where the first
-    failure of 6 September was. It is where the silent permission failure of
-    3 September was — reporting success having written nothing, which is why
-    the departure now tests the artifact rather than the exit status. And
-    its fidelity ceiling is whatever an agent writes in one prompt: the
-    successor starts with no history, no tool results and no context window,
-    because it is a *new* session holding a summary. The design is not
-    moving a session; it is summarise-and-restart.
-
-    **Carrying works, and that is measured.** A session created on the Air
-    was copied to the mini and resumed there; asked what word it had been
-    told to remember, it answered `PELICAN`. Whole conversation, no brief,
-    no model call. The numbers behind the risks are in the facts section
-    above and are not repeated here.
-
-    **What is settled, and why:**
-
-    - **A path mismatch does not matter, and the first write-up of this said
-      it did.** The fear was the 5,954 records carrying an absolute `cwd`,
-      none of which is true on another machine. Tested directly, by resuming
-      a carried transcript under a deliberately mismatched path: it resumed,
-      history intact. The lookup is the *file's location* plus the
-      identifier — `~/.claude/projects/` and the working directory with
-      every `/` and `.` turned into a dash — not the paths recorded inside.
-      So the carry needs no shared account or layout, and the transcript
-      goes under wherever the successor will run. The paths inside stay
-      wrong, which is a fidelity problem rather than a mechanical one: the
-      agent remembers files at addresses that no longer hold, and its prompt
-      is what tells it where it is now — the same job the brief always had.
-    - **`--fork-session` on arrival.** Resuming a carried session gives one
-      identifier a second, divergent history and nothing merges them.
-      Forking says the honest thing — the destination continues *from* the
-      session rather than becoming it.
-    - **Compare agent versions in the pre-flight.** The format is
-      undocumented and moves; three versions appear inside one transcript,
-      so it tolerates drift within a session and promises nothing across
-      machines. The pre-flight already makes a call to the destination, so
-      this is one more question on a call already being paid for.
-    - **Say out loud that it copies everything the session saw.** File
-      contents, command output, whatever was pasted. The brief is a summary
-      an agent chose to write; a transcript is the unedited record. Between
-      one person's own machines that is probably fine, and it must be a
-      stated fact rather than a surprise. This is the one cost with no
-      mitigation, and the reason this is a choice rather than an obvious
-      replacement.
-
-    **The shape to build: a fast path with a fallback.** Carry when the
-    paths match and the versions are close; write a brief when they do not,
-    which is the cross-layout case the brief is actually good at. The cost
-    is two mechanisms where there is one, and this file's own rule is that
-    two descriptions of one thing drift — so they must not be two
-    descriptions of *the handover*, only two ways of producing the one thing
-    the successor is given.
-
-    **Built behind `LittleHerdPreferences.carriesTranscriptKey` on 6
-    September**, off by default. `TranscriptCarry` holds the four things it
-    needs — the folder encoding, where to read, where to write, and how to
-    resume — each tested, and the read and the write both check that
-    something non-empty arrived, because the brief already taught what
-    happens when a step reports success having produced nothing.
-
-    **What is left is the wiring**, which is the same shape as the brief's:
-    a step on the source that reads the transcript, one on the destination
-    that writes it, and a launcher that resumes instead of prompting. Only
-    Claude — Codex keeps its rollouts elsewhere and would need its own
-    answer, and offering to carry one while quietly writing a brief would be
-    worse than not offering.
-
-    **Re-evaluated on 6 September after the foundation was built, and the
-    first pass had missed four things.** Three are mechanical: the write
-    passed the file as a shell argument, and a real transcript is 33 MB
-    base64 against a 1 MB `ARG_MAX`, so it worked only for the toy sizes the
-    tests used; a running session appends to its transcript while it is
-    being read, so a copy can be torn; and the sidecar directory beside each
-    transcript was not carried. One is not mechanical, and it is the real
-    cost.
-
-    **Secrets.** This session's own transcript holds 27 `sops -d`, 119
-    `secrets.env`, 11 `ANTHROPIC_API_KEY`, 41 `Bearer`, and two `BEGIN
-    OPENSSH PRIVATE KEY`. Much of that is reading *about* secrets, and a
-    copy cannot tell the difference. Redaction is not an answer — a secret
-    nobody defined cannot be spotted. So it is a posture, not a fix: off by
-    default, opt-in per machine, a per-transfer confirmation that names what
-    is carried, and only ever between one person's own machines. The brief
-    has the same exposure in miniature; it is written by an agent that saw
-    the same things.
-
-    **The hazard that would have decided against it turned out to be
-    prevented by construction.** A carried session remembers files at the
-    source's absolute paths, and this herd's main checkout exists at that
-    same path on the mini, at a different commit — so a resumed successor
-    could edit the wrong tree while believing it was continuing its own
-    work, silently. Tested directly: a file was planted at the remembered
-    path on the mini, the session was resumed in a scratch directory with no
-    shell, and asked to append to "the file it created". **The planted file
-    was untouched.** Asked again to write to that absolute path with the
-    Write tool: "permission not granted, so nothing was written". In `-p`
-    mode with `acceptEdits`, an edit outside the directory the session was
-    resumed in needs a permission nobody is there to give, and is denied.
-    Reads outside were blocked in the direct test and got through once by
-    another route, so stale context is a bounded fidelity risk rather than a
-    correctness one, and the check step is what catches an edit made on
-    wrong context.
-
-    **The decision: build it.** The transport becomes `scp` from the Mac
-    running Little Herd — it can reach both ends, which is what it is for —
-    carrying the sidecar with `-r`; the copy is taken after the departure's
-    own steps and refused if the file's size changes between two looks,
-    which is what a live writer looks like; the resume prompt states the
-    move and the new directory in the first line, cheap belt-and-braces over
-    the boundary; and the confirmation names the carry. No path-mismatch
-    precondition, because the boundary makes it unnecessary and refusing on
-    it would have excluded every session in a shared checkout.
-    **A session can be too big to brief, and the first live carry proved it
-    by never being reached.** The departure resumed this session — 24 MB of
-    transcript — to ask for its brief, and the agent answered `Prompt is too
-    long`. The brief fails for exactly the sessions with the most to lose,
-    and it was ordered *before* the carry that would have saved them.
-    Nothing was pushed; the tool printed the reason and the right remnant,
-    which is the morning's diagnostic work paying for itself.
-
-    **So the carry goes first, and a carried session is not briefed.** The
-    copy happens before the departure, when nothing of ours is writing to
-    the transcript; if it lands, both `.brief` steps are dropped — the
-    successor has the whole history, a summary of it costs a model call and
-    can overflow, and a summary it does not need is not worth either. If the
-    carry declines, the brief is written exactly as before. The capture and
-    push do not depend on the brief file, which is the one assumption the
-    reorder rests on and was read rather than assumed.
-    **It landed live on 6 September, air to mini, and the proof is what the
-    successor wrote.** A 1.4 MB session was carried, the brief skipped, the
-    session resumed with `--fork-session`; the tests passed on the mini and
-    the work was pushed. The transfer note it produced recounts figures it
-    had measured over `ssh linux` in the original session — detail no brief
-    could hold — and it knew it had moved ("the machine this was written on
-    has no shell available"), which is the moved-notice doing its job. Full
-    history, correctly oriented, which is the whole point of the design over
-    a summary.
-
-    **If only one survives, the evidence favours the transcript.** The brief
-    has failed twice in live use and costs a model call every time; the
-    carry has failed never and costs a copy. But it has been run once, in a
-    controlled experiment, on two machines that happen to share a layout —
-    so it is a strong result and a small sample, and the honest next step is
-    to build it behind the same kind of flag the recede got rather than to
-    replace anything.
 
 ## Keeping this file honest
 

@@ -11,6 +11,7 @@
 		0148F67314A4AFBD285AFE94 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 758130364CC3DF20E47E3A56 /* libsqlite3.tbd */; };
 		0173CB23C12E9DDBD3B79AE2 /* KeychainSecret.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6513E7513A64EC239339381A /* KeychainSecret.swift */; };
 		037A941C63BC9F9892A2E070 /* MachineAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F455A7153E6520E2477FF1A /* MachineAlerts.swift */; };
+		04F43BEA7179472F3F2B7AE0 /* TranscriptRedaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAA30F7EA5E094D25916109 /* TranscriptRedaction.swift */; };
 		073E87415837B3480E41A92A /* TransferEligibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = F48867A7F46AAF10D8E460B4 /* TransferEligibility.swift */; };
 		0824B624A3BA4FAF48B1F081 /* FolderBrowserModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F92F0519C69CB99B932A38ED /* FolderBrowserModel.swift */; };
 		083DDE5AEF3146901C0DE37D /* TranscriptCarryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03D95778BDFF5B8BA269208A /* TranscriptCarryTests.swift */; };
@@ -40,6 +41,7 @@
 		2C7DEF12C3468CCD42F5962B /* HerdByteCount.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5353A0F070BC8169F5569C4 /* HerdByteCount.swift */; };
 		2CFA6E28CE4D7F2470879499 /* AgentProbeShellTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694A0E6E34E815E5A5218AA0 /* AgentProbeShellTests.swift */; };
 		2ED305BEE5B202DD76C12D58 /* LittleHerdBranding.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37B21B22B4948B6336D6258 /* LittleHerdBranding.swift */; };
+		31698C1BDBFFA6BAEE0D3CCD /* TranscriptRedactionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1702132577629C3AE1DB1B2D /* TranscriptRedactionTests.swift */; };
 		33091EB8213B524F89466F29 /* FolderSizeScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2605FCF3C1DE6064204751BF /* FolderSizeScanner.swift */; };
 		33ADC70A518A5189BF2D6256 /* RepositoryCheckProbeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1082145BBE5CD6ACAFC1375D /* RepositoryCheckProbeTests.swift */; };
 		3A45C65052806FE4A571A349 /* HerdwareAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D56F2E897732951FB02B9B7F /* HerdwareAvatar.swift */; };
@@ -217,6 +219,7 @@
 		133A808E3BA4EEA2AF234D6E /* CPUOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUOverviewView.swift; sourceTree = "<group>"; };
 		13A62AEDE179380F1817E463 /* Transfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transfer.swift; sourceTree = "<group>"; };
 		1640B34A7ED62C25CB2A837E /* AgentTransitCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTransitCard.swift; sourceTree = "<group>"; };
+		1702132577629C3AE1DB1B2D /* TranscriptRedactionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptRedactionTests.swift; sourceTree = "<group>"; };
 		17E709EDE7AEAEC62A0C1D22 /* MonitorModel+Command.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MonitorModel+Command.swift"; sourceTree = "<group>"; };
 		199544A93AE05F23B93D38E4 /* DashboardTransition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardTransition.swift; sourceTree = "<group>"; };
 		1B3D93707AB7958B4F319C06 /* TransitCardRenderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitCardRenderTests.swift; sourceTree = "<group>"; };
@@ -339,6 +342,7 @@
 		BE4154437B6C32E9A8D5FB98 /* TransferRunners.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferRunners.swift; sourceTree = "<group>"; };
 		BEF64A0A793884AE8FC6DC12 /* AppKitContextMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppKitContextMenu.swift; sourceTree = "<group>"; };
 		BF4DF45226956A9BAE4D2BF5 /* SuccessorLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessorLaunchTests.swift; sourceTree = "<group>"; };
+		BFAA30F7EA5E094D25916109 /* TranscriptRedaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptRedaction.swift; sourceTree = "<group>"; };
 		BFC923C97EA4CE402D1F47E6 /* ContainerAttributionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerAttributionTests.swift; sourceTree = "<group>"; };
 		C0180D64F840CC482E396D1C /* MachineAgentStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineAgentStack.swift; sourceTree = "<group>"; };
 		C03247C9E6019749B240BDA1 /* TransferDiffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferDiffView.swift; sourceTree = "<group>"; };
@@ -519,6 +523,7 @@
 				D047AA9280E8D79DC01E7EC3 /* TaskTransfer.swift */,
 				E5C36AC033CCD76A2AA262A9 /* TaskTransferView.swift */,
 				871452F90FC35F859F6860BF /* TranscriptCarry.swift */,
+				BFAA30F7EA5E094D25916109 /* TranscriptRedaction.swift */,
 				13A62AEDE179380F1817E463 /* Transfer.swift */,
 				9E4A6585252A6A695F2106B2 /* TransferAssembly.swift */,
 				9C9493E32EF1E74685B2C637 /* TransferCoordinator.swift */,
@@ -614,6 +619,7 @@
 				324EEBC4BC470AA0BD558877 /* TemporaryDefaults.swift */,
 				DD2759DDB72F3A36D70A071D /* TestLocalMachine.swift */,
 				03D95778BDFF5B8BA269208A /* TranscriptCarryTests.swift */,
+				1702132577629C3AE1DB1B2D /* TranscriptRedactionTests.swift */,
 				55CAB9D6F79EE9C1500E9440 /* TransferCoordinatorTests.swift */,
 				B0A25D8E05197294CF85F80D /* TransferDepartureTests.swift */,
 				D27A25994F1E4708A4E8383F /* TransferDiffRenderTests.swift */,
@@ -838,6 +844,7 @@
 				F467C6257000BC6F266301BC /* TaskTransfer.swift in Sources */,
 				182FDB3CF702DD3D6820FBA3 /* TaskTransferView.swift in Sources */,
 				B483C1B199FE71052505E2BF /* TranscriptCarry.swift in Sources */,
+				04F43BEA7179472F3F2B7AE0 /* TranscriptRedaction.swift in Sources */,
 				F8216E4C4750D5A960F95A2E /* Transfer.swift in Sources */,
 				AA9EC3237639B039C1A07403 /* TransferAssembly.swift in Sources */,
 				4DC56E8FD77CAB8BE9A23BFB /* TransferCoordinator.swift in Sources */,
@@ -914,6 +921,7 @@
 				7AAAA02496228EAADA51973E /* TemporaryDefaults.swift in Sources */,
 				876E52A1C8D09FBEB1D38C44 /* TestLocalMachine.swift in Sources */,
 				083DDE5AEF3146901C0DE37D /* TranscriptCarryTests.swift in Sources */,
+				31698C1BDBFFA6BAEE0D3CCD /* TranscriptRedactionTests.swift in Sources */,
 				FF3559A5EB1DAC602C55582D /* TransferCoordinatorTests.swift in Sources */,
 				5A2C47ED93339214F65ADD11 /* TransferDepartureTests.swift in Sources */,
 				1EA723977A58E2573EB03266 /* TransferDiffRenderTests.swift in Sources */,

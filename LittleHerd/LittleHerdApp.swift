@@ -211,6 +211,18 @@ enum LittleHerdPreferences {
     /// and the sample is one controlled run, so it arrives switched off, the
     /// way the recede did.
     static let carriesTranscriptKey = "carriesTranscript"
+
+    /// Whether a carried transcript is sent **unscrubbed** — every byte the session saw.
+    ///
+    /// **Separate from `carriesTranscript`, and off, and deliberately awkward to turn
+    /// on.** The ordinary carry scrubs what it can recognise before sending; this
+    /// removes that step, and there is no version of it that is merely a convenience.
+    /// It exists because the scrub is best-effort and can in principle remove something
+    /// the successor needed — a config value that looked like a token. Turning it on
+    /// takes a second, explicit confirmation naming what it means, because a preference
+    /// that ships everything a session ever read should not be one click away from a
+    /// preference that ships a summary.
+    static let carriesUnscrubbedTranscriptKey = "carriesUnscrubbedTranscript"
     static let networkVolumeAccessOnboardingCompletedKey =
         "networkVolumeAccessOnboardingCompleted"
 
@@ -582,6 +594,13 @@ private struct LittleHerdSettingsView: View {
     private var startsUsageSource = true
     @AppStorage(LittleHerdPreferences.requiresDestinationApprovalKey)
     private var requiresDestinationApproval = false
+    @AppStorage(LittleHerdPreferences.carriesTranscriptKey)
+    private var carriesTranscript = false
+    @AppStorage(LittleHerdPreferences.carriesUnscrubbedTranscriptKey)
+    private var carriesUnscrubbed = false
+    /// The second confirmation. Turning the scrub off is a two-step action on
+    /// purpose — see `carriesUnscrubbedTranscriptKey`.
+    @State private var confirmingUnscrubbed = false
     @State private var configuringNAS: MachineConfiguration?
     /// Bumped when a password is saved.
     ///
@@ -606,6 +625,60 @@ private struct LittleHerdSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+
+            VStack(alignment: .leading, spacing: 7) {
+                Toggle("Carry the session’s transcript when moving work", isOn: $carriesTranscript)
+                    .font(.body.weight(.medium))
+                    .help(Text(
+                        "The machine it moves to resumes the actual session "
+                            + "rather than starting fresh from a written brief."
+                    ))
+
+                Text(
+                    carriesTranscript
+                        ? "Recognisable secrets are removed before it is sent. That is "
+                            + "best-effort, not a guarantee."
+                        : "Off: a short brief is written instead, and the successor "
+                            + "starts from that."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+                // Only offered once carrying is on — there is nothing to leave
+                // unscrubbed otherwise, and an option that does nothing is worse
+                // than an absent one.
+                if carriesTranscript {
+                    Toggle("Send it unscrubbed, including secrets", isOn: Binding(
+                        get: { carriesUnscrubbed },
+                        // Turning it ON asks first; turning it OFF is immediate,
+                        // because nothing needs confirming to become safer.
+                        set: { wants in
+                            if wants { confirmingUnscrubbed = true } else { carriesUnscrubbed = false }
+                        }
+                    ))
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(carriesUnscrubbed ? Color.orange : Color.secondary)
+                    .padding(.top, 2)
+                }
+            }
+            .confirmationDialog(
+                "Send transcripts unscrubbed?",
+                isPresented: $confirmingUnscrubbed,
+                titleVisibility: .visible
+            ) {
+                Button("Send everything, including secrets", role: .destructive) {
+                    carriesUnscrubbed = true
+                }
+                Button("Keep scrubbing", role: .cancel) { carriesUnscrubbed = false }
+            } message: {
+                Text(
+                    "Every byte the session saw goes to the other machine: file "
+                        + "contents, command output, anything pasted, and any API keys "
+                        + "or passwords it read. Only do this between your own machines, "
+                        + "and only if the scrub is removing something the work needs."
+                )
             }
 
             VStack(alignment: .leading, spacing: 7) {

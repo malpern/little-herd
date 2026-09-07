@@ -119,7 +119,10 @@ extension MonitorModel {
                     sourceCommand: TransferRunners.command(for: source.configuration),
                     copy: TransferRunners.copy(to: target!.configuration),
                     destinationHome: NSHomeDirectory(),
-                    scratchRoot: TransferAssembly.scratchRoot
+                    scratchRoot: TransferAssembly.scratchRoot,
+                    redacts: !UserDefaults.standard.bool(
+                        forKey: LittleHerdPreferences.carriesUnscrubbedTranscriptKey
+                    )
                 ) : nil,
                 departure: TransferRunners.departure(for: source.configuration)
             )

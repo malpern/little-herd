@@ -294,12 +294,23 @@ extension TransferDriver {
         /// what it has run.
         let localSourceHome: String?
         let sourceCommand: @Sendable (String) async -> (output: String, succeeded: Bool)
+        /// Where to say how much was scrubbed. A count a person can weigh beats a tick
+        /// they cannot check.
+        var note: (@Sendable (String) -> Void)? = nil
         let copy: @Sendable (_ localPath: String, _ remotePath: String, _ recursive: Bool) async -> Bool
         /// The destination's home, for the project folder the successor will
         /// look in. Both machines on this herd share one, and the same
         /// assumption already lives in `TransferAssembly.scratchRoot`.
         let destinationHome: String
         let scratchRoot: String
+        /// Whether to scrub the transcript before it leaves this machine.
+        ///
+        /// **True unless somebody deliberately turned it off**, and off is a second,
+        /// separately confirmed preference — see `LittleHerdPreferences`. The scrub is
+        /// best-effort by nature (`TranscriptRedaction` says why it cannot be complete),
+        /// so the choice is between "much less exposed" and "everything the session
+        /// saw", never between "safe" and "unsafe".
+        var redacts: Bool = true
     }
 
     enum Carried {
@@ -346,13 +357,34 @@ extension TransferDriver {
             home: carry.destinationHome,
             successorWorkingDirectory: scratch
         )
+        // **Scrubbed before it leaves, unless explicitly told otherwise.** The file that
+        // goes over the wire is a rewritten copy in a temporary directory; the original
+        // is never modified, because a transcript is a record and editing one in place
+        // would be falsifying it.
+        var toSend = source.transcript
+        var scrubbed: Int? = nil
+        if carry.redacts {
+            guard let raw = try? String(contentsOfFile: source.transcript, encoding: .utf8) else {
+                return .fellBack("its transcript could not be read to be scrubbed")
+            }
+            let (text, changed) = TranscriptRedaction.redactTranscript(raw)
+            let tmp = NSTemporaryDirectory() + "little-herd-carry-\(UUID().uuidString).jsonl"
+            guard (try? text.write(toFile: tmp, atomically: true, encoding: .utf8)) != nil else {
+                return .fellBack("the scrubbed transcript could not be written")
+            }
+            toSend = tmp
+            scrubbed = changed
+        }
+        defer { if toSend != source.transcript { try? FileManager.default.removeItem(atPath: toSend) } }
+
         guard await carry.copy(
-            source.transcript,
+            toSend,
             "\(destination)/\(request.sessionIdentifier).jsonl",
             false
         ) else {
             return .fellBack("the transcript could not be copied to the destination")
         }
+        if let scrubbed { carry.note?("scrubbed \(scrubbed) record(s) before sending") }
         // The sidecar is not load-bearing — the experiment resumed without it
         // — so its absence, or a failure copying it, is not a reason to lose
         // the carry. Attempted, and the outcome ignored.
