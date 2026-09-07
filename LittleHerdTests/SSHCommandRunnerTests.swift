@@ -138,3 +138,72 @@ struct SSHCommandRunnerTests {
         #expect(!result.timedOut)
     }
 }
+
+/// `SSHCommandRunner.copy`, the transport a transcript actually fits through.
+@Suite("Copying a file to a machine")
+struct SSHCopyTests {
+    private func stub(_ body: String) throws -> String {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("scp-stub-\(UUID().uuidString).sh")
+        try ("#!/bin/sh\n" + body + "\n").write(to: url, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
+        return url.path
+    }
+
+    /// **The arguments are what scp is given, in the order it needs them**, and
+    /// the stub simply echoes them back so the test can read the invocation.
+    @Test
+    func theInvocationIsShapedForScp() async throws {
+        let path = try stub(#"printf '%s\n' "$@""#)
+        let result = await SSHCommandRunner.copy(
+            "/tmp/a.jsonl", to: "malpern@mini", remotePath: "/Users/m/x/a.jsonl",
+            identityFile: "/Users/m/.ssh/id", recursive: true, executable: path
+        )
+        #expect(result.succeeded)
+        let lines = result.output.split(separator: "\n").map(String.init)
+        #expect(lines.contains("-r"))
+        #expect(lines.contains("BatchMode=yes"))
+        #expect(lines.contains("IdentitiesOnly=yes"))
+        #expect(lines.contains("/Users/m/.ssh/id"))
+        // "--" before the paths, and the remote written host:path.
+        let dash = try #require(lines.firstIndex(of: "--"))
+        #expect(lines[dash + 1] == "/tmp/a.jsonl")
+        #expect(lines[dash + 2] == "malpern@mini:/Users/m/x/a.jsonl")
+    }
+
+    /// A failing copy is a failure with its words kept, so a full disk or a
+    /// refused key reaches the person rather than a bare false.
+    @Test
+    func afailedCopyKeepsWhatScpSaid() async throws {
+        let path = try stub("echo 'scp: No space left on device' >&2; exit 1")
+        let result = await SSHCommandRunner.copy(
+            "/tmp/a", to: "example", remotePath: "/x", executable: path
+        )
+        #expect(!result.succeeded)
+        #expect(result.output.contains("No space left"))
+    }
+
+    /// The host guard is the same boundary the other runners keep: a value
+    /// shaped like a flag never reaches an argument list.
+    @Test
+    func animpossibleHostNeverRunsScp() async throws {
+        let path = try stub("echo ran")
+        let result = await SSHCommandRunner.copy(
+            "/tmp/a", to: "-oProxyCommand=x", remotePath: "/x", executable: path
+        )
+        #expect(!result.succeeded)
+        #expect(result.output.isEmpty)
+    }
+
+    /// And the watchdog, because a stalled network holds scp open for ever.
+    @Test
+    func acopyThatHangsIsKilled() async throws {
+        let path = try stub("sleep 120")
+        let started = Date()
+        let result = await SSHCommandRunner.copy(
+            "/tmp/a", to: "example", remotePath: "/x", timeout: 2, executable: path
+        )
+        #expect(!result.succeeded)
+        #expect(Date().timeIntervalSince(started) < 30)
+    }
+}

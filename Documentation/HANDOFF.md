@@ -3382,6 +3382,51 @@ the only part drawn.
     answer, and offering to carry one while quietly writing a brief would be
     worse than not offering.
 
+    **Re-evaluated on 6 September after the foundation was built, and the
+    first pass had missed four things.** Three are mechanical: the write
+    passed the file as a shell argument, and a real transcript is 33 MB
+    base64 against a 1 MB `ARG_MAX`, so it worked only for the toy sizes the
+    tests used; a running session appends to its transcript while it is
+    being read, so a copy can be torn; and the sidecar directory beside each
+    transcript was not carried. One is not mechanical, and it is the real
+    cost.
+
+    **Secrets.** This session's own transcript holds 27 `sops -d`, 119
+    `secrets.env`, 11 `ANTHROPIC_API_KEY`, 41 `Bearer`, and two `BEGIN
+    OPENSSH PRIVATE KEY`. Much of that is reading *about* secrets, and a
+    copy cannot tell the difference. Redaction is not an answer — a secret
+    nobody defined cannot be spotted. So it is a posture, not a fix: off by
+    default, opt-in per machine, a per-transfer confirmation that names what
+    is carried, and only ever between one person's own machines. The brief
+    has the same exposure in miniature; it is written by an agent that saw
+    the same things.
+
+    **The hazard that would have decided against it turned out to be
+    prevented by construction.** A carried session remembers files at the
+    source's absolute paths, and this herd's main checkout exists at that
+    same path on the mini, at a different commit — so a resumed successor
+    could edit the wrong tree while believing it was continuing its own
+    work, silently. Tested directly: a file was planted at the remembered
+    path on the mini, the session was resumed in a scratch directory with no
+    shell, and asked to append to "the file it created". **The planted file
+    was untouched.** Asked again to write to that absolute path with the
+    Write tool: "permission not granted, so nothing was written". In `-p`
+    mode with `acceptEdits`, an edit outside the directory the session was
+    resumed in needs a permission nobody is there to give, and is denied.
+    Reads outside were blocked in the direct test and got through once by
+    another route, so stale context is a bounded fidelity risk rather than a
+    correctness one, and the check step is what catches an edit made on
+    wrong context.
+
+    **The decision: build it.** The transport becomes `scp` from the Mac
+    running Little Herd — it can reach both ends, which is what it is for —
+    carrying the sidecar with `-r`; the copy is taken after the departure's
+    own steps and refused if the file's size changes between two looks,
+    which is what a live writer looks like; the resume prompt states the
+    move and the new directory in the first line, cheap belt-and-braces over
+    the boundary; and the confirmation names the carry. No path-mismatch
+    precondition, because the boundary makes it unnecessary and refusing on
+    it would have excluded every session in a shared checkout.
     **If only one survives, the evidence favours the transcript.** The brief
     has failed twice in live use and costs a model call every time; the
     carry has failed never and costs a copy. But it has been run once, in a

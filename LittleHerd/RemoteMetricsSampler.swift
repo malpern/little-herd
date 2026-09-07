@@ -869,3 +869,67 @@ nonisolated enum SSHCommandRunner {
         }.value
     }
 }
+
+extension SSHCommandRunner {
+    /// Copies a file or directory to a machine, from the Mac Little Herd runs on.
+    ///
+    /// **This exists because a transcript does not fit in a command.** The
+    /// first version of the carry handed the file to the destination as a
+    /// base64 shell argument, which works for the toy sizes a test uses and
+    /// fails for every real one: this session's transcript is 33 MB encoded,
+    /// against a 1 MB `ARG_MAX`. The other runners are all "say a command on
+    /// a machine", and a body of that size has no place in a command.
+    ///
+    /// `scp` from *here* rather than from the source, because this Mac is the
+    /// one machine that can reach every other — that is what Little Herd is.
+    /// A remote source is fetched to a temporary file first, then sent on; two
+    /// hops through the machine in the middle, which is the shape of every
+    /// other question the app asks.
+    ///
+    /// The executable is a parameter for the reason `runCapturingAll`'s is:
+    /// a stub can stand in for it, and the plumbing gets tested without a
+    /// second machine.
+    static func copy(
+        _ localPath: String,
+        to host: String,
+        remotePath: String,
+        identityFile: String? = nil,
+        recursive: Bool = false,
+        timeout: TimeInterval = 10 * 60,
+        executable: String = "/usr/bin/scp"
+    ) async -> (output: String, succeeded: Bool) {
+        guard SSHHostName.isValid(host) else { return ("", false) }
+        var arguments = [
+            "-q",
+            "-o", "BatchMode=yes",
+            "-o", "ConnectTimeout=10",
+            "-o", "ForwardAgent=no",
+        ]
+        if let identityFile {
+            arguments += ["-o", "IdentitiesOnly=yes", "-i", identityFile]
+        }
+        if recursive { arguments.append("-r") }
+        // "--" so neither path can be read as a flag, and the remote side is
+        // host:path with the host validated above.
+        arguments += ["--", localPath, "\(host):\(remotePath)"]
+
+        return await Task.detached(priority: .utility) {
+            let process = Process()
+            let pipe = Pipe()
+            process.executableURL = URL(fileURLWithPath: executable)
+            process.arguments = arguments
+            process.standardOutput = pipe
+            process.standardError = pipe
+            process.standardInput = FileHandle.nullDevice
+            do { try process.run() } catch { return ("", false) }
+            let watchdog = ProbeWatchdog(process: process, after: timeout)
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            let timedOut = watchdog.finish()
+            return (
+                String(decoding: data, as: UTF8.self),
+                process.terminationStatus == 0 && !timedOut
+            )
+        }.value
+    }
+}

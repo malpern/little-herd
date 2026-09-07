@@ -51,32 +51,45 @@ struct TranscriptCarryTests {
         )
     }
 
-    /// **An absent transcript must fail loudly at the read.** The brief already
-    /// taught this: it once reported success having written nothing, and the
-    /// departure sailed on and pushed a branch pointing at a file that was not
-    /// there.
+    /// The carry takes the whole record: the transcript and the sidecar
+    /// beside it, both under the source's own project folder.
     @Test
-    func areadRefusesAnEmptyOrMissingTranscript() {
-        let command = TranscriptCarry.readCommand(
+    func thesourcePathsNameTheTranscriptAndItsSidecar() {
+        let paths = TranscriptCarry.sourcePaths(
             home: "/Users/a", workingDirectory: "/Users/a/x", sessionIdentifier: "s"
         )
-        #expect(command.hasPrefix("test -s "))
-        #expect(command.contains("base64"))
+        #expect(paths.transcript == "/Users/a/.claude/projects/-Users-a-x/s.jsonl")
+        #expect(paths.sidecar == "/Users/a/.claude/projects/-Users-a-x/s")
     }
 
-    /// And the write checks what it wrote, for the same reason.
+    /// **A transcript still being written is refused.** Two looks at its size
+    /// a beat apart; a difference means a live writer, and a copy taken then is
+    /// torn — a session missing its last turns, silently. The command also
+    /// refuses an absent or empty file, for the reason the brief learned: a
+    /// step must not report success having produced nothing.
     @Test
-    func awriteChecksThatSomethingArrived() {
-        let command = TranscriptCarry.writeCommand(
-            home: "/Users/b",
-            successorWorkingDirectory: "/Users/b/scratch",
-            sessionIdentifier: "s",
-            base64Contents: "aGVsbG8="
+    func thestabilityCheckLooksTwiceAndRefusesAnEmptyFile() {
+        let command = TranscriptCarry.stabilityCommand(transcript: "/Users/a/t.jsonl")
+        #expect(command.hasPrefix("test -s "))
+        #expect(command.components(separatedBy: "stat -f %z").count == 3, "must look twice")
+        #expect(command.contains("sleep 1"))
+        #expect(command.contains(#"test "$a" = "$b""#))
+        // Both stats, because the source may be a Mac or a Linux box and they
+        // spell it differently — the same lesson the folder scanner learned.
+        #expect(command.contains("stat -c %s"))
+    }
+
+    /// **The first line says it has moved.** The boundary is what stops a
+    /// stale memory editing the wrong tree; this is what stops it trying.
+    @Test
+    func themovedNoticeNamesBothPlacesAndForbidsTheOld() {
+        let notice = TranscriptCarry.movedNotice(
+            from: "/Users/a/old", to: "/Users/b/scratch"
         )
-        #expect(command.contains("mkdir -p "))
-        #expect(command.contains("base64 --decode"))
-        #expect(command.hasSuffix("'/Users/b/.claude/projects/-Users-b-scratch/s.jsonl'"))
-        #expect(command.contains("test -s "))
+        #expect(notice.contains("/Users/b/scratch"))
+        #expect(notice.contains("/Users/a/old"))
+        #expect(notice.contains("do not"))
+        #expect(notice.hasPrefix("You have been moved"))
     }
 
     /// **Forked, never resumed as itself.** Two machines holding one identifier
@@ -112,9 +125,9 @@ struct TranscriptCarryTests {
     /// one, so it is not hypothetical.
     @Test
     func pathsAreQuoted() {
-        let read = TranscriptCarry.readCommand(
-            home: "/Users/a", workingDirectory: "/Users/a/Some Folder", sessionIdentifier: "s"
+        let command = TranscriptCarry.stabilityCommand(
+            transcript: "/Users/a/.claude/projects/-Users-a-Some Folder/s.jsonl"
         )
-        #expect(read.contains("'/Users/a/.claude/projects/-Users-a-Some Folder/s.jsonl'"))
+        #expect(command.contains("'/Users/a/.claude/projects/-Users-a-Some Folder/s.jsonl'"))
     }
 }

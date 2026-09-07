@@ -78,45 +78,50 @@ extension TranscriptCarry {
         session.provider == .claude && session.workingDirectory?.isEmpty == false
     }
 
-    /// Reading the transcript on the source, as one shell command.
+    /// Every file the carry moves: the transcript, and the sidecar directory
+    /// beside it when there is one.
     ///
-    /// `base64` because the thing being moved is a file and the transport is a
-    /// command that returns text: a transcript is JSON with newlines in it, and
-    /// handing that back raw would leave the caller unpicking where the output
-    /// of one command ended.
-    static func readCommand(
+    /// The sidecar holds `tool-results` and the session's own title. A carry
+    /// without it resumed fine in the experiment — it is not load-bearing — but
+    /// a carry that wants the whole record should take the whole record.
+    static func sourcePaths(
         home: String,
         workingDirectory: String,
         sessionIdentifier: String
-    ) -> String {
-        let path = transcriptPath(
-            home: home,
-            workingDirectory: workingDirectory,
-            sessionIdentifier: sessionIdentifier
+    ) -> (transcript: String, sidecar: String) {
+        let directory = "\(home)/.claude/projects/"
+            + projectDirectoryName(for: workingDirectory)
+        return (
+            transcript: "\(directory)/\(sessionIdentifier).jsonl",
+            sidecar: "\(directory)/\(sessionIdentifier)"
         )
-        // `-s` first: a transcript that does not exist, or exists empty, must
-        // fail here rather than deliver nothing and let the arrival resume a
-        // session that is not there. The same lesson the brief learned when it
-        // reported success having written nothing.
-        return "test -s \(RemoteShell.quoted(path)) && base64 < \(RemoteShell.quoted(path))"
     }
 
-    /// Writing it on the destination, in the place the successor will look.
-    static func writeCommand(
-        home: String,
-        successorWorkingDirectory: String,
-        sessionIdentifier: String,
-        base64Contents: String
-    ) -> String {
-        let directory = destinationDirectory(
-            home: home,
-            successorWorkingDirectory: successorWorkingDirectory
-        )
-        let file = "\(directory)/\(sessionIdentifier).jsonl"
-        return "mkdir -p \(RemoteShell.quoted(directory)) && "
-            + "printf %s \(RemoteShell.quoted(base64Contents)) "
-            + "| base64 --decode > \(RemoteShell.quoted(file)) && "
-            + "test -s \(RemoteShell.quoted(file))"
+    /// **Refuse a transcript that is still being written.** A running session
+    /// appends to its own file, so a copy taken mid-write is torn — and a torn
+    /// JSONL resumes as a session missing its last turns, silently. Two looks
+    /// at the size, a beat apart: if they differ, something is writing, and
+    /// the carry says so instead of guessing. Run on the source, after the
+    /// departure's own steps, which is the moment nothing of ours is writing.
+    static func stabilityCommand(transcript: String) -> String {
+        let quoted = RemoteShell.quoted(transcript)
+        return "test -s \(quoted) && a=$(stat -f %z \(quoted) 2>/dev/null || "
+            + "stat -c %s \(quoted)) && sleep 1 && "
+            + "b=$(stat -f %z \(quoted) 2>/dev/null || stat -c %s \(quoted)) && "
+            + "test \"$a\" = \"$b\""
+    }
+
+    /// The first line the resumed session reads.
+    ///
+    /// The boundary is what stops a stale memory editing the wrong tree — see
+    /// the type's own note — and this is belt-and-braces over it: the model
+    /// demonstrably handles "you have moved" when told, so it is told, in the
+    /// first line, before anything else.
+    static func movedNotice(from source: String, to destination: String) -> String {
+        "You have been moved to another machine. Your working directory is now "
+            + "\(destination). Files you remember at \(source) are on a different "
+            + "machine and are not reachable from here; do not try to read or "
+            + "edit them. Continue the work in \(destination)."
     }
 
     /// How the successor is started when it has the session rather than a
