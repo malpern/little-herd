@@ -3120,8 +3120,8 @@ the only part drawn.
     seconds, because it is the one command the tool runs that is meant to be
     slow. Verified to the edge of a real change and no further: the plan for
     cloning onto the linux box shows the command and refuses without `--yes`,
-    and running it clones onto that machine — the heavy consent the gate exists
-    for — so it is left for a person to trigger.
+    and running it clones onto that machine — the heavy consent the gate
+    exists for — so it is left for a person to trigger.
 
     **The drag has it too, as of 7 September, which closes the asymmetry with
     the command line.** The drop decides three ways: a ready machine is
