@@ -172,7 +172,6 @@ struct FolderSortTests {
     @Test
     func eachColumnStartsTheWayYouWouldWantIt() {
         #expect(!FolderSortField.size.defaultAscending)
-        #expect(!FolderSortField.dateModified.defaultAscending)
         #expect(FolderSortField.name.defaultAscending)
     }
 
@@ -180,12 +179,6 @@ struct FolderSortTests {
     func sizeSortsLargestFirst() {
         let sorted = FolderSort(field: .size, ascending: false).sorted(sample)
         #expect(sorted.map(\.name) == ["beta", "gamma", "Alpha"])
-    }
-
-    @Test
-    func dateSortsNewestFirst() {
-        let sorted = FolderSort(field: .dateModified, ascending: false).sorted(sample)
-        #expect(sorted.map(\.name) == ["Alpha", "beta", "gamma"])
     }
 
     /// Names compare the way a person reads them — case-insensitively, and with
@@ -205,20 +198,6 @@ struct FolderSortTests {
         )
     }
 
-    /// A folder the machine could not stat sinks rather than jumping to the top
-    /// of a date sort, where it would look like the most recent thing.
-    @Test
-    func anUndatedFolderSortsAsOldest() {
-        let undated = FolderEntry(
-            name: "mystery", path: "/V/mystery", sizeBytes: 50,
-            isDirectory: true, modifiedAt: nil
-        )
-        let sorted = FolderSort(field: .dateModified, ascending: false)
-            .sorted(sample + [undated])
-
-        #expect(sorted.last?.name == "mystery")
-    }
-
     /// Clicking the same column reverses it; clicking a different one starts
     /// from that column's own sensible direction rather than inheriting.
     @Test
@@ -227,9 +206,6 @@ struct FolderSortTests {
 
         sort.toggle(.size)
         #expect(sort == FolderSort(field: .size, ascending: true))
-
-        sort.toggle(.dateModified)
-        #expect(sort == FolderSort(field: .dateModified, ascending: false))
 
         sort.toggle(.name)
         #expect(sort == FolderSort(field: .name, ascending: true))

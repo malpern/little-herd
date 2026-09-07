@@ -104,15 +104,23 @@ nonisolated struct FolderScan: Equatable, Sendable {
 /// obviously the useful one — largest first, newest first, but names A to Z —
 /// so clicking a column heading for the first time does the expected thing
 /// rather than the alphabetically consistent one.
+/// **There were three, and the third had no heading to click.** Removing the
+/// Date Modified column to give a folder's name the room left `dateModified`
+/// reachable by nothing at all — sorting is driven entirely by the headings,
+/// so a field with no heading is a field nobody can choose. It went with the
+/// column rather than sitting behind it as a capability with no control.
+///
+/// `FolderEntry.modifiedAt` deliberately stays. The scanner reads it as part
+/// of the same `stat` it already runs for names, so it costs nothing to keep,
+/// and it is the one piece of this that a future column would need back.
 nonisolated enum FolderSortField: String, CaseIterable, Sendable {
     case name
     case size
-    case dateModified
 
     var defaultAscending: Bool {
         switch self {
         case .name: true
-        case .size, .dateModified: false
+        case .size: false
         }
     }
 
@@ -120,7 +128,6 @@ nonisolated enum FolderSortField: String, CaseIterable, Sendable {
         switch self {
         case .name: "Name"
         case .size: "Size"
-        case .dateModified: "Date Modified"
         }
     }
 }
@@ -147,10 +154,6 @@ nonisolated struct FolderSort: Equatable, Sendable {
                 first.name.localizedStandardCompare(second.name) == .orderedAscending
             case .size:
                 first.sizeBytes < second.sizeBytes
-            case .dateModified:
-                // Anything undated sorts as oldest, so a folder the machine
-                // could not stat sinks rather than jumping to the top.
-                (first.modifiedAt ?? .distantPast) < (second.modifiedAt ?? .distantPast)
             }
         }
         return ascending ? ordered : ordered.reversed()

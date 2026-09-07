@@ -1205,6 +1205,33 @@ extension PanelRenderHarness {
             size: size,
             named: "hover-6-no-recede-means-no-name"
         )
+
+        // **A machine in the red while the room moves.** This used to stop the
+        // whole herd receding, which read as the effect being broken — it was
+        // reported as exactly that. The alarming column now travels back with
+        // the others and keeps its brightness, so it is the one thing still lit
+        // at the far end rather than the one thing that did not move.
+        defaults.set(true, forKey: key)
+        let shouting = [
+            machine("air", "Air", .chickLaptop, cpu: 51, sessions: [
+                session("a", .claude, project: "little-herd", title: "Little Herder"),
+                session("b", .claude, project: "m2", title: "Matt's gym scheduling app"),
+            ]),
+            machine("mini", "Mini", .calfMini, cpu: 22, sessions: []),
+            // 97% is above the critical band, which is what shouting means.
+            machine("linux", "Linux", .ponyTower, cpu: 97, sessions: []),
+            machine("nas", "Synology", .pigletNAS, cpu: 6, sessions: []),
+        ]
+        try render(
+            CPUOverviewView(
+                machines: shouting,
+                metric: .cpu,
+                rendersFanFor: MachineID("air"),
+                rendersNameFor: "b"
+            ),
+            size: size,
+            named: "hover-7-one-machine-shouting"
+        )
     }
 }
 

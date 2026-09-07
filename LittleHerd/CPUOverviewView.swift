@@ -161,12 +161,24 @@ struct CPUOverviewView: View {
     /// builder is at the type checker's limit and pays for every expression
     /// written inline there.
     private func recession(forColumn index: Int) -> Recession {
-        herdRecession.converging(
+        var aimed = herdRecession.converging(
             column: index,
             of: machines.count,
             width: columnWidth,
             spacing: columnSpacing
         )
+        aimed.keepsBrightness = isShouting(machines[index])
+        return aimed
+    }
+
+    /// Whether this one machine is saying something is wrong.
+    private func isShouting(_ machine: MachineMonitorModel) -> Bool {
+        MetricAlarm.severity(
+            machine.metricPresentation(
+                for: metric,
+                isReporting: machine.state == .live || machine.isStorage
+            )
+        ) != nil
     }
 
 
@@ -182,7 +194,7 @@ struct CPUOverviewView: View {
     /// herd goes back and the agents stay at the front of the room.
     private var herdRecession: Recession {
         Recession(
-            away: recedesBarsUnderFan && somethingIsRaised && !somethingIsShouting,
+            away: recedesBarsUnderFan && somethingIsRaised,
             reduceMotion: reduceMotion,
             // Straight back, and slightly down: the far end of the tunnel sits
             // below the herd rather than behind its middle, so the row tips
@@ -191,13 +203,26 @@ struct CPUOverviewView: View {
         )
     }
 
-    /// **Nothing recedes while a machine is shouting.**
+    /// Whether any machine is saying something is wrong.
     ///
-    /// The per-column version could exempt one machine and let its neighbours
-    /// go; one object cannot, so the rule becomes a herd-level one — and it is
-    /// the better rule anyway. A reading that says something is wrong is not
-    /// backdrop, and if any of them is saying it, this is not the moment to
-    /// move the room.
+    /// **This used to stop the whole herd receding, and that was the wrong
+    /// shape of rule.** The reasoning was sound — a reading that says something
+    /// is wrong is not backdrop — and the consequence was not: one busy machine
+    /// cancelled the effect on all four columns, silently, with nothing on
+    /// screen connecting the two. On a herd where a build can pin a machine for
+    /// an hour that is close to the normal state, so a feature somebody had
+    /// deliberately turned on simply did not run, and looked broken. It was
+    /// reported as a bug on 6 September; the load average was 96 at the time
+    /// and the code was innocent.
+    ///
+    /// The room moves now and **the shouting column keeps its brightness**, so
+    /// an alarm is the one thing still lit at the far end of the tunnel rather
+    /// than the one thing that failed to move. It is a stronger statement of
+    /// "look at this", it stays one object converging on one point, and it
+    /// cannot be mistaken for the effect being broken.
+    ///
+    /// Kept because the header still asks it: a herd with anything wrong in it
+    /// is a herd to look at.
     private var somethingIsShouting: Bool {
         machines.contains { machine in
             MetricAlarm.severity(
@@ -964,6 +989,14 @@ nonisolated struct AgentCardVisibility: Equatable, Sendable {
 struct Recession: Equatable {
     var away = false
     var reduceMotion = false
+    /// This column stays fully lit while the rest fade back.
+    ///
+    /// **Only the opacity is exempt, not the movement.** A column that refused
+    /// to travel with the others would stop the row being one object, which is
+    /// the whole difference between receding and four bars shrinking where they
+    /// stand. It goes back with them and stays bright, which is what something
+    /// still glowing at the far end of a dark tunnel looks like.
+    var keepsBrightness = false
     /// The point this column scales toward, in its own unit space.
     var vanishing: UnitPoint = .bottom
 
@@ -1039,7 +1072,7 @@ private struct RecedingReading: ViewModifier {
             // pointer crossed a machine. The ground stays cream and the
             // readings recede into it — which is what distance looks like in
             // daylight anyway, things going pale rather than going black.
-            .opacity(away ? 0.05 : 1)
+            .opacity(away && !recession.keepsBrightness ? 0.05 : 1)
             // **A reading that has gone is not something to click.** While the
             // fan is up the bars are backdrop, and leaving them live meant
             // aiming at a faint, shrunken target that had moved — so they stop
