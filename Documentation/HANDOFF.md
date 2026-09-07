@@ -3308,8 +3308,8 @@ the only part drawn.
     wrong answer: tried, and there a card's right-click menu **never opens at
     all**. The fix the columns needed does not generalise one level down.
 
-17. **Carry the transcript instead of writing a brief — the next thing to
-    build, and the first one this project has taken up with the experiment
+17. **Carry the transcript instead of writing a brief — built, wired, and
+    landed live, behind a flag; the first item this project took up with the
     already done.** Raised 6 September out of stepping back from the
     transfer rather than out of a bug.
 
@@ -3443,6 +3443,16 @@ the only part drawn.
     carry declines, the brief is written exactly as before. The capture and
     push do not depend on the brief file, which is the one assumption the
     reorder rests on and was read rather than assumed.
+    **It landed live on 6 September, air to mini, and the proof is what the
+    successor wrote.** A 1.4 MB session was carried, the brief skipped, the
+    session resumed with `--fork-session`; the tests passed on the mini and
+    the work was pushed. The transfer note it produced recounts figures it
+    had measured over `ssh linux` in the original session — detail no brief
+    could hold — and it knew it had moved ("the machine this was written on
+    has no shell available"), which is the moved-notice doing its job. Full
+    history, correctly oriented, which is the whole point of the design over
+    a summary.
+
     **If only one survives, the evidence favours the transcript.** The brief
     has failed twice in live use and costs a model call every time; the
     carry has failed never and costs a copy. But it has been run once, in a
