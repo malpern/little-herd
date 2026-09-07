@@ -247,15 +247,45 @@ extension HerdCommand {
             )
         }
 
+        // The remote to clone from, when the source is this Mac and has one.
+        // A remote source would need the URL read over ssh; that has not been
+        // run live, so a remote source simply offers no clone and explains.
+        let originURL: String? = origin.connection == .local
+            ? gitRemoteURL(forDirectory: session.workingDirectory)
+            : nil
+
         return (
             destinations(
                 session: session,
                 origin: origin.id,
                 herd: herd,
-                json: json
+                json: json,
+                originURL: originURL
             ),
             0
         )
+    }
+
+    /// The `origin` remote of the checkout a directory sits in, or nil.
+    ///
+    /// Read with `git -C`, which resolves the enclosing repository from any
+    /// directory inside it — a session's working directory is a worktree, and
+    /// its remote is the one a clone would copy.
+    static func gitRemoteURL(forDirectory directory: String?) -> String? {
+        guard let directory, !directory.isEmpty else { return nil }
+        let process = Process()
+        let pipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["-C", directory, "remote", "get-url", "origin"]
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { return nil }
+        let url = String(decoding: data, as: UTF8.self)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return url.isEmpty ? nil : url
     }
 
     /// Runs an async answer from a synchronous entry point.
@@ -439,39 +469,75 @@ extension HerdCommand {
         session: AgentSession,
         origin: MachineID,
         herd: [DestinationAccount],
-        json: Bool
+        json: Bool,
+        originURL: String? = nil
     ) -> String {
+        let slug = AgentDropEligibility.repository(
+            of: MachineAgentActivity(provider: session.provider, sessions: [session]),
+            from: origin,
+            in: herd
+        )
         let answers = herd
             .filter { $0.machine != origin }
-            .map { account -> (String, String?) in
+            .map { account -> (name: String, refusal: String?, remedy: TransferRemedy) in
                 let request = TransferAssembly.request(
-                    session: session,
-                    from: origin,
-                    to: account.machine,
-                    in: herd,
-                    check: TransferAssembly.check
+                    session: session, from: origin, to: account.machine,
+                    in: herd, check: TransferAssembly.check
                 )
-                switch request {
-                case .success: return (account.name, nil)
-                case .failure(let refusal): return (account.name, reason(refusal))
-                }
+                if case .success = request { return (account.name, nil, .none) }
+                let eligibility = AgentDropEligibility.eligibility(
+                    of: account.machine,
+                    carrying: MachineAgentActivity(provider: session.provider, sessions: [session]),
+                    from: origin,
+                    in: herd
+                )
+                let remedy = TransferRemedy.remedy(
+                    for: eligibility, machine: account.name, provider: session.provider,
+                    originURL: originURL, slug: slug
+                )
+                let refusal: String
+                if case .failure(let r) = request { refusal = reason(r) } else { refusal = "cannot take it" }
+                return (account.name, refusal, remedy)
             }
 
         if json {
-            return jsonArray(answers.map { name, refusal in
-                [
-                    "machine": name,
-                    "eligible": refusal == nil ? "true" : "false",
-                    "reason": refusal ?? "",
+            return jsonArray(answers.map { answer in
+                var row = [
+                    "machine": answer.name,
+                    "eligible": answer.refusal == nil ? "true" : "false",
+                    "reason": answer.refusal ?? "",
                 ]
+                switch answer.remedy {
+                case .offer(let summary, let command):
+                    row["fix"] = summary
+                    row["fix_command"] = command
+                case .explain(let text):
+                    row["fix"] = text
+                case .none:
+                    break
+                }
+                return row
             })
         }
 
         guard !answers.isEmpty else { return "nowhere to send it — the herd is one machine" }
-        let width = answers.map(\.0.count).max() ?? 0
-        return answers.map { name, refusal in
-            let padded = name.padding(toLength: width, withPad: " ", startingAt: 0)
-            return "\(padded)  \(refusal ?? "can take it")"
+        let width = answers.map(\.name.count).max() ?? 0
+        return answers.map { answer in
+            let padded = answer.name.padding(toLength: width, withPad: " ", startingAt: 0)
+            var line = "\(padded)  \(answer.refusal ?? "can take it")"
+            switch answer.remedy {
+            case .offer(let summary, let command):
+                // The summary says what would happen; the command is the exact
+                // thing, on its own line, because it is what a person would run
+                // and it is a real action on another machine.
+                line += "\n\(String(repeating: " ", count: width))  → \(summary)"
+                line += "\n\(String(repeating: " ", count: width))    \(command)"
+            case .explain(let text):
+                line += "\n\(String(repeating: " ", count: width))  → \(text)"
+            case .none:
+                break
+            }
+            return line
         }.joined(separator: "\n")
     }
 

@@ -536,3 +536,89 @@ extension HerdCommandTransfersTests {
         #expect(rows.first?.subject == "Successor work on transfer/x")
     }
 }
+
+
+/// The `destinations` renderer showing remedies, without a live herd.
+@Suite("Destinations and their remedies")
+struct HerdCommandDestinationsRemedyTests {
+    private func account(
+        _ id: String, _ name: String,
+        agent: Bool, checkout: Bool
+    ) -> DestinationAccount {
+        DestinationAccount(
+            machine: MachineID(id), name: name, symbolName: "desktopcomputer",
+            report: DestinationReport(
+                installations: agent
+                    ? [AgentInstallation(provider: .claude, version: "1", path: "/x/claude")]
+                    : [],
+                checkouts: checkout ? ["little-herd": "/x/little-herd"] : [:]
+            ),
+            mayHostSessions: true, auth: .unverified, isVerifying: false
+        )
+    }
+
+    private var session: AgentSession {
+        AgentSession(
+            id: "claude:s-1", provider: .claude, projectName: "little-herd",
+            state: .waiting, updatedAt: .now, progress: nil,
+            // Must match the origin account's checkout path, since the slug is
+            // resolved by matching the session's directory against it.
+            workingDirectory: "/x/little-herd"
+        )
+    }
+
+    /// A machine missing the checkout shows the clone command; one missing the
+    /// agent shows the installer; and both are on their own line under the
+    /// refusal, because a command is a real action a person reads before
+    /// running.
+    @Test
+    func agapThatCanBeClosedShowsHowToCloseIt() {
+        let herd = [
+            account("a", "Air", agent: true, checkout: true),
+            account("mini", "Mini", agent: true, checkout: false),
+            account("linux", "Linux", agent: false, checkout: true),
+        ]
+        let text = HerdCommand.destinations(
+            session: session, origin: MachineID("a"), herd: herd, json: false,
+            originURL: "git@github.com:malpern/little-herd.git"
+        )
+        // Mini has the agent, not the checkout: offered a clone.
+        #expect(text.contains("git clone"))
+        #expect(text.contains("git@github.com:malpern/little-herd.git"))
+        #expect(text.contains("$HOME/local-code/little-herd"))
+        // Linux has the checkout, not the agent: offered the installer.
+        #expect(text.contains("curl -fsSL https://claude.ai/install.sh | bash"))
+    }
+
+    /// With no URL to clone from, the checkout gap is explained rather than
+    /// offered — there is nowhere to clone it from.
+    @Test
+    func withoutARemoteTheCheckoutGapIsExplainedNotOffered() {
+        let herd = [
+            account("a", "Air", agent: true, checkout: true),
+            account("mini", "Mini", agent: true, checkout: false),
+        ]
+        let text = HerdCommand.destinations(
+            session: session, origin: MachineID("a"), herd: herd, json: false,
+            originURL: nil
+        )
+        #expect(!text.contains("git clone"))
+        #expect(text.lowercased().contains("no remote") || text.contains("~/local-code"))
+    }
+
+    /// The JSON carries the remedy and, for an offer, the exact command a
+    /// script would run.
+    @Test
+    func theJSONCarriesTheFixAndItsCommand() {
+        let herd = [
+            account("a", "Air", agent: true, checkout: true),
+            account("mini", "Mini", agent: true, checkout: false),
+        ]
+        let json = HerdCommand.destinations(
+            session: session, origin: MachineID("a"), herd: herd, json: true,
+            originURL: "git@h:r.git"
+        )
+        #expect(json.contains("\"fix_command\""))
+        #expect(json.contains("git clone"))
+    }
+}
