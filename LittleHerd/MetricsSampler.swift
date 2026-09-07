@@ -282,7 +282,17 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
         self.timestamp = timestamp
         self.readings = readings
         self.activities = activities
-        self.agentSessions = agentSessions
+        // **This app's own sign-in probe is not one of somebody's sessions.**
+        // Asking an agent whether it can sign in creates a conversation, and a
+        // conversation is something the herd draws — so the eligibility check
+        // was filling the view with cards nobody started: nine of twenty-one
+        // live sessions on 6 September, all of them this. Filtered here, in the
+        // snapshot every reader shares, because the dashboard and the command
+        // line read it by different routes and only one of them would have
+        // remembered.
+        self.agentSessions = agentSessions.filter {
+            !AgentAuthProbe.isProbe(sessionID: $0.id)
+        }
         self.storageVolumes = storageVolumes
         self.memoryPressure = memoryPressure
         self.memoryConsumers = memoryConsumers

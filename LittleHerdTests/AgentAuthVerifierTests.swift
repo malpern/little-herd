@@ -339,3 +339,58 @@ private struct SpawnedProbe {
         )
     }
 }
+
+/// The probe's own leavings.
+@Suite("The probe is not a session")
+struct AuthProbeLitterTests {
+    /// **Nine of twenty-one live sessions were this**, on 6 September: the
+    /// sign-in check asks an agent a question, a question creates a
+    /// conversation, and the herd draws conversations. Little Herd was filling
+    /// its own view with cards nobody started.
+    @Test
+    func theProbeReusesOneSessionPerMachine() {
+        let install = AgentInstallation(
+            provider: .claude, version: "1", path: "/usr/local/bin/claude"
+        )
+        let command = AgentAuthProbe.command(for: install)
+        #expect(command.contains("--session-id \(AgentAuthProbe.sessionIdentifier)"))
+    }
+
+    /// **Recognised by identifier, never by title.** The titles it produced
+    /// were "AUTH_OK", "Auth OK", "Auth ok", "Auth_ok" and "Reply with
+    /// AUTH_OK" — a model writing down what it was asked, differently each
+    /// time. Matching those would be guessing at phrasing, and would hide a
+    /// real session that happened to be about signing in.
+    @Test
+    func theProbeIsKnownByItsIdentifier() {
+        let id = AgentAuthProbe.sessionIdentifier
+        #expect(AgentAuthProbe.isProbe(sessionID: "claude:\(id)"))
+        #expect(AgentAuthProbe.isProbe(sessionID: id))
+        #expect(!AgentAuthProbe.isProbe(sessionID: "claude:11111111-2222-4333-8444-555555555555"))
+        // A real session that talks about authentication is somebody's work.
+        #expect(!AgentAuthProbe.isProbe(sessionID: "claude:auth-ok"))
+    }
+
+    /// And it is filtered where every reader shares it, rather than in one
+    /// view — the dashboard and the command line reach snapshots by different
+    /// routes.
+    @Test
+    func aSnapshotDoesNotCarryTheProbe() {
+        func session(_ id: String) -> AgentSession {
+            AgentSession(
+                id: id, provider: .claude, projectName: "x",
+                state: .waiting, updatedAt: .now, progress: nil
+            )
+        }
+        let snapshot = SystemSnapshot(
+            timestamp: .now,
+            readings: [:],
+            agentSessions: [
+                session("claude:\(AgentAuthProbe.sessionIdentifier)"),
+                session("claude:11111111-2222-4333-8444-555555555555"),
+            ]
+        )
+        #expect(snapshot.agentSessions.count == 1)
+        #expect(!snapshot.agentSessions.contains { AgentAuthProbe.isProbe(sessionID: $0.id) })
+    }
+}

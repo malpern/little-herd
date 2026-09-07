@@ -147,6 +147,24 @@ nonisolated enum AgentAuthState: Equatable, Sendable {
 nonisolated enum AgentAuthProbe {
     static let expectedReply = "AUTH_OK"
 
+    /// **One session per machine, for ever, rather than one per check.**
+    ///
+    /// Asking `claude -p` a question creates a session, and a session is a
+    /// thing this app *displays*. So every sign-in check left a card on the
+    /// herd — measured on 6 September, when nine of twenty-one live sessions
+    /// were this probe's own leavings, all titled some casing of "AUTH_OK" and
+    /// rooted at the home directory. Little Herd was filling its own view with
+    /// litter, and the view is the part of it that works.
+    ///
+    /// A fixed `--session-id` means the probe reuses one conversation on each
+    /// machine no matter how often it runs, so the litter is bounded at one —
+    /// and that one is a known uuid, which is what lets `isProbe` hide it
+    /// rather than guessing from a title.
+    ///
+    /// The uuid is arbitrary and permanent. It must never change: changing it
+    /// abandons the old session on every machine and starts collecting again.
+    static let sessionIdentifier = "11ed0000-0000-4000-8000-11ed11ed11ed"
+
     /// Deliberately the smallest possible request: no repository, no tools, no
     /// context. It is asking the provider whether it will answer this account
     /// at all, not asking it to do anything.
@@ -154,10 +172,26 @@ nonisolated enum AgentAuthProbe {
         let quoted = "'" + install.path.replacingOccurrences(of: "'", with: "'\\''") + "'"
         switch install.provider {
         case .codex:
+            // Codex has no equivalent flag, so its probe still starts a
+            // conversation each time. It is a smaller problem there — those
+            // land in dated folders rather than the home directory — and a
+            // flag that does not exist cannot be passed.
             return "\(quoted) exec --skip-git-repo-check 'Reply with exactly: \(expectedReply)'"
         default:
-            return "\(quoted) -p 'Reply with exactly: \(expectedReply)'"
+            return "\(quoted) --session-id \(sessionIdentifier) "
+                + "-p 'Reply with exactly: \(expectedReply)'"
         }
+    }
+
+    /// Whether a session is this probe's, and so not somebody's work.
+    ///
+    /// **By identifier, not by title.** The titles it produced were "AUTH_OK",
+    /// "Auth OK", "Auth ok", "Auth_ok" and "Reply with AUTH_OK" — the model
+    /// writing down what it was asked, differently each time — so matching on
+    /// them would be guessing at a model's phrasing, and would hide a real
+    /// session that happened to be about authentication.
+    static func isProbe(sessionID: String) -> Bool {
+        sessionID.hasSuffix(sessionIdentifier)
     }
 
     /// - Parameter output: stdout and stderr together, because every refusal
