@@ -176,6 +176,11 @@ extension HerdCommand {
             let prepared = await TransferDriver.prepare(
                 request,
                 authRefusal: authRefusal,
+                destinationName: destination.shortName,
+                destinationCommand: { command in
+                    await TransferRunners.command(for: destination)(command)
+                },
+                note: log,
                 departure: { step in
                     log("\(step.purpose)")
                     let out = await inner(step)

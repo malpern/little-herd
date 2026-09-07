@@ -82,9 +82,14 @@ extension MonitorModel {
                 }
             }
 
+            let target = machines.first { $0.machine == destination }
             let prepared = await TransferDriver.prepare(
                 request,
                 authRefusal: authRefusal,
+                destinationName: target?.shortName ?? "the destination",
+                destinationCommand: target.map {
+                    TransferRunners.command(for: $0.configuration)
+                },
                 departure: TransferRunners.departure(for: source.configuration)
             )
 

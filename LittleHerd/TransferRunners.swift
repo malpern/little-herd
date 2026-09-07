@@ -54,3 +54,40 @@ nonisolated enum TransferRunners {
         )
     }
 }
+
+extension TransferRunners {
+    /// One command on a machine, for the questions that are not transfer steps.
+    ///
+    /// The pre-flight asks two things of a destination — what is in the
+    /// repository, and whether a tool exists — and neither is a
+    /// `SuccessorRun.Step`. A step carries a purpose, a timeout band and a
+    /// fatality; these are a listing and a `command -v`, and dressing them as
+    /// steps would put two questions into an enum that describes a transfer.
+    static func command(
+        for machine: MachineConfiguration
+    ) -> @Sendable (String) async -> (output: String, succeeded: Bool) {
+        // Short: both questions are a filesystem read and a builtin. A machine
+        // that cannot answer either in ten seconds is not going to run a test
+        // suite, and waiting an agent-sized timeout to learn that would make
+        // every drag on a sleeping machine feel broken.
+        let timeout: TimeInterval = 10
+        guard machine.connection != .local else {
+            return { command in
+                await SuccessorLocal.runReportingStatus(
+                    command: command,
+                    timeout: timeout
+                )
+            }
+        }
+        let host = machine.sshDestination
+        let identity = machine.identityFile
+        return { command in
+            await SSHCommandRunner.runReportingStatus(
+                host: host,
+                command: command,
+                identityFile: identity,
+                timeout: timeout
+            )
+        }
+    }
+}

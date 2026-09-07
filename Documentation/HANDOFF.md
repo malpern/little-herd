@@ -2929,6 +2929,45 @@ the only part drawn.
     prerequisite surfaces at the drag, about the machine it concerns, and never
     as a checklist at launch. Most people will never see one.
 
+    **The wiring shipped on 6 September, and it was the only part missing.**
+    `RepositoryCheckDetector` could already name a check from a listing of a
+    repository root, and `requiredExecutable` could already derive the
+    pre-flight from that check — the first word of the first command, so the
+    two cannot drift. Nothing ever took the listing. Every transfer ran
+    `TransferAssembly.check`, a constant reading `xcodebuild test -scheme
+    LittleHerd`, which is true of this project and of nothing else and would
+    have run Xcode's tests against a Rust repository without noticing.
+
+    `RepositoryCheckProbe` asks the two questions and `TransferDriver` asks
+    them **before the departure**, for the same reason the sign-in probe is
+    there: the expensive place to learn a machine cannot do the work is
+    after the branch has been pushed. Both callers get it, because both go
+    through the driver.
+
+    Three rules it follows, each already argued for above:
+
+    - **A missing tool is named and nothing is offered.** Xcode is fifteen
+      gigabytes and an Apple Account, so there is no version of that ending
+      in an install, and Little Herd never has to decide whether a machine
+      *could* run something — only report that it does not.
+    - **Silence claims nothing.** A machine that cannot be listed has not
+      said it is unsuitable, and refusing on silence would ground the herd
+      whenever one was slow.
+    - **Nothing to run asks nothing.** `.none` is a real answer, so a
+      repository with no check is not then asked whether it has the tool for
+      it.
+
+    Verified against this herd rather than reasoned about: the mini lists a
+    `.xcodeproj` and has `xcodebuild` at `/usr/bin/xcodebuild`; **linux has
+    neither**, and is now named as a gap rather than being handed work it
+    cannot verify.
+
+    **What is left of this item is the declaration half** — a `[transfer]`
+    block in the repository to settle what detection cannot, and the offers
+    for the two remedies that *can* be completed over SSH (a missing
+    checkout, a missing agent CLI). Detection covers the common case;
+    declaration is for the repository that is more than one thing.
+
     **Ask work facts on the drag, not on the timer.** Machine facts are cheap
     and already sampled every thirty seconds. Twenty `command -v` calls per
     sample would go into the shell script this file calls the most dangerous

@@ -43,9 +43,16 @@ nonisolated enum TransferDriver {
     ///     has no state to update. What must not differ is what happens next,
     ///     and that is here.
     ///   - departure: runs a step on the source.
+    ///   - destinationName: what to call the destination in a sentence.
+    ///   - destinationCommand: runs one command there, for the two questions
+    ///     the pre-flight asks. Optional: without it the request's own check is
+    ///     used, which is what every transfer did before item 14.
     static func prepare(
         _ request: TransferAssembly.Request,
         authRefusal: String? = nil,
+        destinationName: String = "the destination",
+        destinationCommand: (@Sendable (String) async -> (output: String, succeeded: Bool))? = nil,
+        note: (@Sendable (String) -> Void)? = nil,
         departure: @Sendable (TransferDeparture.Step) async -> SuccessorExecutor.StepOutput
     ) async -> Prepared {
         // **Before anything leaves this machine.**
@@ -69,6 +76,36 @@ nonisolated enum TransferDriver {
                     remnant: .nothing
                 )
             )
+        }
+
+        // **Before the departure, because a missing tool is knowable without
+        // moving anything.** The same reasoning as the sign-in check above: the
+        // expensive place to discover a destination cannot do the work is after
+        // the branch has been pushed.
+        var check = request.check
+        if let destinationCommand {
+            switch await discoverCheck(
+                repository: request.destinationRepository,
+                on: destinationName,
+                run: destinationCommand
+            ) {
+            case .check(let discovered):
+                check = discovered
+                note?("check: \(discovered)")
+            case .missingTool(let reason):
+                return .blocked(
+                    SuccessorOutcome(
+                        result: .couldNotStart,
+                        failingStep: nil,
+                        output: reason,
+                        remnant: .nothing
+                    )
+                )
+            case .unknown:
+                // Nothing was learned, so nothing is claimed and the request's
+                // own check stands.
+                break
+            }
         }
 
         let departed = await TransferPilot.depart(
@@ -98,7 +135,9 @@ nonisolated enum TransferDriver {
                 scratchRoot: TransferAssembly.scratchRoot,
                 provider: request.provider,
                 reportedAgentPath: request.destinationAgentPath,
-                check: request.check,
+                // The discovered one when the destination answered, and the
+                // request's otherwise.
+                check: check,
                 commitMessage: "Successor work on \(request.transfer.branch)"
             )
             switch arrival {
@@ -117,5 +156,58 @@ nonisolated enum TransferDriver {
                 return .ready(commit: commit, steps: steps)
             }
         }
+    }
+}
+
+extension TransferDriver {
+    /// What the destination's copy of this repository needs, and whether the
+    /// destination has it.
+    ///
+    /// **Asked before the assembly, because the answer goes into it.** The
+    /// check is part of what a transfer *is* — the successor runs it and the
+    /// result decides whether the work is delivered — so it has to be known
+    /// before the request is built rather than patched onto one.
+    ///
+    /// Two commands on the destination and no more: a one-level listing, and
+    /// `command -v` for the single tool the detected check names. Both are
+    /// cheap, and both are asked at the moment somebody is trying to move
+    /// work rather than on the thirty-second sample, which is item 14's rule
+    /// — machine facts are cheap and work facts are not.
+    enum Discovered {
+        case check(RepositoryCheck)
+        /// The destination has the repository and not the tool. Named, not
+        /// offered: see `RepositoryCheckProbe.missingToolReason`.
+        case missingTool(String)
+        /// Nothing could be read, so nothing is claimed. The caller falls back
+        /// rather than refusing — an unreachable listing is not evidence that
+        /// a machine is unsuitable, and refusing on silence would ground the
+        /// herd whenever a machine was slow.
+        case unknown
+    }
+
+    static func discoverCheck(
+        repository: String,
+        on machineName: String,
+        run: @Sendable (String) async -> (output: String, succeeded: Bool)
+    ) async -> Discovered {
+        let listed = await run(RepositoryCheckProbe.listing(of: repository))
+        guard listed.succeeded else { return .unknown }
+
+        let check = RepositoryCheckDetector.check(
+            forEntries: RepositoryCheckProbe.entries(fromListing: listed.output)
+        )
+        guard let preflight = RepositoryCheckProbe.preflight(for: check) else {
+            // Nothing to run means nothing to have. `.none` is a real answer
+            // and a deliberate one — see `RepositoryCheck.none`.
+            return .check(check)
+        }
+
+        let has = await run(preflight)
+        guard has.succeeded else {
+            return .missingTool(
+                RepositoryCheckProbe.missingToolReason(check, on: machineName)
+            )
+        }
+        return .check(check)
     }
 }
