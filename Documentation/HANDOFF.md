@@ -3106,12 +3106,22 @@ the only part drawn.
     the source is this Mac, and a remote source offers no clone rather than
     reading a URL over ssh a path that has not been run live.
 
-    **What is left is executing a remedy, and it is deliberately not in `move
-    --yes`.** Cloning gigabytes or installing software is a heavier consent
-    than moving work, so it belongs behind its own confirmation — a `--fix` on
-    `move`, or a `prepare` verb — which runs the offered command and then
-    proceeds. The command is built and shown; only the running is unbuilt, on
-    purpose, because it is the one part that changes a machine.
+    **Executing a remedy shipped on 7 September as `move --fix`, and item 14 is
+    closed.** `--fix` runs the offered command on the destination and then
+    moves. Its consent is the move's, made heavier: without `--yes` it prints
+    the exact command it would run on the other machine and exits 2, nothing
+    touched; a gap only a person can close is said in the plan and `--fix`
+    stops; an eligible destination shows no fix line, so `--fix` on one is a
+    quiet no-op. After the remedy runs the herd is re-sampled rather than
+    assumed — the clone changed the machine and the snapshot in hand predates
+    it, and a fresh probe both updates it and confirms the fix took, so a clone
+    that failed quietly refuses the move cleanly rather than pushing into
+    nothing. The remedy has a twenty-minute budget, not the pre-flight's ten
+    seconds, because it is the one command the tool runs that is meant to be
+    slow. Verified to the edge of a real change and no further: the plan for
+    cloning onto the linux box shows the command and refuses without `--yes`,
+    and running it clones onto that machine — the heavy consent the gate exists
+    for — so it is left for a person to trigger.
 
     **Ask work facts on the drag, not on the timer.** Machine facts are cheap
     and already sampled every thirty seconds. Twenty `command -v` calls per
