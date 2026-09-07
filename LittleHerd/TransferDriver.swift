@@ -78,6 +78,34 @@ nonisolated enum TransferDriver {
             )
         }
 
+        // **The agent path, before anything moves.**
+        //
+        // `SuccessorLaunch.plan` checks this against `SuccessorBinary` — the
+        // destination's reported path is a claim, and executing an unchecked
+        // claim would let a compromised machine choose what runs on it — but
+        // it checks it during the *arrival*, which is after the branch has been
+        // pushed. Measured on 6 September: the mini keeps its agent inside the
+        // Claude desktop app's bundle, every transfer to it was refused for
+        // that, and each refusal cost a departure, a model call and a branch on
+        // the remote before saying so.
+        //
+        // Nothing about the answer needs the departure to have happened. The
+        // same function, asked first, turns the most expensive refusal in the
+        // system into the cheapest one.
+        if SuccessorBinary.accept(request.destinationAgentPath, for: request.provider) == nil {
+            return .blocked(
+                SuccessorOutcome(
+                    result: .couldNotStart,
+                    failingStep: nil,
+                    output: "\(destinationName) offered an agent at "
+                        + "\(request.destinationAgentPath), which is not a "
+                        + "location an agent has been measured working from. "
+                        + "Nothing was moved.",
+                    remnant: .nothing
+                )
+            )
+        }
+
         // **Before the departure, because a missing tool is knowable without
         // moving anything.** The same reasoning as the sign-in check above: the
         // expensive place to discover a destination cannot do the work is after

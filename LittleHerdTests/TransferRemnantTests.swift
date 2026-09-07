@@ -384,3 +384,97 @@ struct DepartureIdentifierTests {
         )
     }
 }
+
+/// Where a refusal happens, and what it costs.
+///
+/// **Every refusal that can be decided up front must be**, because the ones
+/// that are not cost a departure, a model call and a branch on the remote
+/// before they say anything. That is not theoretical: the mini keeps its agent
+/// inside the Claude desktop app's bundle, and on 6 September every transfer
+/// to it was refused for that — after the push, every time.
+@Suite("Refusing before the push")
+struct EarlyRefusalTests {
+    private func request(agentPath: String) -> TransferAssembly.Request? {
+        func account(_ id: String, agent: String) -> DestinationAccount {
+            DestinationAccount(
+                machine: MachineID(id), name: id, symbolName: "desktopcomputer",
+                report: DestinationReport(
+                    installations: [
+                        AgentInstallation(provider: .claude, version: "1", path: agent)
+                    ],
+                    checkouts: ["little-herd": "/Users/\(id)/local-code/little-herd"]
+                ),
+                mayHostSessions: true, auth: .unverified, isVerifying: false
+            )
+        }
+        let session = AgentSession(
+            id: "claude:c6df5704-0451-4806-af9c-fc4cd9e79121",
+            provider: .claude, projectName: "little-herd", state: .waiting,
+            updatedAt: .now, progress: nil,
+            workingDirectory: "/Users/a/local-code/little-herd"
+        )
+        return try? TransferAssembly.request(
+            session: session,
+            from: MachineID("a"),
+            to: MachineID("b"),
+            in: [account("a", agent: "/Users/a/.local/bin/claude"),
+                 account("b", agent: agentPath)],
+            check: .xcode(scheme: "LittleHerd")
+        ).get()
+    }
+
+    /// **The expensive refusal, made cheap.** The departure runner is not even
+    /// given a chance to run: if it were called, the test would say so.
+    @Test
+    func anUnrecognisedAgentIsRefusedWithoutDeparting() async throws {
+        let request = try #require(request(agentPath: "/opt/somewhere/odd/claude"))
+        let departed = Departed()
+
+        let prepared = await TransferDriver.prepare(
+            request,
+            destinationName: "Mini",
+            departure: { _ in
+                departed.happened()
+                return SuccessorExecutor.StepOutput(text: "", succeeded: true)
+            }
+        )
+
+        guard case .blocked(let outcome) = prepared else {
+            Issue.record("expected a refusal, got \(prepared)")
+            return
+        }
+        #expect(!departed.did, "it departed before refusing, which is the bug")
+        #expect(outcome.remnant == .nothing, "nothing was pushed, so say so")
+        #expect(outcome.output.contains("Mini"))
+    }
+
+    /// And a recognised one is not refused, so the guard is a gate rather than
+    /// a wall — the mini's real path, inside the desktop app's bundle.
+    @Test
+    func theBundledAgentPassesTheSameGate() async throws {
+        let request = try #require(
+            request(
+                agentPath: "/Users/b/Library/Application Support/Claude/"
+                    + "claude-code/2.1.255/claude.app/Contents/MacOS/claude"
+            )
+        )
+        let departed = Departed()
+        _ = await TransferDriver.prepare(
+            request,
+            destinationName: "Mini",
+            departure: { _ in
+                departed.happened()
+                return SuccessorExecutor.StepOutput(text: "", succeeded: false)
+            }
+        )
+        #expect(departed.did, "a recognised agent must get past this gate")
+    }
+}
+
+/// Records whether the departure ran, from a `@Sendable` closure.
+private nonisolated final class Departed: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = false
+    var did: Bool { lock.withLock { value } }
+    func happened() { lock.withLock { value = true } }
+}
