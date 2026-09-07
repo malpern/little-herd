@@ -205,6 +205,12 @@ enum LittleHerdPreferences {
     /// question. The wager here is that receding the backdrop is a smaller
     /// move than fading the subjects was.
     static let recedesBarsUnderFanKey = "recedesBarsUnderFan"
+
+    /// Whether a transfer carries the departing session's transcript instead
+    /// of asking it to write a brief. See item 17: the mechanism is measured
+    /// and the sample is one controlled run, so it arrives switched off, the
+    /// way the recede did.
+    static let carriesTranscriptKey = "carriesTranscript"
     static let networkVolumeAccessOnboardingCompletedKey =
         "networkVolumeAccessOnboardingCompleted"
 

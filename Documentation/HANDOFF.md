@@ -3331,29 +3331,34 @@ the only part drawn.
 
     **What is settled, and why:**
 
-    - **Refuse a path mismatch rather than rewriting paths.** 5,954 records
-      in one transcript carry an absolute `cwd`, and the project directory
-      name encodes the path. Both machines here are `malpern` with the same
-      layout, which is luck. Whether the checkout sits at an identical
-      absolute path on both ends is knowable before anything moves, which is
-      where this project now puts every question it can. Rewriting them is
-      the tempting alternative and is refused: a transcript is a record, and
-      editing one to say something that did not happen is falsifying it. -
-      **`--fork-session` on arrival.** Resuming a carried session gives one
+    - **A path mismatch does not matter, and the first write-up of this said
+      it did.** The fear was the 5,954 records carrying an absolute `cwd`,
+      none of which is true on another machine. Tested directly, by resuming
+      a carried transcript under a deliberately mismatched path: it resumed,
+      history intact. The lookup is the *file's location* plus the
+      identifier — `~/.claude/projects/` and the working directory with
+      every `/` and `.` turned into a dash — not the paths recorded inside.
+      So the carry needs no shared account or layout, and the transcript
+      goes under wherever the successor will run. The paths inside stay
+      wrong, which is a fidelity problem rather than a mechanical one: the
+      agent remembers files at addresses that no longer hold, and its prompt
+      is what tells it where it is now — the same job the brief always had.
+    - **`--fork-session` on arrival.** Resuming a carried session gives one
       identifier a second, divergent history and nothing merges them.
       Forking says the honest thing — the destination continues *from* the
-      session rather than becoming it. - **Compare agent versions in the
-      pre-flight.** The format is undocumented and moves; three versions
-      appear inside one transcript, so it tolerates drift within a session
-      and promises nothing across machines. The pre-flight already makes a
-      call to the destination, so this is one more question on a call
-      already being paid for. - **Say out loud that it copies everything the
-      session saw.** File contents, command output, whatever was pasted. The
-      brief is a summary an agent chose to write; a transcript is the
-      unedited record. Between one person's own machines that is probably
-      fine, and it must be a stated fact rather than a surprise. This is the
-      one cost with no mitigation, and it is the reason this is a choice
-      rather than an obvious replacement.
+      session rather than becoming it.
+    - **Compare agent versions in the pre-flight.** The format is
+      undocumented and moves; three versions appear inside one transcript,
+      so it tolerates drift within a session and promises nothing across
+      machines. The pre-flight already makes a call to the destination, so
+      this is one more question on a call already being paid for.
+    - **Say out loud that it copies everything the session saw.** File
+      contents, command output, whatever was pasted. The brief is a summary
+      an agent chose to write; a transcript is the unedited record. Between
+      one person's own machines that is probably fine, and it must be a
+      stated fact rather than a surprise. This is the one cost with no
+      mitigation, and the reason this is a choice rather than an obvious
+      replacement.
 
     **The shape to build: a fast path with a fallback.** Carry when the
     paths match and the versions are close; write a brief when they do not,
@@ -3362,6 +3367,20 @@ the only part drawn.
     two descriptions of one thing drift — so they must not be two
     descriptions of *the handover*, only two ways of producing the one thing
     the successor is given.
+
+    **Built behind `LittleHerdPreferences.carriesTranscriptKey` on 6
+    September**, off by default. `TranscriptCarry` holds the four things it
+    needs — the folder encoding, where to read, where to write, and how to
+    resume — each tested, and the read and the write both check that
+    something non-empty arrived, because the brief already taught what
+    happens when a step reports success having produced nothing.
+
+    **What is left is the wiring**, which is the same shape as the brief's:
+    a step on the source that reads the transcript, one on the destination
+    that writes it, and a launcher that resumes instead of prompting. Only
+    Claude — Codex keeps its rollouts elsewhere and would need its own
+    answer, and offering to carry one while quietly writing a brief would be
+    worse than not offering.
 
     **If only one survives, the evidence favours the transcript.** The brief
     has failed twice in live use and costs a model call every time; the
