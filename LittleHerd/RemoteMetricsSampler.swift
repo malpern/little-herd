@@ -685,11 +685,21 @@ nonisolated enum SSHCommandRunner {
     /// not a reading. The authentication challenge is the opposite case: the
     /// refusal *is* the answer, and every refusal measured on this herd came
     /// back on standard error with a non-zero status.
+    /// - Parameter executable: what to run. **`/usr/bin/ssh` in every caller,
+    ///   and a stub in the tests**, which is the only reason this parameter
+    ///   exists. Item 13 has said since 25 August that this function is the
+    ///   untested half — a hundred and ninety lines of process and concurrency
+    ///   plumbing in which four bugs were found by running it and none by the
+    ///   suite — and that the way in would be "a fake agent script that can be
+    ///   made to hang, refuse, or answer". Pointing the real thing at
+    ///   `localhost` would have tested this Mac's sshd instead; pointing it at
+    ///   a script tests the runner, which is the part that had the bugs.
     static func runCapturingAll(
         host: String,
         command: String,
         identityFile: String? = nil,
-        timeout: TimeInterval = AgentAuthVerifier.timeout
+        timeout: TimeInterval = AgentAuthVerifier.timeout,
+        executable: String = "/usr/bin/ssh"
     ) async -> ProbeOutput {
         guard SSHHostName.isValid(host) else {
             return ProbeOutput(output: "", timedOut: false)
@@ -698,7 +708,7 @@ nonisolated enum SSHCommandRunner {
         return await Task.detached(priority: .utility) {
             let process = Process()
             let pipe = Pipe()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
+            process.executableURL = URL(fileURLWithPath: executable)
             process.arguments = Self.arguments(
                 host: host,
                 command: command,

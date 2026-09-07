@@ -86,6 +86,7 @@
 		6D55CE2ECB296F115B5FBAB2 /* SuccessorLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF4DF45226956A9BAE4D2BF5 /* SuccessorLaunchTests.swift */; };
 		719F7048B9365DAC539DF931 /* TransferEligibilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F08728BB291BD559EB4D267B /* TransferEligibilityTests.swift */; };
 		743C8BF95DFC643AE5AED3F7 /* MonitorModel+Command.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17E709EDE7AEAEC62A0C1D22 /* MonitorModel+Command.swift */; };
+		75BE1EA5F769425A1C052A0C /* SSHCommandRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C36334B89B73554138E1F571 /* SSHCommandRunnerTests.swift */; };
 		75D286866978B353C328FB87 /* TransferRemnantTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D008220E0A0FEC672DD4198B /* TransferRemnantTests.swift */; };
 		78162F614B6E3B95D282E7C4 /* TransferDeparture.swift in Sources */ = {isa = PBXBuildFile; fileRef = A439B7E55FFC95CE4FB8B43B /* TransferDeparture.swift */; };
 		78EFC31D7BBAECEBFB09FBCF /* SuccessorRun.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1103648FA974B1ED81962ED /* SuccessorRun.swift */; };
@@ -334,6 +335,7 @@
 		C1B84E18576938DDB61E77B6 /* CodexBarSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexBarSource.swift; sourceTree = "<group>"; };
 		C2ACEE7A3A10D1A9CE3D0F22 /* HerdByteCountTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdByteCountTests.swift; sourceTree = "<group>"; };
 		C2DB8FE57D5721A874B2D756 /* LiveAuthProbeHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveAuthProbeHarness.swift; sourceTree = "<group>"; };
+		C36334B89B73554138E1F571 /* SSHCommandRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHCommandRunnerTests.swift; sourceTree = "<group>"; };
 		C46E8C156433D6B061659FCA /* CodexRolloutUsage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexRolloutUsage.swift; sourceTree = "<group>"; };
 		C4A3F211A1CB3FB031F11E6D /* LiveTransferHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTransferHarness.swift; sourceTree = "<group>"; };
 		C6AE1D932764BCE8C5F27FD5 /* HerdColumns.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdColumns.swift; sourceTree = "<group>"; };
@@ -582,6 +584,7 @@
 				1082145BBE5CD6ACAFC1375D /* RepositoryCheckProbeTests.swift */,
 				F9386B33F3E8A7D3276195B4 /* RepositoryCheckTests.swift */,
 				9964820C13B89705570C2A79 /* SecretCacheTests.swift */,
+				C36334B89B73554138E1F571 /* SSHCommandRunnerTests.swift */,
 				425C26E3AA2A37C6DFD07C35 /* StillImageRenderingTests.swift */,
 				B6A4E1C9FC58BFD07DB63CAA /* SuccessorBinaryTests.swift */,
 				BB806B576E875F4C079668F8 /* SuccessorExecutorTests.swift */,
@@ -874,6 +877,7 @@
 				8935F6CCBD6DFA02BEC41FA3 /* RemoteUnavailabilityTests.swift in Sources */,
 				33ADC70A518A5189BF2D6256 /* RepositoryCheckProbeTests.swift in Sources */,
 				D90265E7A563F6351F566FA4 /* RepositoryCheckTests.swift in Sources */,
+				75BE1EA5F769425A1C052A0C /* SSHCommandRunnerTests.swift in Sources */,
 				0F4B67C29C60BD0E6BEF80D9 /* SecretCacheTests.swift in Sources */,
 				BE441D34B1F20DA35883BFC3 /* StillImageRenderingTests.swift in Sources */,
 				BC04F7EF4BD9B495A3A6AB5C /* SuccessorBinaryTests.swift in Sources */,

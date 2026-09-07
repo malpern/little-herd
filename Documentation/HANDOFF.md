@@ -2930,11 +2930,22 @@ the only part drawn.
     SIGKILL escalation leaves the child alive through SIGTERM with the read
     blocked for the full thirty seconds.
 
-    **`SSHCommandRunner.runCapturingAll` is still untested**, and that is the
-    remaining half: it needs a live host, and pointing it at `localhost` would
-    test this Mac's sshd rather than the runner. The watchdog underneath it is
-    shared with the local path and is now covered, which is the part that had
-    the bugs.
+    **`SSHCommandRunner.runCapturingAll` is covered as of 6 September, and the
+    objection that kept it uncovered was answered by not using ssh.** The
+    recorded blocker was that it needs a live host and that `localhost` would
+    test this Mac's sshd rather than the runner. Both true. The executable is a
+    parameter now, defaulting to `/usr/bin/ssh` in every caller, so a script
+    stands in for it — which is exactly the "fake agent that can be made to
+    hang, refuse, or answer" this item asked for, one level down.
+
+    Seven tests, and each was checked by breaking what it covers rather than by
+    being believed: inheriting stdin instead of closing it reddens the drain
+    test after fifteen seconds, keeping only standard output reddens the
+    refusal test, and neutering the watchdog reddens both hang tests **after a
+    hundred and twenty seconds**, which is the failure it exists to prevent
+    demonstrating itself. They cover the four bugs this item lists — stdin,
+    the watchdog, silence, and output surviving a timeout — plus the host guard
+    and a missing executable.
 
     **And on 6 September it hung, reproducibly, which is the first evidence
     that the untested half is not merely uncovered.** `little-herd move`
