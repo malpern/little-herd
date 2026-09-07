@@ -1366,6 +1366,66 @@ failed, and the script exited without writing while the commit message
 described the change in full. Caught by reading the diff before pushing. **Read
 the diff, not the intention**, especially when a scripted edit is involved.
 
+**Carrying the transcript instead of writing a brief works, and was measured
+rather than argued about.** A session created on the Air was copied to the
+mini and resumed there; asked what word it had been told to remember, it
+answered `PELICAN`. No brief, no model call on the source, and the whole
+conversation rather than a summary of it. That is the single most useful fact
+about the alternative design, and it took one controlled experiment.
+
+**Why it is worth wanting.** The brief is the transfer's weakest step by
+evidence, not by taste: it is the only step that spends a model call on the
+source, it is where the first failure of 6 September was, it is where the
+silent permission failure of 3 September was — reporting success having
+written nothing — and its fidelity ceiling is whatever an agent writes in one
+prompt. The successor starts with no history, no tool results and no context.
+A carried transcript has all three and costs nothing to produce.
+
+**And the risks, all measured on this herd:**
+
+- **Size.** This session's transcript is **24 MB** across 8,853 records, and a
+  *one-line* session came to **322 KB** — the system prompt and tool
+  definitions are in every file. So the floor is a third of a megabyte and the
+  ceiling is unbounded. Nothing here breaks over ssh, but it is a thousand
+  times the brief and it grows with the session rather than with the work.
+- **Absolute paths are everywhere.** 5,954 of those records carry a `cwd`, and
+  119 distinct `/Users/malpern/...` paths appear in the file. The directory
+  name itself encodes the path
+  (`~/.claude/projects/-Users-malpern-local-code-little-herd/`). It worked
+  here because both machines are `malpern` with the same layout — **luck, not
+  design**. Mitigation: require the checkout to be at an identical absolute
+  path on both ends and refuse otherwise. That is checkable before anything
+  moves, which is the rule this file already keeps. Rewriting the paths is the
+  obvious alternative and should be refused: a transcript is a record, and
+  editing one to say something that did not happen is falsifying it.
+- **Two copies of one conversation.** Resuming a carried session gives the
+  same id a second, divergent history, and nothing merges them.
+  `--fork-session` exists and gives the resumed copy a new identity, which is
+  the honest shape: the destination continues *from* the session rather than
+  becoming it.
+- **The format is undocumented and moves.** Three agent versions appear inside
+  this one transcript (2.1.255, 2.1.258, 2.1.260), so it tolerates drift
+  within a session — but nothing promises that across machines. Mitigation:
+  compare agent versions in the pre-flight, which is one more question on a
+  call that is already being made.
+- **A sidecar directory exists** beside each transcript — `tool-results`, a
+  custom title — 440 KB for this session. The experiment did not copy it and
+  still worked, so it is not load-bearing for resume, but a carry that wants
+  fidelity should take it.
+- **It copies everything the session saw**, which is the real cost and the one
+  with no mitigation. File contents, command output, whatever was pasted. The
+  brief is a summary an agent chose to write; a transcript is the unedited
+  record. Between a person's own machines that is probably fine, and it should
+  be a stated fact rather than a surprise.
+
+**What this suggests, without settling it.** The two are not rivals so much as
+a fast path and a fallback: carry the transcript when the paths match and the
+versions are close, and write a brief when they do not. The cost is two
+mechanisms where there is now one, and this file's own rule is that two
+descriptions of one thing drift — so if only one survives, the evidence
+favours the transcript, with the brief kept for the cross-layout case it is
+actually good at.
+
 **A session's identifier carries its provider, and the transfer handed the
 whole thing to `--resume`.** `AgentSession.id` is `claude:<uuid>` on a real
 herd. An agent asked to resume a session whose name begins `claude:` has never
