@@ -622,3 +622,66 @@ struct HerdCommandDestinationsRemedyTests {
         #expect(json.contains("git clone"))
     }
 }
+
+
+/// `move --fix` — the consent and the plan, without touching a machine.
+@Suite("Fixing a gap before moving")
+struct HerdCommandFixTests {
+    private func machine(_ id: String, _ short: String) -> MachineConfiguration {
+        MachineConfiguration(
+            id: MachineID(id), name: short, shortName: short, hostname: id,
+            hardwareSummary: "", platform: .macOS, connection: .ssh,
+            avatar: .calfMini, identityFile: nil, serverNames: [],
+            supportsGPU: false
+        )
+    }
+
+    private var plan: HerdCommand.Plan {
+        HerdCommand.Plan(
+            session: AgentSession(
+                id: "claude:s-1", provider: .claude, projectName: "little-herd",
+                state: .waiting, updatedAt: .now, progress: nil,
+                workingDirectory: "/x/little-herd"
+            ),
+            origin: machine("a", "Air"),
+            destination: machine("linux", "Linux"),
+            branch: "transfer/x"
+        )
+    }
+
+    /// **The plan names the fix and its exact command before --yes**, because a
+    /// clone is a real change to another machine, heavier than the move.
+    @Test
+    func theplanShowsAnOfferedFixAndItsCommand() {
+        let remedy = TransferRemedy.offer(
+            summary: "Clone little-herd onto Linux, at ~/local-code/little-herd.",
+            command: "git clone -- 'git@h:r.git' \"$HOME/local-code/little-herd\""
+        )
+        let text = HerdCommand.plannedChange(plan, remedy: remedy, json: false)
+        #expect(text.contains("--fix will run this on the destination"))
+        #expect(text.contains("git clone"))
+        #expect(text.contains("Nothing has been changed"))
+
+        let json = HerdCommand.plannedChange(plan, remedy: remedy, json: true)
+        #expect(json.contains("\"fix_command\""))
+    }
+
+    /// A gap that only a person can close says so in the plan — --fix cannot
+    /// run a browser.
+    @Test
+    func theplanSaysWhenAfixCannotHelp() {
+        let text = HerdCommand.plannedChange(
+            plan, remedy: .explain("Sign in on Linux — it needs a browser."), json: false
+        )
+        #expect(text.contains("--fix cannot help here"))
+        #expect(text.contains("browser"))
+    }
+
+    /// With no gap, the plan carries no fix line at all — --fix on an eligible
+    /// machine is a no-op and should not clutter the plan.
+    @Test
+    func aneligibleDestinationShowsNoFixLine() {
+        let text = HerdCommand.plannedChange(plan, remedy: .none, json: false)
+        #expect(!text.contains("--fix"))
+    }
+}

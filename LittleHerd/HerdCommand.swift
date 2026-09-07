@@ -38,7 +38,7 @@ nonisolated enum HerdCommand {
                           anybody kept it
           move            hand a session to another machine
 
-        usage: little-herd move <session> --to <machine> [--yes] [--json]
+        usage: little-herd move <session> --to <machine> [--fix] [--yes] [--json]
 
         Reads are automatic. `move` prints the change and refuses without
         --yes. Exit 0 read or applied, 1 error, 2 refused — nothing changed.

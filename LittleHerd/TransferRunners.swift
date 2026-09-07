@@ -137,3 +137,30 @@ extension TransferRunners {
         }
     }
 }
+
+extension TransferRunners {
+    /// Runs a remedy command on a machine, with room for it to take a while.
+    ///
+    /// A clone is minutes and gigabytes and an install fetches from the
+    /// network, so the ten-second budget the pre-flight questions use is wrong
+    /// here — this is the one command Little Herd runs that is meant to be
+    /// slow. Twenty minutes is generous for either and still bounded, so a
+    /// remedy that wedges is a failure with a story rather than a hang.
+    static func remedyRunner(
+        for machine: MachineConfiguration
+    ) -> @Sendable (String) async -> (output: String, succeeded: Bool) {
+        let timeout: TimeInterval = 20 * 60
+        guard machine.connection != .local else {
+            return { command in
+                await SuccessorLocal.runReportingStatus(command: command, timeout: timeout)
+            }
+        }
+        let host = machine.sshDestination
+        let identity = machine.identityFile
+        return { command in
+            await SSHCommandRunner.runReportingStatus(
+                host: host, command: command, identityFile: identity, timeout: timeout
+            )
+        }
+    }
+}

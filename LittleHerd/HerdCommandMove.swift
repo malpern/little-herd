@@ -101,9 +101,9 @@ extension HerdCommand {
             """
     }
 
-    static func plannedChange(_ plan: Plan, json: Bool) -> String {
+    static func plannedChange(_ plan: Plan, remedy: TransferRemedy = .none, json: Bool) -> String {
         if json {
-            return jsonArray([[
+            var row = [
                 "applied": "false",
                 "exit_reason": "confirmation_required",
                 "session": shortIdentifier(plan.session.id),
@@ -112,7 +112,9 @@ extension HerdCommand {
                 "to": plan.destination.shortName,
                 "branch": plan.branch,
                 "carries_transcript": (carriesTranscript && TranscriptCarry.canCarry(plan.session)) ? "true" : "false",
-            ]])
+            ]
+            if case .offer(_, let command) = remedy { row["fix_command"] = command }
+            return jsonArray([row])
         }
         return """
             little-herd would move this work:
@@ -124,9 +126,36 @@ extension HerdCommand {
 
             The session it leaves is not retired: nothing in a transfer stops
             it, so the worst case is work sitting on a branch nobody merged.
-            \(carryNotice(for: plan))
+            \(carryNotice(for: plan))\(fixNotice(remedy))
             Nothing has been changed. Re-run with --yes to do it.
             """
+    }
+
+    /// What `--fix` would do first, when there is a gap it can close.
+    ///
+    /// **Named before `--yes`, because it runs a command on another machine.**
+    /// A clone or an install is a real change to a destination — heavier than
+    /// moving work — so the exact command is shown and nothing happens without
+    /// the confirmation, the same contract the move itself keeps.
+    static func fixNotice(_ remedy: TransferRemedy) -> String {
+        switch remedy {
+        case .offer(let summary, let command):
+            return """
+
+                First, --fix will run this on the destination:
+                  \(summary)
+                  \(command)
+
+                """
+        case .explain(let text):
+            return """
+
+                --fix cannot help here: \(text)
+
+                """
+        case .none:
+            return ""
+        }
     }
 }
 
@@ -388,14 +417,81 @@ extension HerdCommand {
             branch: TransferAssembly.branch(for: session)
         )
 
+        // **`--fix` offers to close a gap on the destination first.** A
+        // machine that lacks the checkout or the agent is not eligible; with
+        // `--fix`, the remedy the herd already knows how to name is run on that
+        // machine, and only then does the move go ahead. Without `--fix` a gap
+        // is still just a refusal, as before.
+        let fixing = arguments.contains("--fix")
+        let herd = destinationAccounts(from: sampled)
+        let remedy = fixing
+            ? destinationRemedy(for: plan, in: herd, sampled: sampled)
+            : .none
+
         // **Refused, and exit 2 rather than 1.** The distinction is the whole
         // reason the code exists: 1 means something went wrong, 2 means it was
         // asked and declined and nothing on any machine was touched. A caller
         // that cannot tell those apart will eventually retry a write that
         // already happened.
-        guard confirmed else { return (plannedChange(plan, json: json), 2) }
+        guard confirmed else {
+            return (plannedChange(plan, remedy: remedy, json: json), 2)
+        }
 
-        let herd = sampled.map { configuration, snapshot in
+        // Progress goes to stderr as it happens, so a slow step is visibly a
+        // slow step rather than a hang, and stdout stays the answer alone —
+        // which is what makes `--json` safe to pipe.
+        let log: @Sendable (String) -> Void = { line in
+            FileHandle.standardError.write(Data(("  " + line + "\n").utf8))
+        }
+
+        var herdForMove = herd
+        if fixing {
+            switch remedy {
+            case .explain(let text):
+                // Nothing to run — this gap is the person's to close. Say so
+                // and stop, rather than pretend `--fix` can help.
+                return ("little-herd: \(text)", 1)
+            case .offer(let summary, let command):
+                log(summary)
+                log(command)
+                let ran = runBlocking {
+                    await TransferRunners.remedyRunner(for: destination)(command)
+                }
+                guard ran.succeeded else {
+                    let said = ran.output.trimmingCharacters(in: .whitespacesAndNewlines)
+                    return (
+                        "little-herd: the fix did not complete on "
+                            + "\(destination.shortName)"
+                            + (said.isEmpty ? "" : " — \(said)")
+                            + ". Nothing was moved.",
+                        1
+                    )
+                }
+                log("fixed; re-checking \(destination.shortName)")
+                // **Re-sample rather than assume.** The clone or install has
+                // changed the machine and the snapshot in hand predates it, so
+                // the move would refuse on stale facts. A fresh probe both
+                // updates them and confirms the fix actually took — a clone
+                // that failed quietly still shows no checkout, and the move
+                // then refuses cleanly rather than pushing into nothing.
+                herdForMove = destinationAccounts(from: sampleBlocking(configurations))
+            case .none:
+                break  // Already eligible; `--fix` is a no-op and the move runs.
+            }
+        }
+
+        if !json {
+            log("moving \(shortIdentifier(session.id)) from "
+                + "\(origin.shortName) to \(destination.shortName)")
+        }
+        return performMove(plan, herd: herdForMove, json: json, log: log)
+    }
+
+    /// The herd as destination accounts, from a sample.
+    static func destinationAccounts(
+        from sampled: [(MachineConfiguration, SystemSnapshot?)]
+    ) -> [DestinationAccount] {
+        sampled.map { configuration, snapshot in
             DestinationAccount(
                 machine: configuration.id,
                 name: configuration.name,
@@ -406,17 +502,46 @@ extension HerdCommand {
                 isVerifying: false
             )
         }
+    }
 
-        // Progress goes to stderr as it happens, so a slow step is visibly a
-        // slow step rather than a hang, and stdout stays the answer alone —
-        // which is what makes `--json` safe to pipe.
-        let log: @Sendable (String) -> Void = { line in
-            FileHandle.standardError.write(Data(("  " + line + "\n").utf8))
-        }
-        if !json {
-            log("moving \(shortIdentifier(session.id)) from "
-                + "\(origin.shortName) to \(destination.shortName)")
-        }
-        return performMove(plan, herd: herd, json: json, log: log)
+    /// Runs one async piece of work to completion from a synchronous verb.
+    ///
+    /// The same shape and the same reason as `sampleBlocking`: a command-line
+    /// process has no run loop to await on, and everything reached here is
+    /// `nonisolated`, so blocking a utility task on a semaphore cannot deadlock
+    /// on the main actor the way an earlier version did.
+    static func runBlocking<Value: Sendable>(
+        _ work: @escaping @Sendable () async -> Value
+    ) -> Value {
+        let box = Handoff<Value>()
+        let semaphore = DispatchSemaphore(value: 0)
+        Task.detached { box.value = await work(); semaphore.signal() }
+        semaphore.wait()
+        return box.value!
+    }
+
+    /// The remedy for the machine a move is aimed at, or `.none` if it can take
+    /// the work as it is.
+    static func destinationRemedy(
+        for plan: Plan,
+        in herd: [DestinationAccount],
+        sampled: [(MachineConfiguration, SystemSnapshot?)]
+    ) -> TransferRemedy {
+        let activity = MachineAgentActivity(
+            provider: plan.session.provider, sessions: [plan.session]
+        )
+        let eligibility = AgentDropEligibility.eligibility(
+            of: plan.destination.id, carrying: activity, from: plan.origin.id, in: herd
+        )
+        let slug = AgentDropEligibility.repository(
+            of: activity, from: plan.origin.id, in: herd
+        )
+        let originURL = plan.origin.connection == .local
+            ? gitRemoteURL(forDirectory: plan.session.workingDirectory)
+            : nil
+        return TransferRemedy.remedy(
+            for: eligibility, machine: plan.destination.shortName,
+            provider: plan.session.provider, originURL: originURL, slug: slug
+        )
     }
 }
