@@ -1,6 +1,6 @@
 # Little Herd — handoff
 
-**State:** `v0.1.65` is released and installed on this Mac. It is the first
+**State:** `v0.1.66` is released and installed on this Mac. It is the first
 build whose transfer works against a real session: until it, the agent
 identifier reached `--resume` with its provider still on the front, and the
 mini's agent — which lives inside the Claude desktop app's bundle — was refused
@@ -125,6 +125,8 @@ ten more between 27 and 29 August, and six of them are the transfer:
             works for the first time
     0.1.65  refusals move to before the push; the herd stops showing the app's
             own sign-in probes; `transfers` says what has been carried
+    0.1.66  sign-in verification works again; a session's transcript can be
+            carried and resumed instead of briefed (off by default)
 
 0.1.61 is the one that matters: the diff window, the progress bar across the
 foot of the card, both context menus rebuilt in AppKit because SwiftUI drops
