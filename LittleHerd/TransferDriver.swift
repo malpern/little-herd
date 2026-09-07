@@ -53,6 +53,7 @@ nonisolated enum TransferDriver {
         destinationName: String = "the destination",
         destinationCommand: (@Sendable (String) async -> (output: String, succeeded: Bool))? = nil,
         note: (@Sendable (String) -> Void)? = nil,
+        carry: Carry? = nil,
         departure: @Sendable (TransferDeparture.Step) async -> SuccessorExecutor.StepOutput
     ) async -> Prepared {
         // **Before anything leaves this machine.**
@@ -136,8 +137,33 @@ nonisolated enum TransferDriver {
             }
         }
 
+        // **The carry goes first, and a carried session is not briefed.**
+        //
+        // The first live run of the carry never reached it: the departure
+        // resumed the session to ask for a brief and the answer was "Prompt is
+        // too long" — a 24 MB transcript plus the request overflows the
+        // window. The brief fails for exactly the sessions with the most to
+        // lose, and it was ordered before the carry that would have saved
+        // them. So the copy happens here, where nothing of ours is writing to
+        // the transcript, and if it lands the brief step is dropped: the
+        // successor has the whole history, a summary of it would cost a model
+        // call and can fail, and a summary it does not need is not worth
+        // either. If the carry declines, the brief is written as before.
+        var carriedSession: String? = nil
+        var departureSteps = request.departure
+        if let carry {
+            switch await carryTranscript(request, carry: carry) {
+            case .carried:
+                carriedSession = request.sessionIdentifier
+                departureSteps = departureSteps.filter { $0.purpose != .brief }
+                note?("carried the transcript; the successor resumes the session, and no brief is written")
+            case .fellBack(let why):
+                note?("brief instead of transcript: \(why)")
+            }
+        }
+
         let departed = await TransferPilot.depart(
-            steps: request.departure,
+            steps: departureSteps,
             run: departure
         )
 
@@ -166,7 +192,8 @@ nonisolated enum TransferDriver {
                 // The discovered one when the destination answered, and the
                 // request's otherwise.
                 check: check,
-                commitMessage: "Successor work on \(request.transfer.branch)"
+                commitMessage: "Successor work on \(request.transfer.branch)",
+                carriedSession: carriedSession
             )
             switch arrival {
             case .failure(let failure):
@@ -237,5 +264,95 @@ extension TransferDriver {
             )
         }
         return .check(check)
+    }
+}
+
+
+extension TransferDriver {
+    /// What a caller supplies to carry a transcript, and only what it must.
+    ///
+    /// Everything here is a machine fact the driver cannot know: where the
+    /// source's home is if the source is this Mac, how to run one command
+    /// there, and how to copy a file to the destination. The decision to carry
+    /// at all is the preference, read by the caller, so a render or a test
+    /// can pass nil and get yesterday's behaviour exactly.
+    struct Carry {
+        /// The source's home directory **when the source is this Mac**, which
+        /// is the only source the carry reads from today. A remote source is
+        /// declined rather than attempted: fetching its transcript here first
+        /// is a second hop that has not been run live, and this project ships
+        /// what it has run.
+        let localSourceHome: String?
+        let sourceCommand: @Sendable (String) async -> (output: String, succeeded: Bool)
+        let copy: @Sendable (_ localPath: String, _ remotePath: String, _ recursive: Bool) async -> Bool
+        /// The destination's home, for the project folder the successor will
+        /// look in. Both machines on this herd share one, and the same
+        /// assumption already lives in `TransferAssembly.scratchRoot`.
+        let destinationHome: String
+        let scratchRoot: String
+    }
+
+    enum Carried {
+        case carried
+        case fellBack(String)
+    }
+
+    /// The carry itself: check the file is still, copy it and its sidecar to
+    /// where the successor will look, and say which of those failed if one did.
+    static func carryTranscript(
+        _ request: TransferAssembly.Request,
+        carry: Carry
+    ) async -> Carried {
+        guard request.provider == .claude else {
+            return .fellBack("only a Claude session can be carried")
+        }
+        guard let home = carry.localSourceHome else {
+            return .fellBack("the session is on another machine, and only this Mac's are carried yet")
+        }
+        guard let workingDirectory = request.sessionWorkingDirectory, !workingDirectory.isEmpty else {
+            return .fellBack("the session has no working directory to find its transcript by")
+        }
+
+        let source = TranscriptCarry.sourcePaths(
+            home: home,
+            workingDirectory: workingDirectory,
+            sessionIdentifier: request.sessionIdentifier
+        )
+
+        // Still, and present. A file whose size changes between two looks has
+        // a writer, and a copy taken then is a session missing its last turns.
+        let still = await carry.sourceCommand(
+            TranscriptCarry.stabilityCommand(transcript: source.transcript)
+        )
+        guard still.succeeded else {
+            return .fellBack("its transcript is missing, empty, or still being written")
+        }
+
+        let scratch = SuccessorLaunch.workingDirectory(
+            scratchRoot: carry.scratchRoot,
+            branch: request.transfer.branch
+        )
+        let destination = TranscriptCarry.destinationDirectory(
+            home: carry.destinationHome,
+            successorWorkingDirectory: scratch
+        )
+        guard await carry.copy(
+            source.transcript,
+            "\(destination)/\(request.sessionIdentifier).jsonl",
+            false
+        ) else {
+            return .fellBack("the transcript could not be copied to the destination")
+        }
+        // The sidecar is not load-bearing — the experiment resumed without it
+        // — so its absence, or a failure copying it, is not a reason to lose
+        // the carry. Attempted, and the outcome ignored.
+        if FileManager.default.fileExists(atPath: source.sidecar) {
+            _ = await carry.copy(
+                source.sidecar,
+                "\(destination)/\(request.sessionIdentifier)",
+                true
+            )
+        }
+        return .carried
     }
 }

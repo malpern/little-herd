@@ -354,6 +354,14 @@ struct AuthProbeLitterTests {
         )
         let command = AgentAuthProbe.command(for: install)
         #expect(command.contains("--session-id \(AgentAuthProbe.sessionIdentifier)"))
+        // **Cleared before created**, or the second probe to a machine
+        // collides on the id for ever — the 0.1.65 regression this guards.
+        let clearAt = command.range(of: "-delete")
+        let createAt = command.range(of: "--session-id")
+        #expect(clearAt != nil, "the pinned transcript must be cleared first")
+        if let clearAt, let createAt {
+            #expect(clearAt.lowerBound < createAt.lowerBound, "clear before create")
+        }
     }
 
     /// **Recognised by identifier, never by title.** The titles it produced

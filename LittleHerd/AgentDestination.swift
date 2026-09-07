@@ -156,18 +156,28 @@ nonisolated enum AgentAuthProbe {
     /// rooted at the home directory. Little Herd was filling its own view with
     /// litter, and the view is the part of it that works.
     ///
-    /// A fixed `--session-id` means the probe reuses one conversation on each
-    /// machine no matter how often it runs, so the litter is bounded at one —
-    /// and that one is a known uuid, which is what lets `isProbe` hide it
-    /// rather than guessing from a title.
-    ///
-    /// The uuid is arbitrary and permanent. It must never change: changing it
-    /// abandons the old session on every machine and starts collecting again.
+    /// A fixed `--session-id`, so the probe's leavings are one recognisable
+    /// session per machine rather than one per check, which `isProbe` can hide.
+    /// The uuid is arbitrary and permanent; changing it abandons the old
+    /// session on every machine and starts collecting again.
     static let sessionIdentifier = "11ed0000-0000-4000-8000-11ed11ed11ed"
 
     /// Deliberately the smallest possible request: no repository, no tools, no
     /// context. It is asking the provider whether it will answer this account
     /// at all, not asking it to do anything.
+    ///
+    /// **The pinned transcript is deleted before the session is created**, and
+    /// that is correctness, not tidiness. `--session-id` is create-only: the
+    /// *second* probe to a machine with the same id fails with "Session ID is
+    /// already in use", for ever — which reads as an unanswered probe, and so
+    /// as a machine that cannot sign in. Shipped that way in 0.1.65 and found
+    /// by the first transcript-carry transfer, whose pre-flight and arrival
+    /// both probed the mini and collided on the second. Deleting the file
+    /// first clears the id — measured directly — so create always succeeds and
+    /// the litter is still bounded at one. `find`, not a fixed path, because
+    /// the probe's own working directory over ssh is wherever the login shell
+    /// lands and the transcript is filed under that; the sentinel id belongs
+    /// to nothing else, so a broad delete of it is safe.
     static func command(for install: AgentInstallation) -> String {
         let quoted = "'" + install.path.replacingOccurrences(of: "'", with: "'\\''") + "'"
         switch install.provider {
@@ -178,10 +188,19 @@ nonisolated enum AgentAuthProbe {
             // flag that does not exist cannot be passed.
             return "\(quoted) exec --skip-git-repo-check 'Reply with exactly: \(expectedReply)'"
         default:
-            return "\(quoted) --session-id \(sessionIdentifier) "
+            return "\(clearPinnedTranscript) "
+                + "\(quoted) --session-id \(sessionIdentifier) "
                 + "-p 'Reply with exactly: \(expectedReply)'"
         }
     }
+
+    /// Clears any prior copy of the pinned probe session, wherever it was
+    /// filed, so `--session-id` can create it again. Failures are ignored —
+    /// nothing existing is the ordinary case on the first probe.
+    static let clearPinnedTranscript =
+        "find \"$HOME/.claude/projects\" -name '\(sessionIdentifier).jsonl' -delete 2>/dev/null;"
+        + " find \"$HOME/.claude/projects\" -type d -name '\(sessionIdentifier)'"
+        + " -exec rm -rf {} + 2>/dev/null;"
 
     /// Whether a session is this probe's, and so not somebody's work.
     ///

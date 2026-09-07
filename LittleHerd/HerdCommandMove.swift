@@ -78,6 +78,29 @@ extension HerdCommand {
     /// that somebody reads it before saying yes. The branch name is on it
     /// deliberately: that is where the work will be, and it is the thing to go
     /// looking for if anything goes wrong later.
+    /// Whether this move would carry the session's transcript, which is a
+    /// preference the person set and a fact they should see before saying yes.
+    static var carriesTranscript: Bool {
+        UserDefaults.standard.bool(forKey: LittleHerdPreferences.carriesTranscriptKey)
+    }
+
+    /// **Consent, in the plan.** A transcript is everything the session ever
+    /// saw — file contents, command output, whatever was pasted — and the
+    /// brief is a summary an agent chose to write. That difference belongs in
+    /// front of the person before `--yes`, not in a comment. Blank when the
+    /// preference is off or the session cannot be carried, so the plan does
+    /// not mention a thing that will not happen.
+    static func carryNotice(for plan: Plan) -> String {
+        guard carriesTranscript, TranscriptCarry.canCarry(plan.session) else { return "" }
+        return """
+
+            This will carry the session's TRANSCRIPT to \(plan.destination.shortName) — \
+            its whole history, including everything it read and every command's \
+            output — and the successor will resume it rather than start from a \
+            brief. Turn off the carriesTranscript preference to send a brief instead.
+            """
+    }
+
     static func plannedChange(_ plan: Plan, json: Bool) -> String {
         if json {
             return jsonArray([[
@@ -88,6 +111,7 @@ extension HerdCommand {
                 "from": plan.origin.shortName,
                 "to": plan.destination.shortName,
                 "branch": plan.branch,
+                "carries_transcript": (carriesTranscript && TranscriptCarry.canCarry(plan.session)) ? "true" : "false",
             ]])
         }
         return """
@@ -100,7 +124,7 @@ extension HerdCommand {
 
             The session it leaves is not retired: nothing in a transfer stops
             it, so the worst case is work sitting on a branch nobody merged.
-
+            \(carryNotice(for: plan))
             Nothing has been changed. Re-run with --yes to do it.
             """
     }
@@ -181,6 +205,13 @@ extension HerdCommand {
                     await TransferRunners.command(for: destination)(command)
                 },
                 note: log,
+                carry: carriesTranscript ? TransferDriver.Carry(
+                    localSourceHome: origin.connection == .local ? NSHomeDirectory() : nil,
+                    sourceCommand: TransferRunners.command(for: origin),
+                    copy: TransferRunners.copy(to: destination),
+                    destinationHome: NSHomeDirectory(),
+                    scratchRoot: TransferAssembly.scratchRoot
+                ) : nil,
                 departure: { step in
                     log("\(step.purpose)")
                     let out = await inner(step)

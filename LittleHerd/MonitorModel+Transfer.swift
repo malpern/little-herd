@@ -83,6 +83,12 @@ extension MonitorModel {
             }
 
             let target = machines.first { $0.machine == destination }
+            // The preference is read here, at the moment of the drop, so a
+            // change to it takes effect on the next transfer and never on one
+            // already in flight.
+            let carries = UserDefaults.standard.bool(
+                forKey: LittleHerdPreferences.carriesTranscriptKey
+            )
             let prepared = await TransferDriver.prepare(
                 request,
                 authRefusal: authRefusal,
@@ -90,6 +96,13 @@ extension MonitorModel {
                 destinationCommand: target.map {
                     TransferRunners.command(for: $0.configuration)
                 },
+                carry: (carries && target != nil) ? TransferDriver.Carry(
+                    localSourceHome: source.isLocal ? NSHomeDirectory() : nil,
+                    sourceCommand: TransferRunners.command(for: source.configuration),
+                    copy: TransferRunners.copy(to: target!.configuration),
+                    destinationHome: NSHomeDirectory(),
+                    scratchRoot: TransferAssembly.scratchRoot
+                ) : nil,
                 departure: TransferRunners.departure(for: source.configuration)
             )
 

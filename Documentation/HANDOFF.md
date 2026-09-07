@@ -3427,6 +3427,22 @@ the only part drawn.
     the boundary; and the confirmation names the carry. No path-mismatch
     precondition, because the boundary makes it unnecessary and refusing on
     it would have excluded every session in a shared checkout.
+    **A session can be too big to brief, and the first live carry proved it
+    by never being reached.** The departure resumed this session — 24 MB of
+    transcript — to ask for its brief, and the agent answered `Prompt is too
+    long`. The brief fails for exactly the sessions with the most to lose,
+    and it was ordered *before* the carry that would have saved them.
+    Nothing was pushed; the tool printed the reason and the right remnant,
+    which is the morning's diagnostic work paying for itself.
+
+    **So the carry goes first, and a carried session is not briefed.** The
+    copy happens before the departure, when nothing of ours is writing to
+    the transcript; if it lands, both `.brief` steps are dropped — the
+    successor has the whole history, a summary of it costs a model call and
+    can overflow, and a summary it does not need is not worth either. If the
+    carry declines, the brief is written exactly as before. The capture and
+    push do not depend on the brief file, which is the one assumption the
+    reorder rests on and was read rather than assumed.
     **If only one survives, the evidence favours the transcript.** The brief
     has failed twice in live use and costs a model call every time; the
     carry has failed never and costs a copy. But it has been run once, in a

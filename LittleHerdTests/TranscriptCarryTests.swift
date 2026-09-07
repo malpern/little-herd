@@ -131,3 +131,242 @@ struct TranscriptCarryTests {
         #expect(command.contains("'/Users/a/.claude/projects/-Users-a-Some Folder/s.jsonl'"))
     }
 }
+
+/// The launcher, when it is handed a session instead of a brief.
+@Suite("Resuming a carried session")
+struct CarriedLaunchTests {
+    private func plan(carried: String?) -> SuccessorLaunch.Plan? {
+        try? SuccessorLaunch.plan(
+            briefPath: "/Users/a/local-code/x",
+            briefText: "the brief",
+            branch: "transfer/x",
+            repository: "/Users/b/local-code/x",
+            scratchRoot: "/Users/b/.little-herd/transfers",
+            provider: .claude,
+            reportedAgentPath: "/Users/b/.local/bin/claude",
+            expectedCommit: String(repeating: "a", count: 40),
+            carriedSession: carried
+        ).get()
+    }
+
+    /// **Resumed and forked, with the same guardrails as a fresh start.** The
+    /// permission mode is the boundary that stops a stale memory reaching a
+    /// path outside the scratch directory, so it is exactly the thing that
+    /// must not differ between the two shapes of successor.
+    @Test
+    func acarriedSessionIsResumedForkedAndFenced() throws {
+        let carried = try #require(plan(carried: "abc-123"))
+        let fresh = try #require(plan(carried: nil))
+
+        #expect(carried.arguments.contains("--resume"))
+        #expect(carried.arguments.contains("abc-123"))
+        #expect(carried.arguments.contains("--fork-session"))
+        #expect(!fresh.arguments.contains("--resume"))
+
+        for guardrail in ["--permission-mode", "acceptEdits", "--disallowedTools", "Bash"] {
+            #expect(carried.arguments.contains(guardrail), "\(guardrail) missing from the carried launch")
+            #expect(fresh.arguments.contains(guardrail))
+        }
+    }
+
+    /// The carried prompt says what changed and nothing the session already
+    /// knows: the brief is *not* in it, because the whole point is that the
+    /// history is.
+    @Test
+    func thecarriedPromptSaysItMovedAndOmitsTheBrief() throws {
+        let carried = try #require(plan(carried: "abc-123"))
+        #expect(carried.prompt.hasPrefix("You have been moved"))
+        #expect(carried.prompt.contains(carried.workingDirectory))
+        #expect(!carried.prompt.contains("the brief"))
+
+        let fresh = try #require(plan(carried: nil))
+        #expect(fresh.prompt.contains("the brief"))
+    }
+
+    /// One function decides where a successor works, so the transcript and
+    /// the launcher cannot disagree about it.
+    @Test
+    func thescratchDirectoryHasOneDescription() throws {
+        let carried = try #require(plan(carried: "abc-123"))
+        #expect(
+            carried.workingDirectory
+                == SuccessorLaunch.workingDirectory(
+                    scratchRoot: "/Users/b/.little-herd/transfers", branch: "transfer/x"
+                )
+        )
+    }
+}
+
+/// The driver's carry step, with every machine faked.
+@Suite("Carrying, and falling back")
+struct DriverCarryTests {
+    private func makeRequest(provider: AgentTaskProvider = .claude, directory: String? = "/Users/a/x")
+        -> TransferAssembly.Request?
+    {
+        func account(_ id: String, home: String) -> DestinationAccount {
+            DestinationAccount(
+                machine: MachineID(id), name: id, symbolName: "desktopcomputer",
+                report: DestinationReport(
+                    installations: [
+                        AgentInstallation(provider: provider, version: "1",
+                                          path: "\(home)/.local/bin/\(provider.rawValue)")
+                    ],
+                    checkouts: ["x": "\(home)/x"]
+                ),
+                mayHostSessions: true, auth: .unverified, isVerifying: false
+            )
+        }
+        let session = AgentSession(
+            id: "\(provider.rawValue):s-1", provider: provider, projectName: "x",
+            state: .waiting, updatedAt: .now, progress: nil,
+            workingDirectory: directory
+        )
+        return try? TransferAssembly.request(
+            session: session, from: MachineID("a"), to: MachineID("b"),
+            in: [account("a", home: "/Users/a"), account("b", home: "/Users/b")],
+            check: .none
+        ).get()
+    }
+
+    private func carry(
+        home: String? = "/Users/a",
+        still: Bool = true,
+        copies: Bool = true,
+        record: Recorder = Recorder()
+    ) -> TransferDriver.Carry {
+        TransferDriver.Carry(
+            localSourceHome: home,
+            sourceCommand: { _ in ("", still) },
+            copy: { local, remote, recursive in
+                record.add("\(local) -> \(remote)\(recursive ? " -r" : "")")
+                return copies
+            },
+            destinationHome: "/Users/b",
+            scratchRoot: "/Users/b/.little-herd/transfers"
+        )
+    }
+
+    /// The happy path, and where the file lands: under the project folder for
+    /// the **scratch** directory, which is where the successor will look.
+    @Test
+    func acarriedTranscriptLandsWhereTheSuccessorWillLook() async throws {
+        let request = try #require(makeRequest())
+        let record = Recorder()
+        let outcome = await TransferDriver.carryTranscript(request, carry: carry(record: record))
+        guard case .carried = outcome else {
+            Issue.record("expected carried, got \(outcome)")
+            return
+        }
+        let copies = record.lines
+        #expect(copies.first?.hasPrefix("/Users/a/.claude/projects/-Users-a-x/s-1.jsonl -> ") == true)
+        #expect(copies.first?.contains("/Users/b/.claude/projects/-Users-b--little-herd-transfers-transfer-") == true)
+    }
+
+    /// **Every refusal falls back, and says why.** A carry that failed silently
+    /// would be a successor with no history and no brief.
+    @Test
+    func eachReasonNotToCarryFallsBackWithItsReason() async throws {
+        let request = try #require(makeRequest())
+
+        if case .fellBack(let why) = await TransferDriver.carryTranscript(request, carry: carry(home: nil)) {
+            #expect(why.contains("another machine"))
+        } else { Issue.record("a remote source must fall back") }
+
+        if case .fellBack(let why) = await TransferDriver.carryTranscript(request, carry: carry(still: false)) {
+            #expect(why.contains("still being written"))
+        } else { Issue.record("an unstable transcript must fall back") }
+
+        if case .fellBack(let why) = await TransferDriver.carryTranscript(request, carry: carry(copies: false)) {
+            #expect(why.contains("could not be copied"))
+        } else { Issue.record("a failed copy must fall back") }
+
+        let codex = try #require(makeRequest(provider: .codex))
+        if case .fellBack(let why) = await TransferDriver.carryTranscript(codex, carry: carry()) {
+            #expect(why.contains("Claude"))
+        } else { Issue.record("a Codex session must fall back") }
+    }
+}
+
+/// Collects what a `@Sendable` closure saw.
+private nonisolated final class Recorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: [String] = []
+    var lines: [String] { lock.withLock { value } }
+    func add(_ line: String) { lock.withLock { value.append(line) } }
+}
+
+/// The order the driver does things in, which the first live carry got wrong.
+@Suite("Carry before brief")
+struct CarryOrderingTests {
+    private func request() -> TransferAssembly.Request? {
+        func account(_ id: String, home: String) -> DestinationAccount {
+            DestinationAccount(
+                machine: MachineID(id), name: id, symbolName: "desktopcomputer",
+                report: DestinationReport(
+                    installations: [
+                        AgentInstallation(provider: .claude, version: "1", path: "\(home)/.local/bin/claude")
+                    ],
+                    checkouts: ["x": "\(home)/x"]
+                ),
+                mayHostSessions: true, auth: .unverified, isVerifying: false
+            )
+        }
+        let session = AgentSession(
+            id: "claude:s-1", provider: .claude, projectName: "x", state: .waiting,
+            updatedAt: .now, progress: nil, workingDirectory: "/Users/a/x"
+        )
+        return try? TransferAssembly.request(
+            session: session, from: MachineID("a"), to: MachineID("b"),
+            in: [account("a", home: "/Users/a"), account("b", home: "/Users/b")],
+            check: .none
+        ).get()
+    }
+
+    private func carry(copies: Bool) -> TransferDriver.Carry {
+        TransferDriver.Carry(
+            localSourceHome: "/Users/a",
+            sourceCommand: { _ in ("", true) },
+            copy: { _, _, _ in copies },
+            destinationHome: "/Users/b",
+            scratchRoot: "/Users/b/.little-herd/transfers"
+        )
+    }
+
+    /// **A carried session is never asked for a brief.** The brief is a model
+    /// call the successor does not need, and for a large session it is one
+    /// that fails — "Prompt is too long" on a 24 MB transcript. The departure
+    /// runner is handed in and must never see a `.brief` step.
+    @Test
+    func acarriedSessionSkipsTheBrief() async throws {
+        let request = try #require(request())
+        let seen = Recorder()
+        _ = await TransferDriver.prepare(
+            request,
+            carry: carry(copies: true),
+            departure: { step in
+                seen.add("\(step.purpose)")
+                return SuccessorExecutor.StepOutput(text: "", succeeded: false)
+            }
+        )
+        #expect(!seen.lines.contains("brief"), "the brief ran for a carried session")
+        #expect(seen.lines.contains("capture") || seen.lines.contains("push") || seen.lines.contains("cleanup"),
+                "the rest of the departure must still run")
+    }
+
+    /// And a carry that declines leaves the brief exactly as it was, so the
+    /// successor is never left with neither.
+    @Test
+    func adeclinedCarryKeepsTheBrief() async throws {
+        let request = try #require(request())
+        let seen = Recorder()
+        _ = await TransferDriver.prepare(
+            request,
+            carry: carry(copies: false),
+            departure: { step in
+                seen.add("\(step.purpose)")
+                return SuccessorExecutor.StepOutput(text: "", succeeded: false)
+            }
+        )
+        #expect(seen.lines.contains("brief"), "the brief must run when the carry falls back")
+    }
+}

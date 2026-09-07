@@ -18,6 +18,11 @@ nonisolated enum TransferAssembly {
         let destinationAgentPath: String
         let provider: AgentTaskProvider
         let check: RepositoryCheck
+        /// The departing session's own name and where it ran, which the
+        /// transcript carry needs and nothing else did. Bare — see
+        /// `AgentSession.bareIdentifier`.
+        let sessionIdentifier: String
+        let sessionWorkingDirectory: String?
     }
 
     enum Refusal: Equatable, Error {
@@ -119,7 +124,9 @@ nonisolated enum TransferAssembly {
                 destinationRepository: destinationRepository,
                 destinationAgentPath: installation.path,
                 provider: session.provider,
-                check: check
+                check: check,
+                sessionIdentifier: session.bareIdentifier,
+                sessionWorkingDirectory: session.workingDirectory
             )
         )
     }

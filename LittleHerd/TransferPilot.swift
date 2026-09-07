@@ -114,7 +114,8 @@ nonisolated enum TransferPilot {
         provider: AgentTaskProvider,
         reportedAgentPath: String,
         check: RepositoryCheck,
-        commitMessage: String
+        commitMessage: String,
+        carriedSession: String? = nil
     ) -> Result<[SuccessorRun.Step], Failure> {
         let plan = SuccessorLaunch.plan(
             briefPath: briefPath,
@@ -124,7 +125,8 @@ nonisolated enum TransferPilot {
             scratchRoot: scratchRoot,
             provider: provider,
             reportedAgentPath: reportedAgentPath,
-            expectedCommit: commit
+            expectedCommit: commit,
+            carriedSession: carriedSession
         )
 
         switch plan {

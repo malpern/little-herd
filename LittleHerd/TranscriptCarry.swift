@@ -66,7 +66,7 @@ nonisolated enum TranscriptCarry {
     }
 }
 
-extension TranscriptCarry {
+nonisolated extension TranscriptCarry {
     /// Whether this session can be carried at all.
     ///
     /// **Only Claude, for now.** The mechanism is a file in a place derived

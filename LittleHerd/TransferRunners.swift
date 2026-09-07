@@ -91,3 +91,49 @@ extension TransferRunners {
         }
     }
 }
+
+extension TransferRunners {
+    /// Copying a file to a machine, for the transcript carry.
+    ///
+    /// Always from *this* Mac, whichever machine the source is: the transfer
+    /// runs here, this is the one machine that can reach every other, and
+    /// `scp` between two remote hosts would need one of them to hold a key for
+    /// the other — which on this herd they deliberately do not.
+    static func copy(
+        to machine: MachineConfiguration
+    ) -> @Sendable (_ localPath: String, _ remotePath: String, _ recursive: Bool) async -> Bool {
+        guard machine.connection != .local else {
+            // A local destination is a plain file copy; no transport at all.
+            return { local, remote, _ in
+                let fm = FileManager.default
+                try? fm.createDirectory(
+                    atPath: (remote as NSString).deletingLastPathComponent,
+                    withIntermediateDirectories: true
+                )
+                try? fm.removeItem(atPath: remote)
+                return (try? fm.copyItem(atPath: local, toPath: remote)) != nil
+            }
+        }
+        let host = machine.sshDestination
+        let identity = machine.identityFile
+        return { local, remote, recursive in
+            // **scp does not create the target's parent, and dropping the
+            // base64 write for scp dropped the `mkdir` that used to.** Found on
+            // the first live carry: the copy failed with the destination folder
+            // absent, and the transfer fell back to a brief for a reason that
+            // was entirely fixable. One command on the machine first.
+            let parent = (remote as NSString).deletingLastPathComponent
+            let made = await SSHCommandRunner.runReportingStatus(
+                host: host,
+                command: "mkdir -p \(RemoteShell.quoted(parent))",
+                identityFile: identity,
+                timeout: 30
+            )
+            guard made.succeeded else { return false }
+            return await SSHCommandRunner.copy(
+                local, to: host, remotePath: remote,
+                identityFile: identity, recursive: recursive
+            ).succeeded
+        }
+    }
+}
