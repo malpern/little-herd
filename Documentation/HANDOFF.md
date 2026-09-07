@@ -2874,6 +2874,29 @@ the only part drawn.
     shared with the local path and is now covered, which is the part that had
     the bugs.
 
+    **And on 6 September it hung, reproducibly, which is the first evidence
+    that the untested half is not merely uncovered.** `little-herd move`
+    reached the sign-in probe, printed the agent path it was about to ask
+    about, and then stopped for twenty-seven minutes. A `sample` of the process
+    says what state it was in: the main thread parked in
+    `_dispatch_semaphore_wait_slow`, **every worker thread idle** in
+    `__workq_kernreturn`, and **no `ssh` process in the tree at all**. Nothing
+    was running and nothing was spinning; the task was suspended on a
+    continuation that never resumed, before a process was ever spawned.
+
+    The probe's own 90-second watchdog cannot help with this — whatever failed
+    happened before the watchdog started — and the same command answers in six
+    seconds when run by hand over plain ssh, so the far side is fine. It is
+    intermittent: an earlier transfer that same evening went through this code
+    and landed.
+
+    `move` now bounds its wait rather than blocking for ever, and says that
+    reaching the bound is a fault in the command rather than an answer about
+    the work. That converts a silent hang into a report, and it is a
+    workaround: **the hang itself is unexplained and is the next thing to
+    chase here.** A reproduction exists, which is more than this item had
+    before.
+
 
 14. **A destination is eligible for a piece of *work*, not eligible in
     general — and nothing in the model says so yet.** Raised 3 September, after

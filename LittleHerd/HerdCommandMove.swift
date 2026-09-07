@@ -208,7 +208,28 @@ extension HerdCommand {
             }
             semaphore.signal()
         }
-        semaphore.wait()
+        // **Bounded, because an unbounded wait is a hang with no story.**
+        // Seen on 6 September: the sign-in probe suspended and never resumed —
+        // main thread parked on this semaphore, every worker thread idle, no
+        // `ssh` process ever spawned — and the command sat there for
+        // twenty-seven minutes saying nothing. The probe's own 90-second
+        // watchdog cannot help, because whatever failed happened before it
+        // started.
+        //
+        // The cap is the sum of what the steps are allowed plus room: an agent
+        // may have half an hour and a check fifteen minutes. Reaching it means
+        // something is wrong with this tool rather than with the transfer, and
+        // it says so in those terms rather than inventing a result.
+        let ceiling = DispatchTime.now() + .seconds(70 * 60)
+        guard semaphore.wait(timeout: ceiling) == .success else {
+            return (
+                "little-herd: gave up waiting. Nothing here timed out — the "
+                    + "transfer stopped reporting, which is a fault in this "
+                    + "command rather than an answer about the work. Check "
+                    + "whether a branch was pushed before trusting anything.",
+                1
+            )
+        }
 
         guard let result = outcome.value else {
             return ("little-herd: the transfer reported nothing", 1)
