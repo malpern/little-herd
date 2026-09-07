@@ -115,6 +115,53 @@ struct DiscoverCheckTests {
         #expect(reason.contains("xcodebuild"))
     }
 
+    /// **A declaration wins over what the files suggest.** The listing says
+    /// cargo; the repository says, in its `.little-herd.toml`, that it is an
+    /// Xcode project — a Swift package with a project beside it, the case
+    /// detection cannot call. The declaration is honoured, and it came from the
+    /// destination, read into the same closed set.
+    @Test
+    func adeclarationOverridesDetection() async {
+        let discovered = await TransferDriver.discoverCheck(
+            repository: "/repo",
+            on: "Mini",
+            run: { command in
+                if command.contains(RepositoryCheck.declarationFile) {
+                    return ("[transfer]\ncheck = \"xcode\"\nscheme = \"App\"\n", true)
+                }
+                if command.hasPrefix("ls") { return ("Cargo.toml\nApp.xcodeproj\n", true) }
+                return ("/usr/bin/xcodebuild", true)  // command -v
+            }
+        )
+        guard case .check(let check) = discovered else {
+            Issue.record("expected a check, got \(discovered)")
+            return
+        }
+        #expect(check == .xcode(scheme: "App"), "the declaration should have won")
+    }
+
+    /// A malformed declaration does not override; detection stands, so a typo
+    /// weakens fidelity rather than silently running the wrong thing.
+    @Test
+    func amalformedDeclarationFallsBackToDetection() async {
+        let discovered = await TransferDriver.discoverCheck(
+            repository: "/repo",
+            on: "Mini",
+            run: { command in
+                if command.contains(RepositoryCheck.declarationFile) {
+                    return ("[transfer]\ncheck = \"nonsense\"\n", true)
+                }
+                if command.hasPrefix("ls") { return ("Cargo.toml\n", true) }
+                return ("/usr/bin/cargo", true)
+            }
+        )
+        guard case .check(let check) = discovered else {
+            Issue.record("expected a check")
+            return
+        }
+        #expect(check == .cargo, "a bad declaration must fall back to detection")
+    }
+
     /// **Silence is not evidence.** A machine that cannot be listed has not
     /// said it is unsuitable, and refusing on silence would ground the herd
     /// whenever one was slow — the same rule the sign-in probe follows.
@@ -134,14 +181,14 @@ struct DiscoverCheckTests {
     /// A repository with nothing to run is not asked whether it has nothing.
     @Test
     func nothingToRunAsksForNothing() async {
-        // A counter the closure can touch: it is `@Sendable`, so a plain
+        // A recorder the closure can touch: it is `@Sendable`, so a plain
         // captured var will not compile — the same lesson `Handoff` records.
-        let asked = Counter()
+        let asked = CommandLog()
         let discovered = await TransferDriver.discoverCheck(
             repository: "/repo",
             on: "Mini",
             run: { command in
-                asked.bump()
+                asked.add(command)
                 return ("README.md\n", true)
             }
         )
@@ -150,15 +197,18 @@ struct DiscoverCheckTests {
             return
         }
         #expect(check == .none)
-        #expect(asked.count == 1, "a second question would have no answer to want")
+        // Discovery always reads the listing and the declaration; a repository
+        // with nothing to run is not then asked whether it has the tool for it.
+        // The point is the *absent* preflight, not a raw count.
+        #expect(!asked.lines.contains { $0.contains("command -v") }, "a no-op check asked a preflight")
     }
 }
 
 
-/// Counts calls from a `@Sendable` closure.
-private nonisolated final class Counter: @unchecked Sendable {
+/// Records the commands a `@Sendable` closure was asked to run.
+private nonisolated final class CommandLog: @unchecked Sendable {
     private let lock = NSLock()
-    private var value = 0
-    var count: Int { lock.withLock { value } }
-    func bump() { lock.withLock { value += 1 } }
+    private var value: [String] = []
+    var lines: [String] { lock.withLock { value } }
+    func add(_ line: String) { lock.withLock { value.append(line) } }
 }

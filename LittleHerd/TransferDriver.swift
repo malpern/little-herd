@@ -248,9 +248,19 @@ extension TransferDriver {
         let listed = await run(RepositoryCheckProbe.listing(of: repository))
         guard listed.succeeded else { return .unknown }
 
-        let check = RepositoryCheckDetector.check(
-            forEntries: RepositoryCheckProbe.entries(fromListing: listed.output)
-        )
+        // **A declaration wins over detection**, because it is the repository
+        // saying what detection could only guess — and it is read into the
+        // same closed set, so it names a check and never a command. Absent or
+        // malformed, it is nil and detection stands.
+        let declared = await run(RepositoryCheckProbe.declarationCommand(of: repository))
+        let check: RepositoryCheck
+        if declared.succeeded, let named = RepositoryCheck.declared(inTOML: declared.output) {
+            check = named
+        } else {
+            check = RepositoryCheckDetector.check(
+                forEntries: RepositoryCheckProbe.entries(fromListing: listed.output)
+            )
+        }
         guard let preflight = RepositoryCheckProbe.preflight(for: check) else {
             // Nothing to run means nothing to have. `.none` is a real answer
             // and a deliberate one — see `RepositoryCheck.none`.

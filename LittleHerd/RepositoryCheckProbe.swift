@@ -38,6 +38,17 @@ nonisolated enum RepositoryCheckProbe {
             .filter { !$0.isEmpty }
     }
 
+    /// Reads the repository's declaration file, if it has one.
+    ///
+    /// A single `cat` that fails quietly when the file is absent, because
+    /// absent is the ordinary case: most repositories declare nothing and are
+    /// detected. `2>/dev/null` and a trailing `|| true` so a missing file is an
+    /// empty answer rather than a failed step.
+    static func declarationCommand(of repository: String) -> String {
+        let path = "\(repository)/\(RepositoryCheck.declarationFile)"
+        return "cat \(RemoteShell.quoted(path)) 2>/dev/null || true"
+    }
+
     /// Whether the destination has the one tool this check needs.
     ///
     /// `command -v`, not `which`: `which` is a separate binary that may not

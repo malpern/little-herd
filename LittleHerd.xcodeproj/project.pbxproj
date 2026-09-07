@@ -172,6 +172,7 @@
 		DED22012974A8B709BB6B12D /* SynologyWiringTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3A27FA19E2D234113937C21 /* SynologyWiringTests.swift */; };
 		DF419DC26CF92734E3261880 /* MachineAgentActivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F2409153C594416FF09B3E1 /* MachineAgentActivityTests.swift */; };
 		DF97F48FB743A433B4A16495 /* AgentResourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96FE2EB9BC85C8D939ED84BE /* AgentResourceTests.swift */; };
+		E0C1AD427D0379278313F8B5 /* RepositoryCheckDeclarationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8616BA821323505166DEB9C /* RepositoryCheckDeclarationTests.swift */; };
 		E1FFEEB0796E0D1C0CEE88D9 /* SuccessorSSHTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 994A0D0BCDDCAE35789476F8 /* SuccessorSSHTests.swift */; };
 		E34C872CCF5F2022113E97AF /* SynologyMetricsSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF5116683456A747005BF658 /* SynologyMetricsSampler.swift */; };
 		E4114033EB3F74C949F3DE63 /* AgentCompaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = F36A1B0B40C57B621213124F /* AgentCompaction.swift */; };
@@ -380,6 +381,7 @@
 		F5F554C0CD098ED8BEED7D3B /* MachineActionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineActionTests.swift; sourceTree = "<group>"; };
 		F609256D1E307FFA9E715C45 /* ContainerAttribution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerAttribution.swift; sourceTree = "<group>"; };
 		F82C710E619943CBDCBE3355 /* HerdWorkload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdWorkload.swift; sourceTree = "<group>"; };
+		F8616BA821323505166DEB9C /* RepositoryCheckDeclarationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryCheckDeclarationTests.swift; sourceTree = "<group>"; };
 		F92F0519C69CB99B932A38ED /* FolderBrowserModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderBrowserModel.swift; sourceTree = "<group>"; };
 		F9386B33F3E8A7D3276195B4 /* RepositoryCheckTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryCheckTests.swift; sourceTree = "<group>"; };
 		F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteUnavailabilityTests.swift; sourceTree = "<group>"; };
@@ -586,6 +588,7 @@
 				C1A0DC0F7A6B9443E5F6E450 /* PanelRenderHarness.swift */,
 				4AD8447725A42DFF2528EAF4 /* RecedingBarsTests.swift */,
 				F95883052282EEA37A188C32 /* RemoteUnavailabilityTests.swift */,
+				F8616BA821323505166DEB9C /* RepositoryCheckDeclarationTests.swift */,
 				1082145BBE5CD6ACAFC1375D /* RepositoryCheckProbeTests.swift */,
 				F9386B33F3E8A7D3276195B4 /* RepositoryCheckTests.swift */,
 				9964820C13B89705570C2A79 /* SecretCacheTests.swift */,
@@ -882,6 +885,7 @@
 				A673853D135FCA0E042DEBE8 /* PanelRenderHarness.swift in Sources */,
 				DC5192C2783981EBEFB48AFD /* RecedingBarsTests.swift in Sources */,
 				8935F6CCBD6DFA02BEC41FA3 /* RemoteUnavailabilityTests.swift in Sources */,
+				E0C1AD427D0379278313F8B5 /* RepositoryCheckDeclarationTests.swift in Sources */,
 				33ADC70A518A5189BF2D6256 /* RepositoryCheckProbeTests.swift in Sources */,
 				D90265E7A563F6351F566FA4 /* RepositoryCheckTests.swift in Sources */,
 				75BE1EA5F769425A1C052A0C /* SSHCommandRunnerTests.swift in Sources */,

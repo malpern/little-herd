@@ -3078,11 +3078,27 @@ the only part drawn.
     neither**, and is now named as a gap rather than being handed work it
     cannot verify.
 
-    **What is left of this item is the declaration half** — a `[transfer]`
-    block in the repository to settle what detection cannot, and the offers
-    for the two remedies that *can* be completed over SSH (a missing
-    checkout, a missing agent CLI). Detection covers the common case;
-    declaration is for the repository that is more than one thing.
+    **The declaration half shipped on 6 September; the remedies remain.** A
+    repository names its own check in a `.little-herd.toml` with a
+    `[transfer]` block — `RepositoryCheck.declared(inTOML:)` reads it into
+    the *same closed set* detection produces, so it names a check and never
+    a command: the executable is always one of five and the repository fills
+    only a quoted argument, which a test proves by asserting the produced
+    executable over hostile input (and which was strengthened after a weaker
+    "unknown kind is nil" version let a hole through). The declaration is
+    read on the destination and wins over detection when valid, falls back
+    when malformed. Its live value could not be shown on this herd, because
+    nothing here is detected wrongly — it is unit-verified, and the case it
+    exists for is a repository that is more than one thing.
+
+    **What is left is the two remedies that can be offered over SSH** — a
+    missing checkout is a clone, a missing agent CLI is one installer —
+    while a missing Xcode or a credential is explained and never attempted.
+    That is a separate, larger piece: it makes an *ineligible* machine
+    eligible rather than checking an eligible one, and it touches the drop
+    and the CLI's confirmation. Detection and declaration between them
+    answer *which* check; the remedies answer *what to do about a gap*, and
+    the two are worth keeping apart.
 
     **Ask work facts on the drag, not on the timer.** Machine facts are cheap
     and already sampled every thirty seconds. Twenty `command -v` calls per

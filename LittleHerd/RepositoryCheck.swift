@@ -67,6 +67,68 @@ nonisolated enum RepositoryCheck: Equatable, Sendable {
     var verifiesAnything: Bool { !commands.isEmpty }
 }
 
+nonisolated extension RepositoryCheck {
+    /// The file a repository may carry to name its own check, when detection
+    /// would guess wrong or cannot choose — a Swift package with an
+    /// `.xcodeproj` beside it, a monorepo whose test is a make target.
+    ///
+    /// **The repository names a check, never a command.** This is the line the
+    /// whole transfer design holds: the thing being checked must not choose its
+    /// own exam. A declaration is read into the same closed set detection
+    /// produces, with one blank to fill — a scheme, a script, a target — and
+    /// that blank reaches an argument list already quoted, exactly as a detected
+    /// one does. A repository can say "I am cargo" or "my scheme is X"; it
+    /// cannot say "run curl | sh", because there is no case that carries a
+    /// command line and no parser path that would build one.
+    static let declarationFile = ".little-herd.toml"
+
+    /// Parses the `[transfer]` block. Nil when the file is absent, has no such
+    /// block, or names a check outside the closed set — in every one of those
+    /// the caller falls back to detection, which is the safe default, so a
+    /// malformed declaration weakens fidelity rather than opening a hole.
+    static func declared(inTOML contents: String) -> RepositoryCheck? {
+        // A hand parser, not a TOML library: this reads one table with a
+        // handful of string keys, and a dependency that can do more is a
+        // dependency that can be surprised into doing more.
+        var inTransfer = false
+        var fields: [String: String] = [:]
+        for rawLine in contents.split(whereSeparator: \.isNewline) {
+            var line = rawLine.trimmingCharacters(in: .whitespaces)
+            if let hash = line.firstIndex(of: "#") { line = String(line[..<hash]).trimmingCharacters(in: .whitespaces) }
+            if line.isEmpty { continue }
+            if line.hasPrefix("[") {
+                inTransfer = (line == "[transfer]")
+                continue
+            }
+            guard inTransfer, let eq = line.firstIndex(of: "=") else { continue }
+            let key = line[..<eq].trimmingCharacters(in: .whitespaces)
+            var value = line[line.index(after: eq)...].trimmingCharacters(in: .whitespaces)
+            if value.hasPrefix("\"") && value.hasSuffix("\"") && value.count >= 2 {
+                value = String(value.dropFirst().dropLast())
+            }
+            fields[key] = value
+        }
+
+        guard let kind = fields["check"] else { return nil }
+        switch kind {
+        case "xcode":
+            // A scheme is required: `xcodebuild test` with no scheme is not a
+            // check anybody meant. No scheme, no declaration — fall back.
+            guard let scheme = fields["scheme"], !scheme.isEmpty else { return nil }
+            return .xcode(scheme: scheme)
+        case "swift": return .swiftPackage
+        case "cargo": return .cargo
+        case "npm": return .npm(script: fields["script"].flatMap { $0.isEmpty ? nil : $0 } ?? "test")
+        case "make": return .make(target: fields["target"].flatMap { $0.isEmpty ? nil : $0 } ?? "test")
+        case "none": return RepositoryCheck.none
+        default:
+            // An unknown kind is not an error to surface — it is a newer
+            // Little Herd's vocabulary in an older one's mouth. Fall back.
+            return nil
+        }
+    }
+}
+
 /// What a repository looks like from the outside, and what that implies.
 ///
 /// Detection is Little Herd's, never the successor's. The agent being checked
