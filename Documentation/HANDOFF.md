@@ -3297,6 +3297,69 @@ the only part drawn.
     wrong answer: tried, and there a card's right-click menu **never opens at
     all**. The fix the columns needed does not generalise one level down.
 
+17. **Carry the transcript instead of writing a brief — the next thing to
+    build, and the first one this project has taken up with the experiment
+    already done.** Raised 6 September out of stepping back from the
+    transfer rather than out of a bug.
+
+    **The brief is the weakest step by evidence, not by taste.** It is the
+    only step that spends a model call on the source. It is where the first
+    failure of 6 September was. It is where the silent permission failure of
+    3 September was — reporting success having written nothing, which is why
+    the departure now tests the artifact rather than the exit status. And
+    its fidelity ceiling is whatever an agent writes in one prompt: the
+    successor starts with no history, no tool results and no context window,
+    because it is a *new* session holding a summary. The design is not
+    moving a session; it is summarise-and-restart.
+
+    **Carrying works, and that is measured.** A session created on the Air
+    was copied to the mini and resumed there; asked what word it had been
+    told to remember, it answered `PELICAN`. Whole conversation, no brief,
+    no model call. The numbers behind the risks are in the facts section
+    above and are not repeated here.
+
+    **What is settled, and why:**
+
+    - **Refuse a path mismatch rather than rewriting paths.** 5,954 records
+      in one transcript carry an absolute `cwd`, and the project directory
+      name encodes the path. Both machines here are `malpern` with the same
+      layout, which is luck. Whether the checkout sits at an identical
+      absolute path on both ends is knowable before anything moves, which is
+      where this project now puts every question it can. Rewriting them is
+      the tempting alternative and is refused: a transcript is a record, and
+      editing one to say something that did not happen is falsifying it. -
+      **`--fork-session` on arrival.** Resuming a carried session gives one
+      identifier a second, divergent history and nothing merges them.
+      Forking says the honest thing — the destination continues *from* the
+      session rather than becoming it. - **Compare agent versions in the
+      pre-flight.** The format is undocumented and moves; three versions
+      appear inside one transcript, so it tolerates drift within a session
+      and promises nothing across machines. The pre-flight already makes a
+      call to the destination, so this is one more question on a call
+      already being paid for. - **Say out loud that it copies everything the
+      session saw.** File contents, command output, whatever was pasted. The
+      brief is a summary an agent chose to write; a transcript is the
+      unedited record. Between one person's own machines that is probably
+      fine, and it must be a stated fact rather than a surprise. This is the
+      one cost with no mitigation, and it is the reason this is a choice
+      rather than an obvious replacement.
+
+    **The shape to build: a fast path with a fallback.** Carry when the
+    paths match and the versions are close; write a brief when they do not,
+    which is the cross-layout case the brief is actually good at. The cost
+    is two mechanisms where there is one, and this file's own rule is that
+    two descriptions of one thing drift — so they must not be two
+    descriptions of *the handover*, only two ways of producing the one thing
+    the successor is given.
+
+    **If only one survives, the evidence favours the transcript.** The brief
+    has failed twice in live use and costs a model call every time; the
+    carry has failed never and costs a copy. But it has been run once, in a
+    controlled experiment, on two machines that happen to share a layout —
+    so it is a strong result and a small sample, and the honest next step is
+    to build it behind the same kind of flag the recede got rather than to
+    replace anything.
+
 ## Keeping this file honest
 
 It is the roadmap; there is no other tracker. Update it at the end of a session
