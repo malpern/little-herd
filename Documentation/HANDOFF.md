@@ -3123,6 +3123,20 @@ the only part drawn.
     and running it clones onto that machine — the heavy consent the gate exists
     for — so it is left for a person to trigger.
 
+    **The drag has it too, as of 7 September, which closes the asymmetry with
+    the command line.** The drop decides three ways: a ready machine is
+    unchanged; a machine whose gap `--fix` could close is `fixable` and lifts
+    to meet the drag in amber with a "Sets up first" badge, so it does not look
+    like one that can take the work now; a gap only a person can close stays
+    put. `canAccept` still means "ready as it is" — two existing tests caught
+    the first version widening it, and only the drag reads the wider
+    `disposition`. Dropping runs the remedy as its own phase, `.fixing`, ahead
+    of `preparing`, so the strip reads "Setting up Linux" with the bar moving
+    from the first frame; the machine is then re-probed rather than assumed.
+    The drop is the consent: the machine was visibly marked, the phase can be
+    watched and stopped, and nothing runs silently. Unit-verified; the live
+    drop-onto-linux clones onto that machine and is the person's to trigger.
+
     **Ask work facts on the drag, not on the timer.** Machine facts are cheap
     and already sampled every thirty seconds. Twenty `command -v` calls per
     sample would go into the shell script this file calls the most dangerous
