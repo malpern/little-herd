@@ -2890,12 +2890,32 @@ the only part drawn.
     intermittent: an earlier transfer that same evening went through this code
     and landed.
 
-    `move` now bounds its wait rather than blocking for ever, and says that
-    reaching the bound is a fault in the command rather than an answer about
-    the work. That converts a silent hang into a report, and it is a
-    workaround: **the hang itself is unexplained and is the next thing to
-    chase here.** A reproduction exists, which is more than this item had
-    before.
+    **Explained the same evening, and it was not the runner.** Called from a
+    test, with nothing blocking anything, `verify` answers against that same
+    machine in **seven seconds**. What hung was `move`, which parked the main
+    thread on a semaphore while a detached task awaited it — so this item's
+    untested half is still untested, and is exonerated of this.
+
+    The lesson was already in item 15, from the opposite direction: an earlier
+    CLI "blocked the main thread on a semaphore while awaiting work that hopped
+    back to the main actor to finish — a deadlock". `sampleBlocking` survives
+    that because a probe touches nothing which needs the main thread; a
+    transfer reaches further, and reached far enough to find the same wall.
+    `move` pumps the run loop now instead of parking on it, and keeps the bound
+    as a backstop rather than as the fix.
+
+    **Two hours of it were spent on the wrong half**, and the thing that split
+    the question in one step was `LiveAuthProbeHarness` — six lines calling
+    `verify` from a test. Where a live component is suspected, put it somewhere
+    nothing else is holding a lock before reading its code.
+
+    **And a gated suite reports a skip as a pass.** `LITTLE_HERD_LIVE=1
+    xcodebuild test` does not reach the test process at all — xcodebuild passes
+    only `TEST_RUNNER_`-prefixed variables through — so the harness was skipped
+    and the run printed "1 test in 1 suite passed after 0.001 seconds". That is
+    the vacuous-success trap this file already records for `-only-testing`,
+    wearing different clothes: **use `TEST_RUNNER_LITTLE_HERD_LIVE=1`**, and
+    disbelieve any live test that finishes in a millisecond.
 
 
 14. **A destination is eligible for a piece of *work*, not eligible in

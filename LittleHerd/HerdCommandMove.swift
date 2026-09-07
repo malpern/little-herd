@@ -208,6 +208,25 @@ extension HerdCommand {
             }
             semaphore.signal()
         }
+        // **Pumped, not blocked, and that is the fix rather than the cap.**
+        //
+        // This used to be a bare `semaphore.wait()`, and `move` hung at the
+        // sign-in probe: main thread parked in `_dispatch_semaphore_wait_slow`,
+        // every worker idle, and no `ssh` in the process tree — the inner work
+        // never started at all. `AgentAuthVerifier.verify` is not the culprit;
+        // called from a test, with nothing blocking anything, it answers in
+        // seven seconds against the same machine. Blocking the thread is.
+        //
+        // This project has the lesson written down once already, from the
+        // opposite direction: an earlier CLI "blocked the main thread on a
+        // semaphore while awaiting work that hopped back to the main actor to
+        // finish — a deadlock". `sampleBlocking` survives it because a probe
+        // touches nothing here; a transfer reaches further, and reached far
+        // enough to find the same wall.
+        //
+        // So the thread stays alive and services whatever wants it, and the
+        // wait is a poll rather than a park.
+        //
         // **Bounded, because an unbounded wait is a hang with no story.**
         // Seen on 6 September: the sign-in probe suspended and never resumed —
         // main thread parked on this semaphore, every worker thread idle, no
@@ -220,8 +239,15 @@ extension HerdCommand {
         // may have half an hour and a check fifteen minutes. Reaching it means
         // something is wrong with this tool rather than with the transfer, and
         // it says so in those terms rather than inventing a result.
-        let ceiling = DispatchTime.now() + .seconds(70 * 60)
-        guard semaphore.wait(timeout: ceiling) == .success else {
+        let deadline = Date().addingTimeInterval(70 * 60)
+        var finished = semaphore.wait(timeout: .now()) == .success
+        while !finished, Date() < deadline {
+            // A short slice: long enough not to spin, short enough that a
+            // transfer which finishes early is not left sitting here.
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
+            finished = semaphore.wait(timeout: .now()) == .success
+        }
+        guard finished else {
             return (
                 "little-herd: gave up waiting. Nothing here timed out — the "
                     + "transfer stopped reporting, which is a fault in this "

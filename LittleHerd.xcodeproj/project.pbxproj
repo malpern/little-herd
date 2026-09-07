@@ -183,6 +183,7 @@
 		F5AF3C4705C4B22FE0F843F8 /* AIActivePanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7CBE63E8ADD9F25EE628DF4 /* AIActivePanelView.swift */; };
 		F79784222A87AC70800649F7 /* StillImageRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6FAEEFDB123F68F905CA2DB /* StillImageRendering.swift */; };
 		F8216E4C4750D5A960F95A2E /* Transfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13A62AEDE179380F1817E463 /* Transfer.swift */; };
+		F8A82B785A5434AE98533DBA /* LiveAuthProbeHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2DB8FE57D5721A874B2D756 /* LiveAuthProbeHarness.swift */; };
 		F8DC230A5264BA010CFBFFE0 /* AgentDestinationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D5DE0551F7DDD29BEEE08FE /* AgentDestinationTests.swift */; };
 		FA18C7C7E66E267FAACADF1B /* MachineActionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5F554C0CD098ED8BEED7D3B /* MachineActionTests.swift */; };
 		FF3559A5EB1DAC602C55582D /* TransferCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55CAB9D6F79EE9C1500E9440 /* TransferCoordinatorTests.swift */; };
@@ -332,6 +333,7 @@
 		C1A0DC0F7A6B9443E5F6E450 /* PanelRenderHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelRenderHarness.swift; sourceTree = "<group>"; };
 		C1B84E18576938DDB61E77B6 /* CodexBarSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexBarSource.swift; sourceTree = "<group>"; };
 		C2ACEE7A3A10D1A9CE3D0F22 /* HerdByteCountTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdByteCountTests.swift; sourceTree = "<group>"; };
+		C2DB8FE57D5721A874B2D756 /* LiveAuthProbeHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveAuthProbeHarness.swift; sourceTree = "<group>"; };
 		C46E8C156433D6B061659FCA /* CodexRolloutUsage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexRolloutUsage.swift; sourceTree = "<group>"; };
 		C4A3F211A1CB3FB031F11E6D /* LiveTransferHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTransferHarness.swift; sourceTree = "<group>"; };
 		C6AE1D932764BCE8C5F27FD5 /* HerdColumns.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdColumns.swift; sourceTree = "<group>"; };
@@ -564,6 +566,7 @@
 				F49C967C600FD0014DDF80A0 /* HerdCommandTests.swift */,
 				BD1898FFA14E2C7BC9A924C2 /* HerdWorkloadTests.swift */,
 				28A334FD1C930D9B96C4E2F1 /* InMemoryConfigurationStorage.swift */,
+				C2DB8FE57D5721A874B2D756 /* LiveAuthProbeHarness.swift */,
 				C4A3F211A1CB3FB031F11E6D /* LiveTransferHarness.swift */,
 				AE0C8992200961B65C6E1A14 /* MachineAccountTests.swift */,
 				F5F554C0CD098ED8BEED7D3B /* MachineActionTests.swift */,
@@ -856,6 +859,7 @@
 				8CE31CD4D9BD981BC87C2915 /* HerdCommandTests.swift in Sources */,
 				A3B86273DEF5E8F43616CE18 /* HerdWorkloadTests.swift in Sources */,
 				BF0A72836087C3E499B9E54D /* InMemoryConfigurationStorage.swift in Sources */,
+				F8A82B785A5434AE98533DBA /* LiveAuthProbeHarness.swift in Sources */,
 				F1A156FDB00BC2F7D53A2A32 /* LiveTransferHarness.swift in Sources */,
 				10FA375401E99FD0503C0A08 /* MachineAccountTests.swift in Sources */,
 				FA18C7C7E66E267FAACADF1B /* MachineActionTests.swift in Sources */,
