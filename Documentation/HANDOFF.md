@@ -3093,14 +3093,25 @@ the only part drawn.
     nothing here is detected wrongly — it is unit-verified, and the case it
     exists for is a repository that is more than one thing.
 
-    **What is left is the two remedies that can be offered over SSH** — a
-    missing checkout is a clone, a missing agent CLI is one installer —
-    while a missing Xcode or a credential is explained and never attempted.
-    That is a separate, larger piece: it makes an *ineligible* machine
-    eligible rather than checking an eligible one, and it touches the drop
-    and the CLI's confirmation. Detection and declaration between them
-    answer *which* check; the remedies answer *what to do about a gap*, and
-    the two are worth keeping apart.
+    **The remedies are named on 7 September; running them is the last piece.**
+    `TransferRemedy` turns an eligibility gap into either an offer — a clone
+    for a missing checkout, the one-line installer for a missing Claude — or
+    an explanation, for a gap only a person can close: a sign-in needs a
+    browser, an Xcode is fifteen gigabytes behind an Apple Account, a Codex has
+    no single-command install. The line is a type, not a convention: an
+    `explain` carries no command, so a caller cannot run one by mistake, and a
+    test proves only two eligibility cases ever offer by opening a hole and
+    watching it fail. `destinations` shows the fix and its exact command under
+    each ineligible machine; the clone reads its remote from the source when
+    the source is this Mac, and a remote source offers no clone rather than
+    reading a URL over ssh a path that has not been run live.
+
+    **What is left is executing a remedy, and it is deliberately not in `move
+    --yes`.** Cloning gigabytes or installing software is a heavier consent
+    than moving work, so it belongs behind its own confirmation — a `--fix` on
+    `move`, or a `prepare` verb — which runs the offered command and then
+    proceeds. The command is built and shown; only the running is unbuilt, on
+    purpose, because it is the one part that changes a machine.
 
     **Ask work facts on the drag, not on the timer.** Machine facts are cheap
     and already sampled every thirty seconds. Twenty `command -v` calls per
