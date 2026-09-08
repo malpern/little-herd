@@ -1864,6 +1864,18 @@ chose**, and Little Herd's part ends there: `cd <checkout> && codex cloud
 apply <id>`, run through the same confirm-then-ssh path every other machine
 command uses. The alert names the directory as well as the machine, because
 "on the mini" does not say what is about to be written.
+**Little Herd's machine list is per-account, and an account that has never
+opened the app knows only itself.** Both mini accounts reported "Mac mini —
+this Mac" and nothing else, which made that machine useless as a
+coordinator. The list cannot be copied verbatim either, because every
+machine has to see *itself* as local — `little-herd-seed-herd` swaps which
+entry that is. Two traps on the way: `defaults read` elides the middle of a
+long Data value, so the hex comes back truncated and looks like a corrupt
+preference rather than a truncated read (`defaults export` emits the whole
+plist); and the name the target reaches the source by is not the name the
+command was invoked with, so running it with `--local` wrote a machine whose
+hostname was the literal string `--local`.
+
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -2105,19 +2117,11 @@ the only part drawn.
    better**, because probing every other route to a machine is a fair amount of
    work to improve one tooltip, and this app already declines to enumerate
    volumes for a smaller reason.
-6. **iOS, scoped to the herd rather than to sessions.** Do not rebuild session
-   steering; Remote Control and the Claude app already do it, with the local
-   filesystem and MCP servers attached. What has no answer today is the herd:
-   which machine is hot, what is waiting on you, what the budget looks like,
-   and starting a transfer. Do not sample from the phone either — iOS will not
-   ssh-poll in the background. It wants a resident collector on the mini, which
-   is the same helper item 3 needs for the Keychain problem and the same one a
-   durable successor session needs. Build it once. The model layer is already
-   portable — 64 of 103 source files import neither SwiftUI nor AppKit, and
-   `MachinePresentation` exists precisely because display decisions were pulled
-   out of the view bodies. The proportion has held as the app has doubled,
-   which is the part worth checking rather than the count.
+6. **iOS, scoped to the herd rather than to sessions — and the mini is a coordinator now, which was the prerequisite.** Do not rebuild session steering; Remote Control and the Claude app already do it, with the local filesystem and MCP servers attached. What has no answer is the herd: which machine is hot, what is waiting on you, what the budget looks like, and starting a transfer. Do not sample from the phone — iOS will not ssh-poll in the background.
 
+    **Two of the three reasons given for building it once no longer hold as written.** Item 3 was rewritten and has no Keychain problem any more, so that justification is stale. What remains is iOS and a durable successor — and the second of those is now mostly answered: as of 7 September the mini carries the current app and knows the whole herd (`little-herd-seed-herd` in dotfiles), samples all four machines headlessly, and plans a transfer of a session on the Air destined for the linux box. It coordinates between two machines that are not it, which is what a laptop that sleeps cannot be relied on to do. A transfer started there survives the Air closing.
+
+    **What is left is a trigger, not a collector.** Nothing yet asks the mini to do any of this on its own: no schedule, no queue, no phone. Building a resident daemon before something wants its output would be building for no consumer, which this file keeps arguing against. The model layer is already portable — 64 of 103 source files import neither SwiftUI nor AppKit — so the constraint was never the code.
 10. **Local models are blocked, not pending.** Considered and deferred
     18 August. No herd machine runs a model server; the linux box is an AMD
     APU with integrated graphics; the best local-model host owned is the M5
