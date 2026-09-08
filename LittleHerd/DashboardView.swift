@@ -154,6 +154,9 @@ struct DashboardView: View {
                             onRunCommand: { command, machine in
                                 model.run(command, on: machine)
                             },
+                            onApplyCloud: { task, candidate in
+                                model.applyCloudTask(task, on: candidate)
+                            },
                             herd: model.machines.map(\.destinationAccount),
                             // Only here. The menu bar draws its own rows and
                             // is dismissed by the click that would read the
@@ -463,6 +466,9 @@ private struct OverviewMetricContent: View {
     /// How that transfer is going, for the card making the journey.
     var transferState: ((AgentSession) -> TransitState?)?
     var onRunCommand: ((MachineCommand, MachineID) -> Void)?
+    /// Applying a cloud task on a machine — Codex's own command, in that machine's
+    /// checkout. See `CodexCloudTask.applyCommand`.
+    var onApplyCloud: ((CodexCloudTask, CodexCloudPlacement.Candidate) -> Void)?
     var herd: [DestinationAccount] = []
     var announcesArrivals = false
 
@@ -482,6 +488,7 @@ private struct OverviewMetricContent: View {
                 agentCPU: agentCPU,
                 agentCompactedAt: agentCompactedAt,
                 machineName: machines.first { $0.machine == focused }?.shortName,
+                onApplyCloud: onApplyCloud,
                 cloudTasks: cloudTasks.placed(in: machines.map(\.destinationAccount))
             )
             .onAppear { cloudTasks.refreshIfStale() }

@@ -18,9 +18,10 @@ struct AIAgentsView: View {
     /// because a panel scoped to one machine that never says which one is a
     /// panel you cannot trust.
     var machineName: String?
+    var onApplyCloud: ((CodexCloudTask, CodexCloudPlacement.Candidate) -> Void)?
     /// Cloud work and where each task could be applied. Empty when nothing has been
     /// read, which draws no section at all.
-    var cloudTasks: [(task: CodexCloudTask, landsOn: [String])] = []
+    var cloudTasks: [(task: CodexCloudTask, landsOn: [CodexCloudPlacement.Candidate])] = []
 
     /// Which groups are folded. Both of them fold, because a panel where one
     /// header behaves differently from its neighbour teaches people that
@@ -54,7 +55,8 @@ struct AIAgentsView: View {
                     agentCompactedAt: agentCompactedAt,
                     cloudTasks: cloudTasks,
                     collapsed: $collapsed,
-                    onSelectMachine: onSelectMachine
+                    onSelectMachine: onSelectMachine,
+                    onApplyCloud: onApplyCloud
                 )
                 // Room to scroll the last session clear of the metric tabs
                 // under this panel, so the end of the list looks like an end
@@ -86,9 +88,11 @@ struct AIAgentPanelContent: View {
     var agentCompactedAt: [String: Date] = [:]
     /// Cloud work and where each task could be applied. Empty when nothing was read —
     /// which is the ordinary case on a machine with no Codex, and draws no section.
-    var cloudTasks: [(task: CodexCloudTask, landsOn: [String])] = []
+    var cloudTasks: [(task: CodexCloudTask, landsOn: [CodexCloudPlacement.Candidate])] = []
     @Binding var collapsed: Set<AgentPanelSection>
     var onSelectMachine: ((MachineID) -> Void)?
+    /// Applying a cloud task on a machine. Nil in a render, where nothing runs.
+    var onApplyCloud: ((CodexCloudTask, CodexCloudPlacement.Candidate) -> Void)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -129,7 +133,11 @@ struct AIAgentPanelContent: View {
             )
             if !collapsed.contains(.cloud) {
                 ForEach(cloudTasks, id: \.task.id) { entry in
-                    CloudTaskRow(task: entry.task, landsOn: entry.landsOn)
+                    CloudTaskRow(
+                        task: entry.task,
+                        landsOn: entry.landsOn,
+                        onApply: onApplyCloud.map { apply in { apply(entry.task, $0) } }
+                    )
                     Divider().padding(.leading, AgentRowMetrics.titleInset)
                 }
                 ClaudeCloudNote()

@@ -159,6 +159,9 @@ nonisolated extension CodexCloudTask {
 nonisolated enum CodexCloudPlacement {
     nonisolated struct Candidate: Equatable, Sendable {
         let machine: String
+        /// Which machine, for actually reaching it. The name is for reading; this is
+        /// for running.
+        let id: MachineID
         /// Where the checkout is, when there is one — the directory `codex cloud apply`
         /// would have to run in.
         let directory: String?
@@ -179,7 +182,20 @@ nonisolated enum CodexCloudPlacement {
             // in case is not a distinction worth failing a placement over.
             let match = (account.report?.checkouts ?? [:])
                 .first { $0.key.lowercased() == wanted }
-            return Candidate(machine: account.name, directory: match?.value)
+            return Candidate(machine: account.name, id: account.machine, directory: match?.value)
         }
+    }
+}
+
+
+nonisolated extension CodexCloudTask {
+    /// What applying this task on a machine actually runs.
+    ///
+    /// **The vendor's own command, in the checkout it belongs to.** Item 9's rule is
+    /// that cloud work moves by the vendors' vehicles and never by a protocol of ours;
+    /// this app's contribution ends at deciding *which machine*, and begins and ends
+    /// there. The `cd` is the whole of the placement decision made real.
+    func applyCommand(in directory: String) -> String {
+        "cd \(RemoteShell.quoted(directory)) && codex cloud apply \(RemoteShell.quoted(id))"
     }
 }

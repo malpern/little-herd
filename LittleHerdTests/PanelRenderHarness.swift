@@ -1315,19 +1315,24 @@ extension PanelRenderHarness {
             )
         }
 
-        let tasks: [(task: CodexCloudTask, landsOn: [String])] = [
+        func at(_ name: String, _ id: String, _ dir: String) -> CodexCloudPlacement.Candidate {
+            CodexCloudPlacement.Candidate(machine: name, id: MachineID(id), directory: dir)
+        }
+        let air = at("Air", "air", "/Users/m/local-code/KeyPath")
+        let mini = at("Mac mini", "mini", "/Users/m/local-code/KeyPath")
+        let tasks: [(task: CodexCloudTask, landsOn: [CodexCloudPlacement.Candidate])] = [
             (task("t1", .ready, "Review pull requests for home row mode",
                   "malpern/KeyPath", "Mar 7 07:45", .changes(added: 94, removed: 0, files: 1)),
-             ["Air", "Mac mini"]),
+             [air, mini]),
             (task("t2", .ready, "Check readiness for new release version",
                   "malpern/KeyPath", "Mar 29 08:55", .none),
-             ["Air", "Mac mini"]),
+             [air, mini]),
             (task("t3", .ready, "Draft the migration notes",
                   "malpern/some-other-repo", "Mar 30 11:02", .none),
              []),
             (task("t4", .error, "Find keypad support for zippy cords",
                   "malpern/KeyPath", "Mar 14 08:10", .changes(added: 14, removed: 2, files: 1)),
-             ["Air"]),
+             [air]),
         ]
 
         try render(

@@ -134,6 +134,44 @@ struct CloudTaskLoaderTests {
                 mayHostSessions: true, auth: .unverified, isVerifying: false)]
         }
         #expect(loader.placed(in: herd([:])).first?.landsOn.isEmpty == true)
-        #expect(loader.placed(in: herd(["KeyPath": "/x"])).first?.landsOn == ["Air"])
+        #expect(loader.placed(in: herd(["KeyPath": "/x"])).first?.landsOn.map(\.machine) == ["Air"])
+    }
+}
+
+/// The command that actually reaches a machine.
+@Suite("Applying a cloud task")
+struct CodexCloudApplyTests {
+    private func task(_ id: String) -> CodexCloudTask {
+        CodexCloudTask(
+            id: id, url: "https://chatgpt.com/codex/tasks/\(id)", status: .ready,
+            title: "Some work", repository: "malpern/KeyPath", when: "Mar 29", diff: .none)
+    }
+
+    /// **The vendor's own command, in the checkout the placement chose.** Little Herd
+    /// decides which machine and then gets out of the way — it never applies a diff
+    /// itself, which is item 9's rule about native vehicles.
+    @Test
+    func itrunsCodexOwnCommandInTheChosenCheckout() {
+        let command = task("task_e_123").applyCommand(in: "/Users/m/local-code/KeyPath")
+        #expect(command == "cd '/Users/m/local-code/KeyPath' && codex cloud apply 'task_e_123'")
+    }
+
+    /// A directory with a space in it is one argument. This herd has such a path, so it
+    /// is not hypothetical.
+    @Test
+    func pathsAndIdsAreQuoted() {
+        let command = task("t 1").applyCommand(in: "/Users/m/Some Folder/KeyPath")
+        #expect(command.contains("'/Users/m/Some Folder/KeyPath'"))
+        #expect(command.contains("'t 1'"))
+    }
+
+    /// **Nothing is applied where nothing can be.** A candidate without a directory is
+    /// a machine that lacks the checkout, and offering it would be offering a command
+    /// with nowhere to run.
+    @Test
+    func acandidateWithoutAcheckoutCannotBeApplied() {
+        let candidate = CodexCloudPlacement.Candidate(
+            machine: "Linux", id: MachineID("linux"), directory: nil)
+        #expect(!candidate.canTake)
     }
 }

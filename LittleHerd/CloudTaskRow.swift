@@ -12,7 +12,9 @@ struct CloudTaskRow: View {
     /// Where it could be applied. Empty is a real answer and is said out loud, because
     /// "nowhere has this checkout" is what a person needs to know before they go looking
     /// for the button that would do it.
-    let landsOn: [String]
+    let landsOn: [CodexCloudPlacement.Candidate]
+    /// Applying it somewhere. Nil in a render, where nothing should be runnable.
+    var onApply: ((CodexCloudPlacement.Candidate) -> Void)?
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -45,10 +47,7 @@ struct CloudTaskRow: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
 
-                Text(placement)
-                    .font(.caption2)
-                    .foregroundStyle(landsOn.isEmpty ? Color.secondary : Color.accentColor)
-                    .lineLimit(1)
+                placementLine
             }
             Spacer(minLength: 0)
             statusMark
@@ -67,14 +66,52 @@ struct CloudTaskRow: View {
         }
     }
 
-    private var placement: String {
-        landsOn.isEmpty
+    /// The machines, each one a button. The line already read "apply on Air, Mac mini";
+    /// this makes the words mean it.
+    @ViewBuilder
+    private var placementLine: some View {
+        if landsOn.isEmpty {
             // The slug is already on the line above, so naming it again was the same
             // word twice in three lines. The CLI still names it, where there is room
             // and no line above to have said it.
-            ? "no machine has this checkout"
-            : "apply on \(landsOn.joined(separator: ", "))"
+            Text("no machine has this checkout")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        } else {
+            HStack(spacing: 4) {
+                // **Grey label, coloured machines.** Rendering it caught the two halves
+                // arriving as two different blues — a `.plain` button tints its label
+                // differently from the `Text` beside it — which read as two states
+                // rather than one sentence. Making the label secondary fixes the
+                // mismatch and says the truer thing anyway: the machine names are the
+                // part you can click.
+                Text("apply on")
+                    .foregroundStyle(.secondary)
+                ForEach(Array(landsOn.enumerated()), id: \.element.id) { index, candidate in
+                    Button {
+                        // Confirmed by `MonitorModel.applyCloudTask`, which names the
+                        // machine and the directory — the same alert every other
+                        // machine command goes through. Confirming here as well would
+                        // ask twice for one act.
+                        onApply?(candidate)
+                    } label: {
+                        Text(candidate.machine + (index < landsOn.count - 1 ? "," : ""))
+                            .foregroundStyle(Color.accentColor)
+                            .underline(isHovering == candidate.id)
+                    }
+                    .buttonStyle(.plain)
+                    .pointerStyle(.link)
+                    .onHover { inside in isHovering = inside ? candidate.id : nil }
+                    .disabled(onApply == nil)
+                }
+            }
+            .font(.caption2)
+            .lineLimit(1)
+        }
     }
+
+    @State private var isHovering: MachineID?
 
     @ViewBuilder
     private var statusMark: some View {

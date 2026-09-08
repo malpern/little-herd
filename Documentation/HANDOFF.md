@@ -1851,6 +1851,19 @@ shows the slug and a bare `+94/−0`; the CLI still says both, where there is
 room. This is the fourth visual defect in this project that only looking has
 caught, and the harness exists for exactly that.
 
+**The cloud section and the machines are never on screen together, so the
+drag item 9 imagined could not exist.** `OverviewMetricContent` is an `if
+metric == .ai` — the AI panel or the herd, never both — so there is nothing
+to drag a task *onto*. The affordance was already written in the row
+instead: each says "apply on Air, Mac mini", and making those machine names
+buttons is the same act with no gesture to invent. Worth checking the layout
+before building a gesture for it.
+
+**Applying a cloud task is the vendor's command in the checkout this app
+chose**, and Little Herd's part ends there: `cd <checkout> && codex cloud
+apply <id>`, run through the same confirm-then-ssh path every other machine
+command uses. The alert names the directory as well as the machine, because
+"on the mini" does not say what is about to be written.
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -2105,11 +2118,6 @@ the only part drawn.
    out of the view bodies. The proportion has held as the app has doubled,
    which is the part worth checking rather than the count.
 
-9. **Cloud work is read, placed and drawn; what is left is dropping a task onto a machine.** `little-herd cloud` lists Codex cloud tasks and the AI panel draws them as a Cloud section with `owl-cloud.png`, each row carrying the repository, the age, the diff and — the placement decision, which is this app's whole contribution — the machines that could apply it. Claude cloud gets a sentence at the foot of the section rather than an empty list, because it cannot be enumerated from here and an empty list would claim otherwise.
-
-    **The remaining piece is the gesture**: dragging a cloud task onto a machine to run `codex cloud apply` there. The placement already says which machines are eligible, so the work is the drop and the command, not the decision.
-
-    Local→cloud stays out, unchanged — that is the vendors' own button.
 10. **Local models are blocked, not pending.** Considered and deferred
     18 August. No herd machine runs a model server; the linux box is an AMD
     APU with integrated graphics; the best local-model host owned is the M5

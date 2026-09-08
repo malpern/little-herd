@@ -49,14 +49,13 @@ final class CloudTaskLoader {
 
     /// Each task with the machines that could apply it — the placement decision, which
     /// is the only thing this app contributes to cloud work.
-    func placed(in herd: [DestinationAccount]) -> [(task: CodexCloudTask, landsOn: [String])] {
+    func placed(
+        in herd: [DestinationAccount]
+    ) -> [(task: CodexCloudTask, landsOn: [CodexCloudPlacement.Candidate])] {
         tasks.map { task in
-            (
-                task,
-                CodexCloudPlacement.candidates(for: task, in: herd)
-                    .filter(\.canTake)
-                    .map(\.machine)
-            )
+            // Candidates rather than names: the row needs to reach the machine and its
+            // checkout directory to apply anything, not merely to say its name.
+            (task, CodexCloudPlacement.candidates(for: task, in: herd).filter(\.canTake))
         }
     }
 }
