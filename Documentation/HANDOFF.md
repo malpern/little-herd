@@ -1774,6 +1774,18 @@ which is when a machine here last reported a Codex to probe at all — the
 litter had stopped on its own, and would resume the moment one appeared
 again.
 
+**The herd runs a different build of everything on every machine, which is
+what settled item 7.** That item said the missing half — seeing every
+machine's agent versions at once — was "worth doing only if the answer would
+change something". Measured on 7 September the answer was three versions of
+Claude across three machines and three of Codex, no two alike. It went to
+the command line rather than back onto the AI page it was removed from:
+which agents are installed is a fact about the machine, not the work, and
+"how many builds is this herd running" is a herd-level question that wants
+the herd-level surface. Sort versions with `.numeric` — a plain string
+compare puts 2.1.9 above 2.1.260 and reports the newest machine as the
+oldest.
+
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -2456,22 +2468,6 @@ the only part drawn.
    `MachinePresentation` exists precisely because display decisions were pulled
    out of the view bodies. The proportion has held as the app has doubled,
    which is the part worth checking rather than the count.
-
-7. **Agent versions are measured; nothing draws them any more.**
-   The AI page used to list what a machine had installed, above the sessions,
-   with the path it was found at and — when another account had a newer copy —
-   which one and what version. `DashboardChrome.showsInstalledAgents` is now
-   `false`: which agents are installed is a fact about the machine rather than
-   about the work, and it was the first thing on a page you open to see what is
-   running. The probe still reads it, and the transfer needs it, so this is
-   measurement without a display rather than dead code.
-
-   What is still missing is seeing the herd at once. Today you learn that the
-   Air is on Codex `0.148.0-alpha.15` and the mini on `alpha.21` by visiting
-   two pages and remembering. That is enough to answer "is this machine
-   behind", which was the complaint; it is not enough to answer "how many
-   builds is this herd running". Worth doing only if the answer would change
-   something.
 
 8. **Attribute a session's CPU to its whole process tree, not its agent
    binary.** The measurement is in the facts above: 1.0% against 101.2% for the
