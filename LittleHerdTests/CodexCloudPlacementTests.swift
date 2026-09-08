@@ -101,3 +101,39 @@ struct CodexCloudPlacementTests {
         #expect(rows?.first?["repository"] == "malpern/KeyPath")
     }
 }
+
+/// The loader that feeds the panel.
+@Suite("Loading cloud work for the panel")
+@MainActor
+struct CloudTaskLoaderTests {
+    /// **A herd with no cloud work draws no section**, which is the ordinary case on a
+    /// machine without Codex and must not look like a failure.
+    @Test
+    func nothingReadMeansNothingToPlace() {
+        #expect(CloudTaskLoader().placed(in: []).isEmpty)
+    }
+
+    /// Placement is computed against the herd at the moment of drawing, not stored with
+    /// the task — a machine that gains the checkout should start being offered without
+    /// the cloud being read again.
+    @Test
+    func placementFollowsTheHerdRatherThanTheReading() {
+        let loader = CloudTaskLoader()
+        // Reading is a subprocess, so the tasks are set the way the parser would.
+        loader.adopt(CodexCloudListParser.parse("""
+            https://chatgpt.com/codex/tasks/t1
+              [READY] Some work
+              malpern/KeyPath  •  Mar 29 08:55
+              no diff
+            """))
+
+        func herd(_ checkouts: [String: String]) -> [DestinationAccount] {
+            [DestinationAccount(
+                machine: MachineID("a"), name: "Air", symbolName: "desktopcomputer",
+                report: DestinationReport(installations: [], checkouts: checkouts),
+                mayHostSessions: true, auth: .unverified, isVerifying: false)]
+        }
+        #expect(loader.placed(in: herd([:])).first?.landsOn.isEmpty == true)
+        #expect(loader.placed(in: herd(["KeyPath": "/x"])).first?.landsOn == ["Air"])
+    }
+}

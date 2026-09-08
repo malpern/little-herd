@@ -87,6 +87,7 @@
 		699718B54DA4A4E82F6187E2 /* HerdCommandCloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36AE02CC263B0315296C671 /* HerdCommandCloud.swift */; };
 		6A65C3FDEED92059FB1C9835 /* HerdStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B216258773940FD0422DACC2 /* HerdStyle.swift */; };
 		6AB7CD21519D28D1089C7122 /* HerdColumns.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6AE1D932764BCE8C5F27FD5 /* HerdColumns.swift */; };
+		6ADA30526F41BA118F1AAE29 /* CloudTaskRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7B2E99C22465C23EA4B03EF /* CloudTaskRow.swift */; };
 		6B236EB580089736F35DAC08 /* MetricModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4669068113CB4027D57F9535 /* MetricModel.swift */; };
 		6D0AF35A5767BC690DEB78FC /* MetricRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F29F16289B54BBD5DC8DE5A /* MetricRow.swift */; };
 		6D55CE2ECB296F115B5FBAB2 /* SuccessorLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF4DF45226956A9BAE4D2BF5 /* SuccessorLaunchTests.swift */; };
@@ -115,6 +116,7 @@
 		8B754FF26AB9016DAD7BB6A5 /* AgentAuthVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDC2B520609D94117FF51336 /* AgentAuthVerification.swift */; };
 		8CE31CD4D9BD981BC87C2915 /* HerdCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49C967C600FD0014DDF80A0 /* HerdCommandTests.swift */; };
 		8D9A2410B9D02566E457C7F6 /* SuccessorRunTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5E475A4DF178283F4418E /* SuccessorRunTests.swift */; };
+		90532838856F85E5F86C2290 /* CloudTaskLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94319E83A20BB71D3CA9703C /* CloudTaskLoader.swift */; };
 		908AC8A727784963D66AAC6C /* MachineAgentActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F32D4B7CE84B3F6870AC568 /* MachineAgentActivity.swift */; };
 		91F6B852A3336CC402F7EB0B /* CodexProbeLitterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36110B3097981A9060E6631D /* CodexProbeLitterTests.swift */; };
 		920B95435D7A332B3733C090 /* DashboardChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75AEA2BD4FDDBC0DB466CF07 /* DashboardChrome.swift */; };
@@ -316,6 +318,7 @@
 		902F116974B1C2D720ED2B18 /* FullDiskAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullDiskAccess.swift; sourceTree = "<group>"; };
 		90FE8216081F585ED580AE1C /* Machine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Machine.swift; sourceTree = "<group>"; };
 		941460A953D8A453CCA3CF1E /* HerdAvatarSize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdAvatarSize.swift; sourceTree = "<group>"; };
+		94319E83A20BB71D3CA9703C /* CloudTaskLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudTaskLoader.swift; sourceTree = "<group>"; };
 		95D3E317CB51DFD9180687CF /* SynologyDSM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyDSM.swift; sourceTree = "<group>"; };
 		965A795B156AE46A3D239AFB /* CPUOverviewHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUOverviewHeaderView.swift; sourceTree = "<group>"; };
 		96FE2EB9BC85C8D939ED84BE /* AgentResourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentResourceTests.swift; sourceTree = "<group>"; };
@@ -343,6 +346,7 @@
 		B52F8997D4FC28B97610341F /* HerdCommandAgentsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdCommandAgentsTests.swift; sourceTree = "<group>"; };
 		B64B23293884A47758DCAB63 /* SuccessorExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessorExecutor.swift; sourceTree = "<group>"; };
 		B6A4E1C9FC58BFD07DB63CAA /* SuccessorBinaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessorBinaryTests.swift; sourceTree = "<group>"; };
+		B7B2E99C22465C23EA4B03EF /* CloudTaskRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudTaskRow.swift; sourceTree = "<group>"; };
 		B7CBE63E8ADD9F25EE628DF4 /* AIActivePanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIActivePanelView.swift; sourceTree = "<group>"; };
 		BAEE78E4CB4A377025CC594A /* AgentArrivalWatchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentArrivalWatchTests.swift; sourceTree = "<group>"; };
 		BB806B576E875F4C079668F8 /* SuccessorExecutorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessorExecutorTests.swift; sourceTree = "<group>"; };
@@ -458,6 +462,8 @@
 				BEF64A0A793884AE8FC6DC12 /* AppKitContextMenu.swift */,
 				387B8471B05B8FEFC2973329 /* Assets.xcassets */,
 				BC14D9861665A4B5069FBEF7 /* BonjourMachineDiscovery.swift */,
+				94319E83A20BB71D3CA9703C /* CloudTaskLoader.swift */,
+				B7B2E99C22465C23EA4B03EF /* CloudTaskRow.swift */,
 				C1B84E18576938DDB61E77B6 /* CodexBarSource.swift */,
 				5A5668D532B426CE86B8AB41 /* CodexCloudTask.swift */,
 				C46E8C156433D6B061659FCA /* CodexRolloutUsage.swift */,
@@ -791,6 +797,8 @@
 				58521A8BB8088855A0F9DA8D /* BonjourMachineDiscovery.swift in Sources */,
 				5D8BE1402757C64CF32D5855 /* CPUOverviewHeaderView.swift in Sources */,
 				231FCA9BBB2F8387C363203F /* CPUOverviewView.swift in Sources */,
+				90532838856F85E5F86C2290 /* CloudTaskLoader.swift in Sources */,
+				6ADA30526F41BA118F1AAE29 /* CloudTaskRow.swift in Sources */,
 				B503079BC74767A615F0B400 /* CodexBarSource.swift in Sources */,
 				F5DBF28D972F5A14AC54C737 /* CodexCloudTask.swift in Sources */,
 				124EC8E304AB0B9091583921 /* CodexRolloutUsage.swift in Sources */,

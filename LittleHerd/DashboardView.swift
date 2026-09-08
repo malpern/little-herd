@@ -448,6 +448,10 @@ private struct OverviewMetricContent: View {
     var compactionThresholds = AgentCompactionThresholds()
     var agentCPU: [String: Double] = [:]
     var agentCompactedAt: [String: Date] = [:]
+    /// Cloud work, read on its own slow cadence rather than the sampler's — see
+    /// `CloudTaskLoader`. Owned here rather than passed in because nothing above this
+    /// view needs it.
+    @State private var cloudTasks = CloudTaskLoader()
     var namespace: Namespace.ID?
     var onSelectMetric: ((MachineID) -> Void)?
     var onSelectMachine: ((MachineID) -> Void)?
@@ -477,8 +481,10 @@ private struct OverviewMetricContent: View {
                 compactionThresholds: compactionThresholds,
                 agentCPU: agentCPU,
                 agentCompactedAt: agentCompactedAt,
-                machineName: machines.first { $0.machine == focused }?.shortName
+                machineName: machines.first { $0.machine == focused }?.shortName,
+                cloudTasks: cloudTasks.placed(in: machines.map(\.destinationAccount))
             )
+            .onAppear { cloudTasks.refreshIfStale() }
         } else {
             CPUOverviewView(
                 machines: machines,

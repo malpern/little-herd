@@ -18,6 +18,9 @@ struct AIAgentsView: View {
     /// because a panel scoped to one machine that never says which one is a
     /// panel you cannot trust.
     var machineName: String?
+    /// Cloud work and where each task could be applied. Empty when nothing has been
+    /// read, which draws no section at all.
+    var cloudTasks: [(task: CodexCloudTask, landsOn: [String])] = []
 
     /// Which groups are folded. Both of them fold, because a panel where one
     /// header behaves differently from its neighbour teaches people that
@@ -35,7 +38,10 @@ struct AIAgentsView: View {
     }
 
     var body: some View {
-        if layout.isEmpty {
+        // Cloud work counts as something to show. A herd with no local sessions but
+        // four tasks waiting in the cloud is not empty, and saying so would hide the
+        // only thing there was to see.
+        if layout.isEmpty && cloudTasks.isEmpty {
             AIAgentsEmptyState()
         } else {
             ScrollView {
@@ -46,6 +52,7 @@ struct AIAgentsView: View {
                     compactionThresholds: compactionThresholds,
                     agentCPU: agentCPU,
                     agentCompactedAt: agentCompactedAt,
+                    cloudTasks: cloudTasks,
                     collapsed: $collapsed,
                     onSelectMachine: onSelectMachine
                 )
@@ -77,6 +84,9 @@ struct AIAgentPanelContent: View {
     var compactionThresholds = AgentCompactionThresholds()
     var agentCPU: [String: Double] = [:]
     var agentCompactedAt: [String: Date] = [:]
+    /// Cloud work and where each task could be applied. Empty when nothing was read —
+    /// which is the ordinary case on a machine with no Codex, and draws no section.
+    var cloudTasks: [(task: CodexCloudTask, landsOn: [String])] = []
     @Binding var collapsed: Set<AgentPanelSection>
     var onSelectMachine: ((MachineID) -> Void)?
 
@@ -91,12 +101,40 @@ struct AIAgentPanelContent: View {
 
             section(.running, label: machineName, rows: layout.active)
             section(.waiting, rows: layout.waiting)
+            cloudSection
         }
         .padding(.horizontal, 14)
         .padding(.top, 3)
         // The last row used to sit flush against the bottom edge, so a clipped
         // row read as the end of the list.
         .padding(.bottom, 8)
+    }
+
+    /// Drawn only when there is cloud work to draw. An empty Cloud header would
+    /// claim the herd has no cloud work, and half of that claim — the Claude half —
+    /// is one this app has no way to make.
+    @ViewBuilder
+    private var cloudSection: some View {
+        if !cloudTasks.isEmpty {
+            AgentSectionHeader(
+                section: .cloud,
+                label: nil,
+                hiddenCount: cloudTasks.count,
+                isExpanded: Binding(
+                    get: { !collapsed.contains(.cloud) },
+                    set: { expanded in
+                        if expanded { collapsed.remove(.cloud) } else { collapsed.insert(.cloud) }
+                    }
+                )
+            )
+            if !collapsed.contains(.cloud) {
+                ForEach(cloudTasks, id: \.task.id) { entry in
+                    CloudTaskRow(task: entry.task, landsOn: entry.landsOn)
+                    Divider().padding(.leading, AgentRowMetrics.titleInset)
+                }
+                ClaudeCloudNote()
+            }
+        }
     }
 
     @ViewBuilder
@@ -265,6 +303,11 @@ nonisolated enum AgentPanelSection: String, CaseIterable, Sendable {
     /// same way — a header that behaves differently from its neighbours
     /// teaches people that headers are decoration.
     case destinations
+    /// Work sitting in Codex Cloud rather than on a machine. Rows like the
+    /// others, because a cloud task can actually be enumerated — see
+    /// `CodexCloudTask` for why Claude cloud cannot be, and gets a sentence
+    /// instead of a row.
+    case cloud
     case finished
 
     /// A glyph does the naming. "Waiting" as a word was being said twice — once
@@ -278,6 +321,7 @@ nonisolated enum AgentPanelSection: String, CaseIterable, Sendable {
         case .running: "waveform"
         case .waiting: "clock"
         case .destinations: "arrowshape.turn.up.right"
+        case .cloud: "cloud"
         case .finished: "checkmark"
         }
     }
@@ -289,6 +333,7 @@ nonisolated enum AgentPanelSection: String, CaseIterable, Sendable {
         case .running: nil
         case .waiting: "Waiting"
         case .destinations: "Destinations"
+        case .cloud: "Cloud"
         case .finished: "Finished"
         }
     }
@@ -299,6 +344,7 @@ nonisolated enum AgentPanelSection: String, CaseIterable, Sendable {
         case .running: "Running"
         case .waiting: "Waiting"
         case .destinations: "Destinations"
+        case .cloud: "Cloud"
         case .finished: "Finished"
         }
     }

@@ -1294,3 +1294,50 @@ extension PanelRenderHarness {
         )
     }
 }
+
+extension PanelRenderHarness {
+    /// The cloud section, which is item 9's visible half.
+    ///
+    /// Rendered rather than reasoned about: this project's every visual defect — a
+    /// folder drawn as "L", a spinner that never moved — was invisible to a green
+    /// suite. The three states worth seeing together are a task that can land
+    /// somewhere, one that cannot because no machine has the checkout, and one that
+    /// failed in the cloud.
+    @Test
+    func renderTheCloudSection() throws {
+        func task(
+            _ id: String, _ status: CodexCloudTask.Status, _ title: String,
+            _ repo: String, _ when: String, _ diff: CodexCloudTask.Diff
+        ) -> CodexCloudTask {
+            CodexCloudTask(
+                id: id, url: "https://chatgpt.com/codex/tasks/\(id)", status: status,
+                title: title, repository: repo, when: when, diff: diff
+            )
+        }
+
+        let tasks: [(task: CodexCloudTask, landsOn: [String])] = [
+            (task("t1", .ready, "Review pull requests for home row mode",
+                  "malpern/KeyPath", "Mar 7 07:45", .changes(added: 94, removed: 0, files: 1)),
+             ["Air", "Mac mini"]),
+            (task("t2", .ready, "Check readiness for new release version",
+                  "malpern/KeyPath", "Mar 29 08:55", .none),
+             ["Air", "Mac mini"]),
+            (task("t3", .ready, "Draft the migration notes",
+                  "malpern/some-other-repo", "Mar 30 11:02", .none),
+             []),
+            (task("t4", .error, "Find keypad support for zippy cords",
+                  "malpern/KeyPath", "Mar 14 08:10", .changes(added: 14, removed: 2, files: 1)),
+             ["Air"]),
+        ]
+
+        try render(
+            AIAgentPanelContent(
+                layout: AgentPanelLayout(waiting: [], active: [], finished: []),
+                cloudTasks: tasks,
+                collapsed: .constant([])
+            ),
+            size: CGSize(width: 300, height: 300),
+            named: "cloud-section"
+        )
+    }
+}

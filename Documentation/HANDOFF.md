@@ -1843,6 +1843,14 @@ mini has a standalone `~/.local/bin/codex`. The two bundles also disagree —
 Codex.app carried 0.148.0-alpha.15 while ChatGPT.app had 0.153.4 — so "the
 codex on this machine" is not one thing, and anything asking must try
 several places and take the first that answers.
+**Rendering the cloud section found what a green suite could not: the
+metadata line was truncating.** `malpern/Key…` and `+94/−0 in 1 f…` at panel
+width, because the owner prefix spends eight characters saying the same
+thing on every row of this herd and the file count spends more. The row
+shows the slug and a bare `+94/−0`; the CLI still says both, where there is
+room. This is the fourth visual defect in this project that only looking has
+caught, and the harness exists for exactly that.
+
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -2097,11 +2105,11 @@ the only part drawn.
    out of the view bodies. The proportion has held as the app has doubled,
    which is the part worth checking rather than the count.
 
-9. **Cloud work is readable and placeable from the command line; the column in the AI panel is what is left.** `little-herd cloud` lists Codex cloud tasks and says which machines could apply each — the placement decision, which is the eligibility probe reached from the other direction: a transfer asks whether a destination has the repository a *session* is in, this asks whether it has the one a *task* names. Verified against the real command, where all seven tasks are `malpern/KeyPath` and the Air and the mini can take them while the linux box cannot.
+9. **Cloud work is read, placed and drawn; what is left is dropping a task onto a machine.** `little-herd cloud` lists Codex cloud tasks and the AI panel draws them as a Cloud section with `owl-cloud.png`, each row carrying the repository, the age, the diff and — the placement decision, which is this app's whole contribution — the machines that could apply it. Claude cloud gets a sentence at the foot of the section rather than an empty list, because it cannot be enumerated from here and an empty list would claim otherwise.
 
-    **What remains is the drawing**, which is the harder half and wants the app in front of you: a cloud column beside the machines using the unused `owl-cloud.png`, and dropping a task onto a machine to apply it there. The model, the parser, the placement and the vendor asymmetry are all built and tested underneath it.
+    **The remaining piece is the gesture**: dragging a cloud task onto a machine to run `codex cloud apply` there. The placement already says which machines are eligible, so the work is the drop and the command, not the decision.
 
-    **Local→cloud stays out**, unchanged. That is the vendors' own button.
+    Local→cloud stays out, unchanged — that is the vendors' own button.
 10. **Local models are blocked, not pending.** Considered and deferred
     18 August. No herd machine runs a model server; the linux box is an AMD
     APU with integrated graphics; the best local-model host owned is the M5
