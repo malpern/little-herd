@@ -166,6 +166,39 @@ enum LittleHerdPreferences {
     static let menuBarEnabledKey = "menuBarItemEnabled"
     static let machineConfigurationsKey = "machineConfigurationsV1"
     static let alertsEnabledKey = "alertsEnabled"
+
+    /// Whether this install is the one on duty for the herd.
+    ///
+    /// **The app can already say a machine is in trouble; it cannot say it when nobody
+    /// is looking.** Alerts fire from whichever install happens to be open, so the most
+    /// valuable moment — you are away and a disk fills — is exactly the moment no
+    /// install is running. Marking an always-on Mac as the watcher is what closes that,
+    /// and marking it is all a person should have to do.
+    ///
+    /// Two installs both alerting is the failure to avoid: one event, two notifications,
+    /// which is how people learn to ignore them. So a non-watcher stays quiet **once a
+    /// watcher has been nominated on this Mac's behalf** — see `alertsSuppressedKey`,
+    /// which is the honest, transport-free half of that until installs can tell each
+    /// other apart.
+    static let watchesHerdKey = "watchesHerd"
+
+    /// Whether this install should stay quiet because another one is on duty.
+    ///
+    /// Set by hand on the machines that are *not* the watcher. It is a separate switch
+    /// rather than the inverse of `watchesHerd` because "I am not the watcher" and "stay
+    /// quiet" are different claims: a laptop you are sitting at may reasonably want to
+    /// alert too, and only you know which you want.
+    static let alertsSuppressedKey = "alertsSuppressed"
+
+    /// A command the watcher runs to deliver an alert, instead of only posting it here.
+    ///
+    /// **Without this the watcher is useless, which reading the code made plain.**
+    /// Alerts are `UNUserNotification`s, so they appear on the screen of the Mac running
+    /// the app — and a watcher is by definition a Mac nobody is looking at. A command
+    /// is the general escape hatch: Pushover, ntfy, a webhook, an SMS gateway. The title
+    /// and body are passed as arguments, never interpolated into a shell string, because
+    /// a machine's name is user text and this would otherwise be an injection.
+    static let alertCommandKey = "alertCommand"
     /// Whether Little Herd starts CodexBar when it finds it installed and not
     /// running. Default on, because the alternative is a usage figure that
     /// silently stops moving — but a setting rather than a habit, since this
@@ -590,6 +623,12 @@ private struct LittleHerdSettingsView: View {
     private var menuBarEnabled = false
     @AppStorage(LittleHerdPreferences.alertsEnabledKey)
     private var alertsEnabled = false
+    @AppStorage(LittleHerdPreferences.watchesHerdKey)
+    private var watchesHerd = false
+    @AppStorage(LittleHerdPreferences.alertsSuppressedKey)
+    private var alertsSuppressed = false
+    @AppStorage(LittleHerdPreferences.alertCommandKey)
+    private var alertCommand = ""
     @AppStorage(LittleHerdPreferences.startsUsageSourceKey)
     private var startsUsageSource = true
     @AppStorage(LittleHerdPreferences.requiresDestinationApprovalKey)
@@ -625,6 +664,53 @@ private struct LittleHerdSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if alertsEnabled {
+                    // Only once alerts are on: these shape *where* an alert goes, and
+                    // shaping the delivery of something switched off is noise.
+                    Toggle("This Mac watches the herd continuously", isOn: $watchesHerd)
+                        .font(.callout)
+                        .padding(.top, 4)
+                        .help(Text(
+                            "Leave this on for a Mac that stays awake. Alerts only "
+                                + "happen while Little Herd is running, so a laptop "
+                                + "that sleeps notices nothing while it is closed."
+                        ))
+
+                    Text(
+                        watchesHerd
+                            ? "Turn the switch below on for your other Macs, so one event "
+                                + "does not arrive twice."
+                            : "A laptop is a poor watcher: it stops noticing the moment "
+                                + "it is closed."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                    Toggle("Stay quiet — another Mac is watching", isOn: $alertsSuppressed)
+                        .font(.callout)
+                        .padding(.top, 2)
+
+                    HStack(spacing: 6) {
+                        Text("Also run:")
+                        TextField("/Users/you/.local/bin/notify-push", text: $alertCommand)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.caption.monospaced())
+                    }
+                    .font(.callout)
+                    .padding(.top, 4)
+
+                    Text(
+                        "A notification appears on the Mac that raised it, which is no "
+                            + "use on a machine you are not sitting at. This command is "
+                            + "run with the title and body as its two arguments — a full "
+                            + "path, and yours to choose: push, a webhook, a message."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             VStack(alignment: .leading, spacing: 7) {

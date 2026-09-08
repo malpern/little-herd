@@ -166,6 +166,7 @@
 		C2B68B52E0CE12DEA93023ED /* CodexCloudPlacementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EB7379B01BDB9BDA265064D /* CodexCloudPlacementTests.swift */; };
 		C3EC710A9D4AC5B469D730AE /* SynologyCredentialsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33E5557F8559949577B4F98F /* SynologyCredentialsView.swift */; };
 		C559B0290435591AC405EB0E /* AgentDragSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD88947F9BC77489C83CD330 /* AgentDragSessionTests.swift */; };
+		C5E00E8EC55D4C2BE4996515 /* DesignatedWatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DD4B16CFA4D75260FCCF71D /* DesignatedWatcherTests.swift */; };
 		C75E46029BE72838F29E96DE /* MachineMonitorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6125192CA7CFE81311C048BC /* MachineMonitorModel.swift */; };
 		CBADC8EDC9632AE4731B8C4C /* SoftwareUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4164BB6C590812113B80A9E9 /* SoftwareUpdater.swift */; };
 		CD01F581723CA8950D86F60D /* TransferDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3177E4E4559A03AD06E8A03 /* TransferDriver.swift */; };
@@ -315,6 +316,7 @@
 		871452F90FC35F859F6860BF /* TranscriptCarry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptCarry.swift; sourceTree = "<group>"; };
 		89069BE9B8A8149598B9B5E4 /* AgentArrivalWatch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentArrivalWatch.swift; sourceTree = "<group>"; };
 		89327889C868D9CD864F2D1A /* AgentSessionOrigin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSessionOrigin.swift; sourceTree = "<group>"; };
+		8DD4B16CFA4D75260FCCF71D /* DesignatedWatcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignatedWatcherTests.swift; sourceTree = "<group>"; };
 		8EB7379B01BDB9BDA265064D /* CodexCloudPlacementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexCloudPlacementTests.swift; sourceTree = "<group>"; };
 		8F455A7153E6520E2477FF1A /* MachineAlerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineAlerts.swift; sourceTree = "<group>"; };
 		902F116974B1C2D720ED2B18 /* FullDiskAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullDiskAccess.swift; sourceTree = "<group>"; };
@@ -614,6 +616,7 @@
 				989B1846C85DC25C36F54BAC /* CompactionSeedTests.swift */,
 				3CBDB146412416AE14C5CEB4 /* ConfigurationDurabilityTests.swift */,
 				BFC923C97EA4CE402D1F47E6 /* ContainerAttributionTests.swift */,
+				8DD4B16CFA4D75260FCCF71D /* DesignatedWatcherTests.swift */,
 				D4B6A06868013E695C04092B /* DestinationAllowanceTests.swift */,
 				2B327CE9E027A1EFE62E40D8 /* DropDispositionTests.swift */,
 				52D5157BE29095D9CF3FED86 /* FolderSizeTests.swift */,
@@ -928,6 +931,7 @@
 				F1CC199504DF09B4C8362D87 /* CompactionSeedTests.swift in Sources */,
 				0B46A10585034F62414676B1 /* ConfigurationDurabilityTests.swift in Sources */,
 				D061C40AD9174F6A7106CA98 /* ContainerAttributionTests.swift in Sources */,
+				C5E00E8EC55D4C2BE4996515 /* DesignatedWatcherTests.swift in Sources */,
 				62AE452AB9C99EE98F50CC98 /* DestinationAllowanceTests.swift in Sources */,
 				790254AF0B847C766D646A52 /* DropDispositionTests.swift in Sources */,
 				5716E746539B82A0D580CDB7 /* FolderSizeTests.swift in Sources */,

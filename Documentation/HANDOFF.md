@@ -2006,6 +2006,34 @@ it; the files survived only because the directory had not been reaped yet.
 
 ## Next
 
+18. **A designated watcher, so alerts happen when nobody is looking — half built.**
+    The app could already say a machine was in trouble: `MachineAlertCenter` fires on a
+    full disk, memory pressure, a machine that stopped responding, a lost sign-in, once
+    each way. What it could not do was say it while unobserved, because alerts come from
+    whichever install happens to be open and a laptop stops noticing the moment it
+    closes. That is the most valuable moment lost to the least interesting cause.
+
+    **Reading the delivery is what shaped this.** Alerts are `UNUserNotification`s, so
+    they land on the screen of the Mac that raised them — and a watcher is by definition
+    a Mac nobody is sitting at. A watcher without another channel would notify an empty
+    room. So `alertCommandKey` runs a command with the title and body as its two
+    arguments: Pushover, ntfy, a webhook, whatever a person already has. Arguments, not
+    a shell string — a machine's name is user text, and this herd has one with an
+    apostrophe in it already.
+
+    Three switches, deliberately separate: alerts on at all, this Mac watches, this Mac
+    stays quiet. "I am not the watcher" and "stay quiet" are different claims, since a
+    laptop you are sitting at may reasonably want to alert too.
+
+    **What is missing is that installs cannot tell each other apart.** Nominating a
+    watcher is done by hand on each Mac, so two watchers double every alert and none
+    means silence, and nothing detects either. That wants shared herd configuration —
+    which is also what `little-herd-seed-herd` (dotfiles PR #5) works around — and it is
+    the honest next step rather than more switches. Also unbuilt: launching at login on
+    the watcher, and any notion of what happens when the watcher itself is the thing
+    that died.
+
+
 **The website promises "Put your herd to work", and on 29 August the hedge
 came off it.** The hero used to carry the clause *"Little Herd watches;
 choosing the machine is still yours"*, which this file called load-bearing and

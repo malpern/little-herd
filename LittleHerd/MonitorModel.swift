@@ -205,9 +205,16 @@ final class MonitorModel {
 
     /// Opt-in, and off until asked for: a monitor that interrupts you without
     /// permission gets muted.
+    ///
+    /// **And silent on an install that has handed the duty to another.** One event
+    /// arriving as two notifications is how a person learns to ignore both — the same
+    /// reason this herd's watchdogs are careful that exactly one machine watches each
+    /// thing. When another Mac has been made the watcher, this one says nothing.
     @ObservationIgnored
     private var alertsEnabled: Bool {
-        UserDefaults.standard.bool(forKey: LittleHerdPreferences.alertsEnabledKey)
+        let defaults = UserDefaults.standard
+        guard defaults.bool(forKey: LittleHerdPreferences.alertsEnabledKey) else { return false }
+        return !defaults.bool(forKey: LittleHerdPreferences.alertsSuppressedKey)
     }
 
     /// Called the first time a NAS's TLS certificate is seen, so the owner of

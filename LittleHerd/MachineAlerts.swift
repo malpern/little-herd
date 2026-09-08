@@ -203,6 +203,34 @@ final class MachineAlertCenter {
             .requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
+    /// Hands an alert to whatever the person configured, as well as posting it here.
+    ///
+    /// **Arguments, not a shell string.** A machine's name reaches this — "Micah's
+    /// MacBook Air" already contains an apostrophe — and building a command line out of
+    /// it would be an injection with the user's own machine list as the payload. The
+    /// command is run directly with the title and body as `argv[1]` and `argv[2]`.
+    ///
+    /// Failures are swallowed on purpose: an alert that cannot be delivered must not
+    /// become a second thing to be alerted about, and the local notification has already
+    /// gone out regardless.
+    static func runAlertCommand(_ command: String, title: String, body: String) {
+        let parts = command.split(separator: " ", maxSplits: 1).map(String.init)
+        guard let executable = parts.first, !executable.isEmpty else { return }
+        var arguments = parts.count > 1 ? [parts[1]] : []
+        arguments.append(title)
+        arguments.append(body)
+
+        let process = Process()
+        // Through a login shell's PATH is deliberately NOT how this runs: a bare name
+        // would resolve differently under launchd than in a terminal, which is the trap
+        // this herd's own wrappers keep hitting. An absolute path is required.
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try? process.run()
+    }
+
     private static func deliver(title: String, body: String) {
         let content = UNMutableNotificationContent()
         content.title = title
@@ -216,5 +244,13 @@ final class MachineAlertCenter {
                 trigger: nil
             )
         )
+
+        // And onward, if this install has somewhere to send it. A watcher's own screen
+        // is not where the person is.
+        let command = UserDefaults.standard
+            .string(forKey: LittleHerdPreferences.alertCommandKey) ?? ""
+        if !command.isEmpty {
+            runAlertCommand(command, title: title, body: body)
+        }
     }
 }
