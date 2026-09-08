@@ -64,7 +64,7 @@ nonisolated enum HerdCommand {
         switch verb {
         case "help", "--help":
             return .respond(output: usage, code: 0)
-        case "machines", "sessions", "destinations", "move", "transfers", "agents":
+        case "machines", "sessions", "destinations", "move", "transfers", "agents", "cloud":
             // The verbs are recognised here and answered by the caller, which
             // is the only part that needs to read a machine.
             return .respond(output: "", code: 0)
@@ -181,6 +181,17 @@ extension HerdCommand {
 
         case "agents":
             return (agents(agentRows(from: sampleBlocking(configurations)), json: json), 0)
+
+        case "cloud":
+            let sampled = sampleBlocking(configurations)
+            return (
+                cloud(
+                    tasks: CodexCloudListParser.parse(CodexCloudReader.list()),
+                    herd: destinationAccounts(from: sampled),
+                    json: json
+                ),
+                0
+            )
 
         case "destinations":
             guard let wanted = rest.dropFirst().first(where: {

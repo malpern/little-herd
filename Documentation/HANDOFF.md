@@ -1827,6 +1827,22 @@ answers origin and says nothing about intent; it also would not have covered
 The controls that carry the weight are the ones that shipped: the app owns
 the imperatives, the brief is quoted as data, the check comes from a closed
 set, and the successor never gets `bypassPermissions`.
+**`codex cloud list` still answers headlessly, and it is the reason cloud
+work can be shown at all.** Re-checked on 7 September against 0.153.4 —
+three weeks and five minor versions after the claim was first measured, on
+an experimental subcommand, which is exactly the kind of fact that rots.
+There is no `--json`, so the output is parsed as prose: four lines per task,
+anchored on the URL rather than on line counts, so a vendor adding a fifth
+line costs one field instead of every record after it. A gated harness runs
+the real command, because a fixture cannot notice a reformat.
+
+**Codex is not on `PATH` on this Mac and looking for it there finds
+nothing.** It lives inside
+`/Applications/ChatGPT.app/Contents/Resources/codex` and the Codex app; the
+mini has a standalone `~/.local/bin/codex`. The two bundles also disagree —
+Codex.app carried 0.148.0-alpha.15 while ChatGPT.app had 0.153.4 — so "the
+codex on this machine" is not one thing, and anything asking must try
+several places and take the first that answers.
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -2081,20 +2097,11 @@ the only part drawn.
    out of the view bodies. The proportion has held as the app has doubled,
    which is the part worth checking rather than the count.
 
-9. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
-   18 August. Show cloud work beside the machines (the Herdware set already
-   holds an unused `owl-cloud.png`) and move it down with the vendors' own
-   commands, never our protocol: `codex cloud apply` and `claude --teleport`.
-   Little Herd's contribution is the placement decision — which machine
-   receives it — which is the eligibility probe again, plus one natural
-   extension: the Codex task names its repo, so the probe checks the
-   destination has that checkout. The two vendors get honestly different
-   treatment, per the facts above: Codex cloud tasks are *rows* (headless
-   `list`/`status` work today, even at 0% budget); Claude cloud is an
-   *affordance* ("pull a session by id onto…"), because nothing can enumerate
-   it from here. Say so in the interface rather than pretending parity.
-   Local→cloud stays out entirely — that is the vendors' own button.
+9. **Cloud work is readable and placeable from the command line; the column in the AI panel is what is left.** `little-herd cloud` lists Codex cloud tasks and says which machines could apply each — the placement decision, which is the eligibility probe reached from the other direction: a transfer asks whether a destination has the repository a *session* is in, this asks whether it has the one a *task* names. Verified against the real command, where all seven tasks are `malpern/KeyPath` and the Air and the mini can take them while the linux box cannot.
 
+    **What remains is the drawing**, which is the harder half and wants the app in front of you: a cloud column beside the machines using the unused `owl-cloud.png`, and dropping a task onto a machine to apply it there. The model, the parser, the placement and the vendor asymmetry are all built and tested underneath it.
+
+    **Local→cloud stays out**, unchanged. That is the vendors' own button.
 10. **Local models are blocked, not pending.** Considered and deferred
     18 August. No herd machine runs a model server; the linux box is an AMD
     APU with integrated graphics; the best local-model host owned is the M5
