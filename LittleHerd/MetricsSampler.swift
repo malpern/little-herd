@@ -291,7 +291,9 @@ nonisolated struct SystemSnapshot: Equatable, Sendable {
         // line read it by different routes and only one of them would have
         // remembered.
         self.agentSessions = agentSessions.filter {
-            !AgentAuthProbe.isProbe(sessionID: $0.id)
+            // Both providers: Claude's probe is known by its pinned id, Codex's only
+            // by the sentence it sends, which becomes the thread's title.
+            !AgentAuthProbe.isProbe(sessionID: $0.id, title: $0.title)
         }
         self.storageVolumes = storageVolumes
         self.memoryPressure = memoryPressure

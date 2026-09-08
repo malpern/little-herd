@@ -112,6 +112,7 @@
 		8CE31CD4D9BD981BC87C2915 /* HerdCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49C967C600FD0014DDF80A0 /* HerdCommandTests.swift */; };
 		8D9A2410B9D02566E457C7F6 /* SuccessorRunTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5E475A4DF178283F4418E /* SuccessorRunTests.swift */; };
 		908AC8A727784963D66AAC6C /* MachineAgentActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F32D4B7CE84B3F6870AC568 /* MachineAgentActivity.swift */; };
+		91F6B852A3336CC402F7EB0B /* CodexProbeLitterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36110B3097981A9060E6631D /* CodexProbeLitterTests.swift */; };
 		920B95435D7A332B3733C090 /* DashboardChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75AEA2BD4FDDBC0DB466CF07 /* DashboardChrome.swift */; };
 		93C91DDDFDDCDFA4E993CC6B /* SynologyDSM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95D3E317CB51DFD9180687CF /* SynologyDSM.swift */; };
 		93E0F40C106926E702C3E392 /* RepositoryCheckProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82B65DE88A236A883AE3D036 /* RepositoryCheckProbe.swift */; };
@@ -242,6 +243,7 @@
 		33B38445BD2EC011BFCC8B8A /* HerdColumnsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdColumnsTests.swift; sourceTree = "<group>"; };
 		33E5557F8559949577B4F98F /* SynologyCredentialsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyCredentialsView.swift; sourceTree = "<group>"; };
 		34DDECFA904FEB7B9E48B369 /* AIAgentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAgentsView.swift; sourceTree = "<group>"; };
+		36110B3097981A9060E6631D /* CodexProbeLitterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexProbeLitterTests.swift; sourceTree = "<group>"; };
 		387B8471B05B8FEFC2973329 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		38B045383125EA4D512F0D88 /* AgentMoveMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentMoveMenu.swift; sourceTree = "<group>"; };
 		3AC43ACEDF79F87AC9A763A2 /* SynologySwapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologySwapTests.swift; sourceTree = "<group>"; };
@@ -578,6 +580,7 @@
 				96FE2EB9BC85C8D939ED84BE /* AgentResourceTests.swift */,
 				81F35834A8C41F67CC2E954D /* AgentSessionOriginTests.swift */,
 				F405C1D91AB9D95F0D588013 /* CodexBarOfferTests.swift */,
+				36110B3097981A9060E6631D /* CodexProbeLitterTests.swift */,
 				29F273B61D78B7B84881FE18 /* CodexRolloutUsageTests.swift */,
 				989B1846C85DC25C36F54BAC /* CompactionSeedTests.swift */,
 				3CBDB146412416AE14C5CEB4 /* ConfigurationDurabilityTests.swift */,
@@ -881,6 +884,7 @@
 				DF97F48FB743A433B4A16495 /* AgentResourceTests.swift in Sources */,
 				0F2E78FA1A0123CCD3A93234 /* AgentSessionOriginTests.swift in Sources */,
 				BF4C5C635505FCDC2EDDE8EC /* CodexBarOfferTests.swift in Sources */,
+				91F6B852A3336CC402F7EB0B /* CodexProbeLitterTests.swift in Sources */,
 				B270CF7B1257E519C16B1B71 /* CodexRolloutUsageTests.swift in Sources */,
 				F1CC199504DF09B4C8362D87 /* CompactionSeedTests.swift in Sources */,
 				0B46A10585034F62414676B1 /* ConfigurationDurabilityTests.swift in Sources */,

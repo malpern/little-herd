@@ -1761,6 +1761,19 @@ NAS's own `/proc/meminfo`, where SwapTotal agrees to the byte. The mini
 turned out to be sitting at 4.35 GB of 5.12 GB paged out, which nothing had
 been showing.
 
+**A Codex sign-in probe is recognisable only by the sentence it sends.**
+Claude's probe is pinned to one `--session-id` and hidden by it; Codex has
+no such flag, so every probe is a new conversation with a new identifier and
+the id says nothing. What it does leave is a title — Codex names a thread
+after its first message, and the probe's first message is `Reply with
+exactly: AUTH_OK` and nothing else. So the title is the handle, which is
+weaker than an id (a person who typed that sentence would be hidden too) and
+still better than counting the app's own leavings as somebody's work.
+Measured on 7 September: 7 such threads of 586, every one from 25–26 August,
+which is when a machine here last reported a Codex to probe at all — the
+litter had stopped on its own, and would resume the moment one appeared
+again.
+
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front

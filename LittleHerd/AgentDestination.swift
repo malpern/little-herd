@@ -213,6 +213,30 @@ nonisolated enum AgentAuthProbe {
         sessionID.hasSuffix(sessionIdentifier)
     }
 
+    /// The sentence the probe sends, which is the only handle Codex leaves.
+    ///
+    /// **Claude's probe is recognisable by its pinned id; Codex's is not.** There is no
+    /// `--session-id` to pin, so every Codex probe is a new conversation with a new
+    /// identifier, and the id tells us nothing. What it does have is a title: Codex
+    /// names a thread after its first message, and the probe's first message is this
+    /// exact sentence and nothing else. So the title is the identifier here.
+    ///
+    /// Recognising it by content is weaker than recognising it by id — a person who
+    /// typed this sentence at Codex would be hidden too — and that is accepted, because
+    /// the alternative is the probe's own leavings being counted as somebody's work.
+    /// Measured on this Mac on 7 September: 7 such threads of 586, all from 25–26
+    /// August, which is when a machine here last reported a Codex to probe.
+    static var probePrompt: String { "Reply with exactly: \(expectedReply)" }
+
+    /// Whether a session is one of the app's own sign-in probes rather than real work.
+    ///
+    /// Both providers, by whichever handle each one leaves behind.
+    static func isProbe(sessionID: String, title: String?) -> Bool {
+        if isProbe(sessionID: sessionID) { return true }
+        guard let title, !title.isEmpty else { return false }
+        return title.contains(probePrompt) || title.contains(expectedReply)
+    }
+
     /// - Parameter output: stdout and stderr together, because every refusal
     ///   seen so far arrived on one or the other and which one varied.
     static func outcome(from output: String, at date: Date) -> AgentAuthState {
