@@ -174,6 +174,19 @@ nonisolated struct AgentCPUTracker: Sendable {
     mutating func rating(_ sessions: [AgentSession], now: Date) -> [AgentSession] {
         let rated = sessions.map { session -> AgentSession in
             guard let resource = session.resource else { return session }
+            // **The probe's own reading wins when it has one.** It watched the
+            // tree across two seconds; this differences a lifetime counter across
+            // thirty. The short window is the one where the set of processes
+            // holds still, and — the reason this matters — the long one throws
+            // its reading away whenever a child finishes, because the sum over
+            // living processes falls and `burned` goes negative. A session that
+            // ran a build to completion measured nothing at all.
+            if let measured = resource.measuredCPUPercent {
+                previous[session.id] = Reading(cpuSeconds: resource.cpuSeconds, at: now)
+                var updated = resource
+                updated.cpuPercent = min(measured, 100 * 64)
+                return session.consuming(updated)
+            }
             guard let last = previous[session.id] else {
                 previous[session.id] = Reading(
                     cpuSeconds: resource.cpuSeconds,

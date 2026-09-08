@@ -56,6 +56,11 @@ nonisolated struct AgentResourceUsage: Equatable, Sendable {
     /// there have been two readings, because one reading cannot describe a
     /// rate.
     var cpuPercent: Double?
+    /// What the probe measured itself, over the two seconds it watched the tree,
+    /// as a percent of one core. Preferred over differencing `cpuSeconds` across
+    /// probe runs — see `AgentCPUTracker`. Nil when the probe declined to
+    /// measure, which is not zero.
+    var measuredCPUPercent: Double?
 
     var residentLabel: String {
         Int64(residentBytes).formatted(.byteCount(style: .memory))
@@ -67,6 +72,11 @@ nonisolated struct AgentProcessSample: Equatable, Sendable {
     let pid: Int
     let residentBytes: Int
     let cpuSeconds: Double
+    /// The probe's own reading, as a percent of one core over the two seconds it
+    /// watched. Nil when it declined to measure — a process that appeared inside
+    /// the window, or a tree that shrank — which is not the same as zero and must
+    /// not be shown as one.
+    var measuredCPUPercent: Double? = nil
     let workingDirectory: String
 }
 
@@ -78,23 +88,29 @@ nonisolated enum AgentProcessOutputParser {
     private static func parseLine(_ line: Substring) -> AgentProcessSample? {
         let fields = line.split(
             separator: "\t",
-            maxSplits: 3,
+            maxSplits: 4,
             omittingEmptySubsequences: false
         )
-        guard fields.count == 4,
+        // Five fields since the probe began measuring a rate of its own; four
+        // from anything still emitting the older shape. The rate is the fourth,
+        // and an empty one means the probe declined to measure rather than
+        // measured nothing — see the note where it is written.
+        guard fields.count == 5 || fields.count == 4,
               fields[0].hasPrefix("agent_process="),
               let pid = Int(fields[0].dropFirst("agent_process=".count)),
               let residentKilobytes = Int(fields[1]),
               let seconds = cpuSeconds(fields[2]),
-              let data = Data(base64Encoded: String(fields[3])),
+              let data = Data(base64Encoded: String(fields[fields.count - 1])),
               let directory = String(data: data, encoding: .utf8)
         else {
             return nil
         }
+        let measured = fields.count == 5 ? Double(fields[3]) : nil
         return AgentProcessSample(
             pid: pid,
             residentBytes: residentKilobytes * 1_024,
             cpuSeconds: seconds,
+            measuredCPUPercent: measured,
             workingDirectory: directory
         )
     }
@@ -166,7 +182,8 @@ nonisolated enum AgentResourceJoin {
             return session.consuming(
                 AgentResourceUsage(
                     residentBytes: process.residentBytes,
-                    cpuSeconds: process.cpuSeconds
+                    cpuSeconds: process.cpuSeconds,
+                    measuredCPUPercent: process.measuredCPUPercent
                 )
             )
         }

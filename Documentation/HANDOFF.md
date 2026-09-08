@@ -1786,6 +1786,23 @@ the herd-level surface. Sort versions with `.numeric` — a plain string
 compare puts 2.1.9 above 2.1.260 and reports the newest machine as the
 oldest.
 
+**A sum of CPU time over living processes falls when a child finishes, and
+the reading was thrown away when it did.** The session figure differenced
+that sum across probe runs, and `AgentCPUTracker` guarded with `burned >= 0`
+— so a session that ran a build to completion produced no measurement at
+all. What item 8 called "short-lived children contribute nothing" was really
+"the measurement is discarded", which is worse: nothing on screen rather
+than a low number.
+
+**The probe measures its own rate now, over two seconds inside one run.**
+Two `ps` passes and a `sleep 2`, in a call already being made. The window is
+short enough that the set of processes usually holds still, so the
+difference is usually real, and it needs no second probe run — the
+differencing path took a minute to show anything. Measured on this Mac on 7
+September: six agent trees, one with 2,026 seconds of lifetime CPU reading
+2.5% of a core, which is the whole distinction between a counter and a rate.
+What it still cannot see is a child that starts and finishes between the two
+samples; no amount of `ps` will.
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -2468,28 +2485,6 @@ the only part drawn.
    `MachinePresentation` exists precisely because display decisions were pulled
    out of the view bodies. The proportion has held as the app has doubled,
    which is the part worth checking rather than the count.
-
-8. **Attribute a session's CPU to its whole process tree, not its agent
-   binary.** The measurement is in the facts above: 1.0% against 101.2% for the
-   same session in the same window. Today the panel can say a machine is at
-   94% and cannot say which session is doing it, which is the question the
-   figure was added to answer.
-
-   **The walk is built and the figure is now a share of the machine**; the
-   floor is 2% of it, set from measurement. What is *not* solved is that `ps`
-   sees only living processes, so short-lived children contribute nothing —
-   the fact above has the numbers. The remaining work is to sample the tree
-   twice inside one probe run, a couple of seconds apart, and report the rate
-   instead of the counter. That costs one extra `ps` and a `sleep 2` in a call
-   already being made, and it is the only approach that catches a child which
-   lives and dies between two thirty-second samples.
-
-   Two things settled along the way. Memory is deliberately **not** summed
-   across the tree — resident size double-counts every shared page — so it
-   stays the agent's own. And whether Xcode's compilation lands inside the
-   session's tree is **still unverified** after four attempts: one sample
-   caught `swift-frontend` at 97% CPU with a parent that was not `xcodebuild`,
-   and the process was gone before it could be traced to a root.
 
 9. **A cloud column in the AI panel — source-only, native vehicles.** Adopted
    18 August. Show cloud work beside the machines (the Herdware set already

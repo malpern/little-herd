@@ -1156,7 +1156,25 @@ nonisolated enum AgentTaskProbe {
     # tree double-counts every shared page, and a memory figure that is wrong
     # upward is worse than one that is narrow.
     if command -v lsof >/dev/null 2>&1; then
-      little_herd_agent_pids=$(ps -Ao pid=,ppid=,rss=,time=,args= 2>/dev/null \
+      # **Twice, two seconds apart, because a counter is not a rate.**
+      #
+      # `ps` reports CPU time as a lifetime total, so a session that ran hot an
+      # hour ago and is idle now still reads high. Differencing across probe runs
+      # was the previous answer and it has a hole: the total is a sum over
+      # *living* processes, so when a child finishes the sum goes DOWN, the
+      # difference is negative, and `AgentCPUTracker` discards the reading
+      # entirely. A session that ran a build to completion produced no figure at
+      # all — what this item calls "short-lived children contribute nothing" is
+      # really "the measurement is thrown away".
+      #
+      # Two samples a couple of seconds apart inside one probe run give a window
+      # short enough that the set of processes is usually stable, so the
+      # difference is usually real. What it still cannot see is a child that both
+      # starts and finishes between the two samples; no amount of `ps` will see
+      # that, and a figure measured over a window we can observe beats a lifetime
+      # average that answers a different question.
+      little_herd_tree() {
+        ps -Ao pid=,ppid=,rss=,time=,args= 2>/dev/null \
         | awk '
           {
             little_herd_seconds = 0
@@ -1185,7 +1203,11 @@ nonisolated enum AgentTaskProbe {
             for (pid in agent) {
               printf "%s\t%s\t%.2f\n", pid, resident[pid], total[pid]
             }
-          }')
+          }'
+      }
+      little_herd_before=$(little_herd_tree)
+      sleep 2
+      little_herd_agent_pids=$(little_herd_tree)
       if [ -n "$little_herd_agent_pids" ]; then
         little_herd_pid_list=$(printf '%s\n' "$little_herd_agent_pids" \
           | cut -f1 | paste -sd, -)
@@ -1195,7 +1217,19 @@ nonisolated enum AgentTaskProbe {
           cwd=$(printf '%s\n' "$little_herd_cwds" | awk -F '\t' -v p="$pid" '$1 == p {print $2; exit}')
           [ -n "$cwd" ] || continue
           cwd64=$(printf '%s' "$cwd" | base64 | tr -d '\n')
-          printf "agent_process=%s\t%s\t%s\t%s\n" "$pid" "$rss" "$cputime" "$cwd64"
+          # Percent of one core across the two-second window. Empty when this
+          # process was absent from the first sample — it started inside the
+          # window, so there is nothing to difference — or when its tree shrank.
+          # Both mean "no measurement", which a reader must not read as a
+          # measurement of nothing.
+          little_herd_was=$(printf '%s\n' "$little_herd_before" \
+            | awk -F '\t' -v p="$pid" '$1 == p {print $3; exit}')
+          little_herd_rate=$(awk -v a="$little_herd_was" -v b="$cputime" 'BEGIN {
+            if (a == "" || b - a < 0) exit
+            printf "%.2f", (b - a) / 2 * 100
+          }')
+          printf "agent_process=%s\t%s\t%s\t%s\t%s\n" \
+            "$pid" "$rss" "$cputime" "$little_herd_rate" "$cwd64"
         done
 
         # Whether each session's work is anywhere but this disk.
