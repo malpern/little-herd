@@ -40,8 +40,37 @@ nonisolated enum TranscriptCarry {
     /// `-Users-x-local-code-little-herd--claude-worktrees-w`. The doubled dash
     /// is not a separator: it is the `/` and the `.` of `/.claude`, each
     /// becoming a dash on its own.
+    /// **Symlinks are resolved first, and forgetting that is a known trap in this
+    /// project.** A session started in `/tmp/x` reports its working directory as
+    /// `/tmp/x`, but `/tmp` is a symlink to `private/tmp` on macOS, so its transcript is
+    /// filed under `-private-tmp-x`. Deriving the folder from the reported path looks in
+    /// a directory that does not exist, and the carry declines with "its transcript is
+    /// missing" — a true sentence about the wrong place.
+    ///
+    /// This was written down after a spike hit it and was missed here anyway, which is
+    /// the argument for resolving at the boundary rather than trusting every caller to
+    /// remember.
+    ///
+    /// **`realpath`, not Foundation.** Both `URL.resolvingSymlinksInPath()` and
+    /// `NSString.resolvingSymlinksInPath` — the two APIs named for this exact job —
+    /// return `/tmp/x` unchanged, because Foundation deliberately standardises the
+    /// `/private` prefix *away*. Measured on 7 September; only `realpath(3)` answers
+    /// `/private/tmp/x`. Reaching for the obvious API here produces a function that
+    /// looks correct, passes a careless test, and resolves nothing.
     static func projectDirectoryName(for workingDirectory: String) -> String {
-        String(workingDirectory.map { $0 == "/" || $0 == "." ? "-" : $0 })
+        String(resolvedPath(workingDirectory).map { $0 == "/" || $0 == "." ? "-" : $0 })
+    }
+
+    /// The true path, or the given one when it cannot be resolved.
+    ///
+    /// `realpath` needs the path to exist, which a running session's working directory
+    /// does. When it does not — a fixture, a directory since deleted — the input is
+    /// returned rather than nothing, because a best guess beats refusing to name a
+    /// folder at all.
+    static func resolvedPath(_ path: String) -> String {
+        guard let resolved = realpath(path, nil) else { return path }
+        defer { free(resolved) }
+        return String(cString: resolved)
     }
 
     /// Where a session's transcript sits on the machine it ran on.

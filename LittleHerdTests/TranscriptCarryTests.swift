@@ -375,3 +375,49 @@ struct CarryOrderingTests {
         #expect(seen.lines.contains("brief"), "the brief must run when the carry falls back")
     }
 }
+
+/// The trap item 5 wrote down and the carry walked into anyway.
+@Suite("A session's directory is the resolved one")
+struct TranscriptCarrySymlinkTests {
+    /// **`/tmp` is a symlink to `private/tmp` on macOS**, so a session that reports
+    /// `/tmp/x` has its transcript filed under `-private-tmp-x`. Deriving the folder
+    /// from the reported path looks somewhere that does not exist, and the carry
+    /// declines with "its transcript is missing" — true about the wrong place.
+    @Test
+    func asymlinkedWorkingDirectoryResolvesBeforeEncoding() throws {
+        // `realpath` resolves only what exists, so the directory is real for the test.
+        let dir = "/tmp/little-herd-symlink-\(UUID().uuidString)"
+        try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: dir) }
+
+        let name = TranscriptCarry.projectDirectoryName(for: dir)
+        #expect(name.hasPrefix("-private-tmp-little-herd-symlink-"),
+                "got \(name) — /tmp must resolve to /private/tmp")
+
+        // And the trap this guards: the obvious Foundation call does NOT do this.
+        #expect(URL(fileURLWithPath: dir).resolvingSymlinksInPath().path == dir,
+                "Foundation resolved it after all — the comment needs revisiting")
+    }
+
+    /// A path with nothing to resolve is unchanged, so the fix costs the ordinary case
+    /// nothing.
+    @Test
+    func anordinaryPathIsUntouched() {
+        #expect(
+            TranscriptCarry.projectDirectoryName(for: "/Users/malpern/local-code/little-herd")
+                == "-Users-malpern-local-code-little-herd"
+        )
+    }
+
+    /// And it reaches the paths the carry is actually built from.
+    @Test
+    func thetranscriptPathUsesTheResolvedForm() throws {
+        let dir = "/tmp/little-herd-path-\(UUID().uuidString)"
+        try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: dir) }
+        let path = TranscriptCarry.transcriptPath(
+            home: "/Users/a", workingDirectory: dir, sessionIdentifier: "s")
+        #expect(path.contains("/.claude/projects/-private-tmp-little-herd-path-"))
+        #expect(path.hasSuffix("/s.jsonl"))
+    }
+}
