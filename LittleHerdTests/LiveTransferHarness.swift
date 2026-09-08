@@ -145,3 +145,25 @@ struct LiveTransferHarness {
         print("=== END ------------------------------------------")
     }
 }
+
+/// Reading a remote Mac's swap, against the real mini.
+///
+/// The conversion lives in the probe's shell rather than in Swift, so the only honest
+/// test of it is to run the probe. A unit test here would assert that a string I wrote
+/// parses the way I wrote it.
+@Suite(
+    "Live: a remote Mac reports swap",
+    .enabled(if: ProcessInfo.processInfo.environment["LITTLE_HERD_LIVE"] == "1")
+)
+struct LiveRemoteSwapHarness {
+    @Test
+    func theMiniReportsSwapTotalAndUsed() async throws {
+        let sampler = RemoteMetricsSampler(host: "malpern@openclaw.local", platform: .macOS)
+        let snapshot = try await sampler.sample()
+        let swap = try #require(snapshot.swap, "the mini reported no swap line at all")
+        print("  total: \(Int(swap.totalBytes)) used: \(Int(swap.usedBytes))")
+        #expect(swap.isConfigured, "a Mac mini has swap configured")
+        #expect(swap.usedBytes <= swap.totalBytes, "used cannot exceed total")
+        #expect(swap.totalBytes > 0)
+    }
+}

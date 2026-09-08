@@ -1750,6 +1750,17 @@ sleeping mid-run and the difference was real time rather than work done.
 "Continuous" is the promise to keep counting while suspended, which is the
 opposite of what a benchmark wants. Any measurement on this laptop that
 outruns the harness's own figure is this.
+**Swap is read on all four machines as of 7 September, and both halves were
+smaller than the item feared.** A remote Mac prints `vm.swapusage` as a
+sentence — "total = 5120.00M  used = 4353.69M" — with an M or G suffix, so
+the probe converts it to the same two byte figures the Linux probe already
+emits and the existing parser reads both without knowing which kind of
+machine answered. No Swift parsing was added. And DSM does report a total:
+`total_swap`, which it simply had never been asked for. Checked against the
+NAS's own `/proc/meminfo`, where SwapTotal agrees to the byte. The mini
+turned out to be sitting at 4.35 GB of 5.12 GB paged out, which nothing had
+been showing.
+
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -2967,16 +2978,6 @@ the only part drawn.
     The licence itself still needs explaining wherever it appears —
     `FSL-1.1-MIT`, source-available, MIT after two years — and a badge will
     not do it. One sentence in plain words, on the page and in the README.
-
-12. **Swap is read on two machines of four.** This Mac and Linux report it;
-    a remote Mac is not asked, and the Synology is not either. The remote-Mac
-    half is a line in `macOSCommandTemplate` plus a parser for the string form
-    of `vm.swapusage`, which unlike the local struct has an `M`-or-`G` suffix
-    and wants a test of its own. DSM already parses `avail_swap` in
-    `SynologyDSM.swift`; whether it also reports a total is unchecked, and
-    available without total is half a reading. Neither is urgent: the tooltip
-    mentions swap only while swap is being written, so a machine that is not
-    asked simply says nothing, which is what it should say.
 
 16. **The readings recede while a fan is up, behind a flag, and it needs to be
     lived with before it ships on.** `LittleHerdPreferences.recedesBarsUnderFanKey`

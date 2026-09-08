@@ -443,6 +443,11 @@ nonisolated struct DSMUtilizationPayload: Decodable, Sendable {
         let totalReal: DSMNumber?
         let availReal: DSMNumber?
         let availSwap: DSMNumber?
+        /// **Available without a total is half a reading** — nothing used on a NAS
+        /// with no swap and nothing used on a NAS with plenty are different machines.
+        /// DSM does return the total; it simply was never asked for until 7 September,
+        /// when it was checked against the box's own `/proc/meminfo` and agreed exactly.
+        let totalSwap: DSMNumber?
         let cached: DSMNumber?
         let buffer: DSMNumber?
         /// DSM's own used percentage. Preferred over anything we compute, so the
@@ -454,6 +459,7 @@ nonisolated struct DSMUtilizationPayload: Decodable, Sendable {
             case totalReal = "total_real"
             case availReal = "avail_real"
             case availSwap = "avail_swap"
+            case totalSwap = "total_swap"
             case realUsage = "real_usage"
             case cached, buffer
         }
@@ -668,6 +674,24 @@ nonisolated enum SynologyDSMParser {
             + (cpu.systemLoad?.value ?? 0)
             + (cpu.otherLoad?.value ?? 0)
         return MetricReading(value: min(max(load, 0), 100))
+    }
+
+    /// What the NAS has paged out.
+    ///
+    /// Kilobytes, like every other memory figure DSM reports. Nil rather than zero
+    /// when either half is missing, because "not asked" and "none configured" are
+    /// exactly the distinction `SwapUsage.isConfigured` exists to keep — and a NAS
+    /// that reports no total is the first case, not the second.
+    static func swapUsage(from payload: DSMUtilizationPayload) -> SwapUsage? {
+        guard let memory = payload.memory,
+              let totalKB = memory.totalSwap?.value, totalKB > 0,
+              let availableKB = memory.availSwap?.value
+        else { return nil }
+        let total = totalKB * 1024
+        return SwapUsage(
+            usedBytes: max(0, total - min(availableKB * 1024, total)),
+            totalBytes: total
+        )
     }
 
     /// DSM's utilization memory figures are kilobytes, and `avail_real` excludes

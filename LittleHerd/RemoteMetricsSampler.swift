@@ -357,7 +357,8 @@ actor RemoteMetricsSampler {
         let memoryTotal = memory[0]
         let memoryAvailable = min(memory[1], memoryTotal)
         let memoryUsed = max(memoryTotal - memoryAvailable, 0)
-        // Absent for a remote Mac, whose probe does not read swap, and for
+        // Read on both kinds of machine now — a remote Mac converts
+        // `vm.swapusage` to the same two numbers in its own probe. Still absent for
         // anything that answered without the line. Nothing is not zero.
         let swap = raw["swap"].flatMap { values -> SwapUsage? in
             guard values.count == 2 else { return nil }
@@ -499,6 +500,15 @@ actor RemoteMetricsSampler {
     echo "cores=$(/usr/sbin/sysctl -n hw.ncpu)"
     total=$(/usr/sbin/sysctl -n hw.memsize)
     pressure=$(/usr/sbin/sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null)
+    # **Total first, then used, in bytes** — the same two numbers the Linux probe
+    # emits, so the existing parser reads both without knowing which kind of machine
+    # answered. `vm.swapusage` prints a sentence rather than a struct here
+    # ("total = 5120.00M  used = 4353.69M  free = 766.31M"), and the suffix is M or G
+    # depending on size, so the scaling happens where the string is rather than in
+    # Swift. A Mac with swap disabled prints 0.00M throughout and lands on "0 0",
+    # which `SwapUsage.isConfigured` already reads as "no swap" rather than "empty
+    # swap" — two different machines, as the type's own comment says.
+    swap=$(/usr/sbin/sysctl -n vm.swapusage 2>/dev/null | /usr/bin/awk 'function b(v){n=v+0; if(v~/G$/)return n*1073741824; if(v~/M$/)return n*1048576; if(v~/K$/)return n*1024; return n} {printf "%.0f %.0f", b($3), b($6)}')
     page=$(/usr/bin/pagesize)
     available=$(/usr/bin/vm_stat | /usr/bin/awk -v p="$page" '/Pages free/ {gsub(/\./,"",$3); f=$3} /Pages speculative/ {gsub(/\./,"",$3); s=$3} END {printf "%.0f", (f+s)*p}')
     iface=$(/sbin/route -n get default 2>/dev/null | /usr/bin/awk '/interface:/ {print $2; exit}')
@@ -506,6 +516,7 @@ actor RemoteMetricsSampler {
     disk=$(/bin/df -Pk /System/Volumes/Data | /usr/bin/awk 'NR==2 {printf "%.0f %.0f", $2*1024, $4*1024}')
     echo "cpu_percent=$cpu"
     echo "mem=$total $available"
+    echo "swap=$swap"
     echo "memory_pressure=$pressure"
     echo "network=$network"
     echo "disk=$disk"

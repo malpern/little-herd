@@ -68,6 +68,7 @@ actor SynologyMetricsSampler {
         // Utilization is a second round trip, and a NAS that can report its
         // volumes but not its load is still worth showing. Losing CPU should not
         // cost us the disk figures.
+        var swap: SwapUsage?
         if let utilization = try? await client.utilization() {
             if let cpu = SynologyDSMParser.cpuReading(from: utilization) {
                 readings[.cpu] = cpu
@@ -75,6 +76,8 @@ actor SynologyMetricsSampler {
             if let memory = SynologyDSMParser.memoryReading(from: utilization) {
                 readings[.memory] = memory
             }
+            // Nil unless DSM reported both halves — see `swapUsage`.
+            swap = SynologyDSMParser.swapUsage(from: utilization)
         }
 
         guard !readings.isEmpty else {
@@ -87,6 +90,7 @@ actor SynologyMetricsSampler {
             timestamp: .now,
             readings: readings,
             storageVolumes: volumes,
+            swap: swap,
             drives: drives
         )
     }
