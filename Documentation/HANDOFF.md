@@ -1737,11 +1737,19 @@ regex, not the copying.** A secret is a fact about a string, not a shape, so
 prose quoting a password is indistinguishable from prose quoting a word.
 What can be caught is the shape that occurs here — `KEY=value` from `sops
 -d`, known token prefixes, PEM blocks. Measured on a real 30 MB transcript:
-55 of 11,490 records carried something. Compiling the patterns inside the
-loop took **308 seconds**; hoisting them and prefiltering whole lines on
-literal tells before parsing is what makes it usable, and a prefilter
-testing for `"gh"` or `"AC"` skips nothing because those occur in ordinary
-prose.
+54 of 11,619 records carried something, and nothing became unparseable.
+Compiling the patterns inside the loop, and a prefilter testing for `"gh"`
+or `"AC"`, both cost minutes for nothing — those occur in ordinary English.
+Hoisted and prefiltered on real tells, it runs at about a second per
+megabyte.
+
+**`Date()` and `ContinuousClock` both count machine sleep; `SuspendingClock`
+is the one that does not.** Timing the scrub reported 8,888 seconds, then
+3,199, inside test runs xcodebuild timed at 607 and 336 — the Air was
+sleeping mid-run and the difference was real time rather than work done.
+"Continuous" is the promise to keep counting while suspended, which is the
+opposite of what a benchmark wants. Any measurement on this laptop that
+outruns the harness's own figure is this.
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front

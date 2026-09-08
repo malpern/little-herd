@@ -51,11 +51,15 @@ nonisolated enum TranscriptRedaction {
     ]
 
     /// **Compiled once, not per string.** The first version built every
-    /// `NSRegularExpression` inside the replace loop, so scrubbing a real transcript
-    /// compiled the same fifteen patterns for each of eleven thousand records and took
-    /// **308 seconds** — measured, not guessed. Hoisting the compilation took the same
-    /// file to a few seconds. A five-minute scrub would have made the carry unusable and
-    /// nothing in the unit tests would have shown it.
+    /// `NSRegularExpression` inside the replace loop, so a real transcript compiled the
+    /// same fifteen patterns for each of eleven thousand records. With that and the
+    /// line-level prefilter below, the measured rate is **about a second per megabyte**
+    /// — two seconds for the 2 MB, 700-record sample, which is the size range a carried
+    /// session actually falls in. Very large transcripts are worse than linear, because
+    /// cost follows the length of individual strings as well as their number.
+    ///
+    /// None of that was visible in the unit tests, which run on fixtures measured in
+    /// bytes.
     private static let namePatterns: [NSRegularExpression] = {
         let names = secretNameFragments.joined(separator: "|")
         return [

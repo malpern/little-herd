@@ -204,20 +204,24 @@ private nonisolated final class Recorder: @unchecked Sendable {
 /// Gated: set `TEST_RUNNER_LITTLE_HERD_LIVE=1` and `LITTLE_HERD_TRANSCRIPT` to a path.
 /// It reports counts only and never prints a matched value — the point is to measure the
 /// scrub, not to put the things it found into a test log.
-@Suite("Live: scrubbing a real transcript")
+@Suite(
+    "Live: scrubbing a real transcript",
+    .enabled(if: ProcessInfo.processInfo.environment["LITTLE_HERD_LIVE"] == "1")
+)
 struct LiveRedactionHarness {
     @Test
     func measureAgainstARealTranscript() throws {
         let env = ProcessInfo.processInfo.environment
-        try #require(env["LITTLE_HERD_LIVE"] == "1", "gated")
         let path = try #require(env["LITTLE_HERD_TRANSCRIPT"], "no transcript given")
         let raw = try String(contentsOfFile: path, encoding: .utf8)
 
-        // **A monotonic clock, because `Date()` counts machine sleep.** The first
+        // **A SUSPENDING clock. `Date()` counts machine sleep, and so does
+        // `ContinuousClock` — that is what "continuous" means. Both reported thousands
+        // of seconds inside a test run xcodebuild timed in hundreds. The first
         // measurement of this reported 8,888 seconds inside a test run that xcodebuild
         // timed at 607 — the Air had slept mid-run, and the difference was real time
         // rather than work done.
-        let clock = ContinuousClock()
+        let clock = SuspendingClock()
         let started = clock.now
         let (out, changed) = TranscriptRedaction.redactTranscript(raw)
         let took = Double((clock.now - started).components.seconds)
