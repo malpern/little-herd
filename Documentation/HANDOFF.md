@@ -2275,6 +2275,11 @@ the only part drawn.
     Healthchecks.io. Little Herd is the payoff and is not one of the ten, which
     is what makes the rest of it believable.
 
+    **Chrome Remote Desktop is linked within the Screen Sharing step.** It is
+    the browser/mobile and cross-platform alternative; Mac-to-Mac access over
+    Tailscale still uses the built-in Screen Sharing app. The guide is generated
+    from `site/_src/steps.py`, so edit that source and rebuild the pages.
+
     **Sunshine and Moonlight were added on 2 September, at 4.** Screen Sharing
     at 2 is the right answer for one button in one dialog and the wrong one for
     working on a Linux box: VNC sends pictures of a screen, and a desktop you

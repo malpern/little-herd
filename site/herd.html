@@ -165,6 +165,13 @@
       </a>
       <p>In Finder, <b>Go &rarr; Connect to Server</b> (<kbd>&#8984;K</kbd>) and
         enter <code>vnc://mini</code>. You get the actual desktop.</p>
+      <p>For a Mac on your Tailscale network, use its Tailscale name or
+        address in that <code>vnc://</code> URL. If you want to connect from
+        a browser or phone, or control a Windows or Linux computer too,
+        <a href="https://remotedesktop.google.com/">Chrome Remote Desktop</a>
+        is another option. Install its host on the computer you want to
+        reach, sign in with your Google Account, and set a PIN. Google
+        handles the connection over the internet; it does not use VNC.</p>
       <p>Most of the time SSH is better &mdash; faster, scriptable, works on a
         bad connection. But some things only exist on the screen: a permission
         dialog, an installer, a first run, an app that has decided to show you a

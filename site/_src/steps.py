@@ -86,6 +86,13 @@ STEPS = [{'id': 'control',
            'go': 'Apple support &#8599;'},
   'body': '      <p>In Finder, <b>Go &rarr; Connect to Server</b> (<kbd>&#8984;K</kbd>) and\n'
           '        enter <code>vnc://mini</code>. You get the actual desktop.</p>\n'
+          '      <p>For a Mac on your Tailscale network, use its Tailscale name or\n'
+          '        address in that <code>vnc://</code> URL. If you want to connect from\n'
+          '        a browser or phone, or control a Windows or Linux computer too,\n'
+          '        <a href="https://remotedesktop.google.com/">Chrome Remote Desktop</a>\n'
+          '        is another option. Install its host on the computer you want to\n'
+          '        reach, sign in with your Google Account, and set a PIN. Google\n'
+          '        handles the connection over the internet; it does not use VNC.</p>\n'
           '      <p>Most of the time SSH is better &mdash; faster, scriptable, works on a\n'
           '        bad connection. But some things only exist on the screen: a permission\n'
           '        dialog, an installer, a first run, an app that has decided to show you a\n'
