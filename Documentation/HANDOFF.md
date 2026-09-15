@@ -2418,6 +2418,13 @@ the only part drawn.
     source for the eight guide steps *and* the eight homepage cards, so the two
     pages cannot disagree about what a tool is called or where it links.
 
+    **Social crawlers need the image URL in the generated head to be absolute.**
+    X rendered its generic card when `og:image` was `images/social-card.jpg`,
+    despite browsers resolving that path correctly. The head partial now uses
+    the full Pages URL, declares the image dimensions, and mirrors the title,
+    description and image into Twitter card tags. Keep those tags in the
+    partial, never in one rendered page.
+
     Still no framework, and the decision was re-examined rather than assumed:
     Astro would be the answer at five pages or a blog, plain Vite would buy
     nothing here. That note lives in `site/_src/README.md`.
