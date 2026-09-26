@@ -48,10 +48,17 @@
 			</dict>
 		</dict>
 	</dict>
+	<!-- The first two are browsed, to find machines. The third is what this
+	     Mac ANNOUNCES as the herd's watcher — and it has to be listed here
+	     too: since macOS 15, mDNSResponder refuses to register a type the
+	     plist does not name ("App Info.plist(NSBonjourServices) does not
+	     allow '_littleherd._tcp.'"), and the refusal surfaces as -65555
+	     NoAuth or -72008, which read like a privacy prompt and are not. -->
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_ssh._tcp</string>
 		<string>_smb._tcp</string>
+		<string>_littleherd._tcp</string>
 	</array>
 	<key>NSHighResolutionCapable</key>
 	<true/>

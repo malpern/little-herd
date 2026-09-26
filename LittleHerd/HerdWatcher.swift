@@ -135,7 +135,10 @@ extension MachineMonitorModel {
         return HerdWire.Machine(
             id: machine.rawValue,
             name: name,
-            shortName: shortName,
+            // `MachineConfiguration.local()` calls this Mac "This Mac", which
+            // is true on this Mac and false on every phone reading it. The
+            // phone gets the name instead.
+            shortName: isLocal && shortName == "This Mac" ? name : shortName,
             avatar: avatar.rawValue,
             platform: platform.rawValue,
             isStorage: isStorage,

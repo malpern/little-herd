@@ -1892,6 +1892,24 @@ the listener is plain TCP and `HerdAdvertiser` publishes separately. The socket
 test caught it; the standalone probe that "proved the listener worked" had not,
 because a bare binary is not gated the way an app bundle is.
 
+**A service this app ANNOUNCES must be in `NSBonjourServices` too, and
+mDNSResponder remembers the answer per bundle id.** Since macOS 15 the plist key
+governs registration as well as browsing: with `_littleherd._tcp` absent,
+`NWListener.Service` fails `-65555 NoAuth` and `NetService` fails `-72008`
+(`NSNetServicesMissingRequiredConfigurationError`), and neither error says
+"plist". Both read like a privacy prompt and cost an afternoon of chasing one.
+The line that names it is `log stream --predicate 'process == "mDNSResponder"'`:
+*App Info.plist(NSBonjourServices) does not allow '_littleherd._tcp.'*. Worse,
+mDNSResponder caches that verdict **per bundle id for its own lifetime**: after
+the plist was fixed, every relaunch of `com.malpern.LittleHerd` was still refused
+— moving the installed copy aside changed nothing, `lsregister -f` changed
+nothing — while the same build under `com.malpern.LittleHerd.bonjourtest`
+announced at once. A user's Mac sees the new plist first and is fine; a developer
+who ran the old plist once needs a reboot (or `sudo killall -HUP mDNSResponder`)
+before the real id announces. `HerdServer` logs its side under subsystem
+`com.malpern.LittleHerd`, category `herd-server`, so this is a `log stream` away
+next time rather than a theory.
+
 **`activeSurfaces` gates sampling, and a headless watcher is not a surface.**
 Monitoring starts on the first dashboard or menu-bar appearance and stops on the
 last disappearance. Anything that needs the herd sampled with no window open —
@@ -2218,14 +2236,24 @@ the only part drawn.
     It is still plain HTTP, so `move` from a phone stays unbuilt: a code a sniffer can
     replay is enough to gate reads, not to gate a seven-step transfer.
 
-    **Discovery is proven on the phone's side.** With no typed address the simulator
-    found `Mac mini` by Bonjour, resolved it (29 ms), and read the herd — announced
-    from the shell with `dns-sd -R "Mac mini" _littleherd._tcp local. 7841`, because
-    the *debug* Mac build's own announcement never appears: a debug-signed app is a new
-    identity to the Local Network privacy gate, almost certainly a prompt nobody
-    answered on the mini's screen, unverified because that screen cannot be captured
-    from an agent shell. A notarized build carries the grant the installed app already
-    has. Until then the port serves and Settings says the announcement failed.
+    **Discovery is proven on both sides, and the Mac's half was one plist line.**
+    With no typed address the simulator found `Mac mini` by Bonjour, resolved it
+    (29 ms), and read the herd. The Mac's own announcement was refused for hours
+    with `-65555`/`-72008`, which this file first blamed on a Local Network privacy
+    prompt; `log stream` on `mDNSResponder` said the real thing in one line — *App
+    Info.plist(NSBonjourServices) does not allow '_littleherd._tcp.'* — and the
+    fact below has the rest. A build under a throwaway bundle id announced at once
+    and `dns-sd -B` listed it; the real id will once mDNSResponder restarts.
+
+    **The phone answers the herd-level question now.** A "Waiting on you" section
+    above the herd lists every waiting or stalled session across all machines,
+    oldest first — the one you have kept waiting longest is the one to answer —
+    each naming its machine and opening that machine's page. Per-machine counts
+    said *where*; this says *what*, without opening four pages. And a phone that
+    loses its watcher shows the last good reading washed out under a banner that
+    says how old it is and why (*Nothing is listening there. Is Little Herd
+    running…*), rather than a page that quietly stops changing. Both looked at:
+    the stale state was produced by killing the watcher under a paired phone.
 
     **Looking at it has a harness.** `LITTLE_HERD_FIXTURE=1` in the launch environment
     reads `fixture-herd.json` — four machines: a hot Air, the mini under memory

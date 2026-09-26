@@ -49,26 +49,80 @@ struct HerdView: View {
         }
     }
 
+    /// After this long without a successful read, what is on screen is a
+    /// memory rather than a report, and it has to look like one. Three of the
+    /// Mac's sampling intervals: one missed read is a blip, three is news.
+    private static let staleAfter: TimeInterval = 30
+
     private func herd(_ snapshot: HerdWire.Snapshot) -> some View {
-        List {
-            Section {
-                ForEach(snapshot.machines) { machine in
-                    NavigationLink(value: machine) {
-                        MachineRow(machine: machine)
+        TimelineView(.periodic(from: .now, by: 5)) { context in
+            let stale = client.lastFetched.map {
+                context.date.timeIntervalSince($0) > Self.staleAfter
+            } ?? false
+            List {
+                if stale {
+                    Section {
+                        StaleBanner(since: client.lastFetched, error: client.lastError)
+                    }
+                    .listRowBackground(Color.orange.opacity(0.12))
+                }
+
+                let needsYou = Self.needingYou(in: snapshot)
+                if !needsYou.isEmpty {
+                    Section("Waiting on you") {
+                        ForEach(needsYou, id: \.session.id) { item in
+                            NavigationLink(value: item.machine) {
+                                NeedsYouRow(machine: item.machine, session: item.session)
+                                    .saturation(stale ? 0.2 : 1)
+                            }
+                        }
                     }
                 }
-            } footer: {
-                footer(snapshot)
+
+                Section {
+                    ForEach(snapshot.machines) { machine in
+                        NavigationLink(value: machine) {
+                            MachineRow(machine: machine)
+                                .saturation(stale ? 0.2 : 1)
+                        }
+                    }
+                } header: {
+                    if !needsYou.isEmpty { Text("The herd") }
+                } footer: {
+                    // The banner has already said why; saying it twice on one
+                    // screen is how a person learns to read neither.
+                    footer(snapshot, showsError: !stale)
+                }
             }
+            .listStyle(.plain)
+            .navigationDestination(for: HerdWire.Machine.self) { machine in
+                MachineView(machine: machine)
+            }
+            .refreshable { await client.refresh() }
         }
-        .listStyle(.plain)
-        .navigationDestination(for: HerdWire.Machine.self) { machine in
-            MachineView(machine: machine)
-        }
-        .refreshable { await client.refresh() }
     }
 
-    private func footer(_ snapshot: HerdWire.Snapshot) -> some View {
+    /// Every session across the herd that is holding for a person, oldest
+    /// first — the one you have kept waiting longest is the one to answer.
+    /// Stalled sessions ride along: they also need a person, for a different
+    /// reason, and a phone is where "did that die?" gets asked.
+    ///
+    /// This is the herd-level question the phone exists for. Per-machine
+    /// counts say *where* work is waiting; this says *what*, without opening
+    /// four pages to find out.
+    static func needingYou(
+        in snapshot: HerdWire.Snapshot
+    ) -> [(machine: HerdWire.Machine, session: HerdWire.Session)] {
+        snapshot.machines
+            .flatMap { machine in
+                machine.sessions
+                    .filter { $0.state == "waiting" || $0.state == "stalled" }
+                    .map { (machine: machine, session: $0) }
+            }
+            .sorted { $0.session.updatedAt < $1.session.updatedAt }
+    }
+
+    private func footer(_ snapshot: HerdWire.Snapshot, showsError: Bool) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("From \(snapshot.watcher)")
             if let fetched = client.lastFetched {
@@ -78,7 +132,7 @@ struct HerdView: View {
                             ? .orange : .secondary)
                 }
             }
-            if let error = client.lastError {
+            if showsError, let error = client.lastError {
                 Text(error).foregroundStyle(.orange)
             }
         }
@@ -121,6 +175,64 @@ struct HerdView: View {
                 .buttonStyle(.bordered)
         }
         .padding(32)
+    }
+}
+
+/// One session that needs a person, and where it is.
+struct NeedsYouRow: View {
+    let machine: HerdWire.Machine
+    let session: HerdWire.Session
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(machine.avatar)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 34, height: 34)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(session.title)
+                    .font(.body)
+                    .lineLimit(2)
+                HStack(spacing: 4) {
+                    Text(session.state == "stalled" ? "Stalled" : "Waiting")
+                        .foregroundStyle(session.state == "stalled" ? .orange : .secondary)
+                    Text("· \(machine.shortName) · \(session.updatedAt, style: .relative)")
+                        .foregroundStyle(.secondary)
+                }
+                .font(.footnote)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+/// What is on screen is old, and here is why. Shown above the herd rather
+/// than instead of it: the last good reading is still worth more than a
+/// blank page, as long as it is plainly marked as the last good reading.
+struct StaleBanner: View {
+    let since: Date?
+    let error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                if let since {
+                    Text("Not updating — last read \(since, style: .relative) ago")
+                        .font(.subheadline.weight(.medium))
+                } else {
+                    Text("Not updating")
+                        .font(.subheadline.weight(.medium))
+                }
+            }
+            if let error {
+                Text(error)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 

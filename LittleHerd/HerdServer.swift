@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import os
 
 /// The watcher, answering a phone.
 ///
@@ -32,6 +33,11 @@ import Network
 /// "is there a watcher here" is not a secret and is how a phone tells a wrong
 /// code from a wrong address. `move` from a phone must not exist until the
 /// code is carried over something better than plain HTTP.
+/// The server's own account of itself, for `log show --predicate 'subsystem ==
+/// "com.malpern.LittleHerd"'`. Settings shows the same facts, but Settings is
+/// on a screen, and a watcher is a Mac nobody is looking at.
+nonisolated let herdServerLog = Logger(subsystem: "com.malpern.LittleHerd", category: "herd-server")
+
 @MainActor
 final class HerdServer {
     /// Where the snapshot comes from. Called on the main actor, once per
@@ -109,6 +115,7 @@ final class HerdServer {
         case .ready:
             isListening = true
             port = listener.port?.rawValue
+            herdServerLog.notice("listening on port \(self.port ?? 0)")
             if let port, advertiser == nil {
                 let advertiser = HerdAdvertiser(name: watcherName, port: port)
                 advertiser.onChange = { [weak self] published, error in
@@ -121,6 +128,7 @@ final class HerdServer {
         case let .failed(error):
             isListening = false
             lastError = String(describing: error)
+            herdServerLog.error("listener failed: \(String(describing: error))")
             listener.cancel()
             if self.listener === listener { self.listener = nil }
         case .cancelled:
@@ -306,6 +314,7 @@ final class HerdAdvertiser: NSObject, NetServiceDelegate {
     }
 
     func start() {
+        herdServerLog.notice("announcing \(self.service.name, privacy: .public) on port \(self.service.port)")
         service.publish()
     }
 
@@ -315,6 +324,7 @@ final class HerdAdvertiser: NSObject, NetServiceDelegate {
     }
 
     nonisolated func netServiceDidPublish(_ sender: NetService) {
+        herdServerLog.notice("announced \(sender.name, privacy: .public) as \(sender.type, privacy: .public) on port \(sender.port)")
         Task { @MainActor in self.onChange?(true, nil) }
     }
 
@@ -323,6 +333,7 @@ final class HerdAdvertiser: NSObject, NetServiceDelegate {
         didNotPublish errorDict: [String: NSNumber]
     ) {
         let code = errorDict[NetService.errorCode]?.intValue ?? 0
+        herdServerLog.error("announcement refused: \(errorDict, privacy: .public)")
         let reason = code == -65555
             ? "macOS refused to announce it on the local network (-65555). "
                 + "Allow Little Herd under Privacy & Security › Local Network."
