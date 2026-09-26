@@ -121,6 +121,57 @@ nonisolated enum HerdWire {
         let model: String?
     }
 
+    // MARK: - Pairing
+
+    /// How a phone proves it was told about this watcher.
+    ///
+    /// **A code a person can read off one screen and type on another.** The
+    /// watcher shows it in Settings; the phone asks for it once and sends it
+    /// with every read. It is not a secret against someone on the wire — this
+    /// is plain HTTP on a private network — it is the difference between
+    /// "anyone on the network can read the herd" and "anyone you told can",
+    /// and the prerequisite for ever letting a phone *do* anything.
+    ///
+    /// The alphabet leaves out `0`/`O` and `1`/`I`, and comparison ignores
+    /// case and punctuation, because the code will be read aloud across a
+    /// room and typed on a phone keyboard.
+    enum Pairing {
+        static let alphabet = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
+        static let length = 8
+        static let headerName = "Authorization"
+
+        static func generate() -> String {
+            String((0..<length).map { _ in alphabet.randomElement()! })
+        }
+
+        /// Upper case, letters and digits only — what both ends compare.
+        static func normalize(_ text: String) -> String {
+            String(text.uppercased().filter { $0.isLetter || $0.isNumber })
+        }
+
+        /// `XXXX-XXXX`, for showing.
+        static func display(_ code: String) -> String {
+            let normalized = normalize(code)
+            guard normalized.count > 4 else { return normalized }
+            let middle = normalized.index(normalized.startIndex, offsetBy: 4)
+            return normalized[..<middle] + "-" + normalized[middle...]
+        }
+
+        static func headerValue(_ code: String) -> String {
+            "Bearer " + normalize(code)
+        }
+
+        /// Whether a request's `Authorization` value carries this code.
+        static func accepts(_ headerValue: String?, code: String) -> Bool {
+            guard let headerValue else { return false }
+            let presented = headerValue.hasPrefix("Bearer ")
+                ? String(headerValue.dropFirst("Bearer ".count))
+                : headerValue
+            let expected = normalize(code)
+            return !expected.isEmpty && normalize(presented) == expected
+        }
+    }
+
     // MARK: - Encoding
 
     /// Dates as ISO 8601, so a Mac and a phone agree on them and a person

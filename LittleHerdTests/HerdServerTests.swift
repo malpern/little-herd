@@ -38,7 +38,10 @@ struct HerdServerTests {
         #expect(HerdRequest.parse(partial) == nil)
 
         let whole = partial + Data("\r\n".utf8)
-        #expect(HerdRequest.parse(whole) == HerdRequest(method: "GET", path: "/herd"))
+        let request = HerdRequest.parse(whole)
+        #expect(request?.method == "GET")
+        #expect(request?.path == "/herd")
+        #expect(request?.headers == ["host": "x"])
     }
 
     /// A query string is not part of the path, and a lower-case method is
@@ -49,10 +52,65 @@ struct HerdServerTests {
         #expect(request == HerdRequest(method: "GET", path: "/herd"))
     }
 
+    /// A code as a person types it — lower case, with the dash, a space —
+    /// matches the one the Mac made, and `0`/`O` can never be confused
+    /// because neither is in the alphabet.
+    @Test
+    func aPairingCodeIsForgivingToType() {
+        let code = HerdWire.Pairing.generate()
+        #expect(code.count == 8)
+        #expect(!code.contains(where: { "01OI".contains($0) }))
+        let typed = HerdWire.Pairing.display(code).lowercased() + " "
+        #expect(HerdWire.Pairing.accepts("Bearer " + typed, code: code))
+        #expect(HerdWire.Pairing.accepts(typed, code: code))
+        #expect(!HerdWire.Pairing.accepts("Bearer " + String(code.dropLast()), code: code))
+        #expect(!HerdWire.Pairing.accepts(nil, code: code))
+        // An empty code must not match an empty header: a Mac with no code
+        // is a Mac that admits nobody, not everybody.
+        #expect(!HerdWire.Pairing.accepts("Bearer ", code: ""))
+    }
+
+    @Test
+    func headersAreReadCaseInsensitively() {
+        let request = HerdRequest.parse(Data(
+            "GET /herd HTTP/1.1\r\nHost: x\r\nAUTHORIZATION:  Bearer abcd-efgh \r\n\r\n".utf8
+        ))
+        #expect(request?.headers["authorization"] == "Bearer abcd-efgh")
+    }
+
+    /// Without the code, the herd is not served — and the refusal says where
+    /// the code is, because a 401 with no explanation reads as a broken app.
+    @Test
+    func theHerdNeedsTheCodeAndHealthDoesNot() {
+        let withoutCode = HerdServer.response(
+            for: HerdRequest(method: "GET", path: "/herd"),
+            pairingCode: "ABCDEFGH",
+            snapshot: { Self.snapshot() }
+        )
+        let text = String(decoding: withoutCode, as: UTF8.self)
+        #expect(text.hasPrefix("HTTP/1.1 401"))
+        #expect(text.contains("settings"))
+
+        let wrongCode = HerdServer.response(
+            for: HerdRequest(method: "GET", path: "/herd", headers: ["authorization": "Bearer NOPE"]),
+            pairingCode: "ABCDEFGH",
+            snapshot: { Self.snapshot() }
+        )
+        #expect(String(decoding: wrongCode, as: UTF8.self).hasPrefix("HTTP/1.1 401"))
+
+        let health = HerdServer.response(
+            for: HerdRequest(method: "GET", path: "/health"),
+            pairingCode: "ABCDEFGH",
+            snapshot: { Self.snapshot() }
+        )
+        #expect(String(decoding: health, as: UTF8.self).hasPrefix("HTTP/1.1 200"))
+    }
+
     @Test
     func theHerdIsServedAsJSONAndEverythingElseIsRefused() throws {
         let herd = HerdServer.response(
-            for: HerdRequest(method: "GET", path: "/herd"),
+            for: HerdRequest(method: "GET", path: "/herd", headers: ["authorization": "Bearer abcd-efgh"]),
+            pairingCode: "ABCDEFGH",
             snapshot: { Self.snapshot() }
         )
         let text = String(decoding: herd, as: UTF8.self)
@@ -67,6 +125,7 @@ struct HerdServerTests {
 
         let missing = HerdServer.response(
             for: HerdRequest(method: "GET", path: "/anything"),
+            pairingCode: "ABCDEFGH",
             snapshot: { Self.snapshot() }
         )
         #expect(String(decoding: missing, as: UTF8.self).hasPrefix("HTTP/1.1 404"))
@@ -75,6 +134,7 @@ struct HerdServerTests {
         // it that way until a pairing step exists.
         let write = HerdServer.response(
             for: HerdRequest(method: "POST", path: "/herd"),
+            pairingCode: "ABCDEFGH",
             snapshot: { Self.snapshot() }
         )
         #expect(String(decoding: write, as: UTF8.self).hasPrefix("HTTP/1.1 405"))
@@ -91,11 +151,15 @@ struct HerdServerTests {
     /// caught. The port must serve whether or not the network was told.
     @Test
     func aRealClientCanFetchTheHerd() async throws {
-        let server = await HerdServer(watcherName: "Test Mac") { Self.snapshot() }
+        let server = await HerdServer(watcherName: "Test Mac", pairingCode: "ABCDEFGH") {
+            Self.snapshot()
+        }
         await server.start(port: 0)
         let port = try await Self.waitForPort(server)
         let url = try #require(URL(string: "http://127.0.0.1:\(port)/herd"))
-        let (data, response) = try await URLSession.shared.data(from: url)
+        var request = URLRequest(url: url)
+        request.setValue("Bearer abcd-efgh", forHTTPHeaderField: "Authorization")
+        let (data, response) = try await URLSession.shared.data(for: request)
         #expect((response as? HTTPURLResponse)?.statusCode == 200)
         let decoded = try HerdWire.decoder().decode(HerdWire.Snapshot.self, from: data)
         // The body is whatever the provider said, byte for byte through the

@@ -33,6 +33,35 @@ final class HerdWatcher {
     var advertisingError: String? { server?.advertisingError }
     var requestsAnswered: Int { server?.requestsAnswered ?? 0 }
 
+    /// The code a phone has to be told, as a person reads it: `XXXX-XXXX`.
+    ///
+    /// Made once and kept in defaults, not the Keychain — this is a "were you
+    /// told" check on a private network, not a credential, and a Keychain read
+    /// is a prompt this menu-bar app has been careful never to raise. Kept in
+    /// the same domain as the switch that starts the server, so nominating a
+    /// different Mac gives a different code by construction.
+    var pairingCode: String {
+        HerdWire.Pairing.display(storedPairingCode())
+    }
+
+    /// A new code. The phone will ask for it again, which is the point.
+    func regeneratePairingCode() {
+        let code = HerdWire.Pairing.generate()
+        defaults.set(code, forKey: LittleHerdPreferences.herdPairingCodeKey)
+        server?.pairingCode = code
+    }
+
+    private func storedPairingCode() -> String {
+        if let stored = defaults.string(forKey: LittleHerdPreferences.herdPairingCodeKey),
+           !HerdWire.Pairing.normalize(stored).isEmpty
+        {
+            return stored
+        }
+        let code = HerdWire.Pairing.generate()
+        defaults.set(code, forKey: LittleHerdPreferences.herdPairingCodeKey)
+        return code
+    }
+
     init(
         model: MonitorModel,
         watcherName: String = Host.current().localizedName ?? "Little Herd",
@@ -60,7 +89,10 @@ final class HerdWatcher {
     /// every defaults change because there is no cheaper way to hear one key.
     func reconcile() {
         if shouldServe, server == nil {
-            let server = HerdServer(watcherName: watcherName) { [model, watcherName] in
+            let server = HerdServer(
+                watcherName: watcherName,
+                pairingCode: storedPairingCode()
+            ) { [model, watcherName] in
                 model.wireSnapshot(watcherName: watcherName)
             }
             self.server = server

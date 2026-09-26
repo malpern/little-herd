@@ -24,13 +24,14 @@ import Network
 /// is forty lines and the alternative is a dependency for the sake of `GET`.
 /// It is not a web server and must not grow into one.
 ///
-/// **Reads only, and only on your own network.** Nothing here changes a machine
-/// or moves work, and the listener binds to every interface on purpose — a
-/// tailnet address is how the phone reaches a watcher from outside the house.
-/// That means anyone on those networks can read the herd. Acceptable for a
-/// spike on a private network; a token handed over at pairing is the honest
-/// next step before this is on by default, and `move` from a phone must not
-/// exist until then.
+/// **Reads only, and only for a phone that was told the code.** Nothing here
+/// changes a machine or moves work, and the listener binds to every interface
+/// on purpose — a tailnet address is how the phone reaches a watcher from
+/// outside the house. `/herd` answers only to a request carrying the pairing
+/// code Settings shows (`HerdWire.Pairing`); `/health` answers anyone, because
+/// "is there a watcher here" is not a secret and is how a phone tells a wrong
+/// code from a wrong address. `move` from a phone must not exist until the
+/// code is carried over something better than plain HTTP.
 @MainActor
 final class HerdServer {
     /// Where the snapshot comes from. Called on the main actor, once per
@@ -54,9 +55,13 @@ final class HerdServer {
     private let queue = DispatchQueue(label: "com.malpern.LittleHerd.herd-server")
     private let provider: SnapshotProvider
     private let watcherName: String
+    /// What a request must carry to read the herd. Settable, so a new code
+    /// takes effect without restarting the listener.
+    var pairingCode: String
 
-    init(watcherName: String, provider: @escaping SnapshotProvider) {
+    init(watcherName: String, pairingCode: String, provider: @escaping SnapshotProvider) {
         self.watcherName = watcherName
+        self.pairingCode = pairingCode
         self.provider = provider
     }
 
@@ -154,7 +159,11 @@ final class HerdServer {
     }
 
     private func respond(to request: HerdRequest, on connection: NWConnection) {
-        let response = HerdServer.response(for: request, snapshot: provider)
+        let response = HerdServer.response(
+            for: request,
+            pairingCode: pairingCode,
+            snapshot: provider
+        )
         requestsAnswered += 1
         connection.send(content: response, completion: .contentProcessed { _ in
             connection.cancel()
@@ -165,10 +174,21 @@ final class HerdServer {
     /// without a socket.
     static func response(
         for request: HerdRequest,
+        pairingCode: String,
         snapshot: SnapshotProvider
     ) -> Data {
         switch (request.method, request.path) {
         case ("GET", "/herd"), ("GET", "/herd.json"):
+            guard HerdWire.Pairing.accepts(
+                request.headers[HerdWire.Pairing.headerName.lowercased()],
+                code: pairingCode
+            ) else {
+                return http(
+                    status: "401 Unauthorized",
+                    contentType: "text/plain; charset=utf-8",
+                    body: Data("pairing code required; it is in Little Herd's settings on this Mac\n".utf8)
+                )
+            }
             let body = (try? HerdWire.encoder().encode(snapshot())) ?? Data()
             return http(status: "200 OK", contentType: "application/json", body: body)
         case ("GET", "/"), ("GET", "/health"):
@@ -204,26 +224,35 @@ final class HerdServer {
     }
 }
 
-/// The two things about a request worth knowing.
+/// The three things about a request worth knowing.
 nonisolated struct HerdRequest: Equatable, Sendable {
     let method: String
     /// The path with any query string removed.
     let path: String
+    /// Header names lower-cased, values trimmed. Only `authorization` is read.
+    var headers: [String: String] = [:]
 
     /// Parses a request from its bytes, or nothing if the headers have not all
-    /// arrived yet. Only the request line is read; headers are skipped past.
+    /// arrived yet.
     static func parse(_ data: Data) -> HerdRequest? {
         guard let headerEnd = data.range(of: Data("\r\n\r\n".utf8)) else { return nil }
         let head = String(decoding: data[..<headerEnd.lowerBound], as: UTF8.self)
-        guard let requestLine = head.split(separator: "\r\n", maxSplits: 1).first else {
-            return nil
-        }
+        var lines = head.components(separatedBy: "\r\n")
+        guard !lines.isEmpty else { return nil }
+        let requestLine = lines.removeFirst()
         let parts = requestLine.split(separator: " ")
         guard parts.count >= 2 else {
             return HerdRequest(method: "", path: "")
         }
         let target = parts[1].split(separator: "?", maxSplits: 1).first.map(String.init) ?? "/"
-        return HerdRequest(method: String(parts[0]).uppercased(), path: target)
+        var headers: [String: String] = [:]
+        for line in lines {
+            guard let colon = line.firstIndex(of: ":") else { continue }
+            let name = line[..<colon].trimmingCharacters(in: .whitespaces).lowercased()
+            let value = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+            headers[name] = value
+        }
+        return HerdRequest(method: String(parts[0]).uppercased(), path: target, headers: headers)
     }
 }
 

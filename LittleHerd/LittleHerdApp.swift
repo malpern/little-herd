@@ -210,6 +210,9 @@ enum LittleHerdPreferences {
     /// is no interface for it: the default collides with nothing, and a
     /// person who needs another is one who can `defaults write`.
     static let herdServerPortKey = "herdServerPort"
+    /// The code a phone must present to read the herd. Made by `HerdWatcher`
+    /// the first time this Mac serves, shown in Settings, replaceable there.
+    static let herdPairingCodeKey = "herdPairingCode"
     /// Whether Little Herd starts CodexBar when it finds it installed and not
     /// running. Default on, because the alternative is a usage figure that
     /// silently stops moving — but a setting rather than a habit, since this
@@ -733,6 +736,24 @@ private struct LittleHerdSettingsView: View {
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, 2)
+
+                        HStack(spacing: 8) {
+                            Text("Pairing code")
+                            Text(herdWatcher.pairingCode)
+                                .font(.callout.monospaced().weight(.semibold))
+                                .textSelection(.enabled)
+                            Button("New code") { herdWatcher.regeneratePairingCode() }
+                                .controlSize(.small)
+                                .help(Text("Your iPhone will ask for the new one."))
+                        }
+                        .font(.callout)
+                        .padding(.top, 2)
+
+                        Text("Type it into Little Herd on your iPhone once. "
+                            + "Without it, the phone can find this Mac but not read the herd.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     Toggle("Stay quiet — another Mac is watching", isOn: $alertsSuppressed)

@@ -11,6 +11,7 @@ struct WatcherPicker: View {
     let client: HerdClient
     @Environment(\.dismiss) private var dismiss
     @State private var draft = ""
+    @State private var codeDraft = ""
 
     var body: some View {
         NavigationStack {
@@ -52,6 +53,20 @@ struct WatcherPicker: View {
                 }
 
                 Section {
+                    TextField("XXXX-XXXX", text: $codeDraft)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                        .font(.body.monospaced())
+                        .onSubmit { client.pairingCode = codeDraft }
+                } header: {
+                    Text("Pairing code")
+                } footer: {
+                    Text("Shown in Little Herd’s settings on the watcher Mac, next to "
+                        + "“This Mac watches the herd continuously”. Case and the dash "
+                        + "don’t matter.")
+                }
+
+                Section {
                     TextField("mini.tail9d0bb8.ts.net", text: $draft)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
@@ -80,15 +95,22 @@ struct WatcherPicker: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button("Done") {
+                        client.pairingCode = codeDraft
+                        dismiss()
+                    }
                 }
             }
-            .onAppear { draft = client.typedAddress }
+            .onAppear {
+                draft = client.typedAddress
+                codeDraft = client.pairingCode
+            }
         }
     }
 
     private func useTyped() {
         guard WatcherEndpoint.typed(from: draft) != nil else { return }
+        client.pairingCode = codeDraft
         client.typedAddress = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         dismiss()
     }

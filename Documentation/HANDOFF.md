@@ -3,9 +3,10 @@
 **State:** `v0.1.69` is released. **A phone can read the herd, on branch
 `ios/spike-1` (26 September, not yet on main).** The watcher Mac serves what it
 already knows on port 7841 and announces itself on the local network; an iOS
-app reads it, draws the herd with its animals, and opens a machine to its
-sessions grouped by what they need from you. Proven in the simulator against
-the mini's live herd; not yet on a real phone. Items 6 and 18 say what is left.
+app finds it by Bonjour or a typed name, pairs with a code, draws the herd
+with its animals, and opens a machine to its sessions grouped by what they
+need from you. Proven in the simulator against the mini's live herd; not yet
+on a real phone. Items 6 and 18 say what is left.
 Items 13, 14, 15
 and 17 closed on 6–7 September and have been pruned from **Next**; what was
 learned doing them is in **Hard-won facts**, which is where it stays. It is the first
@@ -2056,8 +2057,8 @@ it; the files survived only because the directory had not been reaped yet.
     `HerdServer` on port 7841 (`herdServerPort` overrides) and announces
     `_littleherd._tcp` with the Mac's name. One switch rather than two, because a
     second switch is a second thing to get wrong on each Mac. Reads only — `GET
-    /herd`, everything else 404 or 405 — and no token yet, so anyone on the network
-    can read the herd; that is acceptable for a spike and not for a default.
+    /herd`, everything else 404 or 405 — and only for a phone carrying the pairing
+    code Settings shows (item 6 has the design).
 
     **A watcher with no window open sampled nothing — fixed.** Monitoring ran only
     while the dashboard or the menu bar was active, so a nominated watcher with its
@@ -2205,20 +2206,46 @@ the only part drawn.
     `idiom: mac`, which iOS's asset compiler silently skips, so the phone catalog carries
     its own `universal` imagesets symlinked to the same PNGs.
 
-    **What is not.** *A real phone:* the simulator reached the watcher by a typed
-    `127.0.0.1`. A signed device build (`generic/platform=iOS`, automatic signing,
-    Apple Development identity) succeeds on the mini, but `devicectl` reported the
-    iPhone `unavailable` there, so the install is `xcodebuild` + `devicectl device
-    install app` from whichever Mac the phone is paired with. *Discovery under the
-    debug build:* `dns-sd -B _littleherd._tcp` sees a dummy `dns-sd -R` on the mini but
-    not the app's announcement, and a debug-signed app is a new identity to the Local
-    Network privacy gate — almost certainly a prompt nobody answered on the mini's
-    screen, unverified because that screen cannot be captured from an agent shell. The
-    typed-address path does not need it. *Pairing:* there is no token, and `move` from
-    the phone must not exist until there is one; a tap is a thin thing to hang a
-    seven-step transfer on. *The `alertsEnabled` gate:* the watcher switch only shows in
-    Settings once alerts are on, so a person who wants the phone and not alerts has to
-    turn alerts on first — wrong, and one line to fix once the Settings layout is judged.
+    **Pairing exists, and it is a code, not a secret.** The watcher makes an eight
+    character code (`HerdWire.Pairing`, no `0/O/1/I`), shows it in Settings as
+    `XXXX-XXXX` with a "New code" button, and answers `/herd` only to a request
+    carrying it; `/health` answers anyone, which is how the phone tells a wrong code
+    from a wrong address. Comparison ignores case and punctuation because the code is
+    read off one screen and typed on another. Kept in defaults, not the Keychain — a
+    "were you told" check on a private network, and this app has been careful never to
+    raise a Keychain prompt. Proven live: 401 without, 401 wrong, 200 lower-case with
+    the dash; and the phone's 401 screen says where the code is rather than "error".
+    It is still plain HTTP, so `move` from a phone stays unbuilt: a code a sniffer can
+    replay is enough to gate reads, not to gate a seven-step transfer.
+
+    **Discovery is proven on the phone's side.** With no typed address the simulator
+    found `Mac mini` by Bonjour, resolved it (29 ms), and read the herd — announced
+    from the shell with `dns-sd -R "Mac mini" _littleherd._tcp local. 7841`, because
+    the *debug* Mac build's own announcement never appears: a debug-signed app is a new
+    identity to the Local Network privacy gate, almost certainly a prompt nobody
+    answered on the mini's screen, unverified because that screen cannot be captured
+    from an agent shell. A notarized build carries the grant the installed app already
+    has. Until then the port serves and Settings says the announcement failed.
+
+    **Looking at it has a harness.** `LITTLE_HERD_FIXTURE=1` in the launch environment
+    reads `fixture-herd.json` — four machines: a hot Air, the mini under memory
+    pressure with a waiting, a stalled and a finished session, Linux offline, a NAS at
+    91% with a volume it calls `warning` — instead of a Mac, and
+    `LITTLE_HERD_OPEN_FIRST_MACHINE=1` opens the first machine's page. Every state
+    above was screenshotted through `simctl` and looked at; the "1 volumes" plural and
+    the missing animals were found that way and by nothing else. Five iOS unit tests
+    (`LittleHerdMobileTests`, run in the simulator) cover the address parser, the
+    response parser, the 401, and that the fixture decodes.
+
+    **What is not.** *A real phone:* a signed device build (`generic/platform=iOS`,
+    automatic signing, Apple Development identity) succeeds on the mini, but
+    `devicectl` reported the iPhone `unavailable` there, so the install is `xcodebuild`
+    + `devicectl device install app` from whichever Mac the phone is paired with. *The
+    `alertsEnabled` gate:* the watcher switch only shows in Settings once alerts are
+    on, so a person who wants the phone and not alerts has to turn alerts on first —
+    wrong, and one line to fix once the Settings layout is judged. *One code for one
+    watcher:* the phone stores a single code, so two watchers would need retyping on
+    every switch; fine until there are two.
 
     **The mini as coordinator was the prerequisite, and it is now also the consumer's
     server.** The script that teaches the mini the whole herd is still held in dotfiles

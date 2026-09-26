@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "watcher": "Mac mini",
+  "generatedAt": "2026-09-26T19:00:00Z",
+  "machines": [
+    {
+      "id": "macBookAir",
+      "name": "Micah’s MacBook Air",
+      "shortName": "Air",
+      "avatar": "chick-laptop",
+      "platform": "macOS",
+      "isStorage": false,
+      "isWatcher": false,
+      "state": "live",
+      "lastUpdated": "2026-09-26T18:59:52Z",
+      "cpuPercent": 91.2,
+      "sustainedCPUPercent": 88.0,
+      "memoryPressure": "normal",
+      "memoryUsedBytes": 11800000000,
+      "memoryTotalBytes": 16000000000,
+      "diskUsedPercent": 64.0,
+      "volumes": [
+        { "id": "/", "name": "Macintosh HD", "usedBytes": 640000000000, "totalBytes": 1000000000000 }
+      ],
+      "sessions": [
+        {
+          "id": "claude:2f1a9c00-1", "short": "2f1a9c00", "provider": "claude", "state": "active",
+          "title": "Teach the herd to hold its own backups", "updatedAt": "2026-09-26T18:59:40Z",
+          "activity": "Editing MonitorModel.swift", "workingDirectory": "/Users/malpern/local-code/little-herd",
+          "contextTokens": 184210, "model": "claude-opus-5"
+        },
+        {
+          "id": "codex:7b3e", "short": "7b3e", "provider": "codex", "state": "active",
+          "title": "attgw: reserve the NAS", "updatedAt": "2026-09-26T18:58:10Z",
+          "activity": "Running a command", "workingDirectory": "/Users/malpern/local-code/attgw",
+          "contextTokens": null, "model": "gpt-5.6-luna"
+        }
+      ]
+    },
+    {
+      "id": "macMini",
+      "name": "Mac mini",
+      "shortName": "Mini",
+      "avatar": "calf-mini",
+      "platform": "macOS",
+      "isStorage": false,
+      "isWatcher": true,
+      "state": "live",
+      "lastUpdated": "2026-09-26T18:59:58Z",
+      "cpuPercent": 12.4,
+      "sustainedCPUPercent": 15.0,
+      "memoryPressure": "critical",
+      "memoryUsedBytes": 23500000000,
+      "memoryTotalBytes": 24000000000,
+      "diskUsedPercent": 82.0,
+      "volumes": [
+        { "id": "/", "name": "Macintosh HD", "usedBytes": 820000000000, "totalBytes": 1000000000000 }
+      ],
+      "sessions": [
+        {
+          "id": "claude:0d5f1234-2", "short": "0d5f1234", "provider": "claude", "state": "waiting",
+          "title": "Funnel Optimization dashboard", "updatedAt": "2026-09-26T17:45:00Z",
+          "activity": null, "workingDirectory": "/Users/malpern/local-code/smirk-metrics",
+          "contextTokens": 252231, "model": "claude-opus-5-5"
+        },
+        {
+          "id": "codex:9f00", "short": "9f00", "provider": "codex", "state": "stalled",
+          "title": "emailtriage", "updatedAt": "2026-09-26T05:04:00Z",
+          "activity": null, "workingDirectory": "/Users/clawd/clawd",
+          "contextTokens": null, "model": null
+        },
+        {
+          "id": "claude:aa11", "short": "aa11", "provider": "claude", "state": "completed",
+          "title": "Say the same sentence in all three places", "updatedAt": "2026-09-26T16:02:00Z",
+          "activity": null, "workingDirectory": null, "contextTokens": 97180, "model": "claude-opus-5"
+        }
+      ]
+    },
+    {
+      "id": "linux",
+      "name": "Linux",
+      "shortName": "Linux",
+      "avatar": "goat-rack",
+      "platform": "linux",
+      "isStorage": false,
+      "isWatcher": false,
+      "state": "offline",
+      "lastUpdated": "2026-09-26T18:31:00Z",
+      "unavailability": "“linux.tail9d0bb8.ts.net” didn’t answer. Likely asleep or off the network.",
+      "cpuPercent": null,
+      "sustainedCPUPercent": null,
+      "memoryPressure": null,
+      "memoryUsedBytes": null,
+      "memoryTotalBytes": null,
+      "diskUsedPercent": null,
+      "volumes": [],
+      "sessions": []
+    },
+    {
+      "id": "synology",
+      "name": "Synology",
+      "shortName": "Synology",
+      "avatar": "piglet-nas",
+      "platform": "storage",
+      "isStorage": true,
+      "isWatcher": false,
+      "state": "live",
+      "lastUpdated": "2026-09-26T18:59:30Z",
+      "cpuPercent": 3.0,
+      "sustainedCPUPercent": null,
+      "memoryPressure": "normal",
+      "memoryUsedBytes": 1200000000,
+      "memoryTotalBytes": 2000000000,
+      "diskUsedPercent": 91.4,
+      "volumes": [
+        { "id": "volume1", "name": "Volume 1", "usedBytes": 7400000000000, "totalBytes": 8100000000000, "health": "warning" }
+      ],
+      "sessions": []
+    }
+  ]
+}

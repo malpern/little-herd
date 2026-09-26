@@ -72,6 +72,15 @@ final class HerdClient {
     private(set) var discovered: [WatcherEndpoint] = []
     private(set) var isBrowsing = false
 
+    /// The code the watcher shows in its Settings. Sent with every read;
+    /// without it the Mac answers 401 and says where to find it.
+    var pairingCode: String {
+        didSet {
+            UserDefaults.standard.set(pairingCode, forKey: Self.pairingCodeKey)
+            lastError = nil
+        }
+    }
+
     /// The address a person typed, if any. Empty means "use what is found".
     var typedAddress: String {
         didSet {
@@ -89,11 +98,27 @@ final class HerdClient {
 
     private static let typedAddressKey = "watcherAddress"
     private static let preferredNameKey = "watcherName"
+    private static let pairingCodeKey = "watcherPairingCode"
     private var browser: NWBrowser?
+
+    /// A herd from a file instead of a Mac, for looking at states the real
+    /// herd does not happen to be in — a NAS, a stalled session, a volume
+    /// the machine says is failing. Set by a test harness, never by a person.
+    private let fixture: HerdWire.Snapshot?
 
     init() {
         typedAddress = UserDefaults.standard.string(forKey: Self.typedAddressKey) ?? ""
         preferredName = UserDefaults.standard.string(forKey: Self.preferredNameKey)
+        pairingCode = UserDefaults.standard.string(forKey: Self.pairingCodeKey) ?? ""
+        fixture = ProcessInfo.processInfo.environment["LITTLE_HERD_FIXTURE"] == "1"
+            ? Self.loadFixture() : nil
+    }
+
+    private static func loadFixture() -> HerdWire.Snapshot? {
+        guard let url = Bundle.main.url(forResource: "fixture-herd", withExtension: "json"),
+              let data = try? Data(contentsOf: url)
+        else { return nil }
+        return try? HerdWire.decoder().decode(HerdWire.Snapshot.self, from: data)
     }
 
     /// Which watcher to ask: a typed address wins, then the preferred
@@ -163,11 +188,20 @@ final class HerdClient {
     }
 
     func refresh() async {
+        if let fixture {
+            snapshot = fixture
+            lastFetched = .now
+            return
+        }
         guard let watcher = current, !isFetching else { return }
         isFetching = true
         defer { isFetching = false }
         do {
-            let data = try await HerdFetcher.get(path: "/herd", from: watcher.nwEndpoint)
+            let data = try await HerdFetcher.get(
+                path: "/herd",
+                from: watcher.nwEndpoint,
+                pairingCode: pairingCode
+            )
             snapshot = try HerdWire.decoder().decode(HerdWire.Snapshot.self, from: data)
             lastFetched = .now
             lastError = nil
@@ -190,9 +224,13 @@ final class HerdClient {
 
 /// `GET` over an `NWConnection`, and nothing more.
 nonisolated enum HerdFetcher {
-    enum Failure: Error {
+    enum Failure: Error, Equatable {
         case unreachable(String)
         case badResponse
+        /// The watcher answered and wants the pairing code. Told apart from
+        /// any other status because it needs a different thing from a person:
+        /// not a better address, a trip to the Mac's Settings.
+        case needsPairingCode
         case status(Int)
 
         func description(watcher: String) -> String {
@@ -201,13 +239,21 @@ nonisolated enum HerdFetcher {
                 "Can’t reach “\(watcher)”. \(reason)"
             case .badResponse:
                 "“\(watcher)” answered with something that is not HTTP."
+            case .needsPairingCode:
+                "“\(watcher)” wants its pairing code. It is in Little Herd’s "
+                    + "settings on that Mac, under the watcher switch — enter "
+                    + "it under Watcher here."
             case let .status(code):
                 "“\(watcher)” answered \(code)."
             }
         }
     }
 
-    static func get(path: String, from endpoint: NWEndpoint) async throws -> Data {
+    static func get(
+        path: String,
+        from endpoint: NWEndpoint,
+        pairingCode: String = ""
+    ) async throws -> Data {
         let connection = NWConnection(to: endpoint, using: .tcp)
         let received = try await withCheckedThrowingContinuation {
             (continuation: CheckedContinuation<Data, Error>) in
@@ -215,8 +261,12 @@ nonisolated enum HerdFetcher {
             connection.stateUpdateHandler = { state in
                 switch state {
                 case .ready:
-                    let request = "GET \(path) HTTP/1.1\r\nHost: herd\r\n"
-                        + "Connection: close\r\n\r\n"
+                    var request = "GET \(path) HTTP/1.1\r\nHost: herd\r\n"
+                    if !HerdWire.Pairing.normalize(pairingCode).isEmpty {
+                        request += "\(HerdWire.Pairing.headerName): "
+                            + "\(HerdWire.Pairing.headerValue(pairingCode))\r\n"
+                    }
+                    request += "Connection: close\r\n\r\n"
                     connection.send(
                         content: Data(request.utf8),
                         completion: .contentProcessed { error in
@@ -273,6 +323,7 @@ nonisolated enum HerdFetcher {
         guard parts.count >= 2, parts[0].hasPrefix("HTTP/"), let code = Int(parts[1]) else {
             throw Failure.badResponse
         }
+        guard code != 401 else { throw Failure.needsPairingCode }
         guard code == 200 else { throw Failure.status(code) }
         return Data(response[headerEnd.upperBound...])
     }

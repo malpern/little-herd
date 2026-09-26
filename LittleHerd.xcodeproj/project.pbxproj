@@ -59,6 +59,7 @@
 		4425832D76E61C50D9AE5F2F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 387B8471B05B8FEFC2973329 /* Assets.xcassets */; };
 		45BC186C83BEC7696C68B73B /* MachinePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2364561D7CD692AC3FC1471A /* MachinePresentation.swift */; };
 		45C4B87B06C248B32DE821B4 /* AgentSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17B5AEB7ADED71EAF3397A2 /* AgentSession.swift */; };
+		49F48DB38043AA34C8B5FFCD /* fixture-herd.json in Resources */ = {isa = PBXBuildFile; fileRef = 1F102B07AB74465137895C33 /* fixture-herd.json */; };
 		49F8A1AE82B4B9FE4314C6E9 /* MachineAgentCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FBB2F3F34A9A75B25E30D87 /* MachineAgentCard.swift */; };
 		4DC56E8FD77CAB8BE9A23BFB /* TransferCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C9493E32EF1E74685B2C637 /* TransferCoordinator.swift */; };
 		4DECA6731350AC1B325E372D /* MetricsSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8E7D7B96F3C77459C1DD141 /* MetricsSampler.swift */; };
@@ -129,6 +130,7 @@
 		920B95435D7A332B3733C090 /* DashboardChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75AEA2BD4FDDBC0DB466CF07 /* DashboardChrome.swift */; };
 		93C91DDDFDDCDFA4E993CC6B /* SynologyDSM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95D3E317CB51DFD9180687CF /* SynologyDSM.swift */; };
 		93E0F40C106926E702C3E392 /* RepositoryCheckProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82B65DE88A236A883AE3D036 /* RepositoryCheckProbe.swift */; };
+		9493CFE141C68D8BF8EF237E /* HerdClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3739077E4C288E8F01DFBFE /* HerdClientTests.swift */; };
 		9518D7315550E85D906DB85B /* FolderBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E03AE4CBF5FB2BD804CB5B3 /* FolderBrowserView.swift */; };
 		9712E66E3210EFD7244E0C4D /* MachineAgentPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C0E9354B762F8C407715028 /* MachineAgentPad.swift */; };
 		97ABDF19EE954232A1A9D5D5 /* WindowPlacementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79D386671F3A56A3353C18AF /* WindowPlacementTests.swift */; };
@@ -223,6 +225,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		5F720A8F36A8D81FB5045457 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 20729F5D0E2084BE671CDD05 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FABF07E1CF1C702983182390;
+			remoteInfo = LittleHerdMobile;
+		};
 		CE333652370056ABB41EDB21 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 20729F5D0E2084BE671CDD05 /* Project object */;
@@ -250,6 +259,7 @@
 		1B3D93707AB7958B4F319C06 /* TransitCardRenderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitCardRenderTests.swift; sourceTree = "<group>"; };
 		1B6AC6220F6963E6B819CA63 /* TransferStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferStrip.swift; sourceTree = "<group>"; };
 		1C0E9354B762F8C407715028 /* MachineAgentPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineAgentPad.swift; sourceTree = "<group>"; };
+		1F102B07AB74465137895C33 /* fixture-herd.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "fixture-herd.json"; sourceTree = "<group>"; };
 		221BEA80E8AB4A9863BC90B4 /* AgentDropEligibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDropEligibility.swift; sourceTree = "<group>"; };
 		22816C5B02E0B78085B5644D /* HerdWire.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdWire.swift; sourceTree = "<group>"; };
 		2364561D7CD692AC3FC1471A /* MachinePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachinePresentation.swift; sourceTree = "<group>"; };
@@ -353,6 +363,7 @@
 		A1103648FA974B1ED81962ED /* SuccessorRun.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessorRun.swift; sourceTree = "<group>"; };
 		A17B5AEB7ADED71EAF3397A2 /* AgentSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSession.swift; sourceTree = "<group>"; };
 		A354ADFCEB27A5556725F88F /* TransferStripRenderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferStripRenderTests.swift; sourceTree = "<group>"; };
+		A3739077E4C288E8F01DFBFE /* HerdClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdClientTests.swift; sourceTree = "<group>"; };
 		A439B7E55FFC95CE4FB8B43B /* TransferDeparture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferDeparture.swift; sourceTree = "<group>"; };
 		A5BBA732DB8512138D7F61E0 /* RemoteMetricsSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteMetricsSampler.swift; sourceTree = "<group>"; };
 		A6DD20E8E2282AAF494F50C4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -361,6 +372,7 @@
 		A9412B86A7A317B7D9889090 /* LittleHerdMobileApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LittleHerdMobileApp.swift; sourceTree = "<group>"; };
 		ADFED1C7AB67432390D6D0DA /* MachineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineView.swift; sourceTree = "<group>"; };
 		AE0C8992200961B65C6E1A14 /* MachineAccountTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineAccountTests.swift; sourceTree = "<group>"; };
+		AE9FAC57BB1E8BC8307055D2 /* LittleHerdMobileTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LittleHerdMobileTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF5116683456A747005BF658 /* SynologyMetricsSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyMetricsSampler.swift; sourceTree = "<group>"; };
 		B0A25D8E05197294CF85F80D /* TransferDepartureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferDepartureTests.swift; sourceTree = "<group>"; };
 		B15AD1FE8E57EC1A9E3162EE /* MachinePresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachinePresentationTests.swift; sourceTree = "<group>"; };
@@ -604,6 +616,7 @@
 			children = (
 				3104CFE970CB2484A5A4EE88 /* LittleHerd */,
 				BA387917B65451737F13742C /* LittleHerdMobile */,
+				ECB855A335BA03A7B7458286 /* LittleHerdMobileTests */,
 				9A6B4EC4EA1C760DC6AD020B /* LittleHerdTests */,
 				68E1706657D5A2AA5AB59FEC /* Frameworks */,
 				B3067EBE8EED9236BBF3F959 /* Products */,
@@ -708,6 +721,7 @@
 			children = (
 				6D7D3C2D4C1908811B46F252 /* LittleHerd.app */,
 				71FEC8F5DAF15B17841076B8 /* LittleHerdMobile.app */,
+				AE9FAC57BB1E8BC8307055D2 /* LittleHerdMobileTests.xctest */,
 				7A22449665459CDACD6F0410 /* LittleHerdTests.xctest */,
 			);
 			name = Products;
@@ -717,6 +731,7 @@
 			isa = PBXGroup;
 			children = (
 				A6DD20E8E2282AAF494F50C4 /* Assets.xcassets */,
+				1F102B07AB74465137895C33 /* fixture-herd.json */,
 				E66EEFF801318F198F8B91A5 /* HerdClient.swift */,
 				CBC1386A8106D9388424FC62 /* HerdView.swift */,
 				395715BF434FB00EE3D97A25 /* Info.plist */,
@@ -725,6 +740,14 @@
 				DD7F9A685AB70FC2022E8D62 /* WatcherPicker.swift */,
 			);
 			path = LittleHerdMobile;
+			sourceTree = "<group>";
+		};
+		ECB855A335BA03A7B7458286 /* LittleHerdMobileTests */ = {
+			isa = PBXGroup;
+			children = (
+				A3739077E4C288E8F01DFBFE /* HerdClientTests.swift */,
+			);
+			path = LittleHerdMobileTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -749,6 +772,24 @@
 			productName = LittleHerd;
 			productReference = 6D7D3C2D4C1908811B46F252 /* LittleHerd.app */;
 			productType = "com.apple.product-type.application";
+		};
+		7036C2C6F9DC33E05E3EA07D /* LittleHerdMobileTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9891618166B79B0777C820A1 /* Build configuration list for PBXNativeTarget "LittleHerdMobileTests" */;
+			buildPhases = (
+				995576BF944CBC773C82FA60 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1057D2E790BD0E2E18BA1027 /* PBXTargetDependency */,
+			);
+			name = LittleHerdMobileTests;
+			packageProductDependencies = (
+			);
+			productName = LittleHerdMobileTests;
+			productReference = AE9FAC57BB1E8BC8307055D2 /* LittleHerdMobileTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		9245D79A1D5FF8437014DE8E /* LittleHerdTests */ = {
 			isa = PBXNativeTarget;
@@ -798,6 +839,10 @@
 					590806D535CA7EF96033EABD = {
 						ProvisioningStyle = Automatic;
 					};
+					7036C2C6F9DC33E05E3EA07D = {
+						DevelopmentTeam = X2RKZ5TG99;
+						ProvisioningStyle = Automatic;
+					};
 					9245D79A1D5FF8437014DE8E = {
 						ProvisioningStyle = Automatic;
 					};
@@ -826,6 +871,7 @@
 			targets = (
 				590806D535CA7EF96033EABD /* LittleHerd */,
 				FABF07E1CF1C702983182390 /* LittleHerdMobile */,
+				7036C2C6F9DC33E05E3EA07D /* LittleHerdMobileTests */,
 				9245D79A1D5FF8437014DE8E /* LittleHerdTests */,
 			);
 		};
@@ -837,6 +883,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BB37539F9B6DF9329F83BC0C /* Assets.xcassets in Resources */,
+				49F48DB38043AA34C8B5FFCD /* fixture-herd.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -851,6 +898,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		995576BF944CBC773C82FA60 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9493CFE141C68D8BF8EF237E /* HerdClientTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CC739A9AA71EBFDFA7A8ADB7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1088,6 +1143,11 @@
 			target = 590806D535CA7EF96033EABD /* LittleHerd */;
 			targetProxy = CE333652370056ABB41EDB21 /* PBXContainerItemProxy */;
 		};
+		1057D2E790BD0E2E18BA1027 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FABF07E1CF1C702983182390 /* LittleHerdMobile */;
+			targetProxy = 5F720A8F36A8D81FB5045457 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -1166,6 +1226,25 @@
 			};
 			name = Release;
 		};
+		4F0D2E26DFDE1523E6FA7F3D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = X2RKZ5TG99;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.malpern.LittleHerdMobileTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Little Herd.app/Little Herd";
+			};
+			name = Release;
+		};
 		A4410D61071CAC12F3EB295D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1185,6 +1264,25 @@
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
 				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		C5475799214403EFE45DAE18 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = X2RKZ5TG99;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.malpern.LittleHerdMobileTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Little Herd.app/Little Herd";
 			};
 			name = Debug;
 		};
@@ -1356,6 +1454,15 @@
 			buildConfigurations = (
 				EA41EF37023BEA7B074BAF7B /* Debug */,
 				458A59A266E5BF2C7E53356F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9891618166B79B0777C820A1 /* Build configuration list for PBXNativeTarget "LittleHerdMobileTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C5475799214403EFE45DAE18 /* Debug */,
+				4F0D2E26DFDE1523E6FA7F3D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

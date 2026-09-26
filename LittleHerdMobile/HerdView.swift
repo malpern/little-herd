@@ -161,7 +161,9 @@ struct MachineRow: View {
         if let reason = machine.unavailability {
             Text(reason)
         } else if machine.isStorage {
-            Text(machine.volumes.isEmpty ? "Storage" : "\(machine.volumes.count) volumes")
+            Text(machine.volumes.isEmpty
+                ? "Storage"
+                : "^[\(machine.volumes.count) volume](inflect: true)")
         } else {
             Text(sessionsSummary)
         }
