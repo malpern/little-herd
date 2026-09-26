@@ -64,6 +64,8 @@ final class HerdServer {
     /// What a request must carry to read the herd. Settable, so a new code
     /// takes effect without restarting the listener.
     var pairingCode: String
+    /// What a paired phone may ask of this watcher. Nil keeps it read-only.
+    var writes: HerdWrites?
 
     init(watcherName: String, pairingCode: String, provider: @escaping SnapshotProvider) {
         self.watcherName = watcherName
@@ -147,8 +149,7 @@ final class HerdServer {
         receive(on: connection, into: reader)
     }
 
-    /// Reads until the headers end, then answers. A body is ignored: nothing
-    /// here accepts one.
+    /// Reads until the headers and any body have arrived, then answers.
     private func receive(on connection: NWConnection, into reader: HerdRequestReader) {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 16384) {
             [weak self] data, _, isComplete, error in
@@ -170,7 +171,8 @@ final class HerdServer {
         let response = HerdServer.response(
             for: request,
             pairingCode: pairingCode,
-            snapshot: provider
+            snapshot: provider,
+            writes: writes
         )
         requestsAnswered += 1
         connection.send(content: response, completion: .contentProcessed { _ in
@@ -183,8 +185,12 @@ final class HerdServer {
     static func response(
         for request: HerdRequest,
         pairingCode: String,
-        snapshot: SnapshotProvider
+        snapshot: SnapshotProvider,
+        writes: HerdWrites? = nil
     ) -> Data {
+        if request.method == "POST" {
+            return write(request, pairingCode: pairingCode, writes: writes)
+        }
         switch (request.method, request.path) {
         case ("GET", "/herd"), ("GET", "/herd.json"):
             guard HerdWire.Pairing.accepts(
@@ -220,6 +226,63 @@ final class HerdServer {
         }
     }
 
+    /// The three writes. `/pair` is the only one the pairing code alone
+    /// admits; everything after it must be signed with the key it produced.
+    private static func write(
+        _ request: HerdRequest,
+        pairingCode: String,
+        writes: HerdWrites?
+    ) -> Data {
+        guard let writes else {
+            return text("405 Method Not Allowed", "reads only\n")
+        }
+        let decoder = HerdWire.decoder()
+        if request.path == "/pair" {
+            guard HerdWire.Pairing.accepts(
+                request.headers[HerdWire.Pairing.headerName.lowercased()],
+                code: pairingCode
+            ) else {
+                return text("401 Unauthorized", "pairing code required\n")
+            }
+            guard let pair = try? decoder.decode(HerdWire.PairRequest.self, from: request.body),
+                  let answer = try? writes.pair(pair)
+            else { return text("400 Bad Request", "could not pair\n") }
+            return json(answer)
+        }
+
+        let deviceID: String
+        switch writes.verify(request) {
+        case .accepted(let id): deviceID = id
+        case .refused(let why): return text("403 Forbidden", why + "\n")
+        }
+
+        switch request.path {
+        case "/move":
+            guard let move = try? decoder.decode(HerdWire.MoveRequest.self, from: request.body) else {
+                return text("400 Bad Request", "not a move\n")
+            }
+            herdServerLog.info("move \(move.session, privacy: .public) \(move.from, privacy: .public)→\(move.to, privacy: .public) dryRun=\(move.dryRun) by \(deviceID, privacy: .public)")
+            return json(writes.move(move))
+        case "/push":
+            guard let registration = try? decoder.decode(HerdWire.PushRegistration.self, from: request.body) else {
+                return text("400 Bad Request", "not a registration\n")
+            }
+            writes.registerPush(registration, deviceID)
+            return text("200 OK", "registered\n")
+        default:
+            return text("404 Not Found", "no such write\n")
+        }
+    }
+
+    private static func text(_ status: String, _ body: String) -> Data {
+        http(status: status, contentType: "text/plain; charset=utf-8", body: Data(body.utf8))
+    }
+
+    private static func json(_ value: some Encodable) -> Data {
+        let body = (try? HerdWire.encoder().encode(value)) ?? Data()
+        return http(status: "200 OK", contentType: "application/json", body: body)
+    }
+
     private static func http(status: String, contentType: String, body: Data) -> Data {
         var head = "HTTP/1.1 \(status)\r\n"
         head += "Content-Type: \(contentType)\r\n"
@@ -232,13 +295,25 @@ final class HerdServer {
     }
 }
 
-/// The three things about a request worth knowing.
+/// What a paired phone may ask, as closures so the server stays testable
+/// without a model behind it.
+@MainActor
+struct HerdWrites {
+    let pair: (HerdWire.PairRequest) throws -> HerdWire.PairResponse
+    let verify: (HerdRequest) -> HerdWriteGate.Verdict
+    let move: (HerdWire.MoveRequest) -> HerdWire.MoveResponse
+    let registerPush: (HerdWire.PushRegistration, String) -> Void
+}
+
+/// The things about a request worth knowing.
 nonisolated struct HerdRequest: Equatable, Sendable {
     let method: String
     /// The path with any query string removed.
     let path: String
-    /// Header names lower-cased, values trimmed. Only `authorization` is read.
+    /// Header names lower-cased, values trimmed.
     var headers: [String: String] = [:]
+    /// Exactly `Content-Length` bytes, for the writes that carry one.
+    var body = Data()
 
     /// Parses a request from its bytes, or nothing if the headers have not all
     /// arrived yet.
@@ -260,7 +335,18 @@ nonisolated struct HerdRequest: Equatable, Sendable {
             let value = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
             headers[name] = value
         }
-        return HerdRequest(method: String(parts[0]).uppercased(), path: target, headers: headers)
+        // Wait for the whole body before answering: a write read half-way
+        // would be signed over bytes it never saw.
+        let length = headers["content-length"].flatMap(Int.init) ?? 0
+        let bodyStart = headerEnd.upperBound
+        guard data.count - bodyStart >= length else { return nil }
+        let body = data.subdata(in: bodyStart ..< bodyStart + length)
+        return HerdRequest(
+            method: String(parts[0]).uppercased(),
+            path: target,
+            headers: headers,
+            body: body
+        )
     }
 }
 

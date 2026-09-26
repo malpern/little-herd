@@ -1,3 +1,4 @@
+import Charts
 import SwiftUI
 
 /// One machine through one lens — where tapping a column lands.
@@ -14,6 +15,7 @@ struct MachineLensView: View {
     let machineID: String
     let lens: HerdLens
     let client: HerdClient
+    var onMove: (MoveIntent) -> Void = { _ in }
 
     var body: some View {
         Group {
@@ -25,7 +27,13 @@ struct MachineLensView: View {
                             .padding(.top, 8)
                             .padding(.bottom, 20)
                         Divider().padding(.horizontal, 20)
-                        MachineLensDetail(machine: machine, lens: lens)
+                        MachineLensDetail(
+                            machine: machine,
+                            lens: lens,
+                            snapshot: client.snapshot,
+                            canWrite: client.canWrite,
+                            onMove: onMove
+                        )
                             .padding(.top, 8)
                             .padding(.bottom, 32)
                     }
@@ -102,18 +110,32 @@ struct MachineLensHero: View {
 struct MachineLensDetail: View {
     let machine: HerdWire.Machine
     let lens: HerdLens
+    var snapshot: HerdWire.Snapshot?
+    var canWrite = false
+    var onMove: (MoveIntent) -> Void = { _ in }
+
+    @State private var carrying: CarriedSession?
 
     var body: some View {
-        switch lens {
-        case .cpu: cpu
-        case .memory: memory
-        case .disk: disk
-        case .ai: sessions
+        VStack(alignment: .leading, spacing: 0) {
+            let alerts = (snapshot?.alerts ?? []).filter { $0.machine == machine.id }
+            if !alerts.isEmpty {
+                AlertsCallout(alerts: alerts, onOpen: { _ in })
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
+            }
+            switch lens {
+            case .cpu: cpu
+            case .memory: memory
+            case .disk: disk
+            case .ai: sessions
+            }
         }
     }
 
     // MARK: CPU
 
+    @ViewBuilder
     private var cpu: some View {
         DetailSection(title: "LOAD") {
             if machine.state == "live" {
@@ -128,10 +150,33 @@ struct MachineLensDetail: View {
                 unavailable
             }
         }
+        if let history = machine.cpuHistory, history.count > 1 {
+            HistoryChart(points: history, tint: HerdTheme.loadTeal)
+        }
+        if let processes = machine.processes, !processes.isEmpty {
+            DetailSection(title: "WHAT’S RUNNING") {
+                ForEach(processes) { process in
+                    HStack(spacing: 10) {
+                        Image(systemName: process.agent == nil ? "gearshape" : "sparkles")
+                            .foregroundStyle(process.agent == nil ? Color.secondary : Color.orange)
+                            .frame(width: 22)
+                        Text(process.name).lineLimit(1)
+                        Spacer()
+                        Text(process.percent.map { "\(Int($0.rounded()))%" }
+                            ?? String(format: "%.1fc", process.cores))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 5)
+                }
+            }
+        }
     }
 
     // MARK: Memory
 
+    @ViewBuilder
     private var memory: some View {
         DetailSection(title: "MEMORY") {
             if machine.state == "live" {
@@ -152,6 +197,30 @@ struct MachineLensDetail: View {
                     .padding(.top, 4)
             } else {
                 unavailable
+            }
+        }
+        if let history = machine.memoryHistory, history.count > 1 {
+            HistoryChart(points: history, tint: .purple)
+        }
+        if let consumers = machine.memoryConsumers, !consumers.isEmpty {
+            DetailSection(title: "WHAT’S USING MEMORY") {
+                ForEach(consumers) { consumer in
+                    HStack(spacing: 10) {
+                        Text(consumer.name).lineLimit(1)
+                        if let growing = consumer.growingBytes, growing > 0 {
+                            Label("+\(bytes(growing))", systemImage: "arrow.up.right")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                                .labelStyle(.titleAndIcon)
+                        }
+                        Spacer()
+                        Text(bytes(consumer.bytes))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 5)
+                }
             }
         }
     }
@@ -212,6 +281,14 @@ struct MachineLensDetail: View {
                 ForEach(matching) { session in
                     VStack(alignment: .leading, spacing: 0) {
                         AISessionRow(session: session)
+                            .movable(
+                                session,
+                                from: machine,
+                                in: snapshot ?? HerdWire.Snapshot(watcher: "", generatedAt: .now, machines: [machine]),
+                                canWrite: canWrite,
+                                carrying: $carrying,
+                                onMove: onMove
+                            )
                         SessionFacts(session: session)
                             .padding(.leading, 64)
                             .padding(.trailing, 20)
@@ -334,5 +411,36 @@ struct SessionFacts: View {
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
         }
+    }
+}
+
+/// The last few minutes of a reading, as the Mac's detail pane draws it: an
+/// area under a line, scaled to the whole 0–100 so a flat 12% looks flat.
+struct HistoryChart: View {
+    let points: [HerdWire.Point]
+    let tint: Color
+
+    var body: some View {
+        Chart(points, id: \.t) { point in
+            AreaMark(x: .value("Time", point.t), y: .value("Percent", point.v))
+                .foregroundStyle(tint.opacity(0.18))
+                .interpolationMethod(.monotone)
+            LineMark(x: .value("Time", point.t), y: .value("Percent", point.v))
+                .foregroundStyle(tint)
+                .interpolationMethod(.monotone)
+        }
+        .chartYScale(domain: 0 ... 100)
+        .chartYAxis {
+            AxisMarks(values: [0, 50, 100]) { value in
+                AxisGridLine()
+                AxisValueLabel { Text("\(value.as(Int.self) ?? 0)%") }
+            }
+        }
+        .chartXAxis(.hidden)
+        .frame(height: 110)
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .accessibilityLabel("Recent history")
+        .accessibilityValue(points.last.map { "\(Int($0.v.rounded())) percent now" } ?? "")
     }
 }

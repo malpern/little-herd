@@ -645,6 +645,8 @@ private struct LittleHerdSettingsView: View {
     private var alertsSuppressed = false
     @AppStorage(LittleHerdPreferences.alertCommandKey)
     private var alertCommand = ""
+    @AppStorage(HerdPushRelay.keyPathKey) private var pushKeyPath = ""
+    @AppStorage(HerdPushRelay.keyIDKey) private var pushKeyID = ""
     @AppStorage(LittleHerdPreferences.startsUsageSourceKey)
     private var startsUsageSource = true
     @AppStorage(LittleHerdPreferences.requiresDestinationApprovalKey)
@@ -751,6 +753,39 @@ private struct LittleHerdSettingsView: View {
 
                         Text("Type it into Little Herd on your iPhone once. "
                             + "Without it, the phone can find this Mac but not read the herd.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        // Phones that have paired for moves, so "who can start
+                        // work on this herd" is answerable without a terminal.
+                        Text(herdWatcher.pairedDeviceNames.isEmpty
+                            ? "No phone has paired for moving work yet."
+                            : "Can move work: " + herdWatcher.pairedDeviceNames.joined(separator: ", ")
+                                + ". A new code forgets them.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        HStack(spacing: 6) {
+                            Text("Push key:")
+                            TextField("~/.config/apns/AuthKey_XXXXXXXXXX.p8", text: $pushKeyPath)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.caption.monospaced())
+                            TextField("Key ID", text: $pushKeyID)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.caption.monospaced())
+                                .frame(width: 96)
+                        }
+                        .font(.callout)
+                        .padding(.top, 4)
+
+                        Text(herdWatcher.push.isConfigured
+                            ? "Alerts are pushed to paired iPhones the moment they are raised."
+                            : "An APNs key from developer.apple.com (Keys → Apple Push "
+                                + "Notifications service) lets this Mac push alerts to a phone "
+                                + "that is asleep. Without one the phone still says them "
+                                + "whenever it reads the herd.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)

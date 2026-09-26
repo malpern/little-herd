@@ -49,7 +49,18 @@ final class HerdWatcher {
         let code = HerdWire.Pairing.generate()
         defaults.set(code, forKey: LittleHerdPreferences.herdPairingCodeKey)
         server?.pairingCode = code
+        // The code salts every paired phone's key, so none of them could sign
+        // after this anyway; forgetting them says so rather than leaving
+        // entries that can never work.
+        devices.removeAll()
     }
+
+    /// Phones that may move sessions, and send pushes to.
+    @ObservationIgnored let devices: HerdDeviceStore
+    @ObservationIgnored private let gate = HerdWriteGate()
+    @ObservationIgnored let push: HerdPushRelay
+
+    var pairedDeviceNames: [String] { devices.devices.map(\.name) }
 
     private func storedPairingCode() -> String {
         if let stored = defaults.string(forKey: LittleHerdPreferences.herdPairingCodeKey),
@@ -70,6 +81,8 @@ final class HerdWatcher {
         self.model = model
         self.watcherName = watcherName
         self.defaults = defaults
+        devices = HerdDeviceStore(defaults: defaults)
+        push = HerdPushRelay(devices: devices, defaults: defaults)
         defaultsObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
             object: defaults,
@@ -93,14 +106,28 @@ final class HerdWatcher {
                 watcherName: watcherName,
                 pairingCode: storedPairingCode()
             ) { [model, watcherName] in
-                model.wireSnapshot(watcherName: watcherName)
+                model.wireSnapshot(watcherName: watcherName, acceptsWrites: true)
             }
+            server.writes = HerdWrites(
+                pair: { [devices, weak server] request in
+                    try devices.pair(request, pairingCode: server?.pairingCode ?? "")
+                },
+                verify: { [gate, devices] request in
+                    gate.verify(request, keys: devices.key(for:))
+                },
+                move: { [model] request in model.remoteMove(request) },
+                registerPush: { [devices] registration, deviceID in
+                    devices.setPush(registration, for: deviceID)
+                }
+            )
             self.server = server
+            HerdPushRelay.shared = push
             model.activate(.watcher)
             server.start(port: configuredPort)
         } else if !shouldServe, let server {
             server.stop()
             self.server = nil
+            HerdPushRelay.shared = nil
             model.deactivate(.watcher)
         }
     }
@@ -120,17 +147,87 @@ extension MonitorModel {
     /// Every figure here is the one the menu bar already computes for the same
     /// machine — `menuBarSnapshot` is the precedent — so the phone cannot say
     /// something the Mac would not.
-    func wireSnapshot(watcherName: String, now: Date = .now) -> HerdWire.Snapshot {
-        HerdWire.Snapshot(
+    func wireSnapshot(
+        watcherName: String,
+        now: Date = .now,
+        acceptsWrites: Bool = false
+    ) -> HerdWire.Snapshot {
+        let herd = machines.map(\.destinationAccount)
+        let requiresApproval = UserDefaults.standard
+            .bool(forKey: LittleHerdPreferences.requiresDestinationApprovalKey)
+        return HerdWire.Snapshot(
             watcher: watcherName,
             generatedAt: now,
-            machines: machines.map { $0.wireMachine(now: now) }
+            machines: machines.map {
+                $0.wireMachine(
+                    now: now,
+                    herd: acceptsWrites ? herd : nil,
+                    requiresApproval: requiresApproval
+                )
+            },
+            transfers: wireTransfers,
+            alerts: machines.flatMap { machine in
+                MachineAlert.active(for: machine)
+                    .sorted { $0.rawValue < $1.rawValue }
+                    .map { alert in
+                        HerdWire.Alert(
+                            id: "\(machine.machine.rawValue):\(alert.rawValue)",
+                            machine: machine.machine.rawValue,
+                            kind: alert.rawValue,
+                            title: alert.title(machine: machine.name),
+                            body: MachineAlertCenter.body(for: alert, machine)
+                        )
+                    }
+            },
+            acceptsWrites: acceptsWrites
         )
+    }
+
+    /// Transfers the dashboard's strip would show, newest first.
+    private var wireTransfers: [HerdWire.Transfer] {
+        transfers.order.reversed().compactMap { transfer in
+            guard let phase = transfers.phase(for: transfer) else { return nil }
+            let (name, detail): (String, String?) = switch phase {
+            case .fixing(let machine): ("fixing", "Setting up \(machine)")
+            case .preparing: ("preparing", "Writing down where it got to")
+            case .running(let purpose): ("running", Self.wireDetail(purpose))
+            case .finished(let outcome):
+                outcome.result == .landed
+                    ? ("landed", nil)
+                    : ("failed", outcome.output.isEmpty ? nil : outcome.output)
+            }
+            return HerdWire.Transfer(
+                id: transfer.branch,
+                title: transfer.title,
+                origin: transfer.origin.rawValue,
+                destination: transfer.destination.rawValue,
+                phase: name,
+                progress: phase.progress,
+                detail: detail
+            )
+        }
+    }
+
+    private static func wireDetail(_ purpose: SuccessorRun.Step.Purpose) -> String {
+        switch purpose {
+        case .worktree: "Making a worktree"
+        case .prompt: "Handing over the brief"
+        case .agent: "The agent is working"
+        case .verification: "Running the checks"
+        case .delivery: "Pushing the result"
+        case .cleanup: "Tidying up"
+        }
     }
 }
 
 extension MachineMonitorModel {
-    func wireMachine(now: Date) -> HerdWire.Machine {
+    /// - Parameter herd: every machine's destination account, when the watcher
+    ///   accepts moves; nil leaves `move` off every session.
+    func wireMachine(
+        now: Date,
+        herd: [DestinationAccount]? = nil,
+        requiresApproval: Bool = false
+    ) -> HerdWire.Machine {
         let diskMetric = metrics.first(where: { $0.kind == .disk })?.value
         return HerdWire.Machine(
             id: machine.rawValue,
@@ -177,10 +274,87 @@ extension MachineMonitorModel {
                     activity: session.activity?.phrase,
                     workingDirectory: session.workingDirectory,
                     contextTokens: session.contextTokens,
-                    model: session.model
+                    model: session.model,
+                    move: herd.map { wireMove(for: session, in: $0, requiresApproval: requiresApproval) }
                 )
-            }
+            },
+            cpuHistory: Self.thinned(series(for: .cpu).points),
+            memoryHistory: Self.thinned(series(for: .memory).points),
+            processes: state == .live
+                ? activities
+                    .filter { $0.cpuCores >= 0.05 }
+                    .prefix(12)
+                    .map { activity in
+                        HerdWire.Process(
+                            name: String(localized: activity.shortLabel),
+                            pid: activity.processID,
+                            percent: ProcessShare.percent(
+                                ofOneCore: activity.cpuPercent,
+                                coreCount: coreCount
+                            ),
+                            cores: activity.cpuCores,
+                            agent: activity.agentTask.map { _ in activity.processName }
+                        )
+                    }
+                : nil,
+            memoryConsumers: state == .live
+                ? memoryConsumers.prefix(12).map {
+                    HerdWire.Consumer(
+                        name: $0.name,
+                        bytes: $0.residentBytes,
+                        growingBytes: $0.growthEvidence?.growthBytes
+                    )
+                }
+                : nil
         )
+    }
+
+    /// The verdict the dashboard would reach for a drag of this session.
+    private func wireMove(
+        for session: AgentSession,
+        in herd: [DestinationAccount],
+        requiresApproval: Bool
+    ) -> HerdWire.Move {
+        let verdict = TransferEligibility.verdict(
+            for: session,
+            hasRepository: session.workingDirectory != nil
+        )
+        let carrying = MachineAgentActivity(provider: session.provider, sessions: [session])
+        let destinations: [HerdWire.Destination] = herd.compactMap { account in
+            guard account.machine != machine else { return nil }
+            switch AgentDropEligibility.disposition(
+                of: account.machine,
+                carrying: carrying,
+                from: machine,
+                in: herd,
+                requiresApproval: requiresApproval
+            ) {
+            case .ready: return HerdWire.Destination(machine: account.machine.rawValue, disposition: "ready")
+            case .fixable: return HerdWire.Destination(machine: account.machine.rawValue, disposition: "fixable")
+            case .refuse: return nil
+            }
+        }
+        switch verdict {
+        case .ready:
+            return HerdWire.Move(verdict: "ready", reason: nil, destinations: destinations)
+        case .afterItFinishes:
+            return HerdWire.Move(verdict: "afterItFinishes", reason: nil, destinations: destinations)
+        case .refused(let refusal):
+            return HerdWire.Move(
+                verdict: "refused",
+                reason: TransferEligibility.explanation(for: refusal),
+                destinations: []
+            )
+        }
+    }
+
+    /// A few dozen points is a sparkline; the full history is a payload.
+    private static func thinned(_ points: [HistoryPoint], keeping limit: Int = 48) -> [HerdWire.Point]? {
+        guard !points.isEmpty else { return nil }
+        let stride = max(1, Int((Double(points.count) / Double(limit)).rounded(.up)))
+        var kept = Swift.stride(from: points.count - 1, through: 0, by: -stride).map { points[$0] }
+        kept.reverse()
+        return kept.map { HerdWire.Point(t: $0.timestamp, v: $0.value) }
     }
 
     private static func wireName(_ pressure: MemoryPressureLevel) -> String {

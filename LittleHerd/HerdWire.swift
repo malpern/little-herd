@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// What the watcher tells a phone.
@@ -41,6 +42,17 @@ nonisolated enum HerdWire {
         let watcher: String
         let generatedAt: Date
         let machines: [Machine]
+        // Everything below is optional and was added after version 1 shipped:
+        // an older watcher simply omits it, and an older phone ignores it, so
+        // neither end needs the other to update first.
+        /// Moves in flight or just finished, newest first.
+        var transfers: [Transfer]? = nil
+        /// The critical events the watcher's own alerts are raising right now —
+        /// what a phone turns into notifications.
+        var alerts: [Alert]? = nil
+        /// Whether this watcher accepts signed writes (`/pair`, `/move`). A
+        /// watcher that does not is read-only, and the phone hides moving.
+        var acceptsWrites: Bool? = nil
     }
 
     struct Machine: Codable, Hashable, Identifiable, Sendable {
@@ -73,6 +85,14 @@ nonisolated enum HerdWire {
         let diskUsedPercent: Double?
         let volumes: [Volume]
         let sessions: [Session]
+        /// Recent readings, oldest first, thinned to a few dozen points.
+        var cpuHistory: [Point]? = nil
+        var memoryHistory: [Point]? = nil
+        /// What is using the CPU, busiest first, as a share of the whole
+        /// machine rather than of one core.
+        var processes: [Process]? = nil
+        /// What is holding memory, largest first.
+        var memoryConsumers: [Consumer]? = nil
 
         /// Sessions actually working, the number that decides whether a
         /// machine is carrying anything.
@@ -119,7 +139,124 @@ nonisolated enum HerdWire {
         let workingDirectory: String?
         let contextTokens: Int?
         let model: String?
+        /// Whether it can be moved, and where to. Absent from a read-only
+        /// watcher.
+        var move: Move? = nil
     }
+
+    struct Point: Codable, Hashable, Sendable {
+        let t: Date
+        let v: Double
+    }
+
+    struct Process: Codable, Hashable, Identifiable, Sendable {
+        var id: String { name + (pid.map { ":\($0)" } ?? "") }
+        let name: String
+        let pid: Int?
+        /// Share of the whole machine, 0–100.
+        let percent: Double?
+        /// Cores in use, for when there is no core count to divide by.
+        let cores: Double
+        /// Set when the process is an agent's, with what it is doing.
+        let agent: String?
+    }
+
+    struct Consumer: Codable, Hashable, Identifiable, Sendable {
+        var id: String { name }
+        let name: String
+        let bytes: Double
+        /// Growth over the observed window, when it has been rising.
+        let growingBytes: Double?
+    }
+
+    /// The move verdict for one session, taken from `TransferEligibility` and
+    /// `AgentDropEligibility` on the watcher so the phone decides nothing.
+    struct Move: Codable, Hashable, Sendable {
+        /// `ready`, `afterItFinishes` or `refused`.
+        let verdict: String
+        /// Why not, in a sentence, when refused.
+        let reason: String?
+        /// Machines that would take it; `fixable` means the watcher sets the
+        /// machine up first, as a phase you can watch.
+        let destinations: [Destination]
+    }
+
+    struct Destination: Codable, Hashable, Sendable {
+        let machine: String
+        /// `ready` or `fixable`.
+        let disposition: String
+    }
+
+    struct Transfer: Codable, Hashable, Identifiable, Sendable {
+        /// The branch carrying the work — unique per move.
+        let id: String
+        let title: String
+        let origin: String
+        let destination: String
+        /// `fixing`, `preparing`, `running`, `landed` or `failed`.
+        let phase: String
+        /// 0–1.
+        let progress: Double
+        /// What it is doing now, or why it stopped.
+        let detail: String?
+    }
+
+    struct Alert: Codable, Hashable, Identifiable, Sendable {
+        /// `machine:kind` — stable for as long as the condition lasts, so a
+        /// phone notifies once per episode rather than once per read.
+        let id: String
+        let machine: String
+        let kind: String
+        let title: String
+        let body: String
+    }
+
+    // MARK: - Writes
+
+    /// A phone asking to be trusted with writes. Sent with the pairing code,
+    /// once; the answer is the watcher's half of a key exchange.
+    struct PairRequest: Codable, Sendable {
+        let deviceName: String
+        /// The phone's P-256 key-agreement public key, raw representation.
+        let publicKey: Data
+    }
+
+    struct PairResponse: Codable, Sendable {
+        let deviceID: String
+        let watcherPublicKey: Data
+    }
+
+    struct MoveRequest: Codable, Sendable {
+        /// The provider-prefixed session id.
+        let session: String
+        let from: String
+        let to: String
+        /// True asks what would happen and changes nothing — the plan the
+        /// phone shows before a person confirms. The command line's exit 2.
+        let dryRun: Bool
+    }
+
+    struct MoveResponse: Codable, Hashable, Sendable {
+        /// False for a plan or a refusal: nothing was started.
+        let applied: Bool
+        let title: String
+        let fromName: String
+        let toName: String
+        /// Present when the move cannot go ahead.
+        let refusal: String?
+        /// Set up first, when the destination lacks the checkout or agent.
+        let fixesFirst: Bool
+        /// What will happen, in order, for a person deciding.
+        let steps: [String]
+    }
+
+    struct PushRegistration: Codable, Sendable {
+        /// The APNs device token, hex.
+        let token: String
+        /// `development` or `production`, from the app's entitlement.
+        let environment: String
+    }
+
 
     // MARK: - Pairing
 
@@ -169,6 +306,65 @@ nonisolated enum HerdWire {
                 : headerValue
             let expected = normalize(code)
             return !expected.isEmpty && normalize(presented) == expected
+        }
+    }
+
+    // MARK: - Signing
+
+    /// How a paired phone signs a write, and how the watcher checks it.
+    ///
+    /// **The pairing code gates reads; it cannot gate a transfer.** It crosses
+    /// the wire in the clear on every read, so anyone who can see the traffic
+    /// has it. Writes use a key neither end ever sends: at pairing, each side
+    /// makes a P-256 key pair and sends only the public half, and both derive
+    /// the same secret from their own private key and the other's public one.
+    /// Someone watching sees two public keys and cannot compute it. Every write
+    /// is then an HMAC over the method, path, a timestamp, a one-time nonce and
+    /// the body, so a captured request cannot be replayed or altered.
+    ///
+    /// The pairing code is mixed in as salt, so a code change retires every
+    /// device paired under the old one.
+    enum Signing {
+        static let deviceHeader = "X-Herd-Device"
+        static let timeHeader = "X-Herd-Time"
+        static let nonceHeader = "X-Herd-Nonce"
+        static let signatureHeader = "X-Herd-Signature"
+        /// How far a request's clock may be from the watcher's.
+        static let window: TimeInterval = 120
+
+        static func sharedKey(
+            privateKey: P256.KeyAgreement.PrivateKey,
+            peerPublicKey: Data,
+            pairingCode: String
+        ) throws -> SymmetricKey {
+            let peer = try P256.KeyAgreement.PublicKey(rawRepresentation: peerPublicKey)
+            let secret = try privateKey.sharedSecretFromKeyAgreement(with: peer)
+            return secret.hkdfDerivedSymmetricKey(
+                using: SHA256.self,
+                salt: Data(Pairing.normalize(pairingCode).utf8),
+                sharedInfo: Data("little-herd write v1".utf8),
+                outputByteCount: 32
+            )
+        }
+
+        static func canonical(
+            method: String,
+            path: String,
+            time: String,
+            nonce: String,
+            body: Data
+        ) -> Data {
+            let bodyHash = SHA256.hash(data: body).map { String(format: "%02x", $0) }.joined()
+            return Data([method.uppercased(), path, time, nonce, bodyHash].joined(separator: "\n").utf8)
+        }
+
+        static func signature(key: SymmetricKey, canonical: Data) -> String {
+            Data(HMAC<SHA256>.authenticationCode(for: canonical, using: key)).base64EncodedString()
+        }
+
+        static func verify(key: SymmetricKey, canonical: Data, signature: String) -> Bool {
+            guard let presented = Data(base64Encoded: signature) else { return false }
+            return HMAC<SHA256>.isValidAuthenticationCode(presented, authenticating: canonical, using: key)
         }
     }
 

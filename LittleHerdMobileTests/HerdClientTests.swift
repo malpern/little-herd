@@ -76,5 +76,64 @@ struct HerdClientTests {
         #expect(snapshot.machines.flatMap(\.sessions).contains { $0.state == "stalled" })
     }
 
+    /// A watcher from before moves and alerts sends none of the new fields,
+    /// and the phone must still read it — the two update on different days.
+    @Test
+    func anOlderWatcherStillDecodes() throws {
+        let old = #"""
+        {"version":1,"watcher":"Mac","generatedAt":"2026-09-26T12:00:00Z","machines":[
+         {"id":"m","name":"Mac","shortName":"Mac","avatar":"calf-mini","platform":"macOS",
+          "isStorage":false,"isWatcher":true,"state":"live","volumes":[],"sessions":[
+           {"id":"claude:1","short":"1","provider":"claude","state":"waiting","title":"t",
+            "updatedAt":"2026-09-26T12:00:00Z"}]}]}
+        """#
+        let snapshot = try HerdWire.decoder().decode(HerdWire.Snapshot.self, from: Data(old.utf8))
+        #expect(snapshot.acceptsWrites == nil)
+        #expect(snapshot.machines[0].cpuHistory == nil)
+        // No verdict from the watcher means the phone offers no move.
+        #expect(!snapshot.machines[0].sessions[0].isMovable)
+    }
+
+    /// Moving is the watcher's decision: refused, or nowhere to go, is not
+    /// movable however the session looks.
+    @Test
+    func onlyTheWatchersVerdictMakesASessionMovable() throws {
+        let url = try #require(Bundle.main.url(forResource: "fixture-herd", withExtension: "json"))
+        let snapshot = try HerdWire.decoder().decode(HerdWire.Snapshot.self, from: Data(contentsOf: url))
+        let sessions = snapshot.machines.flatMap(\.sessions)
+        #expect(sessions.contains { $0.isMovable })
+        #expect(sessions.filter { $0.state == "stalled" }.allSatisfy { !$0.isMovable })
+        #expect(sessions.filter { $0.state == "completed" }.allSatisfy { !$0.isMovable })
+    }
+
+    /// A pushed alert arrives with the episode id as its identifier; opening
+    /// it has to find the machine from that alone.
+    @Test
+    func aPushedAlertNamesItsMachine() {
+        #expect(HerdNotifier.machine(fromCollapseID: "macMini:diskFull") == "macMini")
+        #expect(HerdNotifier.machine(fromCollapseID: "transfer:herd/x") == nil)
+        #expect(HerdNotifier.machine(fromCollapseID: "nonsense") == nil)
+    }
+
+    /// Waiting before stalled before working, oldest first within each — the
+    /// session kept waiting longest is the one to answer.
+    @Test
+    func theAIListPutsTheLongestWaitFirst() {
+        func session(_ id: String, _ state: String, _ minutesAgo: Double) -> HerdWire.Session {
+            HerdWire.Session(
+                id: id, short: id, provider: "claude", state: state, title: id,
+                updatedAt: Date(timeIntervalSinceNow: -minutesAgo * 60),
+                activity: nil, workingDirectory: nil, contextTokens: nil, model: nil
+            )
+        }
+        let sorted = [
+            session("work", "active", 90),
+            session("newWait", "waiting", 1),
+            session("stall", "stalled", 500),
+            session("oldWait", "waiting", 60),
+        ].sorted(by: AIOverview.order)
+        #expect(sorted.map(\.id) == ["oldWait", "newWait", "stall", "work"])
+    }
+
     private final class Marker {}
 }

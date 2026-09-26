@@ -62,6 +62,16 @@ targets:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
           NSAllowsArbitraryLoads: true
+        # Remote notifications carry the watcher's critical alerts; fetch lets
+        # iOS wake the app now and then to read the herd when no push is
+        # configured, so a disk filling up still reaches the phone.
+        UIBackgroundModes: [fetch, remote-notification]
+        BGTaskSchedulerPermittedIdentifiers: [com.malpern.LittleHerdMobile.refresh]
+    entitlements:
+      path: LittleHerdMobile/LittleHerdMobile.entitlements
+      properties:
+        aps-environment: development
+        com.apple.developer.usernotifications.time-sensitive: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.malpern.LittleHerdMobile

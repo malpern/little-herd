@@ -17,6 +17,8 @@ struct HerdView: View {
     @AppStorage("herdLens") private var lens: HerdLens = .cpu
     @State private var choosingWatcher = false
     @State private var path: [String] = []
+    @State private var moveIntent: MoveIntent?
+    @State private var askedForNotifications = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -26,7 +28,8 @@ struct HerdView: View {
                         snapshot: snapshot,
                         lens: lens,
                         client: client,
-                        onOpen: { path.append($0) }
+                        onOpen: { path.append($0) },
+                        onMove: { moveIntent = $0 }
                     )
                 } else {
                     waiting
@@ -44,7 +47,7 @@ struct HerdView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: String.self) { id in
-                MachineLensView(machineID: id, lens: lens, client: client)
+                MachineLensView(machineID: id, lens: lens, client: client, onMove: { moveIntent = $0 })
             }
         }
         .tint(HerdTheme.forest)
@@ -62,7 +65,43 @@ struct HerdView: View {
         .sheet(isPresented: $choosingWatcher) {
             WatcherPicker(client: client)
         }
+        .sheet(item: $moveIntent) { intent in
+            MoveSheet(intent: intent, client: client)
+        }
+        .sensoryFeedback(.selection, trigger: lens)
         .task { await client.keepFresh() }
+        .onChange(of: client.snapshot) { _, snapshot in
+            guard let snapshot else { return }
+            HerdNotifier.shared.observe(snapshot)
+            if moveIntent == nil,
+               ProcessInfo.processInfo.environment["LITTLE_HERD_OPEN_MOVE"] == "1",
+               let machine = snapshot.machines.first(where: { $0.sessions.contains(where: \.isMovable) }),
+               let session = machine.sessions.first(where: \.isMovable),
+               let destination = session.move?.destinations.first {
+                moveIntent = MoveIntent(session: session, from: machine.id, to: destination.machine)
+            } else if moveIntent == nil,
+                      ProcessInfo.processInfo.environment["LITTLE_HERD_OPEN_MOVE"] == "probe",
+                      let machine = snapshot.machines.first(where: { $0.sessions.contains { $0.state == "waiting" } }),
+                      let session = machine.sessions.first(where: { $0.state == "waiting" }),
+                      let other = snapshot.machines.first(where: { $0.id != machine.id }) {
+                // Asks the watcher about a move it will refuse — the whole
+                // signed path, pairing included, with no chance of starting
+                // anything. Harness only.
+                moveIntent = MoveIntent(session: session, from: machine.id, to: other.id)
+            }
+            // The harness is looked at by screenshot; a system prompt over it
+            // would hide the page being judged.
+            let isHarness = ProcessInfo.processInfo.environment["LITTLE_HERD_FIXTURE"] == "1"
+            if !askedForNotifications, !isHarness {
+                askedForNotifications = true
+                Task { await HerdNotifier.shared.requestAuthorizationIfNeeded() }
+            }
+        }
+        .onAppear {
+            HerdNotifier.shared.onOpenMachine = { id in
+                withAnimation { path = [id] }
+            }
+        }
         .onAppear(perform: applyHarness)
         // A screen nobody has looked at is a screen with a defect in it, and
         // the simulator cannot be tapped from a script. These open a lens and
@@ -137,6 +176,7 @@ struct HerdOverview: View {
     let lens: HerdLens
     let client: HerdClient
     let onOpen: (String) -> Void
+    let onMove: (MoveIntent) -> Void
 
     /// After this long without a successful read, what is on screen is a
     /// memory rather than a report, and it has to look like one. Three of the
@@ -156,6 +196,19 @@ struct HerdOverview: View {
 
                     Divider().padding(.horizontal, 20)
 
+                    if let transfers = snapshot.transfers, !transfers.isEmpty {
+                        TransfersStrip(transfers: transfers, machines: snapshot.machines)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 14)
+                    }
+
+                    let alerts = lensAlerts
+                    if !alerts.isEmpty {
+                        AlertsCallout(alerts: alerts, onOpen: onOpen)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 14)
+                    }
+
                     if stale {
                         StaleBanner(since: client.lastFetched, error: client.lastError)
                             .padding(12)
@@ -168,7 +221,12 @@ struct HerdOverview: View {
 
                     Group {
                         if lens == .ai {
-                            AIOverview(snapshot: snapshot, onOpen: onOpen)
+                            AIOverview(
+                                snapshot: snapshot,
+                                canWrite: client.canWrite,
+                                onOpen: onOpen,
+                                onMove: onMove
+                            )
                         } else {
                             HerdColumnsView(snapshot: snapshot, lens: lens, onOpen: onOpen)
                         }
@@ -188,6 +246,18 @@ struct HerdOverview: View {
             }
             .refreshable { await client.refresh() }
         }
+    }
+
+    /// The alerts this lens is about. Unreachable and signed-out machines are
+    /// news on the lens a person lands on; memory and disk trouble on theirs.
+    private var lensAlerts: [HerdWire.Alert] {
+        let kinds: Set<String> = switch lens {
+        case .cpu: ["unreachable", "signInLost"]
+        case .memory: ["memoryCritical"]
+        case .disk: ["diskFull", "storageUnhealthy"]
+        case .ai: []
+        }
+        return (snapshot.alerts ?? []).filter { kinds.contains($0.kind) }
     }
 
     private func footer(showsError: Bool) -> some View {
@@ -221,7 +291,7 @@ struct OverviewHeader: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(lens.title)
                     .font(.title2.weight(.bold))
-                HStack(spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Circle()
                         .fill(dotColor)
                         .frame(width: 7, height: 7)
@@ -264,7 +334,9 @@ struct HerdColumnsView: View {
 
     var body: some View {
         let count = min(max(snapshot.machines.count, 1), 4)
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: count)
+        // Top-aligned, so a name that wraps at a large text size makes its own
+        // column taller instead of pushing its figure out of line.
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 6, alignment: .top), count: count)
         LazyVGrid(columns: columns, spacing: 28) {
             ForEach(snapshot.machines) { machine in
                 Button {
@@ -378,11 +450,27 @@ struct MachineAvatar: View {
 /// waiting longest first.
 struct AIOverview: View {
     let snapshot: HerdWire.Snapshot
+    let canWrite: Bool
     let onOpen: (String) -> Void
+    let onMove: (MoveIntent) -> Void
+
+    @State private var carrying: CarriedSession?
 
     var body: some View {
         let groups = Self.groups(in: snapshot)
         VStack(alignment: .leading, spacing: 22) {
+            if canWrite, groups.contains(where: { $0.sessions.contains(where: \.isMovable) }) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(carrying == nil
+                        ? "Hold a session to drag it to another machine"
+                        : "Drop on a machine to move it there")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 20)
+                        .contentTransition(.opacity)
+                    MachinePens(snapshot: snapshot, carrying: $carrying, onDrop: onMove)
+                }
+            }
             if groups.isEmpty {
                 Text("Nothing running across the herd.")
                     .foregroundStyle(.secondary)
@@ -406,6 +494,14 @@ struct AIOverview: View {
                             AISessionRow(session: session)
                         }
                         .buttonStyle(.plain)
+                        .movable(
+                            session,
+                            from: group.machine,
+                            in: snapshot,
+                            canWrite: canWrite,
+                            carrying: $carrying,
+                            onMove: onMove
+                        )
                         Divider().padding(.leading, 64)
                     }
                     if group.finished > 0 {

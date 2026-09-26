@@ -2233,8 +2233,47 @@ the only part drawn.
     "were you told" check on a private network, and this app has been careful never to
     raise a Keychain prompt. Proven live: 401 without, 401 wrong, 200 lower-case with
     the dash; and the phone's 401 screen says where the code is rather than "error".
-    It is still plain HTTP, so `move` from a phone stays unbuilt: a code a sniffer can
-    replay is enough to gate reads, not to gate a seven-step transfer.
+    The code gates reads only. It crosses the wire in the clear, so it is not enough to
+    gate a seven-step transfer, and writes do not rely on it (below).
+
+    **Writes are signed, and the code is not the key.** `POST /pair` (the code alone
+    admits it) is a P-256 key agreement: each end sends only a public key and both
+    derive the same HMAC key, salted with the code. Someone who can read the traffic
+    sees two public keys and cannot compute it. Every later write (`/move`, `/push`) is
+    an HMAC over method, path, time, a one-time nonce and the body; the watcher
+    refuses an unknown device, a clock more than 120 s off, a spent nonce, and a bad
+    MAC. "New code" forgets every paired phone. The watcher keeps only the derived key,
+    in defaults beside the code (no Keychain prompt); the phone keeps its key in the
+    iOS Keychain. `HerdWriteTests` pins replay, tampering, stale clocks, code-only
+    forgery, and that an unsigned move never reaches the model. Proven live on 26
+    September: the simulator paired with the mini's watcher and a signed dry run came
+    back with the watcher's own refusal.
+
+    **Moving from the phone is plan-then-confirm.** Drag a session in the AI tab onto a
+    machine pen (green = ready, amber = needs setup, others fade), or long-press → Move
+    to. Either opens a sheet that first sends `dryRun: true` and shows the watcher's
+    plan or refusal, the command line's exit 2. Only the button sends the real move,
+    which goes through the same `TransferAssembly` and `beginTransfer` as a dashboard
+    drag. The phone decides nothing: each session carries a `move` verdict and the
+    destinations `AgentDropEligibility` allows. A real move has **not** been run from a
+    phone yet; every live test was a dry run.
+
+    **Alerts reach the phone two ways.** The snapshot now carries the watcher's active
+    `MachineAlert`s, and every read, foreground or a `BGAppRefreshTask`, posts the new
+    ones as time-sensitive notifications and withdraws them when the episode ends. It
+    also says when a move lands or fails, and badges the app with the waiting count.
+    For a phone that is asleep, `HerdPushRelay` sends APNs directly (token auth, ES256
+    JWT, HTTP/2) the moment `MachineAlertCenter` raises an alert, with the episode id as
+    `apns-collapse-id` so the phone's own copy replaces the push rather than doubling
+    it. It needs an APNs key: Settings → the watcher section takes the `.p8` path and
+    key ID. **Nothing has been pushed yet.** No APNs key exists, and the device build
+    could not be provisioned for Push / Time Sensitive because Xcode lost its account
+    again (below).
+
+    **The wire grew, and stayed version 1.** Every addition is optional: history,
+    processes, memory consumers, `move`, `transfers`, `alerts`, `acceptsWrites`. An
+    older watcher and an older phone each read the other, and a test decodes a
+    pre-change snapshot.
 
     **Discovery is proven on both sides, and the Mac's half was one plist line.**
     With no typed address the simulator found `Mac mini` by Bonjour, resolved it
@@ -2284,9 +2323,15 @@ the only part drawn.
     the question the phone exists for. `LITTLE_HERD_LENS=cpu|memory|disk|ai` opens a
     lens for the harness, alongside the fixture and first-machine switches.
 
-    **What is not.** *Detail the wire does not carry:* the Mac's machine pages list
-    processes and applications and draw history; `HerdWire` has none of that, so the
-    phone's CPU and Memory pages are a few figures. *The
+    **What is not.** *A push on a real phone:* needs (1) an APNs key created at
+    developer.apple.com → Keys, (2) Xcode signed in again, as below, so automatic
+    signing can add Push + Time Sensitive to the App ID, and (3) a device build.
+    *Xcode's account does not stay:* signing into Xcode-27 on the mini worked for one
+    build; later Xcode-beta (the `xcode-select`'d one) ran and the shared
+    `com.apple.dt.Xcode` account list came back empty (`No Accounts`). Sign in from
+    Xcode-beta, or point `xcode-select` at Xcode-27. *The phone's detail pages* still
+    lack what the Mac draws beyond CPU/memory history, processes and consumers:
+    drives, per-process history, AI usage limits. *The
     `alertsEnabled` gate:* the watcher switch only shows in Settings once alerts are
     on, so a person who wants the phone and not alerts has to turn alerts on first —
     wrong, and one line to fix once the Settings layout is judged. *One code for one
