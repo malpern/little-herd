@@ -1,6 +1,12 @@
 # Little Herd — handoff
 
-**State:** `v0.1.67` is released and installed on this Mac. Items 13, 14, 15
+**State:** `v0.1.69` is released. **A phone can read the herd, on branch
+`ios/spike-1` (26 September, not yet on main).** The watcher Mac serves what it
+already knows on port 7841 and announces itself on the local network; an iOS
+app reads it, draws the herd with its animals, and opens a machine to its
+sessions grouped by what they need from you. Proven in the simulator against
+the mini's live herd; not yet on a real phone. Items 6 and 18 say what is left.
+Items 13, 14, 15
 and 17 closed on 6–7 September and have been pruned from **Next**; what was
 learned doing them is in **Hard-won facts**, which is where it stays. It is the first
 build whose transfer works against a real session: until it, the agent
@@ -1876,6 +1882,26 @@ plist); and the name the target reaches the source by is not the name the
 command was invoked with, so running it with `--local` wrote a machine whose
 hostname was the literal string `--local`.
 
+**Do not attach a Bonjour service to the `NWListener` that serves.** The first
+`HerdServer` did, and when registration was refused — `-65555 NoAuth`, the Local
+Network privacy gate, which is what the test host gets — the listener failed
+*with* it and the port went away. A phone reaching a watcher by a Tailscale name
+never needed Bonjour, so a refused announcement must cost only the announcement:
+the listener is plain TCP and `HerdAdvertiser` publishes separately. The socket
+test caught it; the standalone probe that "proved the listener worked" had not,
+because a bare binary is not gated the way an app bundle is.
+
+**`activeSurfaces` gates sampling, and a headless watcher is not a surface.**
+Monitoring starts on the first dashboard or menu-bar appearance and stops on the
+last disappearance. Anything that needs the herd sampled with no window open —
+the watcher serving a phone, and the alerts it was already meant to raise — has
+to activate a surface of its own, or it reads a herd that stopped moving.
+
+**The Herdware imagesets are `idiom: mac`, and iOS's asset compiler drops them
+without a word.** A second target that shares the catalog builds green and draws
+nothing where the animal should be. The phone catalog carries `universal`
+imagesets that symlink the same PNGs; there is one copy of each picture.
+
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
@@ -2025,13 +2051,28 @@ it; the files survived only because the directory had not been reaped yet.
     stays quiet. "I am not the watcher" and "stay quiet" are different claims, since a
     laptop you are sitting at may reasonably want to alert too.
 
+    **The watcher is also the phone's server, since 26 September (`ios/spike-1`).**
+    The same switch that makes a Mac watch makes it serve: `HerdWatcher` starts
+    `HerdServer` on port 7841 (`herdServerPort` overrides) and announces
+    `_littleherd._tcp` with the Mac's name. One switch rather than two, because a
+    second switch is a second thing to get wrong on each Mac. Reads only — `GET
+    /herd`, everything else 404 or 405 — and no token yet, so anyone on the network
+    can read the herd; that is acceptable for a spike and not for a default.
+
+    **A watcher with no window open sampled nothing — fixed.** Monitoring ran only
+    while the dashboard or the menu bar was active, so a nominated watcher with its
+    window closed alerted on nothing, and had since this item was built. The server
+    is now a `MonitorSurface` of its own (`.watcher`), which is what keeps the
+    sampler running headless. Found by reading the code to serve it, not by any test.
+
     **What is missing is that installs cannot tell each other apart.** Nominating a
     watcher is done by hand on each Mac, so two watchers double every alert and none
-    means silence, and nothing detects either. That wants shared herd configuration —
-    which is also what `little-herd-seed-herd` (dotfiles PR #5) works around — and it is
-    the honest next step rather than more switches. Also unbuilt: launching at login on
-    the watcher, and any notion of what happens when the watcher itself is the thing
-    that died.
+    means silence, and nothing detects either. The announcement above is the first
+    half of the fix — a Mac can now *see* that another is watching — and nothing yet
+    reads it. That wants shared herd configuration — which is also what
+    `little-herd-seed-herd` (dotfiles PR #5) works around — and it is the honest next
+    step rather than more switches. Also unbuilt: launching at login on the watcher,
+    and any notion of what happens when the watcher itself is the thing that died.
 
 
 **The website promises "Put your herd to work", and on 29 August the hedge
@@ -2145,11 +2186,46 @@ the only part drawn.
    better**, because probing every other route to a machine is a fair amount of
    work to improve one tooltip, and this app already declines to enumerate
    volumes for a smaller reason.
-6. **iOS, scoped to the herd rather than to sessions — and the mini is a coordinator now, which was the prerequisite.** Do not rebuild session steering; Remote Control and the Claude app already do it, with the local filesystem and MCP servers attached. What has no answer is the herd: which machine is hot, what is waiting on you, what the budget looks like, and starting a transfer. Do not sample from the phone — iOS will not ssh-poll in the background.
+6. **iOS: built as a reader, on `ios/spike-1`, and not yet on a real phone.** Scoped
+   to the herd rather than to sessions, as decided: which machine is hot, what is
+   waiting on you, whether the Linux box is up. Not session steering — Remote Control
+   and the Claude app already do that. And **the phone does not sample.** It reads
+   `HerdWire` JSON from whichever Mac is the watcher (item 18), which is the whole of
+   why the target compiles one file from the Mac app and needs no IOKit, Sparkle,
+   `ssh` or sampler.
 
-    **Two of the three reasons given for building it once no longer hold as written.** Item 3 was rewritten and has no Keychain problem any more, so that justification is stale. What remains is iOS and a durable successor — and the second of those was explored on 7 September and **parked**: the mini carries the current app and can be taught the whole herd, after which it samples all four machines headlessly and plans a transfer of a session on the Air destined for the linux box. The script that teaches it is held in dotfiles PR #5 rather than on main, because nothing consumes the capability. It coordinates between two machines that are not it, which is what a laptop that sleeps cannot be relied on to do — but **that a transfer started there survives the Air closing is inference, not measurement.** Remote steps run as `ssh host 'command'` from whichever machine started them, so a dropped connection should take them with it; nobody has closed a lid mid-transfer to find out.
+    **What is there** (`LittleHerdMobile/`, XcodeGen target `LittleHerdMobile`, iOS 18):
+    a herd list with the animals, state, CPU/memory/disk and "1 working · 4 waiting on
+    you"; a machine page with sessions grouped waiting / working / stalled / finished,
+    load, and volumes; a watcher picker that lists Macs announcing on this network and
+    takes a typed address for one that is not (a Tailscale name is the intended use
+    off-LAN). `GET` is spoken over an `NWConnection` so a Bonjour endpoint and a typed
+    host go through one path. Judged by looking, in the simulator, against the mini's
+    live herd — which is how the missing animals were found: the Herdware imagesets are
+    `idiom: mac`, which iOS's asset compiler silently skips, so the phone catalog carries
+    its own `universal` imagesets symlinked to the same PNGs.
 
-    **What is left is a trigger, not a collector.** Nothing yet asks the mini to do any of this on its own: no schedule, no queue, no phone. Building a resident daemon before something wants its output would be building for no consumer, which this file keeps arguing against. The model layer is already portable — 64 of 103 source files import neither SwiftUI nor AppKit — so the constraint was never the code.
+    **What is not.** *A real phone:* the simulator reached the watcher by a typed
+    `127.0.0.1`. A signed device build (`generic/platform=iOS`, automatic signing,
+    Apple Development identity) succeeds on the mini, but `devicectl` reported the
+    iPhone `unavailable` there, so the install is `xcodebuild` + `devicectl device
+    install app` from whichever Mac the phone is paired with. *Discovery under the
+    debug build:* `dns-sd -B _littleherd._tcp` sees a dummy `dns-sd -R` on the mini but
+    not the app's announcement, and a debug-signed app is a new identity to the Local
+    Network privacy gate — almost certainly a prompt nobody answered on the mini's
+    screen, unverified because that screen cannot be captured from an agent shell. The
+    typed-address path does not need it. *Pairing:* there is no token, and `move` from
+    the phone must not exist until there is one; a tap is a thin thing to hang a
+    seven-step transfer on. *The `alertsEnabled` gate:* the watcher switch only shows in
+    Settings once alerts are on, so a person who wants the phone and not alerts has to
+    turn alerts on first — wrong, and one line to fix once the Settings layout is judged.
+
+    **The mini as coordinator was the prerequisite, and it is now also the consumer's
+    server.** The script that teaches the mini the whole herd is still held in dotfiles
+    PR #5; nothing here changed that, and the herd the mini served on 26 September was
+    the two machines its own configuration knew (itself, and the Air). Seeding it is the
+    next thing that makes the phone useful rather than merely working.
+
 10. **Local models are blocked, not pending.** Considered and deferred
     18 August. No herd machine runs a model server; the linux box is an AMD
     APU with integrated graphics; the best local-model host owned is the M5

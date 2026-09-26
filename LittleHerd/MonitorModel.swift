@@ -4,6 +4,10 @@ import Observation
 nonisolated enum MonitorSurface: Hashable, Sendable {
     case dashboard
     case menuBar
+    /// The watcher serving a phone. Not a screen, but it reads the herd the
+    /// way a screen does, and a watcher with no window open used to sample
+    /// nothing — see `HerdWatcher`.
+    case watcher
 }
 
 @MainActor

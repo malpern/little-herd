@@ -47,6 +47,10 @@ struct LittleHerdApp: App {
     @State private var model: MonitorModel
     @State private var machineStore: MachineConfigurationStore
     @State private var updater = SoftwareUpdater()
+    /// Serves the herd to a phone while this Mac is the watcher. Held here
+    /// because, like the thresholds seed below, it has to exist from launch
+    /// and not from a window someone may never open.
+    @State private var herdWatcher: HerdWatcher
     @AppStorage(LittleHerdPreferences.menuBarEnabledKey)
     private var menuBarEnabled = false
 
@@ -84,6 +88,7 @@ struct LittleHerdApp: App {
             model?.applyConfigurations(machineStore.machines)
         }
         _model = State(initialValue: model)
+        _herdWatcher = State(initialValue: HerdWatcher(model: model))
 
         // Started here rather than from a view.
         //
@@ -156,6 +161,7 @@ struct LittleHerdApp: App {
             LittleHerdSettingsView(
                 machineStore: machineStore,
                 model: model,
+                herdWatcher: herdWatcher,
                 onConfigurationsChanged: model.applyConfigurations
             )
         }
@@ -199,6 +205,11 @@ enum LittleHerdPreferences {
     /// and body are passed as arguments, never interpolated into a shell string, because
     /// a machine's name is user text and this would otherwise be an injection.
     static let alertCommandKey = "alertCommand"
+
+    /// The port the watcher serves the herd on, when not the default. There
+    /// is no interface for it: the default collides with nothing, and a
+    /// person who needs another is one who can `defaults write`.
+    static let herdServerPortKey = "herdServerPort"
     /// Whether Little Herd starts CodexBar when it finds it installed and not
     /// running. Default on, because the alternative is a usage figure that
     /// silently stops moving — but a setting rather than a habit, since this
@@ -617,6 +628,8 @@ private struct LittleHerdSettingsView: View {
     /// the checkbox can be set against what turning it on would actually get
     /// you.
     let model: MonitorModel
+    /// Read only to say whether a phone can reach this Mac, and where.
+    let herdWatcher: HerdWatcher
     let onConfigurationsChanged: ([MachineConfiguration]) -> Void
     @Environment(\.openWindow) private var openWindow
     @AppStorage(LittleHerdPreferences.menuBarEnabledKey)
@@ -649,6 +662,28 @@ private struct LittleHerdSettingsView: View {
     /// view and the row went on showing "Sign in again" after a sign-in that
     /// had in fact succeeded.
     @State private var credentialsRevision = 0
+
+    private var herdServingStatus: String {
+        if let error = herdWatcher.lastError {
+            return "Your iPhone can’t reach the herd from this Mac: \(error)"
+        }
+        guard herdWatcher.isServing, let port = herdWatcher.port else {
+            return "Starting to share the herd with your iPhone…"
+        }
+        let host = Host.current().localizedName ?? "this Mac"
+        let reached = herdWatcher.requestsAnswered
+        let count = reached == 0
+            ? "Nothing has read it yet."
+            : "Read \(reached) time\(reached == 1 ? "" : "s") since Little Herd started."
+        // A refused announcement is worth a sentence of its own: the port
+        // still serves, so a typed address works, but the phone will not
+        // find this Mac by itself — and that reads as "the app is broken"
+        // unless something says otherwise.
+        let reach = herdWatcher.advertisingError.map { " \($0) A typed address still works." }
+            ?? " Announced on this network."
+        return "Little Herd on your iPhone can see the herd from “\(host)”, "
+            + "port \(port).\(reach) \(count)"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -687,6 +722,18 @@ private struct LittleHerdSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                    if watchesHerd {
+                        // The watcher is also what a phone reads. Said here,
+                        // beside the switch that starts it, rather than behind
+                        // a second one — and said with the address and a count,
+                        // because "on" is not the same as "reached".
+                        Text(herdServingStatus)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 2)
+                    }
 
                     Toggle("Stay quiet — another Mac is watching", isOn: $alertsSuppressed)
                         .font(.callout)
