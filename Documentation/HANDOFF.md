@@ -2265,10 +2265,28 @@ the only part drawn.
     (`LittleHerdMobileTests`, run in the simulator) cover the address parser, the
     response parser, the 401, and that the fixture decodes.
 
-    **What is not.** *A real phone:* a signed device build (`generic/platform=iOS`,
-    automatic signing, Apple Development identity) succeeds on the mini, but
-    `devicectl` reported the iPhone `unavailable` there, so the install is `xcodebuild`
-    + `devicectl device install app` from whichever Mac the phone is paired with. *The
+    **On a real phone since 26 September**, over USB to the mini. Wireless CoreDevice
+    never connected (the pairing port answered, the handshake did not); a cable did at
+    once. Two walls on the way, both one-time: Xcode on the mini needed an Apple ID in
+    Settings → Accounts before automatic signing would register the device (`No
+    Accounts`), and `devicectl device install app` cannot read a `.app` under
+    `/private/tmp` (CoreDevice error 1005, "unable to create bookmark data") — copy it
+    to `~/Library/Caches/little-herd-ios/` first. On the device it found `Mac mini` by
+    Bonjour with nothing typed, the first time discovery was proven off the simulator.
+
+    **The phone uses the Mac's navigation.** Four lenses along the bottom — CPU,
+    Memory, Disk, AI — that stay under every screen; each non-AI lens shows the herd
+    as columns (figure, ten-block thermometer, animal, name), and a tap opens that
+    machine through the same lens. Pressing a tab on a machine's page re-lenses the
+    machine rather than returning to the herd, which is why the tabs sit outside the
+    `NavigationStack` rather than being a `TabView`. The one deliberate difference:
+    the AI tab carries a mark whenever a session is waiting on you, because that is
+    the question the phone exists for. `LITTLE_HERD_LENS=cpu|memory|disk|ai` opens a
+    lens for the harness, alongside the fixture and first-machine switches.
+
+    **What is not.** *Detail the wire does not carry:* the Mac's machine pages list
+    processes and applications and draw history; `HerdWire` has none of that, so the
+    phone's CPU and Memory pages are a few figures. *The
     `alertsEnabled` gate:* the watcher switch only shows in Settings once alerts are
     on, so a person who wants the phone and not alerts has to turn alerts on first —
     wrong, and one line to fix once the Settings layout is judged. *One code for one

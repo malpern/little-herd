@@ -101,6 +101,7 @@
 		70EB5EA66F9E59B60F49E5B3 /* TransferRemedy.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0CDCC63FDE97F8AF096DF7 /* TransferRemedy.swift */; };
 		719F7048B9365DAC539DF931 /* TransferEligibilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F08728BB291BD559EB4D267B /* TransferEligibilityTests.swift */; };
 		743C8BF95DFC643AE5AED3F7 /* MonitorModel+Command.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17E709EDE7AEAEC62A0C1D22 /* MonitorModel+Command.swift */; };
+		7489682831E4100047A572BD /* HerdLens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AF11799901E4E46F6BE0BC8 /* HerdLens.swift */; };
 		75BE1EA5F769425A1C052A0C /* SSHCommandRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C36334B89B73554138E1F571 /* SSHCommandRunnerTests.swift */; };
 		75D286866978B353C328FB87 /* TransferRemnantTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D008220E0A0FEC672DD4198B /* TransferRemnantTests.swift */; };
 		76905CEF3D949A1110CEC435 /* HerdCommandAgentsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B52F8997D4FC28B97610341F /* HerdCommandAgentsTests.swift */; };
@@ -284,6 +285,7 @@
 		38B045383125EA4D512F0D88 /* AgentMoveMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentMoveMenu.swift; sourceTree = "<group>"; };
 		395715BF434FB00EE3D97A25 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3AC43ACEDF79F87AC9A763A2 /* SynologySwapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologySwapTests.swift; sourceTree = "<group>"; };
+		3AF11799901E4E46F6BE0BC8 /* HerdLens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdLens.swift; sourceTree = "<group>"; };
 		3AFE093496D9FBBC75B46D66 /* AgentAuthVerifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentAuthVerifierTests.swift; sourceTree = "<group>"; };
 		3B294BC00BBF558472B4C87C /* NetworkVolumeOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkVolumeOnboardingView.swift; sourceTree = "<group>"; };
 		3C57E556B607FDBFC533B251 /* SynologyTrustTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyTrustTests.swift; sourceTree = "<group>"; };
@@ -733,6 +735,7 @@
 				A6DD20E8E2282AAF494F50C4 /* Assets.xcassets */,
 				1F102B07AB74465137895C33 /* fixture-herd.json */,
 				E66EEFF801318F198F8B91A5 /* HerdClient.swift */,
+				3AF11799901E4E46F6BE0BC8 /* HerdLens.swift */,
 				CBC1386A8106D9388424FC62 /* HerdView.swift */,
 				395715BF434FB00EE3D97A25 /* Info.plist */,
 				A9412B86A7A317B7D9889090 /* LittleHerdMobileApp.swift */,
@@ -1127,6 +1130,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				213E879E5B45A813DB1A2317 /* HerdClient.swift in Sources */,
+				7489682831E4100047A572BD /* HerdLens.swift in Sources */,
 				60FE2DD3443B095A28A7CB0B /* HerdView.swift in Sources */,
 				65558B49F1CCADE40C53DE17 /* HerdWire.swift in Sources */,
 				CD66BCEDDB0B2849A144AD83 /* LittleHerdMobileApp.swift in Sources */,
