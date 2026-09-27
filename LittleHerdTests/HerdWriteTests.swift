@@ -238,4 +238,35 @@ struct HerdWriteTests {
         let signature = try P256.Signing.ECDSASignature(rawRepresentation: try #require(decode(parts[2])))
         #expect(key.publicKey.isValidSignature(signature, for: Data((parts[0] + "." + parts[1]).utf8)))
     }
+
+    // MARK: - What a failure says
+
+    /// The notification about a failed check used to read "From
+    /// https://github.com/…  * branch …". It now says what failed and the line
+    /// that says why.
+    @Test
+    func aFailedTransferLeadsWithTheReasonNotTheFetch() {
+        let log = """
+        From https://github.com/malpern/sandpiper
+         * branch            transfer/x -> FETCH_HEAD
+        Preparing worktree (detached HEAD 234581f)
+        > operation-sandpiper@0.1.0 test
+        Error: Could not locate the bindings file. Tried:
+            at bindings (node_modules/bindings/bindings.js:126:9)
+          tries: [ '/x/build/better_sqlite3.node' ]
+        }
+        """
+        let outcome = SuccessorOutcome(result: .checkFailed, failingStep: .verification, output: log)
+        let detail = TransferDigest.detail(phase: .finished(outcome), output: log)
+        #expect(detail?.contains("Could not locate the bindings file") == true)
+        #expect(detail?.contains("github.com") == false)
+    }
+
+    /// A refusal already written as one sentence is kept as it is.
+    @Test
+    func aOneSentenceRefusalIsKept() {
+        let reason = "Linux has the repository but not npm, which is what this project's tests are run with."
+        let outcome = SuccessorOutcome(result: .couldNotStart, failingStep: nil, output: reason)
+        #expect(TransferDigest.detail(phase: .finished(outcome), output: reason) == reason)
+    }
 }

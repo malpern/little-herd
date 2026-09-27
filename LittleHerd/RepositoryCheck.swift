@@ -50,11 +50,11 @@ nonisolated enum RepositoryCheck: Equatable, Sendable {
             // has no `node_modules`; measured on the first transfer to linux,
             // the successor's work was right and the build died on
             // `vinext: command not found`. `npm ci` installs exactly what the
-            // lockfile says, and `--ignore-scripts` keeps packages' own install
-            // hooks from running — the check already trusts the repository's
-            // test script, and this adds nothing beyond it.
+            // lockfile says. Install scripts run: skipping them left a native
+            // module (better-sqlite3) with no binary, and the tests load those
+            // same packages' code anyway, so skipping bought no safety.
             [
-                ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"],
+                ["npm", "ci", "--no-audit", "--no-fund"],
                 ["npm", "run", script],
             ]
         case .make(let target):

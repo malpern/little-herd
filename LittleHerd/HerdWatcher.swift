@@ -211,7 +211,7 @@ extension MonitorModel {
             case .finished(let outcome):
                 outcome.result == .landed
                     ? ("landed", nil)
-                    : ("failed", outcome.output.isEmpty ? nil : outcome.output)
+                    : ("failed", TransferDigest.detail(phase: phase, output: outcome.output))
             }
             return HerdWire.Transfer(
                 id: transfer.branch,
@@ -385,5 +385,44 @@ extension MachineMonitorModel {
         case .warning: "warning"
         case .critical: "critical"
         }
+    }
+}
+
+
+/// A failed transfer, said the way a person reads it on a lock screen.
+///
+/// **The log's first lines are the wrong ones.** The phone used to show the
+/// raw output, which starts with git fetching the branch — "From
+/// https://github.com/…  * branch …" — so a notification about a failed test
+/// run said nothing but the repository's address. The reason is near the end.
+/// This is the Mac's own sentence for the outcome, then the one line of the
+/// log most likely to say why.
+nonisolated enum TransferDigest {
+    static func detail(phase: TransferPhase, output: String) -> String? {
+        let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        // A refusal written for people is already one sentence; keep it.
+        if !trimmed.contains("\n"), trimmed.count <= 300 { return trimmed }
+        guard let line = tellingLine(in: trimmed) else { return phase.detail }
+        return "\(phase.detail) \(line)"
+    }
+
+    /// The last line that names an error, else the last line that is not noise.
+    static func tellingLine(in output: String) -> String? {
+        let lines = output.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !isNoise($0) }
+        let signals = ["error", "fatal:", "not found", "failed", "cannot", "denied", "✖", "✘"]
+        let pick = lines.last { line in
+            let lower = line.lowercased()
+            return signals.contains { lower.contains($0) }
+        } ?? lines.last
+        return pick.map { $0.count > 220 ? String($0.prefix(219)) + "…" : $0 }
+    }
+
+    private static func isNoise(_ line: String) -> Bool {
+        let noisyPrefixes = ["at ", "From ", "* ", "+ ", "mise ", "Preparing worktree", "HEAD is now",
+                             ">", "{", "}", "[", "]", "tries:", "code:", "npm notice"]
+        return noisyPrefixes.contains { line.hasPrefix($0) }
     }
 }

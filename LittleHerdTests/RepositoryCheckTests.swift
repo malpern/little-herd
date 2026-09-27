@@ -28,14 +28,14 @@ struct RepositoryCheckTests {
     }
 
     /// A Node check installs the lockfile's dependencies before running the
-    /// script, because the worktree it runs in is fresh — and installs them
-    /// without running packages' own install hooks.
+    /// script, because the worktree it runs in is fresh — with install
+    /// scripts, which native modules need to have a binary at all.
     @Test
-    func aNodeCheckInstallsDependenciesFirstWithoutRunningTheirScripts() {
+    func aNodeCheckInstallsDependenciesFirst() {
         let commands = RepositoryCheck.npm(script: "test").commands
         #expect(commands.count == 2)
         #expect(commands.first?.prefix(2) == ["npm", "ci"])
-        #expect(commands.first?.contains("--ignore-scripts") == true)
+        #expect(commands.first?.contains("--ignore-scripts") == false)
         #expect(commands.last == ["npm", "run", "test"])
     }
 
