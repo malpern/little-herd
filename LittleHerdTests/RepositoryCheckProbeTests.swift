@@ -36,13 +36,37 @@ struct RepositoryCheckProbeTests {
         #expect(check(["README.md"]) == .none)
     }
 
+    /// A tool from mise or asdf is found, because a non-interactive ssh
+    /// command's PATH is only the system directories. Measured: a linux box
+    /// running its own dev servers on mise's Node was refused a transfer for
+    /// "not having npm". The check itself gets the same PATH, so what
+    /// approved the move is what runs.
+    @Test
+    func thePreflightLooksWhereToolchainsLive() throws {
+        let preflight = try #require(RepositoryCheckProbe.preflight(for: .npm(script: "test")))
+        #expect(preflight.hasPrefix(RepositoryCheckProbe.toolPath))
+        #expect(RepositoryCheckProbe.toolPath.contains("$HOME/.local/share/mise/shims"))
+        #expect(RepositoryCheckProbe.toolPath.hasSuffix(":$PATH\""), "prepended, never replacing the system PATH")
+    }
+
+    /// Found is not the same as runnable: a mise shim with no version set is on
+    /// the PATH and fails when run. The preflight runs the tool, with the flag
+    /// each one actually accepts.
+    @Test
+    func thePreflightRunsTheToolRatherThanOnlyFindingIt() throws {
+        let npm = try #require(RepositoryCheckProbe.preflight(for: .npm(script: "test")))
+        #expect(npm.hasSuffix("'npm' --version >/dev/null 2>&1"))
+        let xcode = try #require(RepositoryCheckProbe.preflight(for: .xcode(scheme: "X")))
+        #expect(xcode.hasSuffix("'xcodebuild' -version >/dev/null 2>&1"))
+    }
+
     /// The pre-flight is the check's own first word, so the two cannot drift.
     @Test
     func thePreflightIsTakenFromTheCheck() {
-        #expect(RepositoryCheckProbe.preflight(for: .cargo) == "command -v 'cargo'")
+        #expect(RepositoryCheckProbe.preflight(for: .cargo)?.contains("command -v 'cargo'") == true)
         #expect(
-            RepositoryCheckProbe.preflight(for: .xcode(scheme: "X"))
-                == "command -v 'xcodebuild'"
+            RepositoryCheckProbe.preflight(for: .xcode(scheme: "X"))?
+                .contains("command -v 'xcodebuild'") == true
         )
         // Nothing to run means nothing to have.
         #expect(RepositoryCheckProbe.preflight(for: .none) == nil)

@@ -56,8 +56,30 @@ nonisolated enum RepositoryCheckProbe {
     /// builtin that is always there and says what it found.
     static func preflight(for check: RepositoryCheck) -> String? {
         guard let tool = check.requiredExecutable else { return nil }
-        return "command -v \(RemoteShell.quoted(tool))"
+        // **Run it, don't just find it.** A version manager's shim is on the
+        // PATH whether or not it can run anything: on linux, mise's `npm` shim
+        // answered `command -v` and then failed with "No version is set for
+        // shim" — a preflight that passes and a check that cannot. Asking for
+        // the version runs the real binary through the shim.
+        let flag = tool == "xcodebuild" ? "-version" : "--version"
+        return "\(toolPath) && command -v \(RemoteShell.quoted(tool)) >/dev/null && \(RemoteShell.quoted(tool)) \(flag) >/dev/null 2>&1"
     }
+
+    /// Where a person's own toolchains live, in front of the PATH a
+    /// non-interactive ssh command gets.
+    ///
+    /// **That PATH is `/usr/local/bin:/usr/bin:/bin` and nothing else.** A
+    /// login shell adds mise, asdf and Homebrew; `ssh host 'cmd'` does not. So a
+    /// linux box whose Node comes from mise — which runs its own dev servers on
+    /// it — was refused a transfer for "not having npm", measured on the first
+    /// real move from a phone. Agents already avoid this with absolute paths
+    /// (see `AgentDestination`); a check cannot, because the check names a
+    /// tool, not a location. Prepended, not replaced, and used by both the
+    /// preflight and the check itself, so what approved the move is what runs.
+    /// Not a login shell: that would run whatever the profile runs.
+    static let toolPath = "export PATH=\"$HOME/.local/share/mise/shims:$HOME/.asdf/shims:"
+        + "$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\""
+
 
     /// What to say when the destination has the repository but not the tool.
     ///

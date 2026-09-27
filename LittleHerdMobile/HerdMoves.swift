@@ -384,6 +384,12 @@ struct MoveSheet: View {
             .tint(HerdTheme.forest)
             .padding(.horizontal, 20)
             .padding(.bottom, 8)
+        case .plan(let plan) where plan.refusal != nil:
+            // A refusal is a reading, not a verdict for all time: a session
+            // mid-thought is refused and movable a minute later.
+            Button("Check again") { Task { await ask() } }
+                .buttonStyle(.bordered)
+                .padding(.bottom, 16)
         case .moving:
             ProgressView("Starting…")
                 .padding(.bottom, 16)

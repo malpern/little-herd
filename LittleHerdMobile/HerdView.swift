@@ -80,6 +80,17 @@ struct HerdView: View {
                let destination = session.move?.destinations.first {
                 moveIntent = MoveIntent(session: session, from: machine.id, to: destination.machine)
             } else if moveIntent == nil,
+                      let named = ProcessInfo.processInfo.environment["LITTLE_HERD_OPEN_MOVE"],
+                      named.contains(":"),
+                      case let parts = named.split(separator: ":").map(String.init),
+                      parts.count == 2,
+                      let machine = snapshot.machines.first(where: { $0.sessions.contains { $0.short == parts[0] } }),
+                      let session = machine.sessions.first(where: { $0.short == parts[0] }) {
+                // One named session to one named machine — `short:machine`.
+                // For proving a real move without any chance of the harness
+                // choosing somebody's actual work.
+                moveIntent = MoveIntent(session: session, from: machine.id, to: parts[1])
+            } else if moveIntent == nil,
                       ProcessInfo.processInfo.environment["LITTLE_HERD_OPEN_MOVE"] == "probe",
                       let machine = snapshot.machines.first(where: { $0.sessions.contains { $0.state == "waiting" } }),
                       let session = machine.sessions.first(where: { $0.state == "waiting" }),
