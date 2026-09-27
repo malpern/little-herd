@@ -168,16 +168,18 @@ final class HerdServer {
     }
 
     private func respond(to request: HerdRequest, on connection: NWConnection) {
-        let response = HerdServer.response(
-            for: request,
-            pairingCode: pairingCode,
-            snapshot: provider,
-            writes: writes
-        )
         requestsAnswered += 1
-        connection.send(content: response, completion: .contentProcessed { _ in
-            connection.cancel()
-        })
+        Task { [pairingCode, provider, writes] in
+            let response = await HerdServer.response(
+                for: request,
+                pairingCode: pairingCode,
+                snapshot: provider,
+                writes: writes
+            )
+            connection.send(content: response, completion: .contentProcessed { _ in
+                connection.cancel()
+            })
+        }
     }
 
     /// The answer to a request, as bytes. Static and pure so it can be tested
@@ -187,9 +189,9 @@ final class HerdServer {
         pairingCode: String,
         snapshot: SnapshotProvider,
         writes: HerdWrites? = nil
-    ) -> Data {
+    ) async -> Data {
         if request.method == "POST" {
-            return write(request, pairingCode: pairingCode, writes: writes)
+            return await write(request, pairingCode: pairingCode, writes: writes)
         }
         switch (request.method, request.path) {
         case ("GET", "/herd"), ("GET", "/herd.json"):
@@ -232,7 +234,7 @@ final class HerdServer {
         _ request: HerdRequest,
         pairingCode: String,
         writes: HerdWrites?
-    ) -> Data {
+    ) async -> Data {
         guard let writes else {
             return text("405 Method Not Allowed", "reads only\n")
         }
@@ -262,7 +264,7 @@ final class HerdServer {
                 return text("400 Bad Request", "not a move\n")
             }
             herdServerLog.info("move \(move.session, privacy: .public) \(move.from, privacy: .public)→\(move.to, privacy: .public) dryRun=\(move.dryRun) by \(deviceID, privacy: .public)")
-            return json(writes.move(move))
+            return json(await writes.move(move))
         case "/push":
             guard let registration = try? decoder.decode(HerdWire.PushRegistration.self, from: request.body) else {
                 return text("400 Bad Request", "not a registration\n")
@@ -301,7 +303,7 @@ final class HerdServer {
 struct HerdWrites {
     let pair: (HerdWire.PairRequest) throws -> HerdWire.PairResponse
     let verify: (HerdRequest) -> HerdWriteGate.Verdict
-    let move: (HerdWire.MoveRequest) -> HerdWire.MoveResponse
+    let move: (HerdWire.MoveRequest) async -> HerdWire.MoveResponse
     let registerPush: (HerdWire.PushRegistration, String) -> Void
 }
 

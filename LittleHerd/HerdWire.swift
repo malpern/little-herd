@@ -199,6 +199,8 @@ nonisolated enum HerdWire {
         let progress: Double
         /// What it is doing now, or why it stopped.
         let detail: String?
+        /// A command that would clear a refusal, for a person to run.
+        var fix: String? = nil
     }
 
     struct Alert: Codable, Hashable, Identifiable, Sendable {
@@ -248,6 +250,9 @@ nonisolated enum HerdWire {
         let fixesFirst: Bool
         /// What will happen, in order, for a person deciding.
         let steps: [String]
+        /// A command that would clear the refusal, for a person to run —
+        /// never run by the watcher.
+        var fix: String? = nil
     }
 
     struct PushRegistration: Codable, Sendable {

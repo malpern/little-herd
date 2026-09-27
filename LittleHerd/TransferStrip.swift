@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// How a transfer's state reads at a glance.
@@ -102,6 +103,22 @@ struct TransferStrip: View {
                 Text("+\(transfers.count - 1)")
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(.tertiary)
+            }
+
+            // A refusal that has a fix says so here, where the refusal is —
+            // the line to paste, never something Little Herd runs itself.
+            if case .finished(let outcome) = phase, let remedy = outcome.remedy {
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(remedy, forType: .string)
+                } label: {
+                    Label("Copy fix", systemImage: "doc.on.doc")
+                        .font(.caption2.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help(Text("\(outcome.output)\n\nRun this, then try the move again:\n\(remedy)"))
+                .accessibilityLabel(Text("Copy the command that sets up \(name(transfer.destination))"))
             }
 
             control(transfer, phase)

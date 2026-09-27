@@ -330,6 +330,9 @@ struct MoveSheet: View {
             if let refusal = plan.refusal {
                 Label(refusal, systemImage: "hand.raised.fill")
                     .foregroundStyle(.orange)
+                if let fix = plan.fix {
+                    FixCommand(command: fix, machine: plan.toName)
+                }
             } else {
                 Text("From \(plan.fromName) to \(plan.toName)")
                     .foregroundStyle(.secondary)
@@ -467,7 +470,10 @@ struct TransfersStrip: View {
             Text("\(name(transfer.origin)) → \(name(transfer.destination))\(transfer.detail.map { " · \($0)" } ?? "")")
                 .font(.caption)
                 .foregroundStyle(transfer.phase == "failed" ? .orange : .secondary)
-                .lineLimit(2)
+                .lineLimit(3)
+            if let fix = transfer.fix {
+                FixCommand(command: fix, machine: name(transfer.destination))
+            }
             if transfer.phase != "landed" && transfer.phase != "failed" {
                 ProgressView(value: transfer.progress)
                     .tint(HerdTheme.loadTeal)
@@ -531,5 +537,46 @@ struct AlertsCallout: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 4)
         .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+/// The one line that would clear a refusal, to copy and run yourself.
+///
+/// Shown, never run: Little Herd does not install software on anyone's
+/// machine. Monospaced and selectable so it can be checked before it is used,
+/// with a Copy button because nobody retypes a command from a phone.
+struct FixCommand: View {
+    let command: String
+    let machine: String
+    @State private var copied = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("To set up \(machine), run this on a Mac:")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            HStack(alignment: .top, spacing: 8) {
+                Text(command)
+                    .font(.system(.footnote, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    UIPasteboard.general.string = command
+                    copied = true
+                } label: {
+                    Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+            .padding(10)
+            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            Text("Then check again.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .sensoryFeedback(.success, trigger: copied)
+        .accessibilityElement(children: .contain)
     }
 }

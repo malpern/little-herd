@@ -81,8 +81,8 @@ struct HerdServerTests {
     /// Without the code, the herd is not served — and the refusal says where
     /// the code is, because a 401 with no explanation reads as a broken app.
     @Test
-    func theHerdNeedsTheCodeAndHealthDoesNot() {
-        let withoutCode = HerdServer.response(
+    func theHerdNeedsTheCodeAndHealthDoesNot() async {
+        let withoutCode = await HerdServer.response(
             for: HerdRequest(method: "GET", path: "/herd"),
             pairingCode: "ABCDEFGH",
             snapshot: { Self.snapshot() }
@@ -91,14 +91,14 @@ struct HerdServerTests {
         #expect(text.hasPrefix("HTTP/1.1 401"))
         #expect(text.contains("settings"))
 
-        let wrongCode = HerdServer.response(
+        let wrongCode = await HerdServer.response(
             for: HerdRequest(method: "GET", path: "/herd", headers: ["authorization": "Bearer NOPE"]),
             pairingCode: "ABCDEFGH",
             snapshot: { Self.snapshot() }
         )
         #expect(String(decoding: wrongCode, as: UTF8.self).hasPrefix("HTTP/1.1 401"))
 
-        let health = HerdServer.response(
+        let health = await HerdServer.response(
             for: HerdRequest(method: "GET", path: "/health"),
             pairingCode: "ABCDEFGH",
             snapshot: { Self.snapshot() }
@@ -107,8 +107,8 @@ struct HerdServerTests {
     }
 
     @Test
-    func theHerdIsServedAsJSONAndEverythingElseIsRefused() throws {
-        let herd = HerdServer.response(
+    func theHerdIsServedAsJSONAndEverythingElseIsRefused() async throws {
+        let herd = await HerdServer.response(
             for: HerdRequest(method: "GET", path: "/herd", headers: ["authorization": "Bearer abcd-efgh"]),
             pairingCode: "ABCDEFGH",
             snapshot: { Self.snapshot() }
@@ -123,7 +123,7 @@ struct HerdServerTests {
         )
         #expect(decoded.machines.map(\.name) == ["Mac mini", "Linux"])
 
-        let missing = HerdServer.response(
+        let missing = await HerdServer.response(
             for: HerdRequest(method: "GET", path: "/anything"),
             pairingCode: "ABCDEFGH",
             snapshot: { Self.snapshot() }
@@ -132,7 +132,7 @@ struct HerdServerTests {
 
         // Reads only. There is no write to refuse yet, and this is what keeps
         // it that way until a pairing step exists.
-        let write = HerdServer.response(
+        let write = await HerdServer.response(
             for: HerdRequest(method: "POST", path: "/herd"),
             pairingCode: "ABCDEFGH",
             snapshot: { Self.snapshot() }

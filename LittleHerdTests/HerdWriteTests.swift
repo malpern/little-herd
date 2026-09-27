@@ -157,11 +157,11 @@ struct HerdWriteTests {
 
     /// `/pair` is the only write the code alone admits; without it, 401.
     @Test
-    func pairingNeedsTheCode() throws {
+    func pairingNeedsTheCode() async throws {
         let body = try HerdWire.encoder().encode(
             HerdWire.PairRequest(deviceName: "x", publicKey: P256.KeyAgreement.PrivateKey().publicKey.rawRepresentation)
         )
-        let response = HerdServer.response(
+        let response = await HerdServer.response(
             for: HerdRequest(method: "POST", path: "/pair", body: body),
             pairingCode: Self.code,
             snapshot: { HerdWire.Snapshot(watcher: "w", generatedAt: .now, machines: []) },
@@ -173,12 +173,12 @@ struct HerdWriteTests {
     /// A move carrying only the code — what a sniffer could send — is refused
     /// before the model is ever asked.
     @Test
-    func aMoveWithOnlyTheCodeNeverReachesTheModel() throws {
+    func aMoveWithOnlyTheCodeNeverReachesTheModel() async throws {
         let body = try HerdWire.encoder().encode(
             HerdWire.MoveRequest(session: "claude:x", from: "a", to: "b", dryRun: false)
         )
         var reached = false
-        let response = HerdServer.response(
+        let response = await HerdServer.response(
             for: HerdRequest(
                 method: "POST",
                 path: "/move",
@@ -198,8 +198,8 @@ struct HerdWriteTests {
 
     /// A read-only watcher stays read-only: no writes wired, 405.
     @Test
-    func aWatcherWithoutWritesRefusesPost() {
-        let response = HerdServer.response(
+    func aWatcherWithoutWritesRefusesPost() async {
+        let response = await HerdServer.response(
             for: HerdRequest(method: "POST", path: "/move"),
             pairingCode: Self.code,
             snapshot: { HerdWire.Snapshot(watcher: "w", generatedAt: .now, machines: []) }

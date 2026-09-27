@@ -156,22 +156,23 @@ extension MonitorModel {
     /// otherwise. Goes through the same assembly and the same
     /// `beginTransfer` a drag on the dashboard does, so the phone can start
     /// nothing the Mac would not.
-    func remoteMove(_ request: HerdWire.MoveRequest) -> HerdWire.MoveResponse {
+    func remoteMove(_ request: HerdWire.MoveRequest) async -> HerdWire.MoveResponse {
         let origin = MachineID(rawValue: request.from)
         let destination = MachineID(rawValue: request.to)
         let source = machines.first { $0.machine == origin }
         let target = machines.first { $0.machine == destination }
         let session = source?.agentSessions.first { $0.id == request.session }
 
-        func refuse(_ reason: String) -> HerdWire.MoveResponse {
+        func refuse(_ reason: String, fix: String? = nil) -> HerdWire.MoveResponse {
             HerdWire.MoveResponse(
                 applied: false,
                 title: session.map { $0.title ?? $0.projectName } ?? request.session,
-                fromName: source?.shortName ?? request.from,
-                toName: target?.shortName ?? request.to,
+                fromName: source.map(Self.wireName) ?? request.from,
+                toName: target.map(Self.wireName) ?? request.to,
                 refusal: reason,
                 fixesFirst: false,
-                steps: []
+                steps: [],
+                fix: fix
             )
         }
 
@@ -203,15 +204,36 @@ extension MonitorModel {
         if disposition == .refuse {
             return refuse("\(target.shortName) can’t take this one.")
         }
-        if disposition == .ready,
-           case .failure(let refusal) = TransferAssembly.request(
-               session: session,
-               from: origin,
-               to: destination,
-               in: herd,
-               check: TransferAssembly.check
-           ) {
-            return refuse(HerdCommand.reason(refusal).capitalizedFirst + ".")
+        if disposition == .ready {
+            switch TransferAssembly.request(
+                session: session,
+                from: origin,
+                to: destination,
+                in: herd,
+                check: TransferAssembly.check
+            ) {
+            case .failure(let refusal):
+                return refuse(HerdCommand.reason(refusal).capitalizedFirst + ".")
+            case .success(let assembled) where request.dryRun:
+                // **The plan asks the destination what the move itself will
+                // ask**, so a missing tool is on the phone before anyone
+                // presses Move — with the line that would fix it — rather than
+                // in a failed card afterwards.
+                if case .missingTool(let reason, let remedy) = await TransferDriver.discoverCheck(
+                    repository: assembled.destinationRepository,
+                    on: Self.wireName(target),
+                    sshHost: target.configuration.connection == .local
+                        ? nil : target.configuration.sshDestination,
+                    run: TransferRunners.command(for: target.configuration)
+                ) {
+                    return refuse(
+                        reason.replacingOccurrences(of: " Nothing was moved.", with: ""),
+                        fix: remedy
+                    )
+                }
+            case .success:
+                break
+            }
         }
 
         let fixes = disposition == .fixable
@@ -234,8 +256,8 @@ extension MonitorModel {
         return HerdWire.MoveResponse(
             applied: !request.dryRun,
             title: session.title ?? session.projectName,
-            fromName: source.shortName,
-            toName: target.shortName,
+            fromName: Self.wireName(source),
+            toName: Self.wireName(target),
             refusal: nil,
             fixesFirst: fixes,
             steps: steps
@@ -245,6 +267,13 @@ extension MonitorModel {
 
 private extension String {
     var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
+}
+
+extension MonitorModel {
+    /// "This Mac" is true only on this Mac; a phone gets its name.
+    static func wireName(_ machine: MachineMonitorModel) -> String {
+        machine.isLocal && machine.shortName == "This Mac" ? machine.name : machine.shortName
+    }
 }
 
 // MARK: - Push

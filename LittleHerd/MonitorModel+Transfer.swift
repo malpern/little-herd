@@ -114,6 +114,9 @@ extension MonitorModel {
                 destinationCommand: target.map {
                     TransferRunners.command(for: $0.configuration)
                 },
+                destinationHost: target.flatMap {
+                    $0.configuration.connection == .local ? nil : $0.configuration.sshDestination
+                },
                 carry: (carries && target != nil) ? TransferDriver.Carry(
                     localSourceHome: source.isLocal ? NSHomeDirectory() : nil,
                     sourceCommand: TransferRunners.command(for: source.configuration),

@@ -132,11 +132,76 @@ struct DiscoverCheckTests {
                     : ("", false)   // command -v xcodebuild finds nothing
             }
         )
-        guard case .missingTool(let reason) = discovered else {
+        guard case .missingTool(let reason, let remedy) = discovered else {
             Issue.record("expected a missing tool, got \(discovered)")
             return
         }
         #expect(reason.contains("xcodebuild"))
+        // No line installs Xcode, so none is offered.
+        #expect(remedy == nil)
+    }
+
+    /// **The refusal hands over the fix.** Measured on linux: Node installed
+    /// through mise, no global version, so `npm` fails. The version mise
+    /// already has is only switched on — nothing is downloaded — and the line
+    /// is wrapped in `ssh` so it can be pasted on any Mac.
+    @Test
+    func aMiseToolThatIsInstalledButNotActiveGetsTheLineThatActivatesIt() async {
+        let discovered = await TransferDriver.discoverCheck(
+            repository: "/repo",
+            on: "Linux",
+            sshHost: "linux",
+            run: { command in
+                if command.hasPrefix("ls") { return ("package.json\n", true) }
+                if command.contains("uname") {
+                    return ("os=Linux\nmise=1\nmise_versions=24.19.0 26.5.0 \npacman=1\n", true)
+                }
+                return ("", false)   // npm --version fails through the shim
+            }
+        )
+        guard case .missingTool(_, let remedy) = discovered else {
+            Issue.record("expected a missing tool, got \(discovered)")
+            return
+        }
+        #expect(remedy == "ssh 'linux' 'mise use -g node@26.5.0'")
+    }
+}
+
+/// The line offered to a person, from what the machine has.
+@Suite("Tool remedies")
+struct ToolRemedyTests {
+    @Test
+    func aPackageManagerThatNeedsAPasswordGetsATerminal() {
+        let command = ToolRemedy.command(
+            for: "npm",
+            diagnosis: ToolchainDiagnosis(os: "Linux", hasPacman: true),
+            sshHost: "linux"
+        )
+        #expect(command == "ssh -t 'linux' 'sudo pacman -S --needed nodejs npm'")
+    }
+
+    @Test
+    func thisMacGetsThePlainLine() {
+        #expect(
+            ToolRemedy.command(for: "npm", diagnosis: ToolchainDiagnosis(os: "Darwin", hasBrew: true), sshHost: nil)
+                == "brew install node"
+        )
+    }
+
+    /// Nothing honest installs Xcode from a terminal, and a machine with no
+    /// package manager has nothing safe to offer.
+    @Test
+    func nothingIsOfferedWhenNothingSafeExists() {
+        #expect(ToolRemedy.command(for: "xcodebuild", diagnosis: ToolchainDiagnosis(os: "Darwin", hasBrew: true), sshHost: nil) == nil)
+        #expect(ToolRemedy.command(for: "npm", diagnosis: ToolchainDiagnosis(os: "Linux"), sshHost: "linux") == nil)
+    }
+
+    @Test
+    func theDiagnosisIsReadFromItsOwnLines() {
+        let parsed = ToolchainDiagnosis.parse("os=Linux\nmise=1\nmise_versions=24.19.0 26.5.0 \napt=1\n")
+        #expect(parsed.os == "Linux")
+        #expect(parsed.hasMise && parsed.hasApt && !parsed.hasBrew)
+        #expect(parsed.miseVersions == ["24.19.0", "26.5.0"])
     }
 
     /// **A declaration wins over what the files suggest.** The listing says

@@ -115,7 +115,7 @@ final class HerdWatcher {
                 verify: { [gate, devices] request in
                     gate.verify(request, keys: devices.key(for:))
                 },
-                move: { [model] request in model.remoteMove(request) },
+                move: { [model] request in await model.remoteMove(request) },
                 registerPush: { [devices] registration, deviceID in
                     devices.setPush(registration, for: deviceID)
                 }
@@ -202,6 +202,8 @@ extension MonitorModel {
     private var wireTransfers: [HerdWire.Transfer] {
         transfers.order.reversed().compactMap { transfer in
             guard let phase = transfers.phase(for: transfer) else { return nil }
+            var fix: String?
+            if case .finished(let outcome) = phase { fix = outcome.remedy }
             let (name, detail): (String, String?) = switch phase {
             case .fixing(let machine): ("fixing", "Setting up \(machine)")
             case .preparing: ("preparing", "Writing down where it got to")
@@ -218,7 +220,8 @@ extension MonitorModel {
                 destination: transfer.destination.rawValue,
                 phase: name,
                 progress: phase.progress,
-                detail: detail
+                detail: detail,
+                fix: fix
             )
         }
     }
