@@ -427,11 +427,11 @@ struct EarlyRefusalTests {
     /// given a chance to run: if it were called, the test would say so.
     @Test
     func anUnrecognisedAgentIsRefusedWithoutDeparting() async throws {
-        let request = try #require(request(agentPath: "/opt/somewhere/odd/claude"))
+        let made = try #require(request(agentPath: "/opt/somewhere/odd/claude"))
         let departed = Departed()
 
         let prepared = await TransferDriver.prepare(
-            request,
+            made,
             destinationName: "Mini",
             departure: { _ in
                 departed.happened()
@@ -452,7 +452,7 @@ struct EarlyRefusalTests {
     /// a wall — the mini's real path, inside the desktop app's bundle.
     @Test
     func theBundledAgentPassesTheSameGate() async throws {
-        let request = try #require(
+        let made = try #require(
             request(
                 agentPath: "/Users/b/Library/Application Support/Claude/"
                     + "claude-code/2.1.255/claude.app/Contents/MacOS/claude"
@@ -460,7 +460,7 @@ struct EarlyRefusalTests {
         )
         let departed = Departed()
         _ = await TransferDriver.prepare(
-            request,
+            made,
             destinationName: "Mini",
             departure: { _ in
                 departed.happened()

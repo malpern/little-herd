@@ -343,10 +343,10 @@ struct CarryOrderingTests {
     /// runner is handed in and must never see a `.brief` step.
     @Test
     func acarriedSessionSkipsTheBrief() async throws {
-        let request = try #require(request())
+        let made = try #require(request())
         let seen = Recorder()
         _ = await TransferDriver.prepare(
-            request,
+            made,
             carry: carry(copies: true),
             departure: { step in
                 seen.add("\(step.purpose)")
@@ -362,10 +362,10 @@ struct CarryOrderingTests {
     /// successor is never left with neither.
     @Test
     func adeclinedCarryKeepsTheBrief() async throws {
-        let request = try #require(request())
+        let made = try #require(request())
         let seen = Recorder()
         _ = await TransferDriver.prepare(
-            request,
+            made,
             carry: carry(copies: false),
             departure: { step in
                 seen.add("\(step.purpose)")
