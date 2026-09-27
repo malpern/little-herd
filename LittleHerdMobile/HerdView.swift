@@ -304,7 +304,12 @@ struct OverviewHeader: View {
         }
     }
 
-    private var live: Int { snapshot.machines.filter { $0.state == "live" }.count }
+    /// The machines this lens draws, so the count agrees with the columns.
+    private var counted: [HerdWire.Machine] {
+        guard lens == .cpu || lens == .memory else { return snapshot.machines }
+        return snapshot.machines.filter { !$0.isStorage || $0.cpuPercent != nil }
+    }
+    private var live: Int { counted.filter { $0.state == "live" }.count }
     private var sessions: [HerdWire.Session] { snapshot.machines.flatMap(\.sessions) }
 
     private var subtitle: String {
@@ -315,14 +320,14 @@ struct OverviewHeader: View {
                 ? "\(active) active · \(waiting) waiting on you"
                 : "\(active) active · \(sessions.count) tracked"
         }
-        return "\(live) of \(snapshot.machines.count) live"
+        return "\(live) of \(counted.count) live"
     }
 
     private var dotColor: Color {
         if lens == .ai {
             return sessions.contains(where: \.needsYou) ? .orange : .green
         }
-        return live == snapshot.machines.count ? .green : .orange
+        return live == counted.count ? .green : .orange
     }
 }
 
@@ -332,13 +337,20 @@ struct HerdColumnsView: View {
     let lens: HerdLens
     let onOpen: (String) -> Void
 
+    /// A NAS that reports only capacity has nothing to say on CPU or
+    /// Memory; the Mac leaves it out of those overviews and so does this.
+    private var shown: [HerdWire.Machine] {
+        guard lens == .cpu || lens == .memory else { return snapshot.machines }
+        return snapshot.machines.filter { !$0.isStorage || $0.cpuPercent != nil }
+    }
+
     var body: some View {
-        let count = min(max(snapshot.machines.count, 1), 4)
+        let count = min(max(shown.count, 1), 4)
         // Top-aligned, so a name that wraps at a large text size makes its own
         // column taller instead of pushing its figure out of line.
         let columns = Array(repeating: GridItem(.flexible(), spacing: 6, alignment: .top), count: count)
         LazyVGrid(columns: columns, spacing: 28) {
-            ForEach(snapshot.machines) { machine in
+            ForEach(shown) { machine in
                 Button {
                     onOpen(machine.id)
                 } label: {

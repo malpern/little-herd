@@ -122,6 +122,13 @@ final class HerdWatcher {
             )
             self.server = server
             HerdPushRelay.shared = push
+            // A watcher may never have its dashboard opened, and the
+            // dashboard is what switches network storage on. Serving is
+            // reason enough, once the person has been through the
+            // one-time volume permission.
+            if defaults.bool(forKey: LittleHerdPreferences.networkVolumeAccessOnboardingCompletedKey) {
+                model.setNetworkStorageMonitoringEnabled(true)
+            }
             model.activate(.watcher)
             server.start(port: configuredPort)
         } else if !shouldServe, let server {
@@ -153,20 +160,28 @@ extension MonitorModel {
         acceptsWrites: Bool = false
     ) -> HerdWire.Snapshot {
         let herd = machines.map(\.destinationAccount)
+        // A machine that is not answering cannot take work, whatever its
+        // checkouts say. Offering it lets a phone start a move that can only
+        // fail once it runs.
+        let reachable = Set(machines.filter { $0.state == .live }.map(\.machine))
         let requiresApproval = UserDefaults.standard
             .bool(forKey: LittleHerdPreferences.requiresDestinationApprovalKey)
         return HerdWire.Snapshot(
             watcher: watcherName,
             generatedAt: now,
-            machines: machines.map {
+            // `diskMachines` is the whole herd; `machines` leaves out storage
+            // that reports only capacity. The phone draws a NAS on the Disk
+            // lens, so it needs the whole herd and filters for itself.
+            machines: diskMachines.map {
                 $0.wireMachine(
                     now: now,
                     herd: acceptsWrites ? herd : nil,
+                    reachable: reachable,
                     requiresApproval: requiresApproval
                 )
             },
             transfers: wireTransfers,
-            alerts: machines.flatMap { machine in
+            alerts: diskMachines.flatMap { machine in
                 MachineAlert.active(for: machine)
                     .sorted { $0.rawValue < $1.rawValue }
                     .map { alert in
@@ -226,6 +241,7 @@ extension MachineMonitorModel {
     func wireMachine(
         now: Date,
         herd: [DestinationAccount]? = nil,
+        reachable: Set<MachineID> = [],
         requiresApproval: Bool = false
     ) -> HerdWire.Machine {
         let diskMetric = metrics.first(where: { $0.kind == .disk })?.value
@@ -275,7 +291,9 @@ extension MachineMonitorModel {
                     workingDirectory: session.workingDirectory,
                     contextTokens: session.contextTokens,
                     model: session.model,
-                    move: herd.map { wireMove(for: session, in: $0, requiresApproval: requiresApproval) }
+                    move: herd.map {
+                        wireMove(for: session, in: $0, reachable: reachable, requiresApproval: requiresApproval)
+                    }
                 )
             },
             cpuHistory: Self.thinned(series(for: .cpu).points),
@@ -313,6 +331,7 @@ extension MachineMonitorModel {
     private func wireMove(
         for session: AgentSession,
         in herd: [DestinationAccount],
+        reachable: Set<MachineID>,
         requiresApproval: Bool
     ) -> HerdWire.Move {
         let verdict = TransferEligibility.verdict(
@@ -321,7 +340,7 @@ extension MachineMonitorModel {
         )
         let carrying = MachineAgentActivity(provider: session.provider, sessions: [session])
         let destinations: [HerdWire.Destination] = herd.compactMap { account in
-            guard account.machine != machine else { return nil }
+            guard account.machine != machine, reachable.contains(account.machine) else { return nil }
             switch AgentDropEligibility.disposition(
                 of: account.machine,
                 carrying: carrying,

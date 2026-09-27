@@ -181,6 +181,9 @@ extension MonitorModel {
         guard let target, origin != destination else {
             return refuse("There is no such machine to move it to.")
         }
+        guard target.state == .live else {
+            return refuse("\(target.shortName) isn’t answering right now, so it can’t take work.")
+        }
 
         let herd = machines.map(\.destinationAccount)
         let disposition = AgentDropEligibility.disposition(
