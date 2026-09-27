@@ -46,7 +46,17 @@ nonisolated enum RepositoryCheck: Equatable, Sendable {
         case .cargo:
             [["cargo", "test"]]
         case .npm(let script):
-            [["npm", "run", script]]
+            // **Dependencies first.** The check runs in a fresh worktree, which
+            // has no `node_modules`; measured on the first transfer to linux,
+            // the successor's work was right and the build died on
+            // `vinext: command not found`. `npm ci` installs exactly what the
+            // lockfile says, and `--ignore-scripts` keeps packages' own install
+            // hooks from running — the check already trusts the repository's
+            // test script, and this adds nothing beyond it.
+            [
+                ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"],
+                ["npm", "run", script],
+            ]
         case .make(let target):
             [["make", target]]
         case .none:

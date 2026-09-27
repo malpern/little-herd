@@ -27,6 +27,18 @@ struct RepositoryCheckTests {
         #expect(executables == ["xcodebuild", "swift", "cargo", "npm", "make"])
     }
 
+    /// A Node check installs the lockfile's dependencies before running the
+    /// script, because the worktree it runs in is fresh — and installs them
+    /// without running packages' own install hooks.
+    @Test
+    func aNodeCheckInstallsDependenciesFirstWithoutRunningTheirScripts() {
+        let commands = RepositoryCheck.npm(script: "test").commands
+        #expect(commands.count == 2)
+        #expect(commands.first?.prefix(2) == ["npm", "ci"])
+        #expect(commands.first?.contains("--ignore-scripts") == true)
+        #expect(commands.last == ["npm", "run", "test"])
+    }
+
     /// Punctuation in a parameter is an argument, not syntax. The closed set
     /// above is the first defence; this is the second, and it matters because
     /// a scheme name is the one part a repository fills in.

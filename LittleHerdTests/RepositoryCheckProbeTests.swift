@@ -167,6 +167,28 @@ struct DiscoverCheckTests {
     }
 }
 
+/// Where a transfer works on the destination.
+@Suite("Destination home")
+struct DestinationHomeTests {
+    /// The scratch folder is under the destination's own home. Measured: a
+    /// linux destination was asked for this Mac's `/Users/…` path and failed
+    /// after the branch had been pushed.
+    @Test
+    func theScratchFolderIsUnderTheDestinationsHome() {
+        let home = TransferDriver.home(from: "/home/malpern")
+        #expect(home == "/home/malpern")
+        #expect(TransferDriver.scratchRoot(forHome: "/home/malpern") == "/home/malpern/.little-herd/transfers")
+    }
+
+    /// Anything but one absolute path is no answer, and the old default stands.
+    @Test
+    func aStrangeAnswerIsNoAnswer() {
+        #expect(TransferDriver.home(from: "") == nil)
+        #expect(TransferDriver.home(from: "malpern") == nil)
+        #expect(TransferDriver.home(from: "/") == nil)
+    }
+}
+
 /// The line offered to a person, from what the machine has.
 @Suite("Tool remedies")
 struct ToolRemedyTests {

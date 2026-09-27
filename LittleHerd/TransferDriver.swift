@@ -154,6 +154,21 @@ nonisolated enum TransferDriver {
         // successor has the whole history, a summary of it would cost a model
         // call and can fail, and a summary it does not need is not worth
         // either. If the carry declines, the brief is written as before.
+        // **The destination's home, asked, never assumed.** The scratch folder
+        // and the carried transcript both live under it, and both used to be
+        // this Mac's home expanded here — right while every destination was a
+        // Mac with the same user name. The first move to linux asked git for
+        // `/Users/malpern/.little-herd/…` on a machine whose home is
+        // `/home/malpern`, and failed after the branch was already pushed.
+        var destinationHome: String?
+        if let destinationCommand {
+            let answer = await destinationCommand(Self.homeQuery)
+            destinationHome = answer.succeeded ? Self.home(from: answer.output) : nil
+        }
+        let scratchRoot = destinationHome.map(Self.scratchRoot(forHome:)) ?? TransferAssembly.scratchRoot
+        var carry = carry
+        if let destinationHome { carry?.destinationHome = destinationHome }
+
         var carriedSession: String? = nil
         var departureSteps = request.departure
         if let carry {
@@ -191,7 +206,7 @@ nonisolated enum TransferDriver {
                 briefText: "",
                 branch: request.transfer.branch,
                 repository: request.destinationRepository,
-                scratchRoot: TransferAssembly.scratchRoot,
+                scratchRoot: scratchRoot,
                 provider: request.provider,
                 reportedAgentPath: request.destinationAgentPath,
                 // The discovered one when the destination answered, and the
@@ -243,6 +258,20 @@ extension TransferDriver {
         /// a machine is unsuitable, and refusing on silence would ground the
         /// herd whenever a machine was slow.
         case unknown
+    }
+
+    /// Prints the destination's home and nothing else.
+    nonisolated static let homeQuery = "printf %s \"$HOME\""
+
+    /// A home is an absolute path on one line; anything else is no answer.
+    nonisolated static func home(from output: String) -> String? {
+        let home = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard home.hasPrefix("/"), !home.contains("\n"), home.count > 1 else { return nil }
+        return home
+    }
+
+    nonisolated static func scratchRoot(forHome home: String) -> String {
+        "\(home)/.little-herd/transfers"
     }
 
     static func discoverCheck(
@@ -320,7 +349,7 @@ extension TransferDriver {
         /// The destination's home, for the project folder the successor will
         /// look in. Both machines on this herd share one, and the same
         /// assumption already lives in `TransferAssembly.scratchRoot`.
-        let destinationHome: String
+        var destinationHome: String
         let scratchRoot: String
         /// Whether to scrub the transcript before it leaves this machine.
         ///
