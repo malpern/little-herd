@@ -51,9 +51,24 @@ few with `git log` before writing one.
 ## Commands
 
 ```sh
-xcodebuild test -scheme LittleHerd -destination 'platform=macOS'   # 627 tests
+xcodegen generate                                                   # after editing project.yml
+xcodebuild test -scheme LittleHerd -destination 'platform=macOS'   # 861 tests
+xcodebuild test -scheme LittleHerdMobile \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'         # the phone, 5 tests
 scripts/release <version> --notes-file <path>                      # from clean main
 ```
+
+The phone target (`LittleHerdMobile/`) compiles one file from the Mac app,
+`HerdWire.swift`, and reads everything else from a watcher Mac over HTTP — see
+`HerdServer.swift`. Do not give it a sampler. To look at it: install the
+simulator build with `xcrun simctl install booted`, set the watcher with
+`xcrun simctl spawn booted defaults write com.malpern.LittleHerdMobile
+watcherAddress -string 127.0.0.1`, and screenshot with `simctl io booted
+screenshot`; `LITTLE_HERD_OPEN_FIRST_MACHINE=1` in the launch environment opens
+the first machine's page and `LITTLE_HERD_FIXTURE=1` shows a four-machine herd
+from `fixture-herd.json` instead of a Mac. The watcher's pairing code is
+`defaults read com.malpern.LittleHerd herdPairingCode`; give it to the phone
+with `defaults write com.malpern.LittleHerdMobile watcherPairingCode`.
 
 `scripts/release` runs tests, notarizes, signs the appcast, publishes, and
 verifies the live feed. It takes several minutes — run it in the background.

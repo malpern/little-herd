@@ -143,7 +143,7 @@ nonisolated struct SuccessorRun: Equatable {
             steps.append(
                 Step(
                     purpose: .verification,
-                    command: "cd \(scratch) && \(RemoteShell.quoted(check))",
+                    command: "cd \(scratch) && \(RepositoryCheckProbe.toolPath) && \(RemoteShell.quoted(check))",
                     isFatal: true
                 )
             )

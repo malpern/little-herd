@@ -39,6 +39,9 @@ nonisolated struct SuccessorOutcome: Equatable {
     /// that, in `MonitorModel.beginTransfer`, have anything else to say, and
     /// they say it explicitly.
     var remnant: TransferRemnant = .pushedBranch
+    /// A command that would clear the refusal, for a person to run — never
+    /// run by Little Herd. See `ToolRemedy`.
+    var remedy: String? = nil
 }
 
 /// What a transfer leaves behind on the machine it was leaving.

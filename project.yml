@@ -34,6 +34,72 @@ targets:
       - sdk: IOKit.framework
       - sdk: libsqlite3.tbd
       - package: Sparkle
+  # The phone. It compiles exactly one file from the Mac app — HerdWire.swift,
+  # the wire types — and nothing else, on purpose: everything the phone knows
+  # about the herd arrives as JSON from a watcher Mac. See HerdServer.swift.
+  LittleHerdMobile:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: LittleHerdMobile
+      - path: LittleHerd/HerdWire.swift
+    info:
+      path: LittleHerdMobile/Info.plist
+      properties:
+        CFBundleDisplayName: Little Herd
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        ITSAppUsesNonExemptEncryption: false
+        NSLocalNetworkUsageDescription: >-
+          Little Herd looks for the Mac that watches your herd on this network,
+          so your phone can see it without being told an address.
+        NSBonjourServices: [_littleherd._tcp]
+        # The watcher speaks plain HTTP on a private network; there is no
+        # certificate to present. The same exception the Mac app carries.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+          NSAllowsArbitraryLoads: true
+        # Remote notifications carry the watcher's critical alerts; fetch lets
+        # iOS wake the app now and then to read the herd when no push is
+        # configured, so a disk filling up still reaches the phone.
+        UIBackgroundModes: [fetch, remote-notification]
+        BGTaskSchedulerPermittedIdentifiers: [com.malpern.LittleHerdMobile.refresh]
+    entitlements:
+      path: LittleHerdMobile/LittleHerdMobile.entitlements
+      properties:
+        aps-environment: development
+        com.apple.developer.usernotifications.time-sensitive: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.malpern.LittleHerdMobile
+        PRODUCT_NAME: Little Herd
+        PRODUCT_MODULE_NAME: LittleHerdMobile
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        DEVELOPMENT_TEAM: X2RKZ5TG99
+        ENABLE_HARDENED_RUNTIME: NO
+        SUPPORTS_MACCATALYST: NO
+  LittleHerdMobileTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: LittleHerdMobileTests
+    dependencies:
+      - target: LittleHerdMobile
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.malpern.LittleHerdMobileTests
+        GENERATE_INFOPLIST_FILE: YES
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        DEVELOPMENT_TEAM: X2RKZ5TG99
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Little Herd.app/Little Herd"
+        BUNDLE_LOADER: "$(TEST_HOST)"
   LittleHerdTests:
     type: bundle.unit-test
     platform: macOS
@@ -48,6 +114,15 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Little Herd.app/Contents/MacOS/Little Herd"
         BUNDLE_LOADER: "$(TEST_HOST)"
 schemes:
+  LittleHerdMobile:
+    build:
+      targets:
+        LittleHerdMobile: all
+        LittleHerdMobileTests:
+          - test
+    test:
+      targets:
+        - LittleHerdMobileTests
   LittleHerd:
     build:
       targets:

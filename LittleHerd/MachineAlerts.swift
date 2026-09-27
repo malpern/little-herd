@@ -135,10 +135,26 @@ final class MachineAlertCenter {
         requestAuthorizationIfNeeded()
 
         for alert in current.subtracting(previous) {
-            notify(alert.title(machine: machine.name), body(for: alert, machine))
+            let title = alert.title(machine: machine.name)
+            let body = Self.body(for: alert, machine)
+            notify(title, body)
+            // And to any paired phone. Collapsed on the episode's id, so the
+            // phone's own copy (raised when it reads the herd) replaces this
+            // one rather than doubling it.
+            HerdPushRelay.shared?.send(
+                title: title,
+                body: body,
+                id: "\(machine.machine.rawValue):\(alert.rawValue)"
+            )
         }
         for alert in previous.subtracting(current) {
-            notify(alert.recoveryTitle(machine: machine.name), "")
+            let title = alert.recoveryTitle(machine: machine.name)
+            notify(title, "")
+            HerdPushRelay.shared?.send(
+                title: title,
+                body: "",
+                id: "\(machine.machine.rawValue):\(alert.rawValue)"
+            )
         }
     }
 
@@ -148,7 +164,9 @@ final class MachineAlertCenter {
         raised.removeAll()
     }
 
-    private func body(
+    /// Shared with the watcher's wire, so a phone's notification says what
+    /// the Mac's does.
+    static func body(
         for alert: MachineAlert,
         _ machine: MachineMonitorModel
     ) -> String {

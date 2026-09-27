@@ -36,13 +36,37 @@ struct RepositoryCheckProbeTests {
         #expect(check(["README.md"]) == .none)
     }
 
+    /// A tool from mise or asdf is found, because a non-interactive ssh
+    /// command's PATH is only the system directories. Measured: a linux box
+    /// running its own dev servers on mise's Node was refused a transfer for
+    /// "not having npm". The check itself gets the same PATH, so what
+    /// approved the move is what runs.
+    @Test
+    func thePreflightLooksWhereToolchainsLive() throws {
+        let preflight = try #require(RepositoryCheckProbe.preflight(for: .npm(script: "test")))
+        #expect(preflight.hasPrefix(RepositoryCheckProbe.toolPath))
+        #expect(RepositoryCheckProbe.toolPath.contains("$HOME/.local/share/mise/shims"))
+        #expect(RepositoryCheckProbe.toolPath.hasSuffix(":$PATH\""), "prepended, never replacing the system PATH")
+    }
+
+    /// Found is not the same as runnable: a mise shim with no version set is on
+    /// the PATH and fails when run. The preflight runs the tool, with the flag
+    /// each one actually accepts.
+    @Test
+    func thePreflightRunsTheToolRatherThanOnlyFindingIt() throws {
+        let npm = try #require(RepositoryCheckProbe.preflight(for: .npm(script: "test")))
+        #expect(npm.hasSuffix("'npm' --version >/dev/null 2>&1"))
+        let xcode = try #require(RepositoryCheckProbe.preflight(for: .xcode(scheme: "X")))
+        #expect(xcode.hasSuffix("'xcodebuild' -version >/dev/null 2>&1"))
+    }
+
     /// The pre-flight is the check's own first word, so the two cannot drift.
     @Test
     func thePreflightIsTakenFromTheCheck() {
-        #expect(RepositoryCheckProbe.preflight(for: .cargo) == "command -v 'cargo'")
+        #expect(RepositoryCheckProbe.preflight(for: .cargo)?.contains("command -v 'cargo'") == true)
         #expect(
-            RepositoryCheckProbe.preflight(for: .xcode(scheme: "X"))
-                == "command -v 'xcodebuild'"
+            RepositoryCheckProbe.preflight(for: .xcode(scheme: "X"))?
+                .contains("command -v 'xcodebuild'") == true
         )
         // Nothing to run means nothing to have.
         #expect(RepositoryCheckProbe.preflight(for: .none) == nil)
@@ -108,11 +132,98 @@ struct DiscoverCheckTests {
                     : ("", false)   // command -v xcodebuild finds nothing
             }
         )
-        guard case .missingTool(let reason) = discovered else {
+        guard case .missingTool(let reason, let remedy) = discovered else {
             Issue.record("expected a missing tool, got \(discovered)")
             return
         }
         #expect(reason.contains("xcodebuild"))
+        // No line installs Xcode, so none is offered.
+        #expect(remedy == nil)
+    }
+
+    /// **The refusal hands over the fix.** Measured on linux: Node installed
+    /// through mise, no global version, so `npm` fails. The version mise
+    /// already has is only switched on — nothing is downloaded — and the line
+    /// is wrapped in `ssh` so it can be pasted on any Mac.
+    @Test
+    func aMiseToolThatIsInstalledButNotActiveGetsTheLineThatActivatesIt() async {
+        let discovered = await TransferDriver.discoverCheck(
+            repository: "/repo",
+            on: "Linux",
+            sshHost: "linux",
+            run: { command in
+                if command.hasPrefix("ls") { return ("package.json\n", true) }
+                if command.contains("uname") {
+                    return ("os=Linux\nmise=1\nmise_versions=24.19.0 26.5.0 \npacman=1\n", true)
+                }
+                return ("", false)   // npm --version fails through the shim
+            }
+        )
+        guard case .missingTool(_, let remedy) = discovered else {
+            Issue.record("expected a missing tool, got \(discovered)")
+            return
+        }
+        #expect(remedy == "ssh 'linux' 'mise use -g node@26.5.0'")
+    }
+}
+
+/// Where a transfer works on the destination.
+@Suite("Destination home")
+struct DestinationHomeTests {
+    /// The scratch folder is under the destination's own home. Measured: a
+    /// linux destination was asked for this Mac's `/Users/…` path and failed
+    /// after the branch had been pushed.
+    @Test
+    func theScratchFolderIsUnderTheDestinationsHome() {
+        let home = TransferDriver.home(from: "/home/malpern")
+        #expect(home == "/home/malpern")
+        #expect(TransferDriver.scratchRoot(forHome: "/home/malpern") == "/home/malpern/.little-herd/transfers")
+    }
+
+    /// Anything but one absolute path is no answer, and the old default stands.
+    @Test
+    func aStrangeAnswerIsNoAnswer() {
+        #expect(TransferDriver.home(from: "") == nil)
+        #expect(TransferDriver.home(from: "malpern") == nil)
+        #expect(TransferDriver.home(from: "/") == nil)
+    }
+}
+
+/// The line offered to a person, from what the machine has.
+@Suite("Tool remedies")
+struct ToolRemedyTests {
+    @Test
+    func aPackageManagerThatNeedsAPasswordGetsATerminal() {
+        let command = ToolRemedy.command(
+            for: "npm",
+            diagnosis: ToolchainDiagnosis(os: "Linux", hasPacman: true),
+            sshHost: "linux"
+        )
+        #expect(command == "ssh -t 'linux' 'sudo pacman -S --needed nodejs npm'")
+    }
+
+    @Test
+    func thisMacGetsThePlainLine() {
+        #expect(
+            ToolRemedy.command(for: "npm", diagnosis: ToolchainDiagnosis(os: "Darwin", hasBrew: true), sshHost: nil)
+                == "brew install node"
+        )
+    }
+
+    /// Nothing honest installs Xcode from a terminal, and a machine with no
+    /// package manager has nothing safe to offer.
+    @Test
+    func nothingIsOfferedWhenNothingSafeExists() {
+        #expect(ToolRemedy.command(for: "xcodebuild", diagnosis: ToolchainDiagnosis(os: "Darwin", hasBrew: true), sshHost: nil) == nil)
+        #expect(ToolRemedy.command(for: "npm", diagnosis: ToolchainDiagnosis(os: "Linux"), sshHost: "linux") == nil)
+    }
+
+    @Test
+    func theDiagnosisIsReadFromItsOwnLines() {
+        let parsed = ToolchainDiagnosis.parse("os=Linux\nmise=1\nmise_versions=24.19.0 26.5.0 \napt=1\n")
+        #expect(parsed.os == "Linux")
+        #expect(parsed.hasMise && parsed.hasApt && !parsed.hasBrew)
+        #expect(parsed.miseVersions == ["24.19.0", "26.5.0"])
     }
 
     /// **A declaration wins over what the files suggest.** The listing says
