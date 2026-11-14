@@ -1,11 +1,22 @@
 # Little Herd — handoff
 
-**State, 14 November 2026.** `v0.1.70` (build 71) is the live Sparkle release.
-It keeps the designated watcher sampling with the dashboard closed, sends
-outage and recovery alerts through the configured command, and reads structured
-Codex Cloud task data when supported. The published archive's signature was
-verified against the app's pinned Sparkle public key and its notarization
-staple was validated.
+**State, 14 November 2026.** `v0.1.71` (build 75) is the live Sparkle release.
+It brings the native iPhone relay and signed TestFlight pairing to the public
+Mac build, along with the DSM low-space alert that shows how full the volume
+is. Build 75 supersedes the mini's local build 74 and the public 0.1.70
+build 71. All 863 Mac tests passed. The live feed and its downloaded archive
+passed the pinned Sparkle key, code-signing, and Apple notarization checks.
+
+The release script accepts `--build` when a public release needs to supersede
+a locally installed candidate. The Air archived and notarized build 75
+through that script. Its non-interactive session could not read the Sparkle
+login Keychain item, so the same ZIP was signed using the existing encrypted
+Sparkle key via `sign_update --ed-key-file -`. The result verified against
+the same public key pinned in 0.1.70 before and after publication.
+
+`v0.1.70` kept the designated watcher sampling with the dashboard closed,
+sent outage and recovery alerts through the configured command, and read
+structured Codex Cloud task data when supported.
 Four Swift Testing `#require` calls shadowed their helper on the CI toolchain.
 The helper names were fixed in `99089a3`, and
 [main CI passed](https://github.com/malpern/little-herd/actions/runs/43632757562).
@@ -1904,7 +1915,7 @@ sent the synthetic SSH outage and recovery through sandbox APNs at 13:31
 and 13:32 Pacific with its dashboard closed. The previous 0.1.70 build
 was backed up for rollback. Removing the SSH test fixture and
 restarting with the regular machine list preserved the iPhone registration.
-The public Sparkle feed remains on 0.1.70.
+At the time, the public Sparkle feed served 0.1.70.
 
 **The mini now monitors the Synology through DSM.** The old SMB entry appeared
 offline because the only mount was Time Machine's hidden backup share.
