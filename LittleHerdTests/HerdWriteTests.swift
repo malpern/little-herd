@@ -240,13 +240,16 @@ struct HerdWriteTests {
         let phone = try pair(store)
         let request = signed(method: "GET", path: "/herd", body: Data(), id: phone.id, key: phone.key)
         #expect(request.headers["authorization"] == nil)
+        let served = writes(store) { _ in fatalError("not reached") }
         let response = await HerdServer.response(
-            for: request,
-            pairingCode: Self.code,
-            snapshot: Self.herd,
-            writes: writes(store) { _ in fatalError("not reached") }
+            for: request, pairingCode: Self.code, snapshot: Self.herd, writes: served
         )
         #expect(Self.status(response) == "HTTP/1.1 200 OK")
+        // A captured read cannot be replayed either.
+        let replay = await HerdServer.response(
+            for: request, pairingCode: Self.code, snapshot: Self.herd, writes: served
+        )
+        #expect(Self.status(replay) == "HTTP/1.1 403 Forbidden")
     }
 
     @Test

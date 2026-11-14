@@ -1903,10 +1903,10 @@ APNs environment as the iPhone build. The mini uses the existing sandbox key
 and its test profile. The phone only needs Tailscale to reach the watcher for
 pairing, token registration, and snapshots. Apple delivers the alerts.
 
-The mini runs a locally installed, notarized Mac 0.1.71 (build 72), with
-0.1.70 backed up for rollback. On 14 November the installed app sent the
-synthetic SSH outage and recovery through sandbox APNs at 13:31 and 13:32
-Pacific with its dashboard closed. Removing the SSH test fixture and
+On 14 November the mini's locally installed, notarized Mac 0.1.71 (build 72)
+sent the synthetic SSH outage and recovery through sandbox APNs at 13:31
+and 13:32 Pacific with its dashboard closed. The previous 0.1.70 build
+was backed up for rollback. Removing the SSH test fixture and
 restarting with the regular machine list preserved the iPhone registration.
 The public Sparkle feed remains on 0.1.70.
 
@@ -1946,6 +1946,40 @@ normal, and the drives returned zero uncorrectable sectors. Micah received
 the native Little Herd notification on his iPhone. A generic “Volume 1
 reports warning” can describe pool space pressure even when no drive
 reports a fault.
+
+Build 73 of the same local Mac 0.1.71 reads the DSM `fs_almost_full`
+reason and includes usage and available space in Mac and iPhone alerts.
+For the recorded sample, the body is “DSM says Volume 1 is nearly full.
+85% used, 1.36 TB free.” Unrecognized DSM reasons retain the general
+message. After installing the notarized build on the mini, all four
+machines reported live, the saved DSM login still worked, and Apple
+accepted the storage push at 14:00 Pacific. Build 72 is available for
+rollback.
+
+**Little Herd has a private TestFlight build for production APNs.** App
+Store Connect accepted iPhone 0.1.0 (build 1) on 14 November. The internal
+group contains only Micah and takes builds manually. PR #39 targets the
+iPhone draft and sets both the signed push entitlement and the phone's
+registration environment through `HERD_APNS_ENVIRONMENT`. It defaults to
+`development`. The App Store archive uses `production` with the
+`Little Herd App Store` distribution profile. Check both the signed
+entitlement and the built app's `HerdAPNSEnvironment` value before upload.
+The opaque iPhone icon comes from the original Little Herd artwork.
+
+Apple issued a production, topic-specific key for
+`com.malpern.LittleHerdMobile`. The mini holds it privately alongside the
+sandbox key and now uses the production key. PR #40 fixed a pairing loop:
+TestFlight signed each snapshot read, and the Mac only accepted the older
+bearer code for that route. The Mac now checks signed reads with the same
+device and replay checks used for push registration.
+
+The mini's notarized local 0.1.71 build 74 paired with the TestFlight
+iPhone, showed all four machines in iPhone Mirroring, and stored one
+production token. Apple accepted a temporary SSH target's outage and
+recovery at 14:38 and 14:39 Pacific with the Mac dashboard closed.
+Micah confirmed both arrived in Little Herd on his iPhone. The fixture
+was removed, and all four real machines reported live again with the
+production key and registration in place.
 
 **Codex is not on `PATH` on this Mac and looking for it there finds
 nothing.** It lives inside
