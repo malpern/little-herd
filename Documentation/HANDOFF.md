@@ -1929,6 +1929,24 @@ over Tailscale also serves the Bonjour entry. An outage push collapses on
 `machine:kind`, the id the phone uses for its own copy; recoveries stay
 distinct. Verified by unit tests and builds only; not yet on the iPhone.
 
+**The mini now monitors the Synology through DSM.** The old SMB entry appeared
+offline because the only mount was Time Machine's hidden backup share.
+On 14 November the NAS entry was switched to HTTPS at `nas.local:5001`, with
+the certificate's public key checked against the one served on the NAS
+itself over trusted SSH. Adding the item externally to the mini's login
+Keychain did not make the password readable to the watcher, even though
+Settings said “Signed in.” Saving through Little Herd's own **Test and Save**
+sheet brought it live. The iPhone feed showed fresh CPU, memory, and volume
+readings after the dashboard closed.
+
+**The first DSM notification was about free space.** DSM marked Volume 1
+and its pool as `attention`, with `space_status.detail = fs_almost_full`
+at about 85% used. All four drives and all four RAID members reported
+normal, and the drives returned zero uncorrectable sectors. Micah received
+the native Little Herd notification on his iPhone. A generic “Volume 1
+reports warning” can describe pool space pressure even when no drive
+reports a fault.
+
 **Codex is not on `PATH` on this Mac and looking for it there finds
 nothing.** It lives inside
 `/Applications/ChatGPT.app/Contents/Resources/codex` and the Codex app; the
