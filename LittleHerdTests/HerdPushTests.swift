@@ -7,14 +7,15 @@ import Testing
 @MainActor
 struct HerdPushTests {
     @Test
-    func iphoneCanRegisterButCannotMoveSessions() throws {
+    func iphoneCanReadAndRegisterButCannotMoveSessions() throws {
         let suite = "HerdPushTests-\(UUID())"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let devices = HerdDeviceStore(defaults: defaults)
         let code = "ABCD2345"
         devices.bindToPairingCode(code)
-        let server = HerdPhoneServer(devices: devices, pairingCode: code) { nil }
+        let snapshot = HerdWire.Snapshot(watcher: "mini", generatedAt: .now, machines: [], acceptsWrites: true)
+        let server = HerdPhoneServer(devices: devices, pairingCode: code) { snapshot }
 
         let clientKey = P256.KeyAgreement.PrivateKey()
         let pairing = HerdWire.PairRequest(deviceName: "iPhone", publicKey: clientKey.publicKey.rawRepresentation)
@@ -30,9 +31,24 @@ struct HerdPushTests {
         let key = try HerdWire.Signing.sharedKey(
             privateKey: clientKey, peerPublicKey: pair.watcherPublicKey, pairingCode: code
         )
+        let time = String(Int(Date.now.timeIntervalSince1970))
+        let readNonce = UUID().uuidString
+        let readCanonical = HerdWire.Signing.canonical(
+            method: "GET", path: "/herd", time: time, nonce: readNonce, body: Data()
+        )
+        let read = HerdRequest(method: "GET", path: "/herd", headers: [
+            "x-herd-device": pair.deviceID, "x-herd-time": time, "x-herd-nonce": readNonce,
+            "x-herd-signature": HerdWire.Signing.signature(key: key, canonical: readCanonical),
+        ])
+        #expect(String(decoding: server.response(to: read), as: UTF8.self).hasPrefix("HTTP/1.1 200"))
+        #expect(String(decoding: server.response(to: read), as: UTF8.self).hasPrefix("HTTP/1.1 403"))
+        let unsigned = HerdRequest(method: "GET", path: "/herd")
+        #expect(String(decoding: server.response(to: unsigned), as: UTF8.self).hasPrefix("HTTP/1.1 401"))
+        let legacy = HerdRequest(method: "GET", path: "/herd", headers: ["authorization": "Bearer \(code)"])
+        #expect(String(decoding: server.response(to: legacy), as: UTF8.self).hasPrefix("HTTP/1.1 200"))
+
         let push = HerdWire.PushRegistration(token: "1234abcd", environment: "development")
         let body = try HerdWire.encoder().encode(push)
-        let time = String(Int(Date.now.timeIntervalSince1970))
         let nonce = UUID().uuidString
         let canonical = HerdWire.Signing.canonical(method: "POST", path: "/push", time: time, nonce: nonce, body: body)
         let headers = [

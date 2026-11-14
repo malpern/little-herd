@@ -65,8 +65,8 @@ final class HerdRequestReader {
     var isOversized: Bool { buffer.count > Self.limit }
 }
 
-/// The phone's existing build reads a snapshot before pairing. Keep that
-/// protocol, but bind only to the chosen Tailscale address and implement only
+/// Paired phones can sign snapshot reads. Older builds may still send their
+/// pairing code. Bind only to the chosen Tailscale address and admit only
 /// the writes necessary to register an APNs token.
 @MainActor
 final class HerdPhoneServer {
@@ -205,7 +205,14 @@ final class HerdPhoneServer {
         case ("GET", "/health"):
             return text("200 OK", "little-herd watcher\n")
         case ("GET", "/herd"), ("GET", "/herd.json"):
-            guard hasCode else { return text("401 Unauthorized", "pairing code required\n") }
+            if !hasCode {
+                guard request.headers[HerdWire.Signing.deviceHeader.lowercased()] != nil else {
+                    return text("401 Unauthorized", "pairing code required\n")
+                }
+                if case .refused(let reason) = gate.verify(request, keys: devices.key(for:)) {
+                    return text("403 Forbidden", reason + "\n")
+                }
+            }
             guard let snapshot = snapshot() else { return text("503 Service Unavailable", "watcher stopped\n") }
             return json(snapshot)
         case ("POST", "/pair"):
