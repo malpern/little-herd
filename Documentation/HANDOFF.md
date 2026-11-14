@@ -1,9 +1,18 @@
 # Little Herd — handoff
 
-**State:** `v0.1.67` is released and installed on this Mac. Items 13, 14, 15
-and 17 closed on 6–7 September and have been pruned from **Next**; what was
-learned doing them is in **Hard-won facts**, which is where it stays. It is the first
-build whose transfer works against a real session: until it, the agent
+**State, 14 November 2026.** `v0.1.69` (build 70) is the live Sparkle release
+and is installed on this Mac. It includes Codex cloud task listing and apply.
+The designated watcher and alert command are on main and have yet to ship.
+GitHub's latest main test run fails to compile four Swift Testing
+`#require` calls where a local `request` shadows the helper of the same name.
+[Draft PR #36](https://github.com/malpern/little-herd/pull/36) already carries
+the test fixes and passed 888 macOS tests on CI. The Mac source on main passed
+855 tests locally with Xcode 27.2 on macOS 27.3 beta. The latest stable macOS
+is 27.2.1. The deployment target is still macOS 15.
+
+Items 13, 14, 15 and 17 closed on 6–7 September. Their decisions are in
+**Hard-won facts**. The first build whose transfer worked against a real
+session was `v0.1.64`. Before it, the agent
 identifier reached `--resume` with its provider still on the front, and the
 mini's agent — which lives inside the Claude desktop app's bundle — was refused
 by the binary allowlist after the branch had already been pushed. Both were
@@ -2006,6 +2015,23 @@ it; the files survived only because the directory had not been reaped yet.
 
 ## Next
 
+**Next release.** Bring the four test fixes from PR #36 onto main and confirm
+CI passes. Test a signed build on macOS 27.2.1, including an unattended alert
+with the window closed and a throwaway transfer on each provider. Keep macOS 15
+in the compatibility checks. The current ChatGPT bundle has moved Codex to
+`Contents/Resources/codex-cli/bin/codex`, and the old user symlink on this Mac
+is dangling. Check that the same discovered binary can list and apply cloud
+tasks. The bundled CLI returned a structured `tasks` array and `cursor` from
+`codex cloud list --json --limit 1`; the existing reader parses display text.
+
+**Provider interfaces.** Try Codex App Server's documented thread metadata
+methods before reaching into `state_5.sqlite`, and measure which live status
+signals are visible from a separate process. Complete the
+`initialize`/`initialized` handshake in the existing client. For Claude Code,
+`claude agents --json` is a candidate for active sessions. Verify coverage
+against real terminal, background and desktop sessions before replacing the probe.
+Keep process sampling for CPU and a fallback where the provider omits a signal.
+
 18. **A designated watcher, so alerts happen when nobody is looking — half built.**
     The app could already say a machine was in trouble: `MachineAlertCenter` fires on a
     full disk, memory pressure, a machine that stopped responding, a lost sign-in, once
@@ -2033,6 +2059,11 @@ it; the files survived only because the directory had not been reaped yet.
     the watcher, and any notion of what happens when the watcher itself is the thing
     that died.
 
+    The draft iPhone branch fixed a separate issue worth taking on its own:
+    main still samples only while a monitoring surface is active. Keep the
+    watcher sampling with all windows closed and prove alert delivery and
+    recovery on the mini before shipping the watcher. Apple provides
+    `SMAppService.mainApp` for an opt-in launch at login.
 
 **The website promises "Put your herd to work", and on 29 August the hedge
 came off it.** The hero used to carry the clause *"Little Herd watches;
@@ -2145,11 +2176,22 @@ the only part drawn.
    better**, because probing every other route to a machine is a fair amount of
    work to improve one tooltip, and this app already declines to enumerate
    volumes for a smaller reason.
-6. **iOS, scoped to the herd rather than to sessions — and the mini is a coordinator now, which was the prerequisite.** Do not rebuild session steering; Remote Control and the Claude app already do it, with the local filesystem and MCP servers attached. What has no answer is the herd: which machine is hot, what is waiting on you, what the budget looks like, and starting a transfer. Do not sample from the phone — iOS will not ssh-poll in the background.
+6. **iOS has a working prototype in draft PR #36.** The branch handoff at
+   `02d46f9` records Bonjour discovery on a physical iPhone and a signed move dry
+   run from the simulator. A real phone-initiated move and live APNs delivery
+   remain unverified. The watcher enables writes when it starts. It listens
+   on all interfaces over plain HTTP, and the reusable code that admits
+   `/pair` travels over that connection. Keep the first mobile pilot read-only
+   over an authenticated, encrypted connection. Use the vendors' remote
+   clients for session steering. The phone's own job is to show herd health
+   and what's waiting across machines.
 
     **Two of the three reasons given for building it once no longer hold as written.** Item 3 was rewritten and has no Keychain problem any more, so that justification is stale. What remains is iOS and a durable successor — and the second of those was explored on 7 September and **parked**: the mini carries the current app and can be taught the whole herd, after which it samples all four machines headlessly and plans a transfer of a session on the Air destined for the linux box. The script that teaches it is held in dotfiles PR #5 rather than on main, because nothing consumes the capability. It coordinates between two machines that are not it, which is what a laptop that sleeps cannot be relied on to do — but **that a transfer started there survives the Air closing is inference, not measurement.** Remote steps run as `ssh host 'command'` from whichever machine started them, so a dropped connection should take them with it; nobody has closed a lid mid-transfer to find out.
 
-    **What is left is a trigger, not a collector.** Nothing yet asks the mini to do any of this on its own: no schedule, no queue, no phone. Building a resident daemon before something wants its output would be building for no consumer, which this file keeps arguing against. The model layer is already portable — 64 of 103 source files import neither SwiftUI nor AppKit — so the constraint was never the code.
+    **The phone prototype consumes the mini's snapshots.** Its last live
+    configuration held the mini and Air. Seed the full herd before judging
+    the pilot, and close the Air lid after departure in a throwaway transfer
+    before promising the coordinator survives it.
 10. **Local models are blocked, not pending.** Considered and deferred
     18 August. No herd machine runs a model server; the linux box is an AMD
     APU with integrated graphics; the best local-model host owned is the M5
