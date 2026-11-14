@@ -1899,10 +1899,10 @@ APNs environment as the iPhone build. The mini uses the existing sandbox key
 and its test profile. The phone only needs Tailscale to reach the watcher for
 pairing, token registration, and snapshots. Apple delivers the alerts.
 
-The mini runs a locally installed, notarized Mac 0.1.71 (build 72), with
-0.1.70 backed up for rollback. On 14 November the installed app sent the
-synthetic SSH outage and recovery through sandbox APNs at 13:31 and 13:32
-Pacific with its dashboard closed. Removing the SSH test fixture and
+On 14 November the mini's locally installed, notarized Mac 0.1.71 (build 72)
+sent the synthetic SSH outage and recovery through sandbox APNs at 13:31
+and 13:32 Pacific with its dashboard closed. The previous 0.1.70 build
+was backed up for rollback. Removing the SSH test fixture and
 restarting with the regular machine list preserved the iPhone registration.
 The public Sparkle feed remains on 0.1.70.
 
@@ -1923,6 +1923,15 @@ normal, and the drives returned zero uncorrectable sectors. Micah received
 the native Little Herd notification on his iPhone. A generic “Volume 1
 reports warning” can describe pool space pressure even when no drive
 reports a fault.
+
+Build 73 of the same local Mac 0.1.71 reads the DSM `fs_almost_full`
+reason and includes usage and available space in Mac and iPhone alerts.
+For the recorded sample, the body is “DSM says Volume 1 is nearly full.
+85% used, 1.36 TB free.” Unrecognized DSM reasons retain the general
+message. After installing the notarized build on the mini, all four
+machines reported live, the saved DSM login still worked, and Apple
+accepted the storage push at 14:00 Pacific. Build 72 is available for
+rollback.
 
 **Codex is not on `PATH` on this Mac and looking for it there finds
 nothing.** It lives inside
