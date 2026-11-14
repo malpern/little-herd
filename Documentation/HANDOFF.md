@@ -1933,6 +1933,24 @@ machines reported live, the saved DSM login still worked, and Apple
 accepted the storage push at 14:00 Pacific. Build 72 is available for
 rollback.
 
+**Little Herd has a private TestFlight build for production APNs.** App
+Store Connect accepted iPhone 0.1.0 (build 1) on 14 November. The internal
+group contains only Micah and takes builds manually. PR #39 targets the
+iPhone draft and sets both the signed push entitlement and the phone's
+registration environment through `HERD_APNS_ENVIRONMENT`. It defaults to
+`development`. The App Store archive uses `production` with the
+`Little Herd App Store` distribution profile. Check both the signed
+entitlement and the built app's `HerdAPNSEnvironment` value before upload.
+The opaque iPhone icon comes from the original Little Herd artwork.
+
+Apple issued a production, topic-specific key for
+`com.malpern.LittleHerdMobile`. The mini holds it privately alongside the
+sandbox key. The deployed relay accepts a phone registration from either
+environment and holds one sending key at a time. Open the TestFlight build
+on the phone with Tailscale connected and verify its production token
+before switching the mini's key. Exercise a temporary SSH outage and
+recovery with the dashboard closed, then remove the fixture.
+
 **Codex is not on `PATH` on this Mac and looking for it there finds
 nothing.** It lives inside
 `/Applications/ChatGPT.app/Contents/Resources/codex` and the Codex app; the
