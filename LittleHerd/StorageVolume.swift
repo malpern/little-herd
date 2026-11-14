@@ -15,6 +15,8 @@ nonisolated struct StorageVolume: Identifiable, Equatable, Sendable {
     /// whether a volume is degraded. A volume can be healthy-looking and nearly
     /// empty while its pool is falling apart underneath.
     var health: SynologyHealth?
+    /// DSM can mark a healthy volume as needing attention because of free space.
+    var isNearlyFull: Bool = false
 
     /// Deliberately the total less what is free, rather than what the volume
     /// says it is using.

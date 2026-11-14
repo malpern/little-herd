@@ -12,9 +12,8 @@ nonisolated enum MachineAlert: String, CaseIterable, Sendable {
     case diskFull
     case memoryCritical
     case unreachable
-    /// A drive or volume the machine itself considers damaged. The one condition
-    /// here that is about hardware rather than load: a full disk is recoverable,
-    /// a dying drive takes the data with it.
+    /// A drive or volume the machine itself says needs attention. DSM can
+    /// report low space before Little Herd's usual disk threshold.
     case storageUnhealthy
     /// A machine that was being watched can no longer be signed in to, because
     /// its saved password has become unreadable.
@@ -197,10 +196,16 @@ final class MachineAlertCenter {
             }
             // No individual drive is condemned, so the trouble is at the volume
             // or pool level — say that rather than saying nothing.
-            guard let volume = machine.storageVolumes.first(where: {
-                $0.health == .warning || $0.health == .critical
-            }) else {
+            let volumes = machine.storageVolumes
+            guard let volume = volumes.first(where: { $0.health == .critical })
+                ?? volumes.first(where: { $0.health == .warning })
+            else {
                 return ""
+            }
+            if volume.health == .warning, volume.isNearlyFull {
+                let used = Int(volume.usedPercent.rounded())
+                let free = HerdByteCount.storage(Int64(volume.availableBytes))
+                return "DSM says \(volume.name) is nearly full. \(used)% used, \(free) free."
             }
             return "\(volume.name) reports \(volume.health?.label.lowercased() ?? "trouble")."
         }
