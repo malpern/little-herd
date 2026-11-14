@@ -302,7 +302,7 @@ private nonisolated final class Recorder: @unchecked Sendable {
 /// The order the driver does things in, which the first live carry got wrong.
 @Suite("Carry before brief")
 struct CarryOrderingTests {
-    private func request() -> TransferAssembly.Request? {
+    private func makeRequest() -> TransferAssembly.Request? {
         func account(_ id: String, home: String) -> DestinationAccount {
             DestinationAccount(
                 machine: MachineID(id), name: id, symbolName: "desktopcomputer",
@@ -343,7 +343,7 @@ struct CarryOrderingTests {
     /// runner is handed in and must never see a `.brief` step.
     @Test
     func acarriedSessionSkipsTheBrief() async throws {
-        let made = try #require(request())
+        let made = try #require(makeRequest())
         let seen = Recorder()
         _ = await TransferDriver.prepare(
             made,
@@ -362,7 +362,7 @@ struct CarryOrderingTests {
     /// successor is never left with neither.
     @Test
     func adeclinedCarryKeepsTheBrief() async throws {
-        let made = try #require(request())
+        let made = try #require(makeRequest())
         let seen = Recorder()
         _ = await TransferDriver.prepare(
             made,

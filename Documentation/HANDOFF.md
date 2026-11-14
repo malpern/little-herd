@@ -1,16 +1,20 @@
 # Little Herd — handoff
 
-**State:** `v0.1.69` is released. **A phone can read the herd, on branch
-`ios/spike-1` (26 September, not yet on main).** The watcher Mac serves what it
-already knows on port 7841 and announces itself on the local network; an iOS
-app finds it by Bonjour or a typed name, pairs with a code, draws the herd
-with its animals, and opens a machine to its sessions grouped by what they
-need from you. Proven in the simulator against the mini's live herd; not yet
-on a real phone. Items 6 and 18 say what is left.
-Items 13, 14, 15
-and 17 closed on 6–7 September and have been pruned from **Next**; what was
-learned doing them is in **Hard-won facts**, which is where it stays. It is the first
-build whose transfer works against a real session: until it, the agent
+**State, 14 November 2026.** `v0.1.69` (build 70) is the live Sparkle release
+and is installed on this Mac. It includes Codex cloud task listing and apply.
+The designated watcher and alert command are on main and have yet to ship.
+Four Swift Testing `#require` calls shadowed their helper on the CI toolchain.
+The helper names were fixed in `99089a3`, and
+[main CI passed](https://github.com/malpern/little-herd/actions/runs/43632757562).
+The latest stable macOS is 27.2.1. The deployment target is still macOS 15.
+
+**The iOS app is on draft PR #36 (`ios/spike-1`), not on main.** On 27 September
+a move started from the phone path landed on linux end to end: the check ran
+there and the work arrived. Item 6 has the detail.
+
+Items 13, 14, 15 and 17 closed on 6–7 September. Their decisions are in
+**Hard-won facts**. The first build whose transfer worked against a real
+session was `v0.1.64`. Before it, the agent
 identifier reached `--resume` with its provider still on the front, and the
 mini's agent — which lives inside the Claude desktop app's bundle — was refused
 by the binary allowlist after the branch had already been pushed. Both were
@@ -1838,10 +1842,26 @@ set, and the successor never gets `bypassPermissions`.
 work can be shown at all.** Re-checked on 7 September against 0.153.4 —
 three weeks and five minor versions after the claim was first measured, on
 an experimental subcommand, which is exactly the kind of fact that rots.
-There is no `--json`, so the output is parsed as prose: four lines per task,
+That build did not expose `--json`, so the output was parsed as prose: four lines per task,
 anchored on the URL rather than on line counts, so a vendor adding a fifth
 line costs one field instead of every record after it. A gated harness runs
 the real command, because a fixture cannot notice a reformat.
+
+**On 14 November, the bundled Codex returned JSON.** The app reads
+`codex cloud list --json` and uses the text parser when an older CLI rejects
+the flag. The live account returned an empty page. Fixtures based on the CLI
+source cover populated pages. Codex Cloud writes `error.log` even for a
+successful list, so the reader runs in a private temporary directory.
+Cloud list and apply share discovery for the user install, the new
+`ChatGPT.app/Contents/Resources/codex-cli/bin/codex` layout, and older bundles.
+Apply resolves the binary on the machine that owns the checkout.
+
+**A designated watcher keeps sampling when the dashboard closes.** The
+watcher holds its own sampling registration while alerts and watching are
+enabled. A recovery uses its title for the command body when the notification
+has no body, because `notify-push` refuses an empty message. The regression
+test closes the model's dashboard surface and observes both events through
+an executable. Restoring the old surface behavior made the test fail.
 
 **Codex is not on `PATH` on this Mac and looking for it there finds
 nothing.** It lives inside
@@ -2051,6 +2071,18 @@ it; the files survived only because the directory had not been reaped yet.
 
 ## Next
 
+**Next release.** Test a signed build on macOS 27.2.1. Verify alert delivery
+and recovery on the mini through the chosen transport, and run a throwaway
+transfer with each provider. Keep macOS 15 in the compatibility checks.
+
+**Provider interfaces.** Try Codex App Server's documented thread metadata
+methods before reaching into `state_5.sqlite`, and measure which live status
+signals are visible from a separate process. Complete the
+`initialize`/`initialized` handshake in the existing client. For Claude Code,
+`claude agents --json` is a candidate for active sessions. Verify coverage
+against real terminal, background and desktop sessions before replacing the probe.
+Keep process sampling for CPU and a fallback where the provider omits a signal.
+
 18. **A designated watcher, so alerts happen when nobody is looking — half built.**
     The app could already say a machine was in trouble: `MachineAlertCenter` fires on a
     full disk, memory pressure, a machine that stopped responding, a lost sign-in, once
@@ -2081,8 +2113,9 @@ it; the files survived only because the directory had not been reaped yet.
     **A watcher with no window open sampled nothing — fixed.** Monitoring ran only
     while the dashboard or the menu bar was active, so a nominated watcher with its
     window closed alerted on nothing, and had since this item was built. The server
-    is now a `MonitorSurface` of its own (`.watcher`), which is what keeps the
-    sampler running headless. Found by reading the code to serve it, not by any test.
+    is now a `MonitorSurface` of its own (`.phoneServer`), which is what keeps the
+    sampler running headless. Main's `.watcher` surface does the same for alert
+    duty; they are separate so turning alerts off does not stall the phone. Found by reading the code to serve it, not by any test.
 
     **What is missing is that installs cannot tell each other apart.** Nominating a
     watcher is done by hand on each Mac, so two watchers double every alert and none
@@ -2093,6 +2126,7 @@ it; the files survived only because the directory had not been reaped yet.
     step rather than more switches. Also unbuilt: launching at login on the watcher,
     and any notion of what happens when the watcher itself is the thing that died.
 
+    Apple provides `SMAppService.mainApp` for an opt-in launch at login.
 
 **The website promises "Put your herd to work", and on 29 August the hedge
 came off it.** The hero used to carry the clause *"Little Herd watches;
@@ -2205,7 +2239,16 @@ the only part drawn.
    better**, because probing every other route to a machine is a fair amount of
    work to improve one tooltip, and this app already declines to enumerate
    volumes for a smaller reason.
-6. **iOS: built as a reader, on `ios/spike-1`, and not yet on a real phone.** Scoped
+6. **iOS has a working prototype in draft PR #36.** The branch handoff at
+   `02d46f9` records Bonjour discovery on a physical iPhone and a signed move dry
+   run from the simulator. A real phone-initiated move and live APNs delivery
+   remain unverified. The watcher enables writes when it starts. It listens
+   on all interfaces over plain HTTP, and the reusable code that admits
+   `/pair` travels over that connection. Keep the first mobile pilot read-only
+   over an authenticated, encrypted connection. Use the vendors' remote
+   clients for session steering. The phone's own job is to show herd health
+   and what's waiting across machines.
+
    to the herd rather than to sessions, as decided: which machine is hot, what is
    waiting on you, whether the Linux box is up. Not session steering — Remote Control
    and the Claude app already do that. And **the phone does not sample.** It reads
@@ -2255,8 +2298,8 @@ the only part drawn.
     plan or refusal, the command line's exit 2. Only the button sends the real move,
     which goes through the same `TransferAssembly` and `beginTransfer` as a dashboard
     drag. The phone decides nothing: each session carries a `move` verdict and the
-    destinations `AgentDropEligibility` allows. A real move has **not** been run from a
-    phone yet; every live test was a dry run.
+    destinations `AgentDropEligibility` allows. A real phone-path move from the mini to linux
+    landed on 27 September.
 
     **Alerts reach the phone two ways.** The snapshot now carries the watcher's active
     `MachineAlert`s, and every read, foreground or a `BGAppRefreshTask`, posts the new
@@ -2344,6 +2387,10 @@ the only part drawn.
     the two machines its own configuration knew (itself, and the Air). Seeding it is the
     next thing that makes the phone useful rather than merely working.
 
+    **The phone prototype consumes the mini's snapshots.** Its last live
+    configuration held the mini and Air. Seed the full herd before judging
+    the pilot, and close the Air lid after departure in a throwaway transfer
+    before promising the coordinator survives it.
 10. **Local models are blocked, not pending.** Considered and deferred
     18 August. No herd machine runs a model server; the linux box is an AMD
     APU with integrated graphics; the best local-model host owned is the M5

@@ -61,37 +61,61 @@ nonisolated extension HerdCommand {
     }
 }
 
-/// Runs `codex cloud list` wherever Codex actually is.
-///
-/// **Codex is not on `PATH` here, and looking for it there finds nothing.** On this Mac
-/// it lives inside the ChatGPT and Codex application bundles; on the mini it is a
-/// standalone binary in `~/.local/bin`. The probe already knows how to find an agent, so
-/// this asks the same places in the same order and takes the first that answers.
+/// Runs the local Codex CLI, with a text fallback for builds that lack `--json`.
 nonisolated enum CodexCloudReader {
-    static var candidatePaths: [String] {
-        let home = NSHomeDirectory()
-        return [
-            "\(home)/.local/bin/codex",
-            "/Applications/ChatGPT.app/Contents/Resources/codex",
-            "/Applications/Codex.app/Contents/Resources/codex",
-            "/opt/homebrew/bin/codex",
-        ]
+    static func list(limit: Int = 20, binary: String? = nil) -> [CodexCloudTask]? {
+        let workingDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("little-herd-cloud-\(UUID().uuidString)", isDirectory: true)
+        // Codex Cloud writes error.log in its working directory even on success.
+        // Use a private directory so a read never leaves that log in a checkout.
+        do {
+            try FileManager.default.createDirectory(
+                at: workingDirectory, withIntermediateDirectories: false,
+                attributes: [.posixPermissions: 0o700]
+            )
+        } catch {
+            return nil
+        }
+        defer { try? FileManager.default.removeItem(at: workingDirectory) }
+
+        let command = binary.map { "exec \(RemoteShell.quoted($0)) \"$@\"" }
+            ?? CodexInstallationPaths.execCommand(arguments: "\"$@\"")
+        let arguments = ["cloud", "list", "--limit", String(limit)]
+        let stderrURL = workingDirectory.appendingPathComponent("stderr")
+        guard FileManager.default.createFile(atPath: stderrURL.path, contents: nil),
+              let errors = try? FileHandle(forWritingTo: stderrURL)
+        else { return nil }
+        defer { try? errors.close() }
+
+        if let output = run(command, arguments + ["--json"], in: workingDirectory, errors: errors) {
+            return CodexCloudListParser.parseJSON(output)
+        }
+
+        let diagnostic = (try? String(contentsOf: stderrURL, encoding: .utf8)) ?? ""
+        guard diagnostic.contains("unexpected argument '--json'")
+            || diagnostic.contains("unknown option '--json'")
+        else { return nil }
+        return run(command, arguments, in: workingDirectory, errors: errors)
+            .map(CodexCloudListParser.parse)
     }
 
-    static func list(limit: Int = 20) -> String {
-        guard let binary = candidatePaths.first(where: {
-            FileManager.default.isExecutableFile(atPath: $0)
-        }) else { return "" }
+    private static func run(
+        _ command: String, _ arguments: [String], in directory: URL, errors: FileHandle
+    ) -> String? {
         let process = Process()
         let pipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: binary)
-        process.arguments = ["cloud", "list", "--limit", String(limit)]
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", command, "little-herd"] + arguments
+        process.currentDirectoryURL = directory
         process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
+        process.standardError = errors
         process.standardInput = FileHandle.nullDevice
-        do { try process.run() } catch { return "" }
+        do { try process.run() } catch { return nil }
+        let watchdog = ProbeWatchdog(process: process, after: 30)
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
+        let timedOut = watchdog.finish()
+        guard !timedOut, process.terminationStatus == 0 else { return nil }
         return String(decoding: data, as: UTF8.self)
     }
 }

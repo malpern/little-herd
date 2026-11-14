@@ -30,11 +30,11 @@ final class CloudTaskLoader {
         if let lastRead, Date().timeIntervalSince(lastRead) < interval { return }
         guard task == nil else { return }
         task = Task { [weak self] in
-            let output = await Task.detached(priority: .utility) {
+            let tasks = await Task.detached(priority: .utility) {
                 CodexCloudReader.list()
             }.value
             guard let self else { return }
-            self.tasks = CodexCloudListParser.parse(output)
+            if let tasks { self.tasks = tasks }
             self.lastRead = Date()
             self.task = nil
         }

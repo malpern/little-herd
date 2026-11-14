@@ -49,11 +49,11 @@ nonisolated enum SuccessorBinary {
         _ reportedPath: String,
         for provider: AgentTaskProvider
     ) -> String? {
-        guard reportedPath.hasPrefix("/"),
-              !reportedPath.contains(".."),
-              let suffixes = allowedSuffixes[provider],
-              suffixes.contains(where: { reportedPath.hasSuffix($0) })
-        else { return nil }
-        return reportedPath
+        guard reportedPath.hasPrefix("/"), !reportedPath.contains("..") else { return nil }
+        if provider == .codex && CodexInstallationPaths.applicationBundles.contains(reportedPath) {
+            return reportedPath
+        }
+        return allowedSuffixes[provider]?.contains(where: { reportedPath.hasSuffix($0) }) == true
+            ? reportedPath : nil
     }
 }

@@ -153,7 +153,9 @@ struct CodexCloudApplyTests {
     @Test
     func itrunsCodexOwnCommandInTheChosenCheckout() {
         let command = task("task_e_123").applyCommand(in: "/Users/m/local-code/KeyPath")
-        #expect(command == "cd '/Users/m/local-code/KeyPath' && codex cloud apply 'task_e_123'")
+        #expect(command.hasPrefix("cd '/Users/m/local-code/KeyPath' || exit 1\n"))
+        #expect(command.contains("exec \"$little_herd_codex\" cloud apply 'task_e_123'"))
+        #expect(command.contains("'/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex'"))
     }
 
     /// A directory with a space in it is one argument. This herd has such a path, so it
@@ -163,6 +165,36 @@ struct CodexCloudApplyTests {
         let command = task("t 1").applyCommand(in: "/Users/m/Some Folder/KeyPath")
         #expect(command.contains("'/Users/m/Some Folder/KeyPath'"))
         #expect(command.contains("'t 1'"))
+    }
+
+    @Test
+    func applyFindsTheTargetsCodexWithoutDependingOnItsPath() throws {
+        let home = FileManager.default.temporaryDirectory
+            .appendingPathComponent("codex apply \(UUID())")
+        let checkout = home.appendingPathComponent("checkout's folder")
+        let codex = home.appendingPathComponent(".local/bin/codex")
+        try FileManager.default.createDirectory(at: checkout, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: home) }
+        try FileManager.default.createDirectory(
+            at: codex.deletingLastPathComponent(), withIntermediateDirectories: true
+        )
+        try """
+        #!/bin/sh
+        printf '%s\\n' "$PWD" "$@"
+        """.write(to: codex, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: codex.path)
+        let process = Process()
+        let output = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", task("task's id").applyCommand(in: checkout.path)]
+        process.environment = ["HOME": home.path, "PATH": "/bin:/usr/bin"]
+        process.standardOutput = output
+        try process.run()
+        let lines = String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+            .split(separator: "\n").map(String.init)
+        process.waitUntilExit()
+        #expect(process.terminationStatus == 0)
+        #expect(lines == [checkout.path, "cloud", "apply", "task's id"])
     }
 
     /// **Nothing is applied where nothing can be.** A candidate without a directory is

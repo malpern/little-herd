@@ -10,6 +10,61 @@ import Testing
 /// matters most — you are away and a disk fills — is the moment nothing is running.
 @Suite("The designated watcher")
 struct DesignatedWatcherTests {
+    @Test @MainActor
+    func watcherDeliversAnAlertAndRecoveryAfterTheDashboardCloses() async throws {
+        let suite = "LittleHerdWatcherTests-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defaults.set(true, forKey: LittleHerdPreferences.alertsEnabledKey)
+        defaults.set(true, forKey: LittleHerdPreferences.watchesHerdKey)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer {
+            defaults.removePersistentDomain(forName: suite)
+            try? FileManager.default.removeItem(at: directory)
+        }
+        let script = directory.appendingPathComponent("notify")
+        let output = directory.appendingPathComponent("alerts")
+        try """
+        #!/bin/sh
+        [ -n "$2" ] || exit 1
+        printf '%s\\n' "$1" >> \(RemoteShell.quoted(output.path))
+        """.write(to: script, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
+
+        let sampler = WatcherTestSampler()
+        let model = MonitorModel(
+            configurations: [.local(computerName: "Watcher Test")],
+            defaults: defaults,
+            alerts: MachineAlertCenter { title, body in
+                MachineAlertCenter.runAlertCommand(script.path, title: title, body: body)
+            },
+            makeLocalSampler: { sampler }
+        )
+        model.activate(.dashboard)
+        model.updateWatcherFromPreferences()
+        model.deactivate(.dashboard)
+        defer {
+            defaults.set(false, forKey: LittleHerdPreferences.watchesHerdKey)
+            model.updateWatcherFromPreferences()
+        }
+
+        let expected = ["Watcher Test is under memory pressure", "Watcher Test memory recovered"]
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: .seconds(10))
+        var delivered: [String] = []
+        while clock.now < deadline {
+            delivered = (try? String(contentsOf: output, encoding: .utf8))?
+                .split(separator: "\n").map(String.init) ?? []
+            if delivered.count >= expected.count { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(delivered == expected)
+
+        defaults.set(false, forKey: LittleHerdPreferences.alertsEnabledKey)
+        model.updateWatcherFromPreferences()
+        #expect(model.machines.first?.state == .stopped)
+    }
+
     /// **A machine name is user text and it reaches the command.** "Micah's MacBook Air"
     /// already carries an apostrophe; a name carrying `; rm -rf ~` would too. Passing
     /// arguments rather than building a shell string is what makes that a title instead
@@ -20,14 +75,15 @@ struct DesignatedWatcherTests {
             .appendingPathComponent("watcher-args-\(UUID().uuidString).txt")
         let script = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("watcher-\(UUID().uuidString).sh")
-        // Writes each argument on its own line, so the test can see how they arrived.
-        try "#!/bin/sh\nfor a in \"$@\"; do echo \"$a\"; done > \(seen.path)\n"
+        // Only publish the file after the command has written every argument.
+        try "#!/bin/sh\nprintf '%s\\n' \"$@\" > \(seen.path).tmp && mv \(seen.path).tmp \(seen.path)\n"
             .write(to: script, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes(
             [.posixPermissions: 0o755], ofItemAtPath: script.path)
         defer {
             try? FileManager.default.removeItem(at: script)
             try? FileManager.default.removeItem(at: seen)
+            try? FileManager.default.removeItem(atPath: seen.path + ".tmp")
         }
 
         let hostile = "Micah’s Mac; rm -rf ~"
@@ -63,13 +119,14 @@ struct DesignatedWatcherTests {
             .appendingPathComponent("watcher-flag-\(UUID().uuidString).txt")
         let script = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("watcher-\(UUID().uuidString).sh")
-        try "#!/bin/sh\nfor a in \"$@\"; do echo \"$a\"; done > \(seen.path)\n"
+        try "#!/bin/sh\nprintf '%s\\n' \"$@\" > \(seen.path).tmp && mv \(seen.path).tmp \(seen.path)\n"
             .write(to: script, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes(
             [.posixPermissions: 0o755], ofItemAtPath: script.path)
         defer {
             try? FileManager.default.removeItem(at: script)
             try? FileManager.default.removeItem(at: seen)
+            try? FileManager.default.removeItem(atPath: seen.path + ".tmp")
         }
 
         MachineAlertCenter.runAlertCommand("\(script.path) --urgent", title: "T", body: "B")
@@ -94,5 +151,19 @@ struct DesignatedWatcherTests {
             LittleHerdPreferences.alertCommandKey,
         ])
         #expect(keys.count == 4)
+    }
+}
+
+private actor WatcherTestSampler: LocalMetricsSampling {
+    private var samples = 0
+
+    func prime() {}
+
+    func sample() -> SystemSnapshot {
+        samples += 1
+        return SystemSnapshot(
+            timestamp: .now, readings: [:],
+            memoryPressure: samples == 1 ? .critical : nil
+        )
     }
 }

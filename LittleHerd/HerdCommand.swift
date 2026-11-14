@@ -186,7 +186,7 @@ extension HerdCommand {
             let sampled = sampleBlocking(configurations)
             return (
                 cloud(
-                    tasks: CodexCloudListParser.parse(CodexCloudReader.list()),
+                    tasks: CodexCloudReader.list() ?? [],
                     herd: destinationAccounts(from: sampled),
                     json: json
                 ),

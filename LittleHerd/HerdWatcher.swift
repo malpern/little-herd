@@ -129,13 +129,13 @@ final class HerdWatcher {
             if defaults.bool(forKey: LittleHerdPreferences.networkVolumeAccessOnboardingCompletedKey) {
                 model.setNetworkStorageMonitoringEnabled(true)
             }
-            model.activate(.watcher)
+            model.activate(.phoneServer)
             server.start(port: configuredPort)
         } else if !shouldServe, let server {
             server.stop()
             self.server = nil
             HerdPushRelay.shared = nil
-            model.deactivate(.watcher)
+            model.deactivate(.phoneServer)
         }
     }
 
