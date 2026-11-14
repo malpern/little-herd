@@ -1,8 +1,11 @@
 # Little Herd — handoff
 
-**State, 14 November 2026.** `v0.1.69` (build 70) is the live Sparkle release
-and is installed on this Mac. It includes Codex cloud task listing and apply.
-The designated watcher and alert command are on main and have yet to ship.
+**State, 14 November 2026.** `v0.1.70` (build 71) is the live Sparkle release.
+It keeps the designated watcher sampling with the dashboard closed, sends
+outage and recovery alerts through the configured command, and reads structured
+Codex Cloud task data when supported. The published archive's signature was
+verified against the app's pinned Sparkle public key and its notarization
+staple was validated.
 Four Swift Testing `#require` calls shadowed their helper on the CI toolchain.
 The helper names were fixed in `99089a3`, and
 [main CI passed](https://github.com/malpern/little-herd/actions/runs/43632757562).
@@ -1863,9 +1866,19 @@ an executable. Restoring the old surface behavior made the test fail.
 notarized 0.1.70 candidate reported an outage and a recovery for a temporary
 SSH target after its dashboard closed. The iPhone received both Pushover
 messages. The test fixture also exposed a race in two command tests, fixed
-in `24604bb`. The release is held for delivery by the Little Herd iPhone
-app itself. That path is in draft PR #36, which merged the Mac fixes in
-`dafe211`.
+in `24604bb`.
+
+**Native sandbox APNs reached the locked iPhone on 14 November.** The iOS
+build from draft PR #36 was signed with a development profile for the
+physical iPhone and installed over USB. A private build of its companion
+watcher on the mini accepted pairing and push registration on its Tailscale
+address with transfers disabled. With the dashboard closed, the loopback SSH
+fixture stopped responding and then recovered. Apple accepted the two pushes
+and Micah confirmed both Little Herd notifications arrived. The mini's
+original preferences and SSH configuration were restored. The Little Herd
+sandbox key is stored privately on the mini in `~/.config/little-herd/apns/`.
+The public Mac 0.1.70 ships the watcher fixes from main. The native relay
+remains in the iOS draft.
 
 **Codex is not on `PATH` on this Mac and looking for it there finds
 nothing.** It lives inside
@@ -2037,10 +2050,8 @@ it; the files survived only because the directory had not been reaped yet.
 
 ## Next
 
-**Next release.** Verify that the Little Herd iPhone app receives the mini's
-outage and recovery with the dashboard closed before publishing 0.1.70.
-Test a signed build on macOS 27.2.1 and run a throwaway transfer with each
-provider. Keep macOS 15 in the compatibility checks.
+**Release verification.** Run a throwaway transfer with each provider on
+the current macOS release. Keep macOS 15 in the compatibility checks.
 
 **Provider interfaces.** Try Codex App Server's documented thread metadata
 methods before reaching into `state_5.sqlite`, and measure which live status
@@ -2192,8 +2203,9 @@ the only part drawn.
    volumes for a smaller reason.
 6. **iOS has a working prototype in draft PR #36.** The branch handoff at
    `02d46f9` records Bonjour discovery on a physical iPhone and a signed move dry
-   run from the simulator. A real phone-initiated move and live APNs delivery
-   remain unverified. The watcher enables writes when it starts. It listens
+   run from the simulator. The physical iPhone received both sandbox APNs
+   alerts on 14 November. A real phone-initiated move remains unverified.
+   The watcher enables writes when it starts. It listens
    on all interfaces over plain HTTP, and the reusable code that admits
    `/pair` travels over that connection. Keep the first mobile pilot read-only
    over an authenticated, encrypted connection. Use the vendors' remote
