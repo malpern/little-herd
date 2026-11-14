@@ -1945,11 +1945,18 @@ The opaque iPhone icon comes from the original Little Herd artwork.
 
 Apple issued a production, topic-specific key for
 `com.malpern.LittleHerdMobile`. The mini holds it privately alongside the
-sandbox key. The deployed relay accepts a phone registration from either
-environment and holds one sending key at a time. Open the TestFlight build
-on the phone with Tailscale connected and verify its production token
-before switching the mini's key. Exercise a temporary SSH outage and
-recovery with the dashboard closed, then remove the fixture.
+sandbox key and now uses the production key. PR #40 fixed a pairing loop:
+TestFlight signed each snapshot read, and the Mac only accepted the older
+bearer code for that route. The Mac now checks signed reads with the same
+device and replay checks used for push registration.
+
+The mini's notarized local 0.1.71 build 74 paired with the TestFlight
+iPhone, showed all four machines in iPhone Mirroring, and stored one
+production token. Apple accepted a temporary SSH target's outage and
+recovery at 14:38 and 14:39 Pacific with the Mac dashboard closed.
+Micah confirmed both arrived in Little Herd on his iPhone. The fixture
+was removed, and all four real machines reported live again with the
+production key and registration in place.
 
 **Codex is not on `PATH` on this Mac and looking for it there finds
 nothing.** It lives inside
