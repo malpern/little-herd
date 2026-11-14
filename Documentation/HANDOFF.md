@@ -1859,6 +1859,14 @@ has no body, because `notify-push` refuses an empty message. The regression
 test closes the model's dashboard surface and observes both events through
 an executable. Restoring the old surface behavior made the test fail.
 
+**The closed-window check on the mini reached Pushover on 14 November.** The
+notarized 0.1.70 candidate reported an outage and a recovery for a temporary
+SSH target after its dashboard closed. The iPhone received both Pushover
+messages. The test fixture also exposed a race in two command tests, fixed
+in `24604bb`. The release is held for delivery by the Little Herd iPhone
+app itself. That path is in draft PR #36, which merged the Mac fixes in
+`dafe211`.
+
 **Codex is not on `PATH` on this Mac and looking for it there finds
 nothing.** It lives inside
 `/Applications/ChatGPT.app/Contents/Resources/codex` and the Codex app; the
@@ -2029,9 +2037,10 @@ it; the files survived only because the directory had not been reaped yet.
 
 ## Next
 
-**Next release.** Test a signed build on macOS 27.2.1. Verify alert delivery
-and recovery on the mini through the chosen transport, and run a throwaway
-transfer with each provider. Keep macOS 15 in the compatibility checks.
+**Next release.** Verify that the Little Herd iPhone app receives the mini's
+outage and recovery with the dashboard closed before publishing 0.1.70.
+Test a signed build on macOS 27.2.1 and run a throwaway transfer with each
+provider. Keep macOS 15 in the compatibility checks.
 
 **Provider interfaces.** Try Codex App Server's documented thread metadata
 methods before reaching into `state_5.sqlite`, and measure which live status
