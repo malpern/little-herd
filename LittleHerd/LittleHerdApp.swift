@@ -84,6 +84,7 @@ struct LittleHerdApp: App {
             model?.applyConfigurations(machineStore.machines)
         }
         _model = State(initialValue: model)
+        model.updateWatcherFromPreferences()
 
         // Started here rather than from a view.
         //
@@ -883,6 +884,9 @@ private struct LittleHerdSettingsView: View {
         }
         .padding(24)
         .frame(width: 420)
+        .onChange(of: alertsEnabled && watchesHerd) {
+            model.updateWatcherFromPreferences()
+        }
         .sheet(item: $configuringNAS) { machine in
             SynologyCredentialsView(machine: machine) { updated in
                 machineStore.update(updated)

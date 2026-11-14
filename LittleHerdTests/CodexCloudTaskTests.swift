@@ -3,7 +3,7 @@ import Testing
 
 @testable import LittleHerd
 
-/// Reading `codex cloud list`, which has no `--json` and so must be read as prose.
+/// The current JSON and the text fallback for older Codex installs.
 ///
 /// The fixtures are the real command's shape, taken from `codex cloud list` on 0.153.4
 /// on 7 September — including the two things a made-up fixture would have missed: an
@@ -11,6 +11,85 @@ import Testing
 /// "no diff" rather than a diff of zero.
 @Suite("Codex cloud tasks")
 struct CodexCloudTaskTests {
+    private let json = """
+        {
+          "tasks": [
+            {
+              "id": "task_e_1", "url": "https://chatgpt.com/codex/tasks/task_e_1",
+              "title": "Update the Mac app", "status": "Ready",
+              "updated_at": "2026-11-14T19:00:00.138Z",
+              "environment_label": "malpern/KeyPath", "environment_id": "env_1",
+              "summary": {"files_changed": 1, "lines_added": 94, "lines_removed": 0},
+              "is_review": false, "attempt_total": null
+            },
+            {
+              "id": "task_e_2", "url": "https://chatgpt.com/codex/tasks/task_e_2",
+              "title": "Review", "status": "NewStatus",
+              "updated_at": "2026-11-14T19:10:00Z",
+              "environment_label": null, "environment_id": "env_2",
+              "summary": {"files_changed": 0, "lines_added": 0, "lines_removed": 0}
+            }
+          ],
+          "cursor": "another-page"
+        }
+        """
+
+    @Test
+    func jsonKeepsFieldsNeededForDisplayAndPlacement() throws {
+        let tasks = try #require(CodexCloudListParser.parseJSON(json))
+        #expect(tasks.map(\.id) == ["task_e_1", "task_e_2"])
+        let first = try #require(tasks.first)
+        #expect(first.url == "https://chatgpt.com/codex/tasks/task_e_1")
+        #expect(first.title == "Update the Mac app")
+        #expect(first.status == .ready)
+        #expect(first.repository == "malpern/KeyPath")
+        #expect(first.repositorySlug == "KeyPath")
+        #expect(first.when != "2026-11-14T19:00:00.138Z")
+        #expect(first.diff == .changes(added: 94, removed: 0, files: 1))
+        let last = try #require(tasks.last)
+        #expect(last.status == .unknown)
+        #expect(last.repository == "env_2")
+        #expect(last.diff == .none)
+    }
+
+    @Test
+    func readerPrefersJSONAndFallsBackOnlyWhenTheFlagIsUnsupported() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("codex fixture \(UUID())")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let binary = directory.appendingPathComponent("codex")
+        let legacyOutput = RemoteShell.quoted(real)
+
+        func install(_ script: String) throws {
+            try ("#!/bin/sh\n" + script).write(to: binary, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: binary.path)
+        }
+        try install("""
+            [ "$*" = 'cloud list --limit 20 --json' ] || exit 1
+            printf '%s\\n' '{"tasks":[],"cursor":null}'
+            """)
+        #expect(CodexCloudReader.list(binary: binary.path) == [])
+
+        try install("""
+            if [ "$5" = --json ]; then
+              echo "error: unexpected argument '--json' found" >&2
+              exit 2
+            fi
+            printf '%s\\n' \(legacyOutput)
+            """)
+        #expect(CodexCloudReader.list(binary: binary.path) == CodexCloudListParser.parse(real))
+
+        try install("""
+            if [ "$5" = --json ]; then
+              echo "network unavailable" >&2
+              exit 1
+            fi
+            printf '%s\\n' \(legacyOutput)
+            """)
+        #expect(CodexCloudReader.list(binary: binary.path) == nil)
+    }
+
     private let real = """
         https://chatgpt.com/codex/tasks/task_e_69c94ad48ca8832c8ec611b493037432
           [READY] Check readiness for new release version
@@ -120,28 +199,13 @@ struct CodexCloudTaskTests {
 struct LiveCodexCloudHarness {
     @Test
     func therealCommandStillParses() throws {
-        let binary = ProcessInfo.processInfo.environment["LITTLE_HERD_CODEX"]
-            ?? "/Applications/ChatGPT.app/Contents/Resources/codex"
-        guard FileManager.default.isExecutableFile(atPath: binary) else {
-            Issue.record("no codex at \(binary)")
-            return
-        }
-        let process = Process()
-        let pipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: binary)
-        process.arguments = ["cloud", "list", "--limit", "10"]
-        process.standardOutput = pipe
-        process.standardError = pipe
-        try process.run()
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-
-        let tasks = CodexCloudListParser.parse(String(decoding: data, as: UTF8.self))
+        let tasks = try #require(CodexCloudReader.list(
+            limit: 10, binary: ProcessInfo.processInfo.environment["LITTLE_HERD_CODEX"]
+        ))
         print("  parsed \(tasks.count) task(s)")
         for t in tasks.prefix(3) {
             print("   \(t.status.rawValue.padding(toLength: 8, withPad: " ", startingAt: 0)) \(t.repository)  \(t.diff)")
         }
-        #expect(!tasks.isEmpty, "the real command returned nothing this parser understood")
         // Every field the placement decision needs must actually arrive.
         #expect(tasks.allSatisfy { !$0.id.isEmpty }, "a task without an id cannot be applied")
         #expect(tasks.allSatisfy { $0.repository.contains("/") }, "a task must name owner/repo")

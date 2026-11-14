@@ -123,6 +123,8 @@ final class MachineAlertCenter {
 
     init(notify: (@MainActor (String, String) -> Void)? = nil) {
         self.notify = notify ?? MachineAlertCenter.deliver
+        // An injected delivery function does not use system notifications.
+        hasRequestedAuthorization = notify != nil
     }
 
     func evaluate(_ machine: MachineMonitorModel, isEnabled: Bool) {
@@ -218,7 +220,8 @@ final class MachineAlertCenter {
         guard let executable = parts.first, !executable.isEmpty else { return }
         var arguments = parts.count > 1 ? [parts[1]] : []
         arguments.append(title)
-        arguments.append(body)
+        // Some transports, including Pushover, require a message for recoveries.
+        arguments.append(body.isEmpty ? title : body)
 
         let process = Process()
         // Through a login shell's PATH is deliberately NOT how this runs: a bare name

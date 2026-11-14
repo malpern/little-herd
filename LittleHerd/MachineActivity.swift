@@ -952,8 +952,9 @@ nonisolated enum AgentTaskProbe {
     done
 
     little_herd_agent_version claude "$HOME/.local/bin/claude"
-    little_herd_agent_version codex "$HOME/.local/bin/codex"
-    little_herd_agent_version codex "/Applications/ChatGPT.app/Contents/Resources/codex"
+    for little_herd_codex in \#(CodexInstallationPaths.shellPaths); do
+      little_herd_agent_version codex "$little_herd_codex"
+    done
 
     # `find` rather than a glob, because this script runs under zsh, and zsh
     # aborts the *whole script* on a pattern that matches nothing — where sh

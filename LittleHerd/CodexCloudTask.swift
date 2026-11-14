@@ -51,10 +51,9 @@ nonisolated struct CodexCloudTask: Equatable, Sendable, Identifiable {
     }
 }
 
-/// Reads `codex cloud list`.
+/// Reads the JSON printed by `codex cloud list --json` and the older text form.
 ///
-/// **There is no `--json`, so this parses what a person would read.** Checked against
-/// the real command rather than imagined: four lines per task, blank-separated, the URL
+/// Older installs print four lines per task, blank-separated, the URL
 /// unindented and the rest indented under it.
 ///
 ///     https://chatgpt.com/codex/tasks/task_e_69c9…
@@ -66,6 +65,59 @@ nonisolated struct CodexCloudTask: Equatable, Sendable, Identifiable {
 /// costs a field rather than every record after it. A record missing its URL is not a
 /// record.
 nonisolated enum CodexCloudListParser {
+    private struct Page: Decodable {
+        let tasks: [TaskRecord]
+    }
+
+    private struct TaskRecord: Decodable {
+        let id: String
+        let url: String
+        let status: String
+        let title: String
+        let updatedAt: String
+        let environmentId: String?
+        let environmentLabel: String?
+        let summary: DiffSummary
+    }
+
+    private struct DiffSummary: Decodable {
+        let filesChanged: Int
+        let linesAdded: Int
+        let linesRemoved: Int
+
+        var diff: CodexCloudTask.Diff {
+            guard filesChanged != 0 || linesAdded != 0 || linesRemoved != 0 else {
+                return .none
+            }
+            return .changes(added: linesAdded, removed: linesRemoved, files: filesChanged)
+        }
+    }
+
+    static func parseJSON(_ output: String) -> [CodexCloudTask]? {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        guard let page = try? decoder.decode(Page.self, from: Data(output.utf8)) else {
+            return nil
+        }
+
+        let timestamp = ISO8601DateFormatter()
+        let fractionalTimestamp = ISO8601DateFormatter()
+        fractionalTimestamp.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return page.tasks.map { record in
+            let date = timestamp.date(from: record.updatedAt)
+                ?? fractionalTimestamp.date(from: record.updatedAt)
+            let repository = record.environmentLabel.flatMap { $0.isEmpty ? nil : $0 }
+                ?? record.environmentId ?? ""
+            return CodexCloudTask(
+                id: record.id, url: record.url, status: .init(raw: record.status),
+                title: record.title, repository: repository,
+                when: date?.formatted(.dateTime.month(.abbreviated).day().hour().minute())
+                    ?? record.updatedAt,
+                diff: record.summary.diff
+            )
+        }
+    }
+
     static func parse(_ output: String) -> [CodexCloudTask] {
         var tasks: [CodexCloudTask] = []
         var pending: [String] = []
@@ -196,6 +248,9 @@ nonisolated extension CodexCloudTask {
     /// this app's contribution ends at deciding *which machine*, and begins and ends
     /// there. The `cd` is the whole of the placement decision made real.
     func applyCommand(in directory: String) -> String {
-        "cd \(RemoteShell.quoted(directory)) && codex cloud apply \(RemoteShell.quoted(id))"
+        """
+        cd \(RemoteShell.quoted(directory)) || exit 1
+        \(CodexInstallationPaths.execCommand(arguments: "cloud apply \(RemoteShell.quoted(id))"))
+        """
     }
 }

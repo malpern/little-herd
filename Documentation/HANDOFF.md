@@ -3,12 +3,10 @@
 **State, 14 November 2026.** `v0.1.69` (build 70) is the live Sparkle release
 and is installed on this Mac. It includes Codex cloud task listing and apply.
 The designated watcher and alert command are on main and have yet to ship.
-GitHub's latest main test run fails to compile four Swift Testing
-`#require` calls where a local `request` shadows the helper of the same name.
-[Draft PR #36](https://github.com/malpern/little-herd/pull/36) already carries
-the test fixes and passed 888 macOS tests on CI. The Mac source on main passed
-855 tests locally with Xcode 27.2 on macOS 27.3 beta. The latest stable macOS
-is 27.2.1. The deployment target is still macOS 15.
+Four Swift Testing `#require` calls shadowed their helper on the CI toolchain.
+The helper names were fixed in `99089a3`, and
+[main CI passed](https://github.com/malpern/little-herd/actions/runs/43632757562).
+The latest stable macOS is 27.2.1. The deployment target is still macOS 15.
 
 Items 13, 14, 15 and 17 closed on 6–7 September. Their decisions are in
 **Hard-won facts**. The first build whose transfer worked against a real
@@ -1840,10 +1838,26 @@ set, and the successor never gets `bypassPermissions`.
 work can be shown at all.** Re-checked on 7 September against 0.153.4 —
 three weeks and five minor versions after the claim was first measured, on
 an experimental subcommand, which is exactly the kind of fact that rots.
-There is no `--json`, so the output is parsed as prose: four lines per task,
+That build did not expose `--json`, so the output was parsed as prose: four lines per task,
 anchored on the URL rather than on line counts, so a vendor adding a fifth
 line costs one field instead of every record after it. A gated harness runs
 the real command, because a fixture cannot notice a reformat.
+
+**On 14 November, the bundled Codex returned JSON.** The app reads
+`codex cloud list --json` and uses the text parser when an older CLI rejects
+the flag. The live account returned an empty page. Fixtures based on the CLI
+source cover populated pages. Codex Cloud writes `error.log` even for a
+successful list, so the reader runs in a private temporary directory.
+Cloud list and apply share discovery for the user install, the new
+`ChatGPT.app/Contents/Resources/codex-cli/bin/codex` layout, and older bundles.
+Apply resolves the binary on the machine that owns the checkout.
+
+**A designated watcher keeps sampling when the dashboard closes.** The
+watcher holds its own sampling registration while alerts and watching are
+enabled. A recovery uses its title for the command body when the notification
+has no body, because `notify-push` refuses an empty message. The regression
+test closes the model's dashboard surface and observes both events through
+an executable. Restoring the old surface behavior made the test fail.
 
 **Codex is not on `PATH` on this Mac and looking for it there finds
 nothing.** It lives inside
@@ -2015,14 +2029,9 @@ it; the files survived only because the directory had not been reaped yet.
 
 ## Next
 
-**Next release.** Bring the four test fixes from PR #36 onto main and confirm
-CI passes. Test a signed build on macOS 27.2.1, including an unattended alert
-with the window closed and a throwaway transfer on each provider. Keep macOS 15
-in the compatibility checks. The current ChatGPT bundle has moved Codex to
-`Contents/Resources/codex-cli/bin/codex`, and the old user symlink on this Mac
-is dangling. Check that the same discovered binary can list and apply cloud
-tasks. The bundled CLI returned a structured `tasks` array and `cursor` from
-`codex cloud list --json --limit 1`; the existing reader parses display text.
+**Next release.** Test a signed build on macOS 27.2.1. Verify alert delivery
+and recovery on the mini through the chosen transport, and run a throwaway
+transfer with each provider. Keep macOS 15 in the compatibility checks.
 
 **Provider interfaces.** Try Codex App Server's documented thread metadata
 methods before reaching into `state_5.sqlite`, and measure which live status
@@ -2059,11 +2068,7 @@ Keep process sampling for CPU and a fallback where the provider omits a signal.
     the watcher, and any notion of what happens when the watcher itself is the thing
     that died.
 
-    The draft iPhone branch fixed a separate issue worth taking on its own:
-    main still samples only while a monitoring surface is active. Keep the
-    watcher sampling with all windows closed and prove alert delivery and
-    recovery on the mini before shipping the watcher. Apple provides
-    `SMAppService.mainApp` for an opt-in launch at login.
+    Apple provides `SMAppService.mainApp` for an opt-in launch at login.
 
 **The website promises "Put your herd to work", and on 29 August the hedge
 came off it.** The hero used to carry the clause *"Little Herd watches;

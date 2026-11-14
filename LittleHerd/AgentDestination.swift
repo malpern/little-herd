@@ -1,5 +1,31 @@
 import Foundation
 
+/// Known Codex installs used by both the shell probe and the cloud commands.
+nonisolated enum CodexInstallationPaths {
+    static let userRelative = ".local/bin/codex"
+    static let applicationBundles = [
+        "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+        "/Applications/ChatGPT.app/Contents/Resources/codex",
+        "/Applications/Codex.app/Contents/Resources/codex",
+    ]
+    static let systemPaths = applicationBundles + ["/opt/homebrew/bin/codex"]
+
+    // Expand HOME on the machine running the probe or applying the task.
+    static let shellPaths = (["\"$HOME/\(userRelative)\""]
+        + systemPaths.map(RemoteShell.quoted)).joined(separator: " ")
+
+    static func execCommand(arguments: String) -> String {
+        """
+        for little_herd_codex in \(shellPaths); do
+          if [ -f "$little_herd_codex" ] && [ -x "$little_herd_codex" ]; then
+            exec "$little_herd_codex" \(arguments)
+          fi
+        done
+        exec codex \(arguments)
+        """
+    }
+}
+
 /// An agent this account can actually run, and where.
 ///
 /// Absolute paths, never the PATH. Measured across the herd: not one machine

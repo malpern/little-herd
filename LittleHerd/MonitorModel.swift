@@ -4,7 +4,16 @@ import Observation
 nonisolated enum MonitorSurface: Hashable, Sendable {
     case dashboard
     case menuBar
+    case watcher
 }
+
+/// The watcher's local sampling loop can also be exercised with controlled readings.
+nonisolated protocol LocalMetricsSampling: Sendable {
+    func prime() async
+    func sample() async -> SystemSnapshot
+}
+
+extension MetricsSampler: LocalMetricsSampling {}
 
 @MainActor
 @Observable
@@ -143,7 +152,7 @@ final class MonitorModel {
         )
     }
     let taskTransfers = TaskTransferMonitorModel()
-    let alerts = MachineAlertCenter()
+    let alerts: MachineAlertCenter
     /// What the herd has been doing, so the interface can say whether something
     /// is getting worse rather than only what it is now.
     let history = MetricHistoryStore.makeDefault()
@@ -152,7 +161,7 @@ final class MonitorModel {
 
     private struct LocalMonitor {
         let machine: MachineMonitorModel
-        let sampler: MetricsSampler
+        let sampler: any LocalMetricsSampling
     }
 
     private struct RemoteMonitor {
@@ -201,6 +210,12 @@ final class MonitorModel {
     private var networkStorageMonitoringEnabled: Bool
 
     @ObservationIgnored
+    private let defaults: UserDefaults
+
+    @ObservationIgnored
+    private let makeLocalSampler: () -> any LocalMetricsSampling
+
+    @ObservationIgnored
     private var activeSurfaces: Set<MonitorSurface> = []
 
     /// Opt-in, and off until asked for: a monitor that interrupts you without
@@ -212,7 +227,6 @@ final class MonitorModel {
     /// thing. When another Mac has been made the watcher, this one says nothing.
     @ObservationIgnored
     private var alertsEnabled: Bool {
-        let defaults = UserDefaults.standard
         guard defaults.bool(forKey: LittleHerdPreferences.alertsEnabledKey) else { return false }
         return !defaults.bool(forKey: LittleHerdPreferences.alertsSuppressedKey)
     }
@@ -227,9 +241,15 @@ final class MonitorModel {
 
     init(
         configurations: [MachineConfiguration] = [.local()],
-        networkStorageMonitoringEnabled: Bool = false
+        networkStorageMonitoringEnabled: Bool = false,
+        defaults: UserDefaults = .standard,
+        alerts: MachineAlertCenter = MachineAlertCenter(),
+        makeLocalSampler: @escaping () -> any LocalMetricsSampling = { MetricsSampler() }
     ) {
         self.networkStorageMonitoringEnabled = networkStorageMonitoringEnabled
+        self.defaults = defaults
+        self.alerts = alerts
+        self.makeLocalSampler = makeLocalSampler
         rebuildMonitors(from: configurations)
     }
 
@@ -361,6 +381,16 @@ final class MonitorModel {
         stop()
     }
 
+    /// A designated watcher keeps the same samplers alive between window visits.
+    func updateWatcherFromPreferences() {
+        if defaults.bool(forKey: LittleHerdPreferences.watchesHerdKey),
+           defaults.bool(forKey: LittleHerdPreferences.alertsEnabledKey) {
+            activate(.watcher)
+        } else {
+            deactivate(.watcher)
+        }
+    }
+
     func setNetworkStorageMonitoringEnabled(_ isEnabled: Bool) {
         guard networkStorageMonitoringEnabled != isEnabled else { return }
         networkStorageMonitoringEnabled = isEnabled
@@ -414,7 +444,7 @@ final class MonitorModel {
             switch configuration.connection {
             case .local:
                 localMonitors.append(
-                    LocalMonitor(machine: model, sampler: MetricsSampler())
+                    LocalMonitor(machine: model, sampler: makeLocalSampler())
                 )
             case .ssh:
                 guard let platform = configuration.remotePlatform else {
@@ -640,7 +670,7 @@ final class MonitorModel {
 
     private func monitorLocalMachine(
         _ machine: MachineMonitorModel,
-        with sampler: MetricsSampler
+        with sampler: any LocalMetricsSampling
     ) -> Task<Void, Never> {
         Task { [machine, sampler] in
             await sampler.prime()
@@ -653,6 +683,7 @@ final class MonitorModel {
 
             while !Task.isCancelled {
                 let snapshot = await sampler.sample()
+                guard !Task.isCancelled else { return }
                 machine.apply(snapshot)
                 observeContext(of: snapshot.agentSessions, coreCount: snapshot.coreCount)
                 observeUsage(snapshot)
@@ -680,6 +711,7 @@ final class MonitorModel {
                 let startedAt = clock.now
                 do {
                     let snapshot = try await sampler.sample()
+                    guard !Task.isCancelled else { return }
                     machine.apply(snapshot)
                     observeContext(of: snapshot.agentSessions, coreCount: snapshot.coreCount)
                 observeUsage(snapshot)
@@ -688,6 +720,7 @@ final class MonitorModel {
                 observeUsage(snapshot)
                     recordHistory(for: machine, from: snapshot)
                 } catch {
+                    guard !Task.isCancelled else { return }
                     machine.markOffline(RemoteUnavailability.classify(error))
                 }
                 alerts.evaluate(machine, isEnabled: alertsEnabled)
@@ -732,6 +765,7 @@ final class MonitorModel {
             while !Task.isCancelled {
                 do {
                     let snapshot = try await sampler.sample()
+                    guard !Task.isCancelled else { return }
                     machine.apply(snapshot)
                     observeContext(of: snapshot.agentSessions, coreCount: snapshot.coreCount)
                 observeUsage(snapshot)
@@ -740,12 +774,14 @@ final class MonitorModel {
                 observeUsage(snapshot)
                     recordHistory(for: machine, from: snapshot)
                 } catch let error as SynologyDSMError {
+                    guard !Task.isCancelled else { return }
                     // Asked only on the way to reporting a failure, so the
                     // keychain is not touched while everything is working.
                     machine.markOffline(
                         .classify(dsm: error, credentials: credentials())
                     )
                 } catch {
+                    guard !Task.isCancelled else { return }
                     machine.markOffline()
                 }
                 // Evaluated whether or not alerts are enabled: the center tracks
