@@ -84,6 +84,7 @@ struct LittleHerdApp: App {
             model?.applyConfigurations(machineStore.machines)
         }
         _model = State(initialValue: model)
+        model.enablePhoneRelay()
         model.updateWatcherFromPreferences()
 
         // Started here rather than from a view.
@@ -630,6 +631,12 @@ private struct LittleHerdSettingsView: View {
     private var alertsSuppressed = false
     @AppStorage(LittleHerdPreferences.alertCommandKey)
     private var alertCommand = ""
+    @AppStorage(HerdPushRelay.addressKey) private var phoneAddress = ""
+    @AppStorage(HerdPushRelay.keyPathKey) private var pushKeyPath = ""
+    @AppStorage(HerdPushRelay.keyIDKey) private var pushKeyID = ""
+    @AppStorage(HerdPushRelay.portKey) private var phonePort = Int(HerdWire.defaultPort)
+    @AppStorage(HerdPushRelay.pairingCodeKey) private var phonePairingCode = ""
+    @State private var showsPhoneSettings = false
     @AppStorage(LittleHerdPreferences.startsUsageSourceKey)
     private var startsUsageSource = true
     @AppStorage(LittleHerdPreferences.requiresDestinationApprovalKey)
@@ -692,6 +699,31 @@ private struct LittleHerdSettingsView: View {
                     Toggle("Stay quiet — another Mac is watching", isOn: $alertsSuppressed)
                         .font(.callout)
                         .padding(.top, 2)
+
+                    if watchesHerd && !alertsSuppressed {
+                        DisclosureGroup("iPhone notifications", isExpanded: $showsPhoneSettings) {
+                            VStack(alignment: .leading, spacing: 7) {
+                                TextField("Tailscale IPv4 address", text: $phoneAddress)
+                                TextField("APNs key file path", text: $pushKeyPath)
+                                TextField("APNs key ID", text: $pushKeyID)
+
+                                if !phonePairingCode.isEmpty {
+                                    LabeledContent("Watcher address", value: "\(phoneAddress):\(phonePort)")
+                                        .textSelection(.enabled)
+                                    LabeledContent("Pairing code", value: HerdWire.Pairing.display(phonePairingCode))
+                                        .textSelection(.enabled)
+                                }
+                                Text("On your iPhone, open Little Herd’s Watcher settings and enter this address and pairing code while connected to Tailscale.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .textFieldStyle(.roundedBorder)
+                            .onSubmit { model.updateWatcherFromPreferences() }
+                        }
+                        .font(.callout)
+                        .padding(.top, 4)
+                    }
 
                     HStack(spacing: 6) {
                         Text("Also run:")
@@ -884,7 +916,10 @@ private struct LittleHerdSettingsView: View {
         }
         .padding(24)
         .frame(width: 420)
-        .onChange(of: alertsEnabled && watchesHerd) {
+        .onChange(of: alertsEnabled && watchesHerd && !alertsSuppressed) {
+            model.updateWatcherFromPreferences()
+        }
+        .onChange(of: [phoneAddress, pushKeyPath, pushKeyID]) {
             model.updateWatcherFromPreferences()
         }
         .sheet(item: $configuringNAS) { machine in
