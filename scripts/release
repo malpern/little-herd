@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Cut and publish a Little Herd release.
 #
-#   scripts/release <version> [--notes-file <path>] [--dry-run]
+#   scripts/release <version> [--build <number>] [--notes-file <path>] [--dry-run]
 #
 #   scripts/release 0.1.3
 #   scripts/release 0.1.3 --notes-file /tmp/notes.md
@@ -29,6 +29,7 @@ key_path=${LITTLE_HERD_ASC_KEY:-$HOME/.appstoreconnect/private_keys/AuthKey_$key
 root=${0:a:h:h}
 plist=$root/LittleHerd/Info.plist
 notes_file=""
+requested_build=""
 dry_run=0
 
 die() { print -u2 "release: $1"; exit 1 }
@@ -37,11 +38,16 @@ step() { print "\n▸ $1" }
 # ---------------------------------------------------------------- arguments
 
 version=${1:-}
-[ -n "$version" ] || die "usage: scripts/release <version> [--notes-file <path>] [--dry-run]"
+[ -n "$version" ] || die "usage: scripts/release <version> [--build <number>] [--notes-file <path>] [--dry-run]"
 shift
 
 while [ $# -gt 0 ]; do
   case $1 in
+    --build)
+      requested_build=${2:?--build needs a number}
+      [[ $requested_build =~ '^[1-9][0-9]*$' ]] || die "build must be a positive integer"
+      shift 2
+      ;;
     --notes-file) notes_file=${2:?--notes-file needs a path}; shift 2 ;;
     --dry-run) dry_run=1; shift ;;
     *) die "unknown option: $1" ;;
@@ -96,13 +102,14 @@ print "  branch $branch · tag $tag · team $team"
 
 # ------------------------------------------------------------ version stamp
 # CFBundleVersion is what Sparkle compares, so it has to increase on every
-# release even when the marketing version only gains a patch digit.
+# release. An explicit build can also supersede locally installed candidates.
 
 step "Stamping version"
 
 previous_short=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")
 previous_build=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")
-build=$(( previous_build + 1 ))
+build=${requested_build:-$(( previous_build + 1 ))}
+[ "$build" -gt "$previous_build" ] || die "build must be greater than $previous_build"
 
 restore_plist() { git checkout -- "$plist" 2>/dev/null || true }
 [ $dry_run -eq 1 ] && trap restore_plist EXIT
@@ -193,6 +200,8 @@ app="$export_dir/Little Herd.app"
 built_version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
 [ "$built_version" = "$version" ] \
   || die "built app reports $built_version, expected $version"
+built_build=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")
+[ "$built_build" = "$build" ] || die "built app reports build $built_build, expected $build"
 
 # ---------------------------------------------------------------- notarize
 
@@ -292,6 +301,8 @@ feed_status=$(curl -sL -o "$live" -w '%{http_code}' "$feed")
   || die "feed returned HTTP $feed_status — updates are broken"
 grep -q "<sparkle:shortVersionString>$version<" "$live" \
   || die "feed does not advertise $version"
+grep -Fq "<sparkle:version>$build</sparkle:version>" "$live" \
+  || die "feed does not advertise build $build"
 enclosure=$(grep -o 'url="[^"]*"' "$live" | head -1 | cut -d'"' -f2)
 enclosure_status=$(curl -sIL -o /dev/null -w '%{http_code}' "$enclosure")
 [ "$enclosure_status" = 200 ] || die "enclosure returned HTTP $enclosure_status"
