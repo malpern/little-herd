@@ -147,15 +147,16 @@ final class HerdAppDelegate: NSObject, UIApplicationDelegate {
     }
 }
 
-/// Which APNs environment this build's entitlement names. Debug builds signed
-/// for development get sandbox tokens; the watcher must send to the matching
-/// host or Apple answers `BadDeviceToken`.
-enum PushEnvironment {
-    static var current: String {
-        #if DEBUG
-        "development"
-        #else
-        "production"
-        #endif
+/// The entitlement and the Info.plist value share the signing build setting.
+/// A release-configuration build can still be signed for development.
+enum PushEnvironment: String {
+    case development
+    case production
+
+    static var current: Self? {
+        guard let value = Bundle.main.object(forInfoDictionaryKey: "HerdAPNSEnvironment") as? String else {
+            return nil
+        }
+        return Self(rawValue: value)
     }
 }

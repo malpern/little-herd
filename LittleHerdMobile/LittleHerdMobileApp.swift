@@ -27,7 +27,8 @@ struct LittleHerdMobileApp: App {
             HerdView(client: client)
                 .onAppear {
                     HerdAppDelegate.onToken = { token in
-                        Task { await client.registerPush(token: token, environment: PushEnvironment.current) }
+                        guard let environment = PushEnvironment.current else { return }
+                        Task { await client.registerPush(token: token, environment: environment.rawValue) }
                     }
                 }
         }
