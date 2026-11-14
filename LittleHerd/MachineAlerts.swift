@@ -121,6 +121,9 @@ final class MachineAlertCenter {
     @ObservationIgnored
     private let notify: @MainActor (String, String) -> Void
 
+    @ObservationIgnored
+    var relay: (@MainActor (String, String, MachineID, MachineAlert, Bool) -> Void)?
+
     init(notify: (@MainActor (String, String) -> Void)? = nil) {
         self.notify = notify ?? MachineAlertCenter.deliver
         // An injected delivery function does not use system notifications.
@@ -137,10 +140,15 @@ final class MachineAlertCenter {
         requestAuthorizationIfNeeded()
 
         for alert in current.subtracting(previous) {
-            notify(alert.title(machine: machine.name), body(for: alert, machine))
+            let title = alert.title(machine: machine.name)
+            let body = Self.body(for: alert, machine)
+            notify(title, body)
+            relay?(title, body, machine.machine, alert, false)
         }
         for alert in previous.subtracting(current) {
-            notify(alert.recoveryTitle(machine: machine.name), "")
+            let title = alert.recoveryTitle(machine: machine.name)
+            notify(title, "")
+            relay?(title, "", machine.machine, alert, true)
         }
     }
 
@@ -150,7 +158,7 @@ final class MachineAlertCenter {
         raised.removeAll()
     }
 
-    private func body(
+    private static func body(
         for alert: MachineAlert,
         _ machine: MachineMonitorModel
     ) -> String {
