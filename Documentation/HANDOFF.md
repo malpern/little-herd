@@ -1878,7 +1878,33 @@ and Micah confirmed both Little Herd notifications arrived. The mini's
 original preferences and SSH configuration were restored. The Little Herd
 sandbox key is stored privately on the mini in `~/.config/little-herd/apns/`.
 The public Mac 0.1.70 ships the watcher fixes from main. The native relay
-remains in the iOS draft.
+was still in the iOS draft for that release.
+
+**The Mac app now has its own APNs relay (PR #37).** It uses the existing
+watcher sampling registration and the same alert transition detector as the
+Mac notification and optional command. Outage and recovery pushes have
+different collapse IDs. The iPhone prototype needs a snapshot before it will
+pair and register, so the Mac exposes the existing snapshot and registration
+protocol on the configured Tailscale IPv4 address. There is no Bonjour
+advertisement or remote move endpoint. The Mac stops listening and sending
+when it is no longer the designated watcher, alerts are disabled, or it is
+set to stay quiet.
+
+On the watcher, enable alerts and continuous watching, then open **iPhone
+notifications** in Little Herd Settings. Enter the watcher's Tailscale IPv4
+address, the path to its private APNs `.p8` (mode `0600`), and the key ID. In
+the iPhone app's Watcher settings, save the displayed address and pairing
+code, and allow notifications when prompted. Pick a provider key for the same
+APNs environment as the iPhone build. The mini uses the existing sandbox key
+and its test profile. The phone only needs Tailscale to reach the watcher for
+pairing, token registration, and snapshots. Apple delivers the alerts.
+
+The mini runs a locally installed, notarized Mac 0.1.71 (build 72), with
+0.1.70 backed up for rollback. On 14 November the installed app sent the
+synthetic SSH outage and recovery through sandbox APNs at 13:31 and 13:32
+Pacific with its dashboard closed. Removing the SSH test fixture and
+restarting with the regular machine list preserved the iPhone registration.
+The public Sparkle feed remains on 0.1.70.
 
 **Codex is not on `PATH` on this Mac and looking for it there finds
 nothing.** It lives inside
