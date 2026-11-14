@@ -75,14 +75,15 @@ struct DesignatedWatcherTests {
             .appendingPathComponent("watcher-args-\(UUID().uuidString).txt")
         let script = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("watcher-\(UUID().uuidString).sh")
-        // Writes each argument on its own line, so the test can see how they arrived.
-        try "#!/bin/sh\nfor a in \"$@\"; do echo \"$a\"; done > \(seen.path)\n"
+        // Only publish the file after the command has written every argument.
+        try "#!/bin/sh\nprintf '%s\\n' \"$@\" > \(seen.path).tmp && mv \(seen.path).tmp \(seen.path)\n"
             .write(to: script, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes(
             [.posixPermissions: 0o755], ofItemAtPath: script.path)
         defer {
             try? FileManager.default.removeItem(at: script)
             try? FileManager.default.removeItem(at: seen)
+            try? FileManager.default.removeItem(atPath: seen.path + ".tmp")
         }
 
         let hostile = "Micah’s Mac; rm -rf ~"
@@ -118,13 +119,14 @@ struct DesignatedWatcherTests {
             .appendingPathComponent("watcher-flag-\(UUID().uuidString).txt")
         let script = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("watcher-\(UUID().uuidString).sh")
-        try "#!/bin/sh\nfor a in \"$@\"; do echo \"$a\"; done > \(seen.path)\n"
+        try "#!/bin/sh\nprintf '%s\\n' \"$@\" > \(seen.path).tmp && mv \(seen.path).tmp \(seen.path)\n"
             .write(to: script, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes(
             [.posixPermissions: 0o755], ofItemAtPath: script.path)
         defer {
             try? FileManager.default.removeItem(at: script)
             try? FileManager.default.removeItem(at: seen)
+            try? FileManager.default.removeItem(atPath: seen.path + ".tmp")
         }
 
         MachineAlertCenter.runAlertCommand("\(script.path) --urgent", title: "T", body: "B")
