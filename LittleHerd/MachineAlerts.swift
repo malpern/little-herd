@@ -121,6 +121,9 @@ final class MachineAlertCenter {
     @ObservationIgnored
     private let notify: @MainActor (String, String) -> Void
 
+    @ObservationIgnored
+    var relay: (@MainActor (String, String, MachineID, MachineAlert, Bool) -> Void)?
+
     init(notify: (@MainActor (String, String) -> Void)? = nil) {
         self.notify = notify ?? MachineAlertCenter.deliver
         // An injected delivery function does not use system notifications.
@@ -140,23 +143,12 @@ final class MachineAlertCenter {
             let title = alert.title(machine: machine.name)
             let body = Self.body(for: alert, machine)
             notify(title, body)
-            // And to any paired phone. Collapsed on the episode's id, so the
-            // phone's own copy (raised when it reads the herd) replaces this
-            // one rather than doubling it.
-            HerdPushRelay.shared?.send(
-                title: title,
-                body: body,
-                id: "\(machine.machine.rawValue):\(alert.rawValue)"
-            )
+            relay?(title, body, machine.machine, alert, false)
         }
         for alert in previous.subtracting(current) {
             let title = alert.recoveryTitle(machine: machine.name)
             notify(title, "")
-            HerdPushRelay.shared?.send(
-                title: title,
-                body: "",
-                id: "\(machine.machine.rawValue):\(alert.rawValue)"
-            )
+            relay?(title, "", machine.machine, alert, true)
         }
     }
 

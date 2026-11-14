@@ -109,7 +109,7 @@ struct HerdServerTests {
     @Test
     func theHerdIsServedAsJSONAndEverythingElseIsRefused() async throws {
         let herd = await HerdServer.response(
-            for: HerdRequest(method: "GET", path: "/herd", headers: ["authorization": "Bearer abcd-efgh"]),
+            for: HerdRequest(method: "GET", path: "/herd", headers: ["authorization": "Bearer abcd-efgh"], isPrivateTransport: true),
             pairingCode: "ABCDEFGH",
             snapshot: { Self.snapshot() }
         )

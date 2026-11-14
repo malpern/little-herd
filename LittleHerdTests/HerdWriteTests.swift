@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import Network
 import Testing
 
 @testable import LittleHerd
@@ -40,6 +41,7 @@ struct HerdWriteTests {
     }
 
     private func signed(
+        method: String = "POST",
         path: String = "/move",
         body: Data,
         id: String,
@@ -49,10 +51,10 @@ struct HerdWriteTests {
     ) -> HerdRequest {
         let seconds = String(Int(time.timeIntervalSince1970))
         let canonical = HerdWire.Signing.canonical(
-            method: "POST", path: path, time: seconds, nonce: nonce, body: body
+            method: method, path: path, time: seconds, nonce: nonce, body: body
         )
         return HerdRequest(
-            method: "POST",
+            method: method,
             path: path,
             headers: [
                 HerdWire.Signing.deviceHeader.lowercased(): id,
@@ -133,7 +135,7 @@ struct HerdWriteTests {
     func aNewCodeForgetsEveryPhone() throws {
         let store = store()
         let phone = try pair(store)
-        store.removeAll()
+        store.bindToPairingCode("FGHJ6789")
         let request = signed(body: Data(), id: phone.id, key: phone.key)
         #expect(HerdWriteGate().verify(request, keys: store.key(for:))
             == .refused("this phone is not paired with this watcher"))
@@ -168,6 +170,113 @@ struct HerdWriteTests {
             writes: writes(store()) { _ in fatalError("not reached") }
         )
         #expect(Self.status(response) == "HTTP/1.1 401 Unauthorized")
+    }
+
+    private func pairBody() throws -> Data {
+        try HerdWire.encoder().encode(
+            HerdWire.PairRequest(deviceName: "x", publicKey: P256.KeyAgreement.PrivateKey().publicKey.rawRepresentation)
+        )
+    }
+
+    private static func herd() -> HerdWire.Snapshot {
+        HerdWire.Snapshot(watcher: "w", generatedAt: .now, machines: [])
+    }
+
+    /// The code never crosses the home network: offered there, it is refused
+    /// even though it is right, and the phone is told where to pair.
+    @Test
+    func pairingIsRefusedOffTheTailnet() async throws {
+        let response = await HerdServer.response(
+            for: HerdRequest(
+                method: "POST", path: "/pair",
+                headers: ["authorization": HerdWire.Pairing.headerValue(Self.code)],
+                body: try pairBody()
+            ),
+            pairingCode: Self.code,
+            snapshot: Self.herd,
+            writes: writes(store()) { _ in fatalError("not reached") }
+        )
+        #expect(Self.status(response) == "HTTP/1.1 403 Forbidden")
+        #expect(String(decoding: response, as: UTF8.self).contains("pair over Tailscale"))
+    }
+
+    @Test
+    func pairingWorksOverTailscale() async throws {
+        let response = await HerdServer.response(
+            for: HerdRequest(
+                method: "POST", path: "/pair",
+                headers: ["authorization": HerdWire.Pairing.headerValue(Self.code)],
+                body: try pairBody(),
+                isPrivateTransport: true
+            ),
+            pairingCode: Self.code,
+            snapshot: Self.herd,
+            writes: writes(store()) { _ in fatalError("not reached") }
+        )
+        #expect(Self.status(response) == "HTTP/1.1 200 OK")
+    }
+
+    /// Reading with the code is pairing by another name, so it obeys the
+    /// same rule.
+    @Test
+    func aReadWithTheCodeIsRefusedOffTheTailnet() async {
+        let response = await HerdServer.response(
+            for: HerdRequest(
+                method: "GET", path: "/herd",
+                headers: ["authorization": HerdWire.Pairing.headerValue(Self.code)]
+            ),
+            pairingCode: Self.code,
+            snapshot: Self.herd,
+            writes: writes(store()) { _ in fatalError("not reached") }
+        )
+        #expect(Self.status(response) == "HTTP/1.1 403 Forbidden")
+    }
+
+    /// What makes the home network usable after pairing: a signed read is
+    /// served wherever it comes from, and the code is not on it.
+    @Test
+    func aSignedReadIsServedOnTheHomeNetwork() async throws {
+        let store = store()
+        let phone = try pair(store)
+        let request = signed(method: "GET", path: "/herd", body: Data(), id: phone.id, key: phone.key)
+        #expect(request.headers["authorization"] == nil)
+        let response = await HerdServer.response(
+            for: request,
+            pairingCode: Self.code,
+            snapshot: Self.herd,
+            writes: writes(store) { _ in fatalError("not reached") }
+        )
+        #expect(Self.status(response) == "HTTP/1.1 200 OK")
+    }
+
+    @Test
+    func aReadSignedByAStrangerIsRefused() async throws {
+        let store = store()
+        let phone = try pair(store)
+        let stranger = SymmetricKey(size: .bits256)
+        let response = await HerdServer.response(
+            for: signed(method: "GET", path: "/herd", body: Data(), id: phone.id, key: stranger),
+            pairingCode: Self.code,
+            snapshot: Self.herd,
+            writes: writes(store) { _ in fatalError("not reached") }
+        )
+        #expect(Self.status(response) == "HTTP/1.1 403 Forbidden")
+    }
+
+    @Test
+    func onlyTailscaleAndThisMacArePrivate() throws {
+        func host(_ text: String) throws -> NWEndpoint {
+            .hostPort(host: NWEndpoint.Host(text), port: 7841)
+        }
+        #expect(HerdTransport.isPrivate(try host("127.0.0.1")))
+        #expect(HerdTransport.isPrivate(try host("::1")))
+        #expect(HerdTransport.isPrivate(try host("100.96.0.1")))
+        #expect(HerdTransport.isPrivate(try host("fd7a:115c:a1e0::1")))
+        #expect(HerdTransport.isPrivate(try host("::ffff:100.100.1.2")))
+        #expect(!HerdTransport.isPrivate(try host("100.128.0.1")))
+        #expect(!HerdTransport.isPrivate(try host("192.168.1.20")))
+        #expect(!HerdTransport.isPrivate(try host("fe80::1")))
+        #expect(!HerdTransport.isPrivate(try host("::ffff:192.168.1.20")))
     }
 
     /// A move carrying only the code — what a sniffer could send — is refused

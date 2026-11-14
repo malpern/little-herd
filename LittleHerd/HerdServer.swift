@@ -25,14 +25,20 @@ import os
 /// is forty lines and the alternative is a dependency for the sake of `GET`.
 /// It is not a web server and must not grow into one.
 ///
-/// **Reads only, and only for a phone that was told the code.** Nothing here
-/// changes a machine or moves work, and the listener binds to every interface
-/// on purpose — a tailnet address is how the phone reaches a watcher from
-/// outside the house. `/herd` answers only to a request carrying the pairing
-/// code Settings shows (`HerdWire.Pairing`); `/health` answers anyone, because
-/// "is there a watcher here" is not a secret and is how a phone tells a wrong
-/// code from a wrong address. `move` from a phone must not exist until the
-/// code is carried over something better than plain HTTP.
+/// **The pairing code never crosses the home network.** The listener binds to
+/// every interface on purpose: Bonjour finds it at home, and a tailnet address
+/// reaches it from outside the house. But this is plain HTTP, so anything
+/// carried on Wi-Fi can be read by another device on it. The code Settings
+/// shows (`HerdWire.Pairing`) is therefore accepted only over Tailscale, which
+/// is encrypted end to end, or from this Mac itself — for `/pair`, and for a
+/// read by a phone that has not paired yet. Pairing gives the phone a key
+/// that only it and this watcher hold, and every request after that,
+/// reads included, is signed with it, so on the home network a paired phone
+/// sends nothing another device could reuse. What a listener on the Wi-Fi
+/// can still see is the herd itself, as the watcher sends it back.
+///
+/// `/health` answers anyone, because "is there a watcher here" is not a
+/// secret and is how a phone tells a wrong code from a wrong address.
 /// The server's own account of itself, for `log show --predicate 'subsystem ==
 /// "com.malpern.LittleHerd"'`. Settings shows the same facts, but Settings is
 /// on a screen, and a watcher is a Mac nobody is looking at.
@@ -156,7 +162,8 @@ final class HerdServer {
             Task { @MainActor [weak self] in
                 guard let self else { connection.cancel(); return }
                 if let data { reader.append(data) }
-                if let request = reader.request {
+                if var request = reader.request {
+                    request.isPrivateTransport = HerdTransport.isPrivate(connection.endpoint)
                     self.respond(to: request, on: connection)
                 } else if error != nil || isComplete || reader.isOversized {
                     connection.cancel()
@@ -195,15 +202,21 @@ final class HerdServer {
         }
         switch (request.method, request.path) {
         case ("GET", "/herd"), ("GET", "/herd.json"):
-            guard HerdWire.Pairing.accepts(
-                request.headers[HerdWire.Pairing.headerName.lowercased()],
-                code: pairingCode
-            ) else {
-                return http(
-                    status: "401 Unauthorized",
-                    contentType: "text/plain; charset=utf-8",
-                    body: Data("pairing code required; it is in Little Herd's settings on this Mac\n".utf8)
-                )
+            let signed = request.headers[HerdWire.Signing.signatureHeader.lowercased()] != nil
+            if signed {
+                guard let writes else { return text("403 Forbidden", "this watcher has no paired phones\n") }
+                if case .refused(let why) = writes.verify(request) {
+                    return text("403 Forbidden", why + "\n")
+                }
+            } else {
+                guard Self.acceptsCode(request, pairingCode: pairingCode) else {
+                    return http(
+                        status: "401 Unauthorized",
+                        contentType: "text/plain; charset=utf-8",
+                        body: Data("pairing code required; it is in Little Herd's settings on this Mac\n".utf8)
+                    )
+                }
+                guard request.isPrivateTransport else { return Self.overTailscaleOnly }
             }
             let body = (try? HerdWire.encoder().encode(snapshot())) ?? Data()
             return http(status: "200 OK", contentType: "application/json", body: body)
@@ -240,12 +253,10 @@ final class HerdServer {
         }
         let decoder = HerdWire.decoder()
         if request.path == "/pair" {
-            guard HerdWire.Pairing.accepts(
-                request.headers[HerdWire.Pairing.headerName.lowercased()],
-                code: pairingCode
-            ) else {
+            guard acceptsCode(request, pairingCode: pairingCode) else {
                 return text("401 Unauthorized", "pairing code required\n")
             }
+            guard request.isPrivateTransport else { return overTailscaleOnly }
             guard let pair = try? decoder.decode(HerdWire.PairRequest.self, from: request.body),
                   let answer = try? writes.pair(pair)
             else { return text("400 Bad Request", "could not pair\n") }
@@ -266,7 +277,9 @@ final class HerdServer {
             herdServerLog.info("move \(move.session, privacy: .public) \(move.from, privacy: .public)→\(move.to, privacy: .public) dryRun=\(move.dryRun) by \(deviceID, privacy: .public)")
             return json(await writes.move(move))
         case "/push":
-            guard let registration = try? decoder.decode(HerdWire.PushRegistration.self, from: request.body) else {
+            guard let registration = try? decoder.decode(HerdWire.PushRegistration.self, from: request.body),
+                  registration.isValid
+            else {
                 return text("400 Bad Request", "not a registration\n")
             }
             writes.registerPush(registration, deviceID)
@@ -275,6 +288,16 @@ final class HerdServer {
             return text("404 Not Found", "no such write\n")
         }
     }
+
+    private static func acceptsCode(_ request: HerdRequest, pairingCode: String) -> Bool {
+        HerdWire.Pairing.accepts(request.headers[HerdWire.Pairing.headerName.lowercased()], code: pairingCode)
+    }
+
+    /// The phone says this in so many words, because the fix is on the phone.
+    private static let overTailscaleOnly = text(
+        "403 Forbidden",
+        "pair over Tailscale: the pairing code is not accepted on the local network\n"
+    )
 
     private static func text(_ status: String, _ body: String) -> Data {
         http(status: status, contentType: "text/plain; charset=utf-8", body: Data(body.utf8))
@@ -316,6 +339,10 @@ nonisolated struct HerdRequest: Equatable, Sendable {
     var headers: [String: String] = [:]
     /// Exactly `Content-Length` bytes, for the writes that carry one.
     var body = Data()
+    /// Whether it arrived over Tailscale or from this Mac — the only ways the
+    /// pairing code may travel. Set by the server from the connection, never
+    /// from anything the request says about itself.
+    var isPrivateTransport = false
 
     /// Parses a request from its bytes, or nothing if the headers have not all
     /// arrived yet.
@@ -349,6 +376,37 @@ nonisolated struct HerdRequest: Equatable, Sendable {
             headers: headers,
             body: body
         )
+    }
+}
+
+/// Which connections may carry the pairing code.
+///
+/// Tailscale addresses are WireGuard end to end: 100.64.0.0/10 and
+/// fd7a:115c:a1e0::/48. A device on the Wi-Fi that claims one as its source
+/// cannot finish the handshake, because this Mac routes replies to those
+/// addresses into the tunnel, not back onto the Wi-Fi.
+nonisolated enum HerdTransport {
+    static func isPrivate(_ endpoint: NWEndpoint) -> Bool {
+        guard case .hostPort(let host, _) = endpoint else { return false }
+        switch host {
+        case .ipv4(let address):
+            return isPrivate(ipv4: Array(address.rawValue))
+        case .ipv6(let address):
+            let bytes = Array(address.rawValue)
+            guard bytes.count == 16 else { return false }
+            if address == .loopback { return true }
+            if bytes[0..<10].allSatisfy({ $0 == 0 }), bytes[10] == 0xFF, bytes[11] == 0xFF {
+                return isPrivate(ipv4: Array(bytes[12...]))
+            }
+            return bytes[0..<6] == [0xFD, 0x7A, 0x11, 0x5C, 0xA1, 0xE0]
+        default:
+            return false
+        }
+    }
+
+    static func isPrivate(ipv4 bytes: [UInt8]) -> Bool {
+        guard bytes.count == 4 else { return false }
+        return bytes[0] == 127 || (bytes[0] == 100 && (64...127).contains(bytes[1]))
     }
 }
 

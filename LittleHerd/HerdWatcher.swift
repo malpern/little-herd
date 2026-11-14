@@ -52,7 +52,7 @@ final class HerdWatcher {
         // The code salts every paired phone's key, so none of them could sign
         // after this anyway; forgetting them says so rather than leaving
         // entries that can never work.
-        devices.removeAll()
+        devices.bindToPairingCode(code)
     }
 
     /// Phones that may move sessions, and send pushes to.
@@ -83,6 +83,9 @@ final class HerdWatcher {
         self.defaults = defaults
         devices = HerdDeviceStore(defaults: defaults)
         push = HerdPushRelay(devices: devices, defaults: defaults)
+        // Pairings made under an older code cannot sign; drop them on launch
+        // as well as when the code changes here.
+        devices.bindToPairingCode(HerdWire.Pairing.normalize(storedPairingCode()))
         defaultsObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
             object: defaults,
@@ -121,7 +124,9 @@ final class HerdWatcher {
                 }
             )
             self.server = server
-            HerdPushRelay.shared = push
+            model.alerts.relay = { [push] title, body, machine, alert, recovery in
+                push.send(title: title, body: body, machine: machine, alert: alert, recovery: recovery)
+            }
             // A watcher may never have its dashboard opened, and the
             // dashboard is what switches network storage on. Serving is
             // reason enough, once the person has been through the
@@ -134,7 +139,7 @@ final class HerdWatcher {
         } else if !shouldServe, let server {
             server.stop()
             self.server = nil
-            HerdPushRelay.shared = nil
+            model.alerts.relay = nil
             model.deactivate(.phoneServer)
         }
     }

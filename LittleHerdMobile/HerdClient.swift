@@ -200,16 +200,25 @@ final class HerdClient {
         isFetching = true
         defer { isFetching = false }
         do {
-            let data = try await HerdFetcher.get(
-                path: "/herd",
-                from: watcher.nwEndpoint,
-                pairingCode: pairingCode
-            )
+            let data = try await readHerd(from: watcher)
             snapshot = try HerdWire.decoder().decode(HerdWire.Snapshot.self, from: data)
             lastFetched = .now
             lastError = nil
         } catch {
             lastError = Self.describe(error, watcher: watcher)
+        }
+    }
+
+    /// Signed with this phone's key, so the pairing code does not travel on
+    /// every refresh — the watcher only accepts the code over Tailscale. The
+    /// first read pairs, which therefore has to happen on Tailscale once.
+    /// A watcher from before signed reads answers `/pair` with 405 when it
+    /// takes no writes; that one is read with the code, as before.
+    private func readHerd(from watcher: WatcherEndpoint) async throws -> Data {
+        do {
+            return try await signedRequest(method: "GET", path: "/herd", body: Data())
+        } catch HerdFetcher.Failure.status(405) {
+            return try await HerdFetcher.get(path: "/herd", from: watcher.nwEndpoint, pairingCode: pairingCode)
         }
     }
 
@@ -248,7 +257,7 @@ final class HerdClient {
             )
         }
         let request = HerdWire.MoveRequest(session: session.id, from: origin, to: destination, dryRun: dryRun)
-        let data = try await signedPost("/move", body: HerdWire.encoder().encode(request))
+        let data = try await signedRequest(method: "POST", path: "/move", body: HerdWire.encoder().encode(request))
         let response = try HerdWire.decoder().decode(HerdWire.MoveResponse.self, from: data)
         if response.applied { Task { await refresh() } }
         return response
@@ -260,7 +269,7 @@ final class HerdClient {
         guard canWrite else { return }
         let registration = HerdWire.PushRegistration(token: token, environment: environment)
         do {
-            _ = try await signedPost("/push", body: HerdWire.encoder().encode(registration))
+            _ = try await signedRequest(method: "POST", path: "/push", body: HerdWire.encoder().encode(registration))
             pushRegisteredWith = current?.displayName
         } catch {
             lastError = current.map { Self.describe(error, watcher: $0) }
@@ -270,15 +279,20 @@ final class HerdClient {
     /// Which watcher last took this phone's push token.
     private(set) var pushRegisteredWith: String?
 
-    private func signedPost(_ path: String, body: Data, retried: Bool = false) async throws -> Data {
+    private func signedRequest(
+        method: String,
+        path: String,
+        body: Data,
+        retried: Bool = false
+    ) async throws -> Data {
         guard let watcher = current else { throw HerdFetcher.Failure.unreachable("No watcher chosen.") }
         let credential = try await writeCredential(for: watcher)
         let time = String(Int(Date.now.timeIntervalSince1970))
         let nonce = UUID().uuidString
-        let canonical = HerdWire.Signing.canonical(method: "POST", path: path, time: time, nonce: nonce, body: body)
+        let canonical = HerdWire.Signing.canonical(method: method, path: path, time: time, nonce: nonce, body: body)
         do {
             return try await HerdFetcher.send(
-                method: "POST",
+                method: method,
                 path: path,
                 to: watcher.nwEndpoint,
                 headers: [
@@ -289,14 +303,16 @@ final class HerdClient {
                 ],
                 body: body
             )
-        } catch HerdFetcher.Failure.refused(let reason) where !retried && reason.contains("pair") {
-            WriteCredential.forget(watcher: watcher.displayName)
-            return try await signedPost(path, body: body, retried: true)
+        } catch HerdFetcher.Failure.refused(let reason) where !retried && reason.contains("not paired") {
+            // The watcher forgot this phone (a new code, or its store was
+            // reset): pair again, once.
+            WriteCredential.forget(code: pairingCode)
+            return try await signedRequest(method: method, path: path, body: body, retried: true)
         }
     }
 
     private func writeCredential(for watcher: WatcherEndpoint) async throws -> WriteCredential {
-        if let stored = WriteCredential.load(watcher: watcher.displayName, code: pairingCode) {
+        if let stored = WriteCredential.load(code: pairingCode, legacyWatcher: watcher.displayName) {
             return stored
         }
         let mine = P256.KeyAgreement.PrivateKey()
@@ -318,7 +334,7 @@ final class HerdClient {
             pairingCode: pairingCode
         )
         let credential = WriteCredential(deviceID: answer.deviceID, key: key)
-        credential.save(watcher: watcher.displayName, code: pairingCode)
+        credential.save(code: pairingCode)
         return credential
     }
 
@@ -513,24 +529,37 @@ nonisolated enum HerdFetcher {
 /// The key this phone signs writes with, for one watcher.
 ///
 /// In the Keychain: it is the thing that lets a phone start work on a Mac,
-/// and on iOS the Keychain costs no prompt. Filed under the watcher's name and
-/// the code it was made with, so a new code on the Mac quietly means a new
-/// pairing here rather than a stream of refusals.
+/// and on iOS the Keychain costs no prompt. Filed under the code it was made
+/// with, not the watcher's name: the same watcher is "mini" over Bonjour and
+/// a Tailscale address when typed, and one pairing serves both. A new code on
+/// the Mac quietly means a new pairing here rather than a stream of refusals.
 nonisolated struct WriteCredential {
     let deviceID: String
     let key: SymmetricKey
 
-    private static func account(watcher: String, code: String) -> String {
+    private static func account(code: String) -> String {
+        "code|\(HerdWire.Pairing.normalize(code))"
+    }
+
+    /// How credentials were filed before signed reads.
+    private static func legacyAccount(watcher: String, code: String) -> String {
         "\(watcher)|\(HerdWire.Pairing.normalize(code))"
     }
 
     private static let service = "com.malpern.LittleHerdMobile.write"
 
-    static func load(watcher: String, code: String) -> WriteCredential? {
+    static func load(code: String, legacyWatcher: String) -> WriteCredential? {
+        if let current = load(account: account(code: code)) { return current }
+        guard let legacy = load(account: legacyAccount(watcher: legacyWatcher, code: code)) else { return nil }
+        legacy.save(code: code)
+        return legacy
+    }
+
+    private static func load(account: String) -> WriteCredential? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account(watcher: watcher, code: code),
+            kSecAttrAccount as String: account,
             kSecReturnData as String: true,
         ]
         var item: CFTypeRef?
@@ -543,8 +572,8 @@ nonisolated struct WriteCredential {
         return WriteCredential(deviceID: id, key: SymmetricKey(data: key))
     }
 
-    func save(watcher: String, code: String) {
-        Self.forget(watcher: watcher)
+    func save(code: String) {
+        Self.forget(code: code)
         let payload: [String: Data] = [
             "id": Data(deviceID.utf8),
             "key": key.withUnsafeBytes { Data($0) },
@@ -553,15 +582,16 @@ nonisolated struct WriteCredential {
         let item: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.service,
-            kSecAttrAccount as String: Self.account(watcher: watcher, code: code),
+            kSecAttrAccount as String: Self.account(code: code),
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
             kSecValueData as String: data,
         ]
         SecItemAdd(item as CFDictionary, nil)
     }
 
-    /// Every credential for this watcher, whatever code it was made under.
-    static func forget(watcher: String) {
+    /// Every credential made under this code, in either filing.
+    static func forget(code: String) {
+        let suffix = "|" + HerdWire.Pairing.normalize(code)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -576,7 +606,7 @@ nonisolated struct WriteCredential {
         else { return }
         for attributes in list {
             guard let account = attributes[kSecAttrAccount as String] as? String,
-                  account.hasPrefix(watcher + "|")
+                  account.hasSuffix(suffix)
             else { continue }
             SecItemDelete(query.merging([kSecAttrAccount as String: account]) { $1 } as CFDictionary)
         }

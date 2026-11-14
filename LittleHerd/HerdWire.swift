@@ -260,6 +260,13 @@ nonisolated enum HerdWire {
         let token: String
         /// `development` or `production`, from the app's entitlement.
         let environment: String
+
+        var isValid: Bool {
+            // Apple does not guarantee a fixed token length.
+            !token.isEmpty && token.utf8.count <= 512 && token.utf8.count.isMultiple(of: 2)
+                && token.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
+                && (environment == "development" || environment == "production")
+        }
     }
 
 

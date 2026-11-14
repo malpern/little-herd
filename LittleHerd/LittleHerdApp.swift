@@ -741,8 +741,9 @@ private struct LittleHerdSettingsView: View {
                     .font(.callout)
                     .padding(.top, 2)
 
-                    Text("Type it into Little Herd on your iPhone once. "
-                        + "Without it, the phone can find this Mac but not read the herd.")
+                    Text("Type it into Little Herd on your iPhone once, while the phone "
+                        + "is on Tailscale. The code is only accepted over Tailscale; after "
+                        + "that the phone signs every request, so it also works on the home network.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -750,8 +751,8 @@ private struct LittleHerdSettingsView: View {
                     // Phones that have paired for moves, so "who can start
                     // work on this herd" is answerable without a terminal.
                     Text(herdWatcher.pairedDeviceNames.isEmpty
-                        ? "No phone has paired for moving work yet."
-                        : "Can move work: " + herdWatcher.pairedDeviceNames.joined(separator: ", ")
+                        ? "No phone has paired yet."
+                        : "Paired: " + herdWatcher.pairedDeviceNames.joined(separator: ", ")
                             + ". A new code forgets them.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -990,7 +991,7 @@ private struct LittleHerdSettingsView: View {
         }
         .padding(24)
         .frame(width: 420)
-        .onChange(of: alertsEnabled && watchesHerd) {
+        .onChange(of: alertsEnabled && watchesHerd && !alertsSuppressed) {
             model.updateWatcherFromPreferences()
         }
         .sheet(item: $configuringNAS) { machine in

@@ -388,8 +388,8 @@ final class MonitorModel {
 
     /// A designated watcher keeps the same samplers alive between window visits.
     func updateWatcherFromPreferences() {
-        if defaults.bool(forKey: LittleHerdPreferences.watchesHerdKey),
-           defaults.bool(forKey: LittleHerdPreferences.alertsEnabledKey) {
+        let enabled = defaults.bool(forKey: LittleHerdPreferences.watchesHerdKey) && alertsEnabled
+        if enabled {
             activate(.watcher)
         } else {
             deactivate(.watcher)

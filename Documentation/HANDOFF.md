@@ -1,8 +1,11 @@
 # Little Herd — handoff
 
-**State, 14 November 2026.** `v0.1.69` (build 70) is the live Sparkle release
-and is installed on this Mac. It includes Codex cloud task listing and apply.
-The designated watcher and alert command are on main and have yet to ship.
+**State, 14 November 2026.** `v0.1.70` (build 71) is the live Sparkle release.
+It keeps the designated watcher sampling with the dashboard closed, sends
+outage and recovery alerts through the configured command, and reads structured
+Codex Cloud task data when supported. The published archive's signature was
+verified against the app's pinned Sparkle public key and its notarization
+staple was validated.
 Four Swift Testing `#require` calls shadowed their helper on the CI toolchain.
 The helper names were fixed in `99089a3`, and
 [main CI passed](https://github.com/malpern/little-herd/actions/runs/43632757562).
@@ -1863,6 +1866,69 @@ has no body, because `notify-push` refuses an empty message. The regression
 test closes the model's dashboard surface and observes both events through
 an executable. Restoring the old surface behavior made the test fail.
 
+**The closed-window check on the mini reached Pushover on 14 November.** The
+notarized 0.1.70 candidate reported an outage and a recovery for a temporary
+SSH target after its dashboard closed. The iPhone received both Pushover
+messages. The test fixture also exposed a race in two command tests, fixed
+in `24604bb`.
+
+**Native sandbox APNs reached the locked iPhone on 14 November.** The iOS
+build from draft PR #36 was signed with a development profile for the
+physical iPhone and installed over USB. A private build of its companion
+watcher on the mini accepted pairing and push registration on its Tailscale
+address with transfers disabled. With the dashboard closed, the loopback SSH
+fixture stopped responding and then recovered. Apple accepted the two pushes
+and Micah confirmed both Little Herd notifications arrived. The mini's
+original preferences and SSH configuration were restored. The Little Herd
+sandbox key is stored privately on the mini in `~/.config/little-herd/apns/`.
+The public Mac 0.1.70 ships the watcher fixes from main. The native relay
+was still in the iOS draft for that release.
+
+**The Mac app now has its own APNs relay (PR #37).** It uses the existing
+watcher sampling registration and the same alert transition detector as the
+Mac notification and optional command. Outage and recovery pushes have
+different collapse IDs. The iPhone prototype needs a snapshot before it will
+pair and register, so the Mac exposes the existing snapshot and registration
+protocol on the configured Tailscale IPv4 address. There is no Bonjour
+advertisement or remote move endpoint. The Mac stops listening and sending
+when it is no longer the designated watcher, alerts are disabled, or it is
+set to stay quiet.
+
+On the watcher, enable alerts and continuous watching, then open **iPhone
+notifications** in Little Herd Settings. Enter the watcher's Tailscale IPv4
+address, the path to its private APNs `.p8` (mode `0600`), and the key ID. In
+the iPhone app's Watcher settings, save the displayed address and pairing
+code, and allow notifications when prompted. Pick a provider key for the same
+APNs environment as the iPhone build. The mini uses the existing sandbox key
+and its test profile. The phone only needs Tailscale to reach the watcher for
+pairing, token registration, and snapshots. Apple delivers the alerts.
+
+The mini runs a locally installed, notarized Mac 0.1.71 (build 72), with
+0.1.70 backed up for rollback. On 14 November the installed app sent the
+synthetic SSH outage and recovery through sandbox APNs at 13:31 and 13:32
+Pacific with its dashboard closed. Removing the SSH test fixture and
+restarting with the regular machine list preserved the iPhone registration.
+The public Sparkle feed remains on 0.1.70.
+
+**On PR #36 the two phone servers are one (merged 14 November).** Main's
+PR #37 server and the branch's would have competed for port 7841 and pushed
+every alert twice. The branch keeps its own server (`HerdServer`: every
+interface, Bonjour, signed `/move`), and takes from PR #37 the device store,
+the push sender and its alert-center hook, the key-file permission check,
+the token validation and the distinct recovery collapse ID. Main's
+`HerdPhoneServer`, `HerdSnapshot` and the Tailscale address setting are gone
+on the branch, and the `herdPhoneAddress` default it wrote is ignored.
+Instead of binding only to Tailscale, the server takes the pairing code only
+from a connection that arrives over Tailscale (100.64.0.0/10,
+fd7a:115c:a1e0::/48) or from this Mac, for `/pair` and for a read by an
+unpaired phone. Every read after pairing is signed like a write, so a phone
+on the home Wi-Fi sends nothing reusable. Someone on the Wi-Fi can still
+read the snapshot the watcher sends back. The phone files its credential
+under the pairing code rather than the watcher's name, so a pairing made
+over Tailscale also serves the Bonjour entry. An outage push collapses on
+`machine:kind`, the id the phone uses for its own copy; recoveries stay
+distinct. Verified by unit tests and builds only; not yet on the iPhone.
+
 **Codex is not on `PATH` on this Mac and looking for it there finds
 nothing.** It lives inside
 `/Applications/ChatGPT.app/Contents/Resources/codex` and the Codex app; the
@@ -2071,9 +2137,8 @@ it; the files survived only because the directory had not been reaped yet.
 
 ## Next
 
-**Next release.** Test a signed build on macOS 27.2.1. Verify alert delivery
-and recovery on the mini through the chosen transport, and run a throwaway
-transfer with each provider. Keep macOS 15 in the compatibility checks.
+**Release verification.** Run a throwaway transfer with each provider on
+the current macOS release. Keep macOS 15 in the compatibility checks.
 
 **Provider interfaces.** Try Codex App Server's documented thread metadata
 methods before reaching into `state_5.sqlite`, and measure which live status
@@ -2241,11 +2306,13 @@ the only part drawn.
    volumes for a smaller reason.
 6. **iOS has a working prototype in draft PR #36.** The branch handoff at
    `02d46f9` records Bonjour discovery on a physical iPhone and a signed move dry
-   run from the simulator. A real phone-initiated move and live APNs delivery
-   remain unverified. The watcher enables writes when it starts. It listens
-   on all interfaces over plain HTTP, and the reusable code that admits
-   `/pair` travels over that connection. Keep the first mobile pilot read-only
-   over an authenticated, encrypted connection. Use the vendors' remote
+   run from the simulator. The physical iPhone received both sandbox APNs
+   alerts on 14 November. A real phone-initiated move remains unverified.
+   The watcher enables writes when it starts and listens on all interfaces
+   over plain HTTP. Since the 14 November merge it accepts the pairing code
+   only over Tailscale or from itself, and a paired phone signs every read and
+   write, so the code no longer crosses the home network. The snapshot itself
+   still does, unencrypted. Use the vendors' remote
    clients for session steering. The phone's own job is to show herd health
    and what's waiting across machines.
 
