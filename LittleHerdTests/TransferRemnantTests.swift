@@ -394,7 +394,7 @@ struct DepartureIdentifierTests {
 /// to it was refused for that — after the push, every time.
 @Suite("Refusing before the push")
 struct EarlyRefusalTests {
-    private func request(agentPath: String) -> TransferAssembly.Request? {
+    private func makeRequest(agentPath: String) -> TransferAssembly.Request? {
         func account(_ id: String, agent: String) -> DestinationAccount {
             DestinationAccount(
                 machine: MachineID(id), name: id, symbolName: "desktopcomputer",
@@ -427,7 +427,7 @@ struct EarlyRefusalTests {
     /// given a chance to run: if it were called, the test would say so.
     @Test
     func anUnrecognisedAgentIsRefusedWithoutDeparting() async throws {
-        let request = try #require(request(agentPath: "/opt/somewhere/odd/claude"))
+        let request = try #require(makeRequest(agentPath: "/opt/somewhere/odd/claude"))
         let departed = Departed()
 
         let prepared = await TransferDriver.prepare(
@@ -453,7 +453,7 @@ struct EarlyRefusalTests {
     @Test
     func theBundledAgentPassesTheSameGate() async throws {
         let request = try #require(
-            request(
+            makeRequest(
                 agentPath: "/Users/b/Library/Application Support/Claude/"
                     + "claude-code/2.1.255/claude.app/Contents/MacOS/claude"
             )
