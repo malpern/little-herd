@@ -378,6 +378,41 @@ struct SynologyWiringTests {
         #expect(alert?.1.contains("Volume 1") == true)
     }
 
+    @Test(arguments: ["fs_almost_full", "unrecognized_reason"])
+    func volumeWarningExplainsTheReasonInBothDeliveryChannels(reason: String) throws {
+        let payload = try JSONDecoder().decode(DSMStoragePayload.self, from: Data("""
+        {
+          "volumes": [{
+            "id": "volume_1",
+            "vol_path": "/volume1",
+            "status": "attention",
+            "summary_status": "attention",
+            "size": {"total": "9000000000000", "free": "1360000000000"},
+            "space_status": {"status": "\(reason)", "detail": "\(reason)"}
+          }]
+        }
+        """.utf8))
+        let machine = MachineMonitorModel(configuration: dsmConfiguration())
+        machine.apply(SystemSnapshot(
+            timestamp: .now,
+            readings: [.disk: MetricReading(value: 84.9)],
+            storageVolumes: SynologyDSMParser.storageVolumes(from: payload)
+        ))
+        var localMessages: [String] = []
+        var phoneMessages: [String] = []
+        let center = MachineAlertCenter { _, body in localMessages.append(body) }
+        center.relay = { _, body, _, _, _ in phoneMessages.append(body) }
+
+        center.evaluate(machine, isEnabled: true)
+        center.evaluate(machine, isEnabled: true)
+
+        let expected = reason == "fs_almost_full"
+            ? "DSM says Volume 1 is nearly full. 85% used, \(HerdByteCount.storage(1_360_000_000_000)) free."
+            : "Volume 1 reports warning."
+        #expect(localMessages == [expected])
+        #expect(phoneMessages == [expected])
+    }
+
     /// A healthy NAS must stay quiet, or the alert means nothing.
     @Test
     func aHealthyNASRaisesNothing() {

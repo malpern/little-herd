@@ -376,7 +376,26 @@ nonisolated struct DSMStoragePayload: Decodable, Sendable {
         let volPath: String?
         let status: String?
         let summaryStatus: String?
+        let spaceStatus: SpaceStatus?
         let size: Size?
+
+        struct SpaceStatus: Decodable, Sendable {
+            let status: String?
+            let detail: String?
+
+            private enum CodingKeys: String, CodingKey { case status, detail }
+
+            init(from decoder: Decoder) {
+                // An unfamiliar shape must not cost the volume's capacity or health.
+                let fields = try? decoder.container(keyedBy: CodingKeys.self)
+                status = try? fields?.decode(String.self, forKey: .status)
+                detail = try? fields?.decode(String.self, forKey: .detail)
+            }
+
+            var isNearlyFull: Bool {
+                status == "fs_almost_full" || detail == "fs_almost_full"
+            }
+        }
 
         struct Size: Decodable, Sendable {
             let total: DSMNumber?
@@ -391,6 +410,7 @@ nonisolated struct DSMStoragePayload: Decodable, Sendable {
             case displayName = "display_name"
             case volPath = "vol_path"
             case summaryStatus = "summary_status"
+            case spaceStatus = "space_status"
         }
     }
 
@@ -591,7 +611,8 @@ nonisolated enum SynologyDSMParser {
                 health: worse(
                     SynologyHealth.parse(volume.status),
                     SynologyHealth.parse(volume.summaryStatus)
-                )
+                ),
+                isNearlyFull: volume.spaceStatus?.isNearlyFull ?? false
             )
         }
     }
