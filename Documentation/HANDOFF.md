@@ -2063,6 +2063,24 @@ without a word.** A second target that shares the catalog builds green and draws
 nothing where the animal should be. The phone catalog carries `universal`
 imagesets that symlink the same PNGs; there is one copy of each picture.
 
+## First-party first: our own protocols, and what could replace them
+
+**The rule (Micah, 15 November 2026):** use first-party APIs from Apple,
+Anthropic or OpenAI wherever they exist. Build our own protocol only when
+none does the job, list it here, and switch when a first-party replacement
+ships. Re-check this table against the vendors' docs whenever either ships
+a session or remote feature, and date each check.
+
+| Ours | What it does | First-party status (checked 15 November 2026) |
+| --- | --- | --- |
+| Phone ↔ Mac HTTP API (`HerdWire`; `/herd`, `/pair`, `/move`, `/push`) | Herd snapshot to the phone; move requests back | No vendor API covers it. **Candidate to evaluate:** Apple CloudKit (`CKSyncEngine` + subscriptions) could carry the snapshot and the move requests, replacing the transport, pairing and signing below with the iCloud account. Not decided; costs latency and an iCloud dependency. |
+| Pairing code + P-256/HKDF/HMAC request signing | Trust between phone and Mac | Built from Apple CryptoKit primitives; the scheme is ours. Goes away if the transport moves to CloudKit. |
+| Transfer engine, Claude sessions (git branch + ssh + transcript copy + `claude --resume`) | Moves a local session to another of our machines | **No first-party equivalent for machine-to-machine.** Anthropic's moves all go through its cloud: `claude --cloud` starts a new cloud session, `--teleport` pulls a cloud session into a terminal (one-way; the CLI cannot push a local session out), and Desktop's **Open in → Cloud** carries only a summary and refuses SSH sessions. Remote Control steers a session in place; it does not move it. **Watch:** self-hosted environments (public beta, Team/Enterprise only) run cloud sessions on our own machines, from which `--teleport` works anywhere; and the Agent SDK's `SessionStore` resumes a transcript on another host, though only for SDK sessions. Open request: anthropics/claude-code#14666. |
+| Transfer engine, Codex sessions (rollout copy + `codex resume`) | Same, for Codex | **First-party equivalent exists, app-only:** the ChatGPT desktop app's **Handoff** moves a chat and its git state between this computer and a connected SSH host, which is exactly our move. It has no documented API or CLI, so Little Herd cannot call it; we keep ours and re-check. The Codex app-server's `thread/resume` is first-party and could replace our rollout handling. Open requests: openai/codex#19657, #34804. |
+
+Already first-party, nothing to replace: Bonjour discovery, APNs (called
+directly with a token), the Network framework, the agents' own CLIs.
+
 ## Method notes
 
 **Subagents in worktrees branch from what is pushed, not from what is in front
