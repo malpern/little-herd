@@ -1,6 +1,6 @@
 # Little Herd — handoff
 
-**State, 14 November 2026.** `v0.1.70` (build 71) is the live Sparkle release.
+**State, 15 November 2026.** `v0.1.70` (build 71) is the live Sparkle release.
 It keeps the designated watcher sampling with the dashboard closed, sends
 outage and recovery alerts through the configured command, and reads structured
 Codex Cloud task data when supported. The published archive's signature was
@@ -11,9 +11,14 @@ The helper names were fixed in `99089a3`, and
 [main CI passed](https://github.com/malpern/little-herd/actions/runs/43632757562).
 The latest stable macOS is 27.2.1. The deployment target is still macOS 15.
 
-**The iOS app is on draft PR #36 (`ios/spike-1`), not on main.** On 27 September
-a move started from the phone path landed on linux end to end: the check ran
-there and the work arrived. Item 6 has the detail.
+**The iOS app is on draft PR #36 (`ios/spike-1`), not on main.** On 15 November
+at 11:15 a move started from a physical iPhone (build 3) landed on linux. The
+mini ran Mac 0.1.74 (build 78, `ca23009`), and the session's full conversation
+was carried there (`--resume --fork-session`). It took three attempts; the fact
+"A phone move found two bugs in the machine probe" has them. The successor
+still runs once in `-p` and its workspace is deleted, so the moved session
+cannot be talked to afterwards. That is roadmap item 10. The earlier
+27 September landing used the phone path from the command line (item 6).
 
 Items 13, 14, 15 and 17 closed on 6–7 September. Their decisions are in
 **Hard-won facts**. The first build whose transfer worked against a real
@@ -1658,6 +1663,23 @@ on a branch. Fixing the sentence turned the suite red, and the correct response
 was to change the assertion, not the sentence. Worth pausing on whenever a
 green suite resists a change that is obviously right: **the test may be
 asserting the defect.** It now checks that the other two states do *not* say it.
+
+**A phone move found two bugs in the machine probe, both invisible from this Mac.**
+On 15 November the first phone move was refused with "Linux offered an agent at
+~/.local/bin/codex". `bestInstallation` picked the newest agent of *any*
+provider, and linux's Claude exists only under mise
+(`~/.local/share/mise/installs/claude/latest/claude`), which the probe did not
+look for. A move now asks for `installation(for: session.provider)`, and the
+mise path is probed and allowed (`3e9bd7e`). The second attempt failed writing
+the brief with "OAuth session expired" although the mini was signed in. Claude
+Code files its keychain sign-in under `$USER`; the clean environment that
+`SuccessorLocal` builds had no `USER`, so Claude read a stale item filed under
+the account "unknown" (created 27 September), which is still in the mini's
+keychain. The clean environment now carries `USER` (`ca23009`). Reproduced both
+ways with `env -i` before the fix. **Test any step that runs an agent with the
+same environment the app gives it**; a shell supplies `USER` and hides this.
+The same build put failures into words (`TransferPilot.Failure.sentence`); the
+phone had been showing the raw enum.
 
 **Six transfer bugs were found by running one transfer, and none by 670 tests.**
 Recorded together because the ratio is the point, not any one of them: this Mac
