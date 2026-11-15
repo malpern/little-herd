@@ -124,7 +124,9 @@ nonisolated enum TransferPhase: Equatable, Sendable {
         case .finished(let outcome):
             switch outcome.result {
             case .landed:
-                "The work is on the branch, tested, and not merged."
+                outcome.backgroundSession == nil
+                    ? "The work is on the branch, tested, and not merged."
+                    : "It is running there as a background session. Continue it in the Claude app."
             case .checkFailed:
                 // `checkFailed` covers a failed push as well as a failed
                 // check — deliberately, rather than inventing a fifth result

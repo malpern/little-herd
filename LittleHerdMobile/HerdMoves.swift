@@ -389,6 +389,10 @@ struct MoveSheet: View {
         case "landed":
             Label("Landed on \(plan.toName).", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(HerdTheme.loadGreen)
+            // A live landing says where the conversation went.
+            if let detail = transfer?.detail {
+                Text(detail).font(.footnote).foregroundStyle(.secondary)
+            }
         case "failed":
             Label(transfer?.detail ?? "The move failed.", systemImage: "xmark.octagon.fill")
                 .foregroundStyle(.orange)

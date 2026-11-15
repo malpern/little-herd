@@ -42,6 +42,22 @@ nonisolated struct SuccessorOutcome: Equatable {
     /// A command that would clear the refusal, for a person to run — never
     /// run by Little Herd. See `ToolRemedy`.
     var remedy: String? = nil
+    /// The background session a live successor started, by the short id
+    /// `claude --bg` prints ("backgrounded · f606c9dd · name"); nil for a
+    /// one-shot run. Its presence is what makes a landing a live one.
+    var backgroundSession: String? = nil
+
+    /// The id from `claude --bg`'s first line, and nothing else that resembles one.
+    static func backgroundSession(in output: String) -> String? {
+        for line in output.split(separator: "\n") {
+            let parts = line.split(separator: "·").map { $0.trimmingCharacters(in: .whitespaces) }
+            if parts.count >= 2, parts[0] == "backgrounded",
+               !parts[1].isEmpty, parts[1].allSatisfy(\.isHexDigit) {
+                return parts[1]
+            }
+        }
+        return nil
+    }
 }
 
 /// What a transfer leaves behind on the machine it was leaving.
@@ -128,7 +144,8 @@ nonisolated enum SuccessorExecutor {
             return SuccessorOutcome(
                 result: .landed,
                 failingStep: nil,
-                output: joined
+                output: joined,
+                backgroundSession: SuccessorOutcome.backgroundSession(in: joined)
             )
         }
 

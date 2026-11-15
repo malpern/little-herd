@@ -215,7 +215,11 @@ extension MonitorModel {
             case .running(let purpose): ("running", Self.wireDetail(purpose))
             case .finished(let outcome):
                 outcome.result == .landed
-                    ? ("landed", nil)
+                    // A live landing says where the conversation went; the
+                    // phone's notification shows this as its body.
+                    ? ("landed", outcome.backgroundSession == nil
+                        ? nil
+                        : "It’s running there as a background session. Continue it in the Claude app.")
                     : ("failed", TransferDigest.detail(phase: phase, output: outcome.output))
             }
             return HerdWire.Transfer(

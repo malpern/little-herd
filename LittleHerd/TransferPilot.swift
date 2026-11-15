@@ -152,7 +152,8 @@ nonisolated enum TransferPilot {
         reportedAgentPath: String,
         check: RepositoryCheck,
         commitMessage: String,
-        carriedSession: String? = nil
+        carriedSession: String? = nil,
+        live: SuccessorLaunch.Live? = nil
     ) -> Result<[SuccessorRun.Step], Failure> {
         let plan = SuccessorLaunch.plan(
             briefPath: briefPath,
@@ -163,7 +164,8 @@ nonisolated enum TransferPilot {
             provider: provider,
             reportedAgentPath: reportedAgentPath,
             expectedCommit: commit,
-            carriedSession: carriedSession
+            carriedSession: carriedSession,
+            live: live
         )
 
         switch plan {

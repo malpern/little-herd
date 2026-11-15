@@ -63,6 +63,16 @@ nonisolated struct SuccessorRun: Equatable {
         let promptFile = RemoteShell.quoted(promptFile)
         let encodedPrompt = Data(plan.prompt.utf8).base64EncodedString()
 
+        if plan.live != nil {
+            return liveSteps(
+                plan: plan,
+                repository: repository,
+                branch: branch,
+                promptFile: promptFile,
+                encodedPrompt: encodedPrompt
+            )
+        }
+
         var steps: [Step] = []
 
         // Fetch, prove it is what we were told to expect, and work from a
@@ -179,5 +189,78 @@ nonisolated struct SuccessorRun: Equatable {
         )
 
         return steps
+    }
+
+    /// Marks a live worktree whose session started, beside it. Cleanup keeps
+    /// a marked worktree and removes an unmarked one: the session lives in it.
+    static func liveMarker(_ workingDirectory: String) -> String {
+        "\(workingDirectory).live"
+    }
+
+    /// The live version: the same pinned fetch, then a worktree that stays.
+    ///
+    /// Differences from the one-shot run, each deliberate:
+    /// - **The worktree is on the transfer branch**, so the session can commit
+    ///   and push its own work when the person asks; nothing does it for it.
+    /// - **An existing worktree is refused, not cleared.** The one-shot run
+    ///   removes litter at its path; here the path can hold a session somebody
+    ///   is still talking to, and removing it would end that conversation.
+    /// - **`.claude/worktrees/` goes in the repository's own `info/exclude`**,
+    ///   never its `.gitignore`, so the main checkout does not list the
+    ///   worktrees as untracked and nothing in the repository changes.
+    /// - **No check and no push**: the session owns the branch.
+    /// - Cleanup removes the worktree only if the session never started.
+    ///
+    /// The prompt is the session's first message, passed as one argument read
+    /// from the staged file. That is a parameter expansion, which the shell does
+    /// not parse again, so the brief still cannot become a command; `--` stops
+    /// it being read as an option.
+    private static func liveSteps(
+        plan: SuccessorLaunch.Plan,
+        repository: String,
+        branch: String,
+        promptFile: String,
+        encodedPrompt: String
+    ) -> [Step] {
+        let worktree = RemoteShell.quoted(plan.workingDirectory)
+        let marker = RemoteShell.quoted(liveMarker(plan.workingDirectory))
+        let commit = RemoteShell.quoted(plan.expectedCommit)
+        let exclude = RemoteShell.quoted("/.claude/worktrees/")
+        return [
+            Step(
+                purpose: .worktree,
+                command: "git -C \(repository) fetch origin \(RemoteShell.quoted(branch)) "
+                    + "&& test \"$(git -C \(repository) rev-parse FETCH_HEAD)\" = \(commit) "
+                    + "&& { test ! -e \(worktree) || { echo \"A moved copy of this session "
+                    + "is already on this machine.\"; exit 1; }; } "
+                    + "&& rm -f \(marker) "
+                    + "&& f=\"$(git -C \(repository) rev-parse --path-format=absolute "
+                    + "--git-path info/exclude)\" && mkdir -p \"$(dirname \"$f\")\" "
+                    + "&& { grep -qxF \(exclude) \"$f\" 2>/dev/null || printf '%s\\n' "
+                    + "\(exclude) >> \"$f\"; } "
+                    + "&& git -C \(repository) worktree add -B \(RemoteShell.quoted(branch)) "
+                    + "\(worktree) \(commit)",
+                isFatal: true
+            ),
+            Step(
+                purpose: .prompt,
+                command: "printf %s \(RemoteShell.quoted(encodedPrompt)) | base64 -d > \(promptFile)",
+                isFatal: true
+            ),
+            Step(
+                purpose: .agent,
+                command: "cd \(worktree) && \(RemoteShell.quoted(plan.executable)) "
+                    + "\(RemoteShell.quoted(plan.arguments)) -- \"$(cat \(promptFile))\" "
+                    + "&& touch \(marker)",
+                isFatal: true
+            ),
+            Step(
+                purpose: .cleanup,
+                command: "rm -f \(promptFile); test -e \(marker) || "
+                    + "{ git -C \(repository) worktree remove --force \(worktree) >/dev/null 2>&1; "
+                    + "rm -rf \(worktree); }",
+                isFatal: false
+            ),
+        ]
     }
 }

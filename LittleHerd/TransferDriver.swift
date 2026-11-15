@@ -165,9 +165,52 @@ nonisolated enum TransferDriver {
             let answer = await destinationCommand(Self.homeQuery)
             destinationHome = answer.succeeded ? Self.home(from: answer.output) : nil
         }
-        let scratchRoot = destinationHome.map(Self.scratchRoot(forHome:)) ?? TransferAssembly.scratchRoot
+        // **Live when the destination can hold a session, before anything is
+        // pushed.** A Claude destination whose agent has background sessions
+        // gets a session that stays (see `SuccessorLaunch.Live`); one that
+        // does not, and every Codex move, stays one-shot. A repository Claude
+        // has not trusted is refused here, with the fix, because `--bg` refuses
+        // it and Little Herd must never answer the trust prompt itself.
+        var live: SuccessorLaunch.Live?
+        if request.provider == .claude, let destinationCommand {
+            let answer = await destinationCommand(
+                Self.liveQuery(agent: request.destinationAgentPath, repository: request.destinationRepository)
+            )
+            switch Self.liveAnswer(answer.succeeded ? answer.output : "") {
+            case .oneShot:
+                note?("one-shot: the destination's Claude has no background sessions")
+            case .live:
+                live = SuccessorLaunch.Live(name: request.transfer.title)
+            case .untrusted:
+                return .blocked(
+                    SuccessorOutcome(
+                        result: .couldNotStart,
+                        failingStep: nil,
+                        output: "Claude on \(destinationName) hasn’t trusted "
+                            + "\(request.destinationRepository) yet, so a session "
+                            + "can’t stay there. Open Claude in that folder on "
+                            + "\(destinationName) once and choose “Yes, I trust "
+                            + "this folder”. Nothing was moved.",
+                        remnant: .nothing,
+                        remedy: Self.trustRemedy(
+                            agent: request.destinationAgentPath,
+                            repository: request.destinationRepository,
+                            sshHost: destinationHost
+                        )
+                    )
+                )
+            }
+        }
+
+        let scratchRoot = live != nil
+            ? SuccessorLaunch.liveRoot(repository: request.destinationRepository)
+            : destinationHome.map(Self.scratchRoot(forHome:)) ?? TransferAssembly.scratchRoot
         var carry = carry
         if let destinationHome { carry?.destinationHome = destinationHome }
+        // The carried transcript goes under the project folder of the directory
+        // the successor will actually run in, which is the live root for a
+        // live session.
+        carry?.scratchRoot = scratchRoot
 
         var carriedSession: String? = nil
         var departureSteps = request.departure
@@ -213,7 +256,8 @@ nonisolated enum TransferDriver {
                 // request's otherwise.
                 check: check,
                 commitMessage: "Successor work on \(request.transfer.branch)",
-                carriedSession: carriedSession
+                carriedSession: carriedSession,
+                live: live
             )
             switch arrival {
             case .failure(let failure):
@@ -268,6 +312,50 @@ extension TransferDriver {
         let home = output.trimmingCharacters(in: .whitespacesAndNewlines)
         guard home.hasPrefix("/"), !home.contains("\n"), home.count > 1 else { return nil }
         return home
+    }
+
+    enum LiveAnswer: Equatable {
+        case live
+        case oneShot
+        case untrusted
+    }
+
+    /// One command, three answers: `oneshot` when the agent has no `--bg`,
+    /// otherwise whether `~/.claude.json` records trust for this repository.
+    ///
+    /// **Exact path only**, because that is what Claude does: on linux,
+    /// `~/local-code` was trusted and `~/local-code/sandpiper` inside it was
+    /// still refused. Reading the file is read-only and is a pre-flight only;
+    /// if it cannot be read the answer is `live`, and `--bg`'s own refusal
+    /// ("Workspace not trusted …") reaches the person after the push instead.
+    nonisolated static func liveQuery(agent: String, repository: String) -> String {
+        let script = "import json,os,sys\n"
+            + "r=os.path.expanduser(sys.argv[1]);k={r,os.path.realpath(r)}\n"
+            + "try:p=json.load(open(os.path.expanduser('~/.claude.json'))).get('projects',{})\n"
+            + "except Exception:print('live');sys.exit()\n"
+            + "print('live' if any(p.get(x,{}).get('hasTrustDialogAccepted') for x in k) else 'untrusted')"
+        return "\(RemoteShell.quoted(agent)) --help 2>/dev/null | grep -q -- --bg "
+            + "|| { echo oneshot; exit 0; }; "
+            + "command -v python3 >/dev/null 2>&1 || { echo live; exit 0; }; "
+            + "python3 -c \(RemoteShell.quoted(script)) \(RemoteShell.quoted(repository))"
+    }
+
+    /// Anything unrecognised, including no answer, is one-shot: the move that
+    /// has worked since September, rather than a guess at a new one.
+    nonisolated static func liveAnswer(_ output: String) -> LiveAnswer {
+        switch output.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: "\n").last {
+        case "live": .live
+        case "untrusted": .untrusted
+        default: .oneShot
+        }
+    }
+
+    /// What a person runs to trust the repository: Claude itself, in that
+    /// folder, where they answer the prompt. Never answered for them.
+    nonisolated static func trustRemedy(agent: String, repository: String, sshHost: String?) -> String {
+        let local = "cd \(RemoteShell.quoted(repository)) && \(RemoteShell.quoted(agent))"
+        guard let sshHost else { return local }
+        return "ssh -t \(sshHost) \(RemoteShell.quoted(local))"
     }
 
     nonisolated static func scratchRoot(forHome home: String) -> String {
@@ -350,7 +438,7 @@ extension TransferDriver {
         /// look in. Both machines on this herd share one, and the same
         /// assumption already lives in `TransferAssembly.scratchRoot`.
         var destinationHome: String
-        let scratchRoot: String
+        var scratchRoot: String
         /// Whether to scrub the transcript before it leaves this machine.
         ///
         /// **True unless somebody deliberately turned it off**, and off is a second,
