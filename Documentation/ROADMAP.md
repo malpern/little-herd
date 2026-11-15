@@ -201,20 +201,31 @@ Spike: the herd snapshot alone, read-only, through the private iCloud database.
 If it holds, CloudKit replaces our server, pairing and signing (see "First-party
 first" in `HANDOFF.md`).
 
-### 12. An ended session is not "waiting on you" · `todo`
+### 12. An ended session is not "waiting on you" · `doing`
 
-Little Herd lists Claude sessions from transcripts written in the last day
-(`MachineActivity`), whether or not a process is still running, so a closed
-session reads "Waiting on you" and the AI tab counted 27. Seen on 15 November:
-a session closed an hour earlier sat beside the live one under the same name.
-Show a session with no running process as ended, and leave it out of the count.
+Little Herd listed Claude sessions from transcripts written in the last day,
+whether or not a process was still running, so a closed session read "Waiting
+on you" and the AI tab counted 27.
 
-### 13. The phone recovers when its watcher search breaks · `todo`
+- **Claude: done** (`9792ff6`, Mac 0.1.78). A finished session with no running
+  process is history. The running list comes from `~/.claude/sessions/*.json`
+  where those still carry a session id, and from `claude agents --json` where
+  Claude Code 2.1.325 no longer writes one. Checked live: linux went from three
+  waiting to the one session actually running.
+- **Codex: todo.** Most of what still reads "waiting" is Codex, chiefly
+  "Guardian review" runs on the Air (eleven on 15 November). Codex has no list
+  of running sessions to ask; Codex App Server thread status is the first-party
+  candidate (see "Provider interfaces first").
+
+### 13. The phone recovers when its watcher search breaks · `done`
 
 After a network change the phone showed "Not updating … Can’t look for a
-watcher: (Network.NWError error -65569 - DefunctConnection)" and did not try
-again. Restart the Bonjour browse when it fails or when the app returns to the
-foreground; reads over Tailscale should carry on meanwhile.
+watcher: (Network.NWError error -65569 - DefunctConnection)" and stopped
+reading. Two causes, both fixed in `9792ff6` (iPhone build 5): requests had no
+timeout, so one stalled connection blocked every later read; and a failed
+Bonjour search was never started again. Requests now give up after 15 s, and the
+search restarts after a failure and when the app returns to the foreground.
+Not yet seen recovering on the phone itself.
 
 ### 11. Answer a session from Little Herd · `todo`
 
@@ -281,6 +292,7 @@ Docs to re-read on the same occasions:
 
 ## Done
 
+- 15 Nov 2026 · A Claude session with no running process is no longer "waiting"; the phone's reads time out and its search restarts (`9792ff6`, Mac 0.1.78, iPhone build 5).
 - 15 Nov 2026 · A moved Claude session stays on the destination as a background session, with the whole conversation (`4fe7a6e`, `9a90b30`, Mac 0.1.77).
 - 15 Nov 2026 · The phone keeps hearing about a finished move for 15 minutes, so its sheet reaches the landing (`78f1164`, iPhone build 4).
 - 15 Nov 2026 · A move started from a physical iPhone landed, mini to linux, with the full conversation (Mac 0.1.74, `ca23009`).
