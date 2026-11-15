@@ -253,6 +253,26 @@ struct MoveSheet: View {
     }
 
     @State private var stage: Stage = .asking
+    /// Transfers already under way when the move was confirmed, so the one
+    /// this move starts can be told apart from them.
+    @State private var earlier: Set<String> = []
+
+    /// The transfer this move started, once a read has shown it. The watcher's
+    /// answer names no transfer id, so it is the new one on this route.
+    static func tracked(
+        in transfers: [HerdWire.Transfer], from: String, to: String, title: String, excluding earlier: Set<String>
+    ) -> HerdWire.Transfer? {
+        let candidates = transfers.filter { !earlier.contains($0.id) && $0.origin == from && $0.destination == to }
+        return candidates.first { $0.title == title } ?? (candidates.count == 1 ? candidates.first : nil)
+    }
+
+    private var transfer: HerdWire.Transfer? {
+        guard case .started(let plan) = stage else { return nil }
+        return Self.tracked(
+            in: client.snapshot?.transfers ?? [], from: intent.from, to: intent.to,
+            title: plan.title, excluding: earlier
+        )
+    }
 
     var body: some View {
         NavigationStack {
@@ -280,6 +300,13 @@ struct MoveSheet: View {
             case .started: .success
             case .failed: .error
             case .plan(let plan) where plan.refusal != nil: .warning
+            default: nil
+            }
+        }
+        .sensoryFeedback(trigger: transfer?.phase) { _, new in
+            switch new {
+            case "landed": .success
+            case "failed": .error
             default: nil
             }
         }
@@ -344,11 +371,41 @@ struct MoveSheet: View {
                 steps(plan.steps)
             }
         case .started(let plan):
-            Label("Started. It will appear under In transit, and the phone will say when it lands on \(plan.toName).", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(HerdTheme.loadGreen)
+            progress(plan)
         case .failed(let message):
             Label(message, systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
+        }
+    }
+
+    /// Follows the move to its end, from the herd reads the app is already
+    /// making, so the sheet never claims a landing the watcher has not seen.
+    @ViewBuilder
+    private func progress(_ plan: HerdWire.MoveResponse) -> some View {
+        switch transfer?.phase {
+        case nil:
+            Label("Started. Waiting for the watcher to report it…", systemImage: "checkmark.circle")
+                .foregroundStyle(.secondary)
+        case "landed":
+            Label("Landed on \(plan.toName).", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(HerdTheme.loadGreen)
+        case "failed":
+            Label(transfer?.detail ?? "The move failed.", systemImage: "xmark.octagon.fill")
+                .foregroundStyle(.orange)
+            if let fix = transfer?.fix {
+                FixCommand(command: fix, machine: plan.toName)
+            }
+        default:
+            VStack(alignment: .leading, spacing: 8) {
+                Text(transfer?.detail ?? "Moving to \(plan.toName)…")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                ProgressView(value: transfer?.progress ?? 0)
+                    .tint(HerdTheme.loadTeal)
+                Text("You can close this; the phone will say when it lands.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -418,6 +475,7 @@ struct MoveSheet: View {
 
     private func confirm(_ plan: HerdWire.MoveResponse) async {
         stage = .moving(plan)
+        earlier = Set((client.snapshot?.transfers ?? []).map(\.id))
         do {
             let result = try await client.move(
                 session: intent.session, from: intent.from, to: intent.to, dryRun: false

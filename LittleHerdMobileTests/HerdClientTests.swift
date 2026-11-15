@@ -137,3 +137,35 @@ struct HerdClientTests {
 
     private final class Marker {}
 }
+
+/// The move sheet follows the transfer its move started, and only that one.
+@Suite("Following a move")
+struct MoveTrackingTests {
+    private func transfer(_ id: String, _ title: String, from: String = "mini", to: String = "linux") -> HerdWire.Transfer {
+        HerdWire.Transfer(id: id, title: title, origin: from, destination: to, phase: "running", progress: 0.5, detail: nil)
+    }
+
+    @Test
+    func aTransferAlreadyUnderWayIsNotMistakenForThisOne() {
+        let old = transfer("t1", "Fix the build")
+        #expect(MoveSheet.tracked(in: [old], from: "mini", to: "linux", title: "Fix the build", excluding: ["t1"]) == nil)
+        let new = transfer("t2", "Fix the build")
+        #expect(MoveSheet.tracked(in: [old, new], from: "mini", to: "linux", title: "Fix the build", excluding: ["t1"]) == new)
+    }
+
+    @Test
+    func theTitleChoosesAmongNewTransfersOnTheSameRoute() {
+        let a = transfer("a", "One"), b = transfer("b", "Two")
+        #expect(MoveSheet.tracked(in: [a, b], from: "mini", to: "linux", title: "Two", excluding: []) == b)
+        // Two new moves on the route and neither title matches: no guess.
+        #expect(MoveSheet.tracked(in: [a, b], from: "mini", to: "linux", title: "Three", excluding: []) == nil)
+        // One new move on the route, titled differently by the watcher: that one.
+        #expect(MoveSheet.tracked(in: [a], from: "mini", to: "linux", title: "Three", excluding: []) == a)
+    }
+
+    @Test
+    func anotherRouteIsIgnored() {
+        let elsewhere = transfer("x", "One", from: "air", to: "linux")
+        #expect(MoveSheet.tracked(in: [elsewhere], from: "mini", to: "linux", title: "One", excluding: []) == nil)
+    }
+}
