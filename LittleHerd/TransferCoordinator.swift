@@ -27,6 +27,28 @@ final class TransferCoordinator {
     private(set) var departures: [Transfer: String] = [:]
     private var rehearsalCount = 0
 
+    /// Finished transfers the strip has let go of, for the phone.
+    ///
+    /// **The strip and the phone need different things.** A landing clears
+    /// itself from the strip after 1.6 seconds, because the card on the
+    /// destination already says it worked. The phone reads the herd every five
+    /// seconds and has no card, so it almost never saw a landing: its move
+    /// sheet went from the progress steps back to "Waiting for the watcher",
+    /// and stayed there. Seen on 15 November, on the first phone move after
+    /// the sheet learned to follow a move.
+    private(set) var ended: [(transfer: Transfer, phase: TransferPhase, at: Date)] = []
+    nonisolated static let reportsEndedFor: TimeInterval = 15 * 60
+
+    /// What the phone is told: everything in the strip, then what ended in the
+    /// last fifteen minutes, newest first, never one transfer twice.
+    func reportable(now: Date = .now) -> [(transfer: Transfer, phase: TransferPhase)] {
+        let live = order.compactMap { t in transfers[t].map { (transfer: t, phase: $0) } }
+        let recent = ended
+            .filter { now.timeIntervalSince($0.at) < Self.reportsEndedFor && transfers[$0.transfer] == nil }
+            .map { (transfer: $0.transfer, phase: $0.phase) }
+        return live + recent
+    }
+
     init(
         makeRunner: @escaping @MainActor (Transfer) -> SuccessorExecutor.Run
     ) {
@@ -183,8 +205,10 @@ final class TransferCoordinator {
     }
 
     /// Only once somebody has seen it.
-    func dismiss(_ transfer: Transfer) {
-        guard transfers[transfer]?.isCancellable == false else { return }
+    func dismiss(_ transfer: Transfer, now: Date = .now) {
+        guard let phase = transfers[transfer], !phase.isCancellable else { return }
+        ended.removeAll { $0.transfer == transfer || now.timeIntervalSince($0.at) >= Self.reportsEndedFor }
+        ended.insert((transfer: transfer, phase: phase, at: now), at: 0)
         transfers[transfer] = nil
         order.removeAll { $0 == transfer }
     }

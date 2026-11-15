@@ -205,8 +205,7 @@ extension MonitorModel {
 
     /// Transfers the dashboard's strip would show, newest first.
     private var wireTransfers: [HerdWire.Transfer] {
-        transfers.order.reversed().compactMap { transfer in
-            guard let phase = transfers.phase(for: transfer) else { return nil }
+        transfers.reportable().reversed().map { transfer, phase in
             var fix: String?
             if case .finished(let outcome) = phase { fix = outcome.remedy }
             let (name, detail): (String, String?) = switch phase {

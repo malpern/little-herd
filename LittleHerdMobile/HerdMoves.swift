@@ -256,6 +256,10 @@ struct MoveSheet: View {
     /// Transfers already under way when the move was confirmed, so the one
     /// this move starts can be told apart from them.
     @State private var earlier: Set<String> = []
+    /// The last state the sheet saw. A move only goes forwards, so if the
+    /// watcher stops reporting it the sheet keeps what it last knew rather
+    /// than falling back to "Waiting for the watcher".
+    @State private var seen: HerdWire.Transfer?
 
     /// The transfer this move started, once a read has shown it. The watcher's
     /// answer names no transfer id, so it is the new one on this route.
@@ -266,7 +270,9 @@ struct MoveSheet: View {
         return candidates.first { $0.title == title } ?? (candidates.count == 1 ? candidates.first : nil)
     }
 
-    private var transfer: HerdWire.Transfer? {
+    private var transfer: HerdWire.Transfer? { reported ?? seen }
+
+    private var reported: HerdWire.Transfer? {
         guard case .started(let plan) = stage else { return nil }
         return Self.tracked(
             in: client.snapshot?.transfers ?? [], from: intent.from, to: intent.to,
@@ -311,6 +317,9 @@ struct MoveSheet: View {
             }
         }
         .task { await ask() }
+        .onChange(of: reported) { _, now in
+            if let now { seen = now }
+        }
     }
 
     private var isStarted: Bool {
