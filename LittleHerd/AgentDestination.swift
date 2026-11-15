@@ -436,7 +436,8 @@ nonisolated enum DestinationEligibility: Equatable, Sendable {
         report: DestinationReport?,
         repository: String?,
         isAllowed: Bool,
-        auth: AgentAuthState = .unverified
+        auth: AgentAuthState = .unverified,
+        provider: AgentTaskProvider? = nil
     ) -> DestinationEligibility {
         // Intent is checked first, and deliberately: a machine you have said
         // no to should read as "excluded", not as a list of things it lacks.
@@ -444,7 +445,15 @@ nonisolated enum DestinationEligibility: Equatable, Sendable {
         // fix a machine they had already decided about.
         guard isAllowed else { return .excluded }
         guard let report else { return .unknown }
-        guard let install = report.bestInstallation else { return .noAgent }
+        // With work in hand, only that work's agent counts: a machine with
+        // Codex alone cannot host a Claude session. Without, any agent does.
+        let candidate: AgentInstallation?
+        if let provider {
+            candidate = report.installation(for: provider)
+        } else {
+            candidate = report.bestInstallation
+        }
+        guard let install = candidate else { return .noAgent }
         // Last, because it is the only one of the three that depends on which
         // work is being moved rather than on the account itself.
         if let repository, !repository.isEmpty,
@@ -485,6 +494,18 @@ nonisolated struct DestinationReport: Equatable, Sendable {
     /// The newest agent here, which is the one a transfer would start.
     var bestInstallation: AgentInstallation? {
         installations.max {
+            AgentInstallOutputParser.isNewer($1.version, than: $0.version)
+        }
+    }
+
+    /// The newest install of one provider's agent.
+    ///
+    /// **A move needs the session's own agent, not the newest one.** Picking
+    /// by version alone offered linux's Codex to a Claude session: the drop
+    /// read "Can take it", and the arrival was refused at the last gate. Found
+    /// by moving a real session from the phone, 15 November.
+    func installation(for provider: AgentTaskProvider) -> AgentInstallation? {
+        installations.filter { $0.provider == provider }.max {
             AgentInstallOutputParser.isNewer($1.version, than: $0.version)
         }
     }

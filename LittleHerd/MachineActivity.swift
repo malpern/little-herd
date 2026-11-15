@@ -952,6 +952,9 @@ nonisolated enum AgentTaskProbe {
     done
 
     little_herd_agent_version claude "$HOME/.local/bin/claude"
+    # linux keeps Claude only under mise; `latest` is mise's own symlink to the
+    # newest install, so the path survives upgrades. Measured over plain ssh.
+    little_herd_agent_version claude "$HOME/.local/share/mise/installs/claude/latest/claude"
     for little_herd_codex in \#(CodexInstallationPaths.shellPaths); do
       little_herd_agent_version codex "$little_herd_codex"
     done
