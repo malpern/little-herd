@@ -14,7 +14,7 @@ transport or sessions, and update its dates.
 
 Status words: `todo`, `doing`, `done`, `blocked`.
 
-Last reviewed: 15 November 2026, at `ca23009` on `ios/spike-1`.
+Last reviewed: 15 November 2026, at `fce7d3b` on `ios/spike-1`.
 
 ---
 
@@ -28,7 +28,11 @@ Last reviewed: 15 November 2026, at `ca23009` on `ios/spike-1`.
 3. **App automation is a stopgap.** Typing into a command-line tool under tmux
    is acceptable. Driving a desktop app's screen is a last resort, recorded in
    the watch list until an API ships.
-4. **Smirk stays separate.** Little Herd runs on the personal Claude account
+4. **Chat lives in the vendors' apps.** People talk to a session in the Claude
+   app (Remote Control) or ChatGPT (its remote connections). Little Herd moves
+   and watches sessions; it does not host conversations. See item 11 for the
+   one exception worth building.
+5. **Smirk stays separate.** Little Herd runs on the personal Claude account
    (Max) and never uses the Smirk Team account, not even as a middleman. Smirk
    work must never cross into the personal account unnoticed.
 
@@ -92,24 +96,38 @@ Landed on 15 November at 11:15, from iPhone build 3 and Mac 0.1.74 (build 78,
 carried in full (`--resume --fork-session`). Taking PR #36 out of draft is
 Micah's call.
 
-### 10. Keep talking on the destination · `todo`
+### 10. Keep talking on the destination · `doing`
 
-Today the successor runs once, headless (`claude -p` in
-`SuccessorLaunch` and `TranscriptCarry.resumeArguments`). It finishes, and
-its transfer workspace is deleted, so nobody can talk to the session after it
-lands. A move should leave a live session on the destination.
+Today the successor runs once, headless (`claude -p` in `SuccessorLaunch` and
+`TranscriptCarry.resumeArguments`). It finishes, and its workspace is deleted,
+so nobody can talk to the session after it lands. A move should leave a live
+session on the destination, and the person chats with it in the Claude app.
 
-- Start the successor interactively in tmux (as `cc` does), in a worktree that
-  stays after the landing, with the same permission mode and denied tools.
-- Its first message is the carry prompt or the brief, and it keeps going after
-  that.
-- Show it in the herd as a session on the destination, the way any other
-  session there appears.
-- Reach it from the phone through Claude's own Remote Control: linux already
-  sets `remoteControlAtStartup`, so an interactive session there appears in the
-  Claude app. This is first-party, so no Little Herd chat channel is needed.
-- Decide when the destination's worktree and branch are cleaned up, now that
-  the move no longer ends the session.
+Proved on linux on 15 November with Claude Code 2.1.325, before any code:
+- `claude --bg` starts a background session that stays listed in
+  `claude agents --json` and is managed with `attach`, `logs`, `stop` and `rm`.
+- `--bg --resume <id> --fork-session` continues a carried conversation; the
+  copy remembered its earlier reply.
+- A worktree we make at `<repo>/.claude/worktrees/<name>` is covered by the
+  repo's trust, so the session can start from the exact pushed commit.
+  (`--worktree` would branch from the repo's current commit instead.)
+- Remote Control is on for background sessions (`/rc active`). Micah found the
+  session in the Claude app on his iPhone and chatted with it.
+- An untrusted repo is refused ("Workspace not trusted"). Only `-p` skips the
+  trust check, which is why one-shot moves never met it.
+
+The build:
+- Worktree at `<repo>/.claude/worktrees/herd-<branch>` on the transfer branch,
+  with `.claude/worktrees/` added to that repo's `.git/info/exclude`.
+- Start with `claude --bg --name "<title>" --permission-mode default`, plus
+  `--resume <id> --fork-session` when the conversation is carried. The brief or
+  carry prompt is the first message, kept off the command line.
+- Landed means the session is listed in `claude agents --json`. The phone says
+  where it is and that it continues in the Claude app. The automatic check and
+  push stop; the session owns its branch.
+- Before pushing, refuse a destination repo Claude doesn't trust, and say how to
+  trust it. Little Herd never answers the trust prompt.
+- Codex stays one-shot: it has no background sessions.
 
 **Done when:** a move started from the phone lands on linux, and the moved
 session answers a follow-up message sent from the Claude app.
@@ -172,6 +190,15 @@ Spike: the herd snapshot alone, read-only, through the private iCloud database.
 If it holds, CloudKit replaces our server, pairing and signing (see "First-party
 first" in `HANDOFF.md`).
 
+### 11. Answer a session from Little Herd · `todo`
+
+For command-line sessions on our machines only: send one follow-up message and
+approve or deny a permission request, without rendering whole conversations.
+Claude through its stream-json mode (`claude -p --resume <id>
+--input-format stream-json`, the Agent SDK's interface) with a permission-prompt
+tool; Codex through `codex app-server`, which has approvals built in. Little
+Herd must make sure only one place drives a session at a time.
+
 ---
 
 ## Blocked on the vendors
@@ -181,6 +208,7 @@ first" in `HANDOFF.md`).
 | Full conversation into Claude's cloud | The CLI can't push a local session; Desktop's Open in → Cloud sends a summary and refuses SSH sessions | Anthropic ships a push ([claude-code#11455](https://github.com/anthropics/claude-code/issues/11455))                                 |
 | Full conversation into Codex's cloud  | OpenAI doesn't support handoff to its cloud; cloud tasks return code, not chats                        | OpenAI adds it ([codex#19657](https://github.com/openai/codex/issues/19657), [#34804](https://github.com/openai/codex/issues/34804)) |
 | Full conversation, Codex → Claude     | Formats and tool calls don't map; only Codex imports the other way                                     | Anthropic adds an import                                                                                                             |
+| Chat by computer use in the desktop apps | Rejected on 15 November, not blocked: Claude desktop has Remote Control and ChatGPT has "Control this Mac", so a first-party route exists. Driving the screen needs the mini unlocked, breaks on app updates, and types into whatever window has focus | Never, while those routes exist |
 | Cloud moves between accounts          | Teleport works only within one account                                                                 | Never: by design                                                                                                                     |
 
 ---
