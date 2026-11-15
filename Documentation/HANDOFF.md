@@ -1958,7 +1958,11 @@ rollback.
 
 **Little Herd has a private TestFlight build for production APNs.** App
 Store Connect accepted iPhone 0.1.0 (build 1) on 14 November. The internal
-group contains only Micah and takes builds manually. PR #39 targets the
+group contains only Micah and takes builds manually.
+Build 2 (PR #36 at
+`62192ad`, with the unified phone server client) was uploaded from the mini
+on 15 November, added to the group through the App Store Connect API, and
+installed and launched on Micah's iPhone. PR #39 targets the
 iPhone draft and sets both the signed push entitlement and the phone's
 registration environment through `HERD_APNS_ENVIRONMENT`. It defaults to
 `development`. The App Store archive uses `production` with the
