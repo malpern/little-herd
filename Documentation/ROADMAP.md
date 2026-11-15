@@ -14,7 +14,7 @@ transport or sessions, and update its dates.
 
 Status words: `todo`, `doing`, `done`, `blocked`.
 
-Last reviewed: 15 November 2026, at `fce7d3b` on `ios/spike-1`.
+Last reviewed: 15 November 2026, at `9a90b30` on `ios/spike-1`.
 
 ---
 
@@ -96,7 +96,7 @@ Landed on 15 November at 11:15, from iPhone build 3 and Mac 0.1.74 (build 78,
 carried in full (`--resume --fork-session`). Taking PR #36 out of draft is
 Micah's call.
 
-### 10. Keep talking on the destination · `doing`
+### 10. Keep talking on the destination · `done`
 
 Today the successor runs once, headless (`claude -p` in `SuccessorLaunch` and
 `TranscriptCarry.resumeArguments`). It finishes, and its workspace is deleted,
@@ -133,6 +133,15 @@ The build:
 
 **Done when:** a move started from the phone lands on linux, and the moved
 session answers a follow-up message sent from the Claude app.
+
+Landed on 15 November at 12:58, from the iPhone (build 4) through Mac 0.1.77
+(build 81): ".herd Move Test" became background session `d7f219e2` on linux,
+in `sandpiper/.claude/worktrees/transfer-herd-move-test-clauded8`, holding the
+whole conversation from the mini. The follow-up from the Claude app was not
+repeated on that run; Remote Control chat with a background session was
+confirmed earlier the same day ("herd probe fork"). Since `9a90b30` a move
+carries the conversation by default, unscrubbed (Micah's choice), with a
+privacy call-out in Settings.
 
 ---
 
@@ -191,6 +200,21 @@ Spike: the herd snapshot alone, read-only, through the private iCloud database.
 
 If it holds, CloudKit replaces our server, pairing and signing (see "First-party
 first" in `HANDOFF.md`).
+
+### 12. An ended session is not "waiting on you" · `todo`
+
+Little Herd lists Claude sessions from transcripts written in the last day
+(`MachineActivity`), whether or not a process is still running, so a closed
+session reads "Waiting on you" and the AI tab counted 27. Seen on 15 November:
+a session closed an hour earlier sat beside the live one under the same name.
+Show a session with no running process as ended, and leave it out of the count.
+
+### 13. The phone recovers when its watcher search breaks · `todo`
+
+After a network change the phone showed "Not updating … Can’t look for a
+watcher: (Network.NWError error -65569 - DefunctConnection)" and did not try
+again. Restart the Bonjour browse when it fails or when the app returns to the
+foreground; reads over Tailscale should carry on meanwhile.
 
 ### 11. Answer a session from Little Herd · `todo`
 
@@ -257,6 +281,8 @@ Docs to re-read on the same occasions:
 
 ## Done
 
+- 15 Nov 2026 · A moved Claude session stays on the destination as a background session, with the whole conversation (`4fe7a6e`, `9a90b30`, Mac 0.1.77).
+- 15 Nov 2026 · The phone keeps hearing about a finished move for 15 minutes, so its sheet reaches the landing (`78f1164`, iPhone build 4).
 - 15 Nov 2026 · A move started from a physical iPhone landed, mini to linux, with the full conversation (Mac 0.1.74, `ca23009`).
 - 15 Nov 2026 · A move picks the agent that runs the session, and a step started from the Mac carries the account name (`3e9bd7e`, `ca23009`).
 - 15 Nov 2026 · The phone's move sheet follows a move to its landing (`312703d`, iPhone build 3).

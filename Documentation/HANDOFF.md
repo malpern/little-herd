@@ -1675,7 +1675,26 @@ was to change the assertion, not the sentence. Worth pausing on whenever a
 green suite resists a change that is obviously right: **the test may be
 asserting the defect.** It now checks that the other two states do *not* say it.
 
-**A phone move found two bugs in the machine probe, both invisible from this Mac.**
+**A move now leaves a live session, and the phone could not see moves land.**
+On 15 November moves became Claude Code background sessions (`claude --bg`,
+roadmap item 10). Everything was proved on linux before code: `--bg` keeps a
+session after the command returns; `--resume <id> --fork-session` works under
+it; a worktree inside the repository is covered by the repository's trust;
+Remote Control is on for background sessions, and Micah chatted with one from
+the Claude app. Two traps: `--bg` refuses a repository Claude has not trusted,
+and trust is per git repository (linux trusted `~/local-code` and still refused
+`~/local-code/sandpiper`); only `-p` skips the check, which is why one-shot moves
+never met it. sandpiper on linux was trusted once, with Micah's approval.
+Separately, the phone's move sheet stuck on "Waiting for the watcher" after
+every successful move: the strip clears a landing after 1.6 s and the phone
+reads every 5 s. The watcher now reports ended moves for 15 minutes
+(`78f1164`). And the conversation had never travelled on a phone move, because
+carrying the transcript was off by default since it shipped as an experiment
+in 0.1.66; it is now on by default and unscrubbed, by Micah's choice
+(`9a90b30`). The run that proved it: background session `d7f219e2` on linux
+held the mini session's whole history.
+
+
 On 15 November the first phone move was refused with "Linux offered an agent at
 ~/.local/bin/codex". `bestInstallation` picked the newest agent of *any*
 provider, and linux's Claude exists only under mise
