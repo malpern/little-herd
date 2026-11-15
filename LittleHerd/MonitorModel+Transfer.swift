@@ -104,9 +104,7 @@ extension MonitorModel {
             // The preference is read here, at the moment of the drop, so a
             // change to it takes effect on the next transfer and never on one
             // already in flight.
-            let carries = UserDefaults.standard.bool(
-                forKey: LittleHerdPreferences.carriesTranscriptKey
-            )
+            let carries = LittleHerdPreferences.carriesTranscript
             let prepared = await TransferDriver.prepare(
                 request,
                 authRefusal: authRefusal,
@@ -123,9 +121,7 @@ extension MonitorModel {
                     copy: TransferRunners.copy(to: target!.configuration),
                     destinationHome: NSHomeDirectory(),
                     scratchRoot: TransferAssembly.scratchRoot,
-                    redacts: !UserDefaults.standard.bool(
-                        forKey: LittleHerdPreferences.carriesUnscrubbedTranscriptKey
-                    )
+                    redacts: !LittleHerdPreferences.carriesUnscrubbed
                 ) : nil,
                 departure: TransferRunners.departure(for: source.configuration)
             )

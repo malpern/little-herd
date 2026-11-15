@@ -255,22 +255,35 @@ enum LittleHerdPreferences {
     static let recedesBarsUnderFanKey = "recedesBarsUnderFan"
 
     /// Whether a transfer carries the departing session's transcript instead
-    /// of asking it to write a brief. See item 17: the mechanism is measured
-    /// and the sample is one controlled run, so it arrives switched off, the
-    /// way the recede did.
+    /// of asking it to write a brief. See item 17.
+    ///
+    /// **On by default since 15 November.** It arrived switched off in 0.1.66
+    /// as an experiment measured on one run. Then moves started leaving a live
+    /// session that a person keeps talking to (roadmap item 10), and a session
+    /// that only has the brief has forgotten the conversation, which is the
+    /// whole of what the person wanted to continue. Micah chose the default.
     static let carriesTranscriptKey = "carriesTranscript"
 
     /// Whether a carried transcript is sent **unscrubbed** — every byte the session saw.
     ///
-    /// **Separate from `carriesTranscript`, and off, and deliberately awkward to turn
-    /// on.** The ordinary carry scrubs what it can recognise before sending; this
-    /// removes that step, and there is no version of it that is merely a convenience.
-    /// It exists because the scrub is best-effort and can in principle remove something
-    /// the successor needed — a config value that looked like a token. Turning it on
-    /// takes a second, explicit confirmation naming what it means, because a preference
-    /// that ships everything a session ever read should not be one click away from a
-    /// preference that ships a summary.
+    /// **On by default since 15 November, by Micah's choice.** The transcript
+    /// travels over ssh between his own machines and lands in
+    /// `~/.claude/projects` there, as exposed as it already was on the source;
+    /// the scrub is best-effort and can remove something the session needed,
+    /// such as a config value that looked like a token. Turning the scrub back
+    /// on is one click. Turning it off again still asks first, because a
+    /// preference that ships everything should not be one accidental click
+    /// away from one that ships less.
     static let carriesUnscrubbedTranscriptKey = "carriesUnscrubbedTranscript"
+
+    /// The two settings as the transfer reads them, with their defaults: an
+    /// unset key is "on", which `UserDefaults.bool` would read as off.
+    static var carriesTranscript: Bool {
+        UserDefaults.standard.object(forKey: carriesTranscriptKey) as? Bool ?? true
+    }
+    static var carriesUnscrubbed: Bool {
+        UserDefaults.standard.object(forKey: carriesUnscrubbedTranscriptKey) as? Bool ?? true
+    }
     static let networkVolumeAccessOnboardingCompletedKey =
         "networkVolumeAccessOnboardingCompleted"
 
@@ -653,9 +666,9 @@ private struct LittleHerdSettingsView: View {
     @AppStorage(LittleHerdPreferences.requiresDestinationApprovalKey)
     private var requiresDestinationApproval = false
     @AppStorage(LittleHerdPreferences.carriesTranscriptKey)
-    private var carriesTranscript = false
+    private var carriesTranscript = true
     @AppStorage(LittleHerdPreferences.carriesUnscrubbedTranscriptKey)
-    private var carriesUnscrubbed = false
+    private var carriesUnscrubbed = true
     /// The second confirmation. Turning the scrub off is a two-step action on
     /// purpose — see `carriesUnscrubbedTranscriptKey`.
     @State private var confirmingUnscrubbed = false
@@ -829,16 +842,44 @@ private struct LittleHerdSettingsView: View {
                             + "rather than starting fresh from a written brief."
                     ))
 
-                Text(
-                    carriesTranscript
-                        ? "Recognisable secrets are removed before it is sent. That is "
-                            + "best-effort, not a guarantee."
-                        : "Off: a short brief is written instead, and the successor "
-                            + "starts from that."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                if carriesTranscript && carriesUnscrubbed {
+                    // **A privacy call-out, not a caption.** Unscrubbed is the
+                    // default, so this is the one place a person learns what a
+                    // move sends; a grey line under a toggle is easy to skip.
+                    Label {
+                        Text(
+                            "Privacy: a move sends the whole conversation to the other "
+                                + "machine, exactly as the session saw it, including any "
+                                + "passwords, API keys or tokens that appeared in files, "
+                                + "command output or anything pasted. It goes over ssh to "
+                                + "your own machine and is stored there in "
+                                + "~/.claude/projects. Turn on scrubbing below to remove "
+                                + "recognisable secrets first."
+                        )
+                        .fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: "hand.raised.fill")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(Color.orange)
+                    .padding(8)
+                    .background(
+                        Color.orange.opacity(0.1),
+                        in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    )
+                    .accessibilityElement(children: .combine)
+                } else {
+                    Text(
+                        !carriesTranscript
+                            ? "Off: a short brief is written instead, and the successor "
+                                + "starts from that."
+                            : "Recognisable secrets are removed before it is sent. That is "
+                                + "best-effort, not a guarantee."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
 
                 // Only offered once carrying is on — there is nothing to leave
                 // unscrubbed otherwise, and an option that does nothing is worse

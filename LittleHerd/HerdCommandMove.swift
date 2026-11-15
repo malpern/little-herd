@@ -81,12 +81,12 @@ extension HerdCommand {
     /// Whether this move would carry the session's transcript, which is a
     /// preference the person set and a fact they should see before saying yes.
     static var carriesTranscript: Bool {
-        UserDefaults.standard.bool(forKey: LittleHerdPreferences.carriesTranscriptKey)
+        LittleHerdPreferences.carriesTranscript
     }
 
-    /// Whether the carry would go unscrubbed. Off unless deliberately turned on.
+    /// Whether the carry would go unscrubbed. On unless the scrub was turned on.
     static var carriesUnscrubbed: Bool {
-        UserDefaults.standard.bool(forKey: LittleHerdPreferences.carriesUnscrubbedTranscriptKey)
+        LittleHerdPreferences.carriesUnscrubbed
     }
 
     /// **Consent, in the plan.** A transcript is everything the session ever
