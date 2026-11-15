@@ -14,7 +14,7 @@ transport or sessions, and update its dates.
 
 Status words: `todo`, `doing`, `done`, `blocked`.
 
-Last reviewed: 15 November 2026, at `ac90866` on `ios/spike-1`.
+Last reviewed: 15 November 2026, at `ca23009` on `ios/spike-1`.
 
 ---
 
@@ -85,17 +85,34 @@ and a Smirk machine shows the warning.
 **Done when:** a Codex session moved between two machines resumes with its
 history, and a desktop-app session shows the Handoff pointer.
 
-### 3. Prove the phone move · `doing`
+### 3. Prove the phone move · `done`
 
-Built and installed: iPhone build 3 (TestFlight) and Mac 0.1.72 build 76 on the
-mini, from `312703d`.
+Landed on 15 November at 11:15, from iPhone build 3 and Mac 0.1.74 (build 78,
+`ca23009`). The ".herd Move Test" session went from the mini to linux and was
+carried in full (`--resume --fork-session`). Taking PR #36 out of draft is
+Micah's call.
 
-- Start a real move from the iPhone and follow it to its landing in the move
-  sheet.
-- Then take PR #36 out of draft (Micah's call).
+### 10. Keep talking on the destination · `todo`
 
-**Done when:** one real phone-initiated move has landed and is recorded in
-`HANDOFF.md`.
+Today the successor runs once, headless (`claude -p` in
+`SuccessorLaunch` and `TranscriptCarry.resumeArguments`). It finishes, and
+its transfer workspace is deleted, so nobody can talk to the session after it
+lands. A move should leave a live session on the destination.
+
+- Start the successor interactively in tmux (as `cc` does), in a worktree that
+  stays after the landing, with the same permission mode and denied tools.
+- Its first message is the carry prompt or the brief, and it keeps going after
+  that.
+- Show it in the herd as a session on the destination, the way any other
+  session there appears.
+- Reach it from the phone through Claude's own Remote Control: linux already
+  sets `remoteControlAtStartup`, so an interactive session there appears in the
+  Claude app. This is first-party, so no Little Herd chat channel is needed.
+- Decide when the destination's worktree and branch are cleaned up, now that
+  the move no longer ends the session.
+
+**Done when:** a move started from the phone lands on linux, and the moved
+session answers a follow-up message sent from the Claude app.
 
 ---
 
@@ -210,6 +227,8 @@ Docs to re-read on the same occasions:
 
 ## Done
 
+- 15 Nov 2026 · A move started from a physical iPhone landed, mini to linux, with the full conversation (Mac 0.1.74, `ca23009`).
+- 15 Nov 2026 · A move picks the agent that runs the session, and a step started from the Mac carries the account name (`3e9bd7e`, `ca23009`).
 - 15 Nov 2026 · The phone's move sheet follows a move to its landing (`312703d`, iPhone build 3).
 - 15 Nov 2026 · One phone server on the branch, pairing code accepted only over Tailscale, signed reads (`62192ad`).
 - 27 Sep 2026 · A move through the phone path landed, mini to linux (`HANDOFF.md` item 6). Not yet started from a physical iPhone; that is item 3.
