@@ -109,10 +109,23 @@ nonisolated enum SuccessorLocal {
     /// `LOGNAME` and `TMPDIR` were both measured as harmless and are still
     /// gone: nothing needed them, and the point of a list nobody can justify
     /// entry by entry is that it grows.
+    ///
+    /// **`USER` is back, because leaving it out now breaks sign-in, and this
+    /// time the mechanism is known.** Claude Code files its macOS keychain
+    /// item, "Claude Code-credentials", under `$USER`. With no `USER` it looks
+    /// under "unknown", a second item on the mini created 27 September and
+    /// left holding a sign-in that has since expired. On 15 November a
+    /// phone-started move failed at the brief with "OAuth session expired and
+    /// could not be refreshed" while the person's own terminal, under the real
+    /// name, was signed in. Reproduced both ways from this exact environment.
+    /// The September result above was most likely the same split the other
+    /// way round. It is set to this account's own name, never inherited, so
+    /// it matches what ssh sets on a remote machine.
     static var environment: [String: String] {
         let home = NSHomeDirectory()
         return [
             "HOME": home,
+            "USER": NSUserName(),
             "PATH": "\(home)/.local/bin:/opt/homebrew/bin:/usr/local/bin"
                 + ":/usr/bin:/bin:/usr/sbin:/sbin",
             "SHELL": "/bin/sh",

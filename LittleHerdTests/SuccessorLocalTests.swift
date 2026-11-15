@@ -150,6 +150,20 @@ struct SuccessorLocalTests {
         #expect(result.output.contains(NSHomeDirectory()))
     }
 
+    /// A step runs as this account by name. Claude Code finds its keychain
+    /// sign-in by `$USER`; without it, it reads a stale "unknown" item and
+    /// reports an expired session for an account that is signed in.
+    @Test
+    func aStepCarriesThisAccountsOwnName() async {
+        setenv("USER", "somebody-else", 1)
+        defer { setenv("USER", NSUserName(), 1) }
+        let result = await SuccessorLocal.runReportingStatus(
+            command: #"printf '%s' "$USER""#,
+            timeout: 30
+        )
+        #expect(result.output == NSUserName())
+    }
+
     /// The path leads with where both agents install themselves, because the
     /// step most likely to need it is the one that runs an agent.
     @Test

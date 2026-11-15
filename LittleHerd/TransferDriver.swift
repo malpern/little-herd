@@ -193,7 +193,7 @@ nonisolated enum TransferDriver {
                 SuccessorOutcome(
                     result: .couldNotStart,
                     failingStep: nil,
-                    output: String(describing: failure),
+                    output: failure.sentence,
                     // Where it stopped decides what survives, and only the
                     // failure knows where it stopped.
                     remnant: failure.remnant
@@ -221,7 +221,7 @@ nonisolated enum TransferDriver {
                     SuccessorOutcome(
                         result: .couldNotStart,
                         failingStep: nil,
-                        output: String(describing: failure),
+                        output: failure.sentence,
                         // The departure fully succeeded to get here: the work
                         // is pushed and only the destination was refused.
                         remnant: .pushedBranch

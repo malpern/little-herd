@@ -136,4 +136,17 @@ struct TransferPilotTests {
         )
         #expect(result == .failure(.refused(.notATransferBranch)))
     }
+
+    /// A failure reaches the phone as a sentence, never as the enum. The
+    /// 15 November move showed `departure(LittleHerd.TransferDeparture…)`.
+    @Test
+    func aFailureIsDescribedInWords() {
+        let failure = TransferPilot.Failure.departure(
+            .brief, "Failed to authenticate: OAuth session expired and could not be refreshed\n"
+        )
+        #expect(failure.sentence == "The session couldn’t write down where it got to: "
+            + "Failed to authenticate: OAuth session expired and could not be refreshed. Nothing was moved.")
+        #expect(!failure.sentence.contains("LittleHerd."))
+        #expect(TransferPilot.Failure.departure(.push, "").sentence == "The branch couldn’t be pushed.")
+    }
 }
