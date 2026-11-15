@@ -49,7 +49,7 @@ targets:
       properties:
         CFBundleDisplayName: Little Herd
         CFBundleShortVersionString: "0.1.0"
-        CFBundleVersion: "4"
+        CFBundleVersion: "5"
         HerdAPNSEnvironment: "$(HERD_APNS_ENVIRONMENT)"
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
