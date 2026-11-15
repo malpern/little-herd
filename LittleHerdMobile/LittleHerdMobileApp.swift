@@ -34,6 +34,12 @@ struct LittleHerdMobileApp: App {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { Self.scheduleRefresh() }
+            // Back in front: the search may have gone stale while suspended,
+            // and the herd is minutes old. Both are asked again at once.
+            if phase == .active {
+                client.restartBrowsing()
+                Task { await client.refresh() }
+            }
         }
         // Not a promise of timing — iOS decides, from how the app is used —
         // but it is how an alert reaches a phone whose watcher has no push

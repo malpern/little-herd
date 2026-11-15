@@ -70,6 +70,51 @@ struct AgentProbeShellTests {
     /// counted as tracked, and deliberately not listed. A first attempt at
     /// this test used thirty hours and got no session back at all, which is
     /// the outer window doing its job and proving nothing about this one.
+    /// A finished turn whose process has gone is history, not waiting, once
+    /// the probe knows which sessions are running. Seen on 15 November: a
+    /// session closed an hour earlier sat beside the live one under the same
+    /// name, and the AI tab counted 27 waiting.
+    @Test
+    func aFinishedSessionWithNoProcessIsNotWaiting() async throws {
+        let home = try FixtureHome()
+        try home.writeLiveSession(
+            projectPath: "/Users/tester/code/other",
+            sessionID: "session-running",
+            lastWroteSecondsAgo: 30
+        )
+        try home.writeFinishedTurn(
+            projectPath: "/Users/tester/code/little-herd",
+            sessionID: "session-closed",
+            endedSecondsAgo: 5 * 60
+        )
+
+        let snapshot = await AgentTaskProbe.readSnapshot(homeDirectory: home.path)
+        let closed = try #require(snapshot.sessions.first { $0.id.hasSuffix("session-closed") })
+        #expect(closed.state == .completed)
+    }
+
+    /// Claude Code 2.1.325's registry carries no session id, so the running
+    /// list comes from `claude agents --json`; a session it lists is still
+    /// waiting, and one it does not list is history.
+    @Test
+    func theRunningListComesFromAgentsWhenTheRegistryHasNoIDs() async throws {
+        let home = try FixtureHome()
+        try home.writeNewFormatRegistry()
+        try home.writeAgentsCommand(listing: ["session-open"])
+        try home.writeFinishedTurn(
+            projectPath: "/Users/tester/code/a", sessionID: "session-open", endedSecondsAgo: 5 * 60
+        )
+        try home.writeFinishedTurn(
+            projectPath: "/Users/tester/code/b", sessionID: "session-gone", endedSecondsAgo: 5 * 60
+        )
+
+        let snapshot = await AgentTaskProbe.readSnapshot(homeDirectory: home.path)
+        let open = try #require(snapshot.sessions.first { $0.id.hasSuffix("session-open") })
+        let gone = try #require(snapshot.sessions.first { $0.id.hasSuffix("session-gone") })
+        #expect(open.state == .waiting)
+        #expect(gone.state == .completed)
+    }
+
     @Test
     func aturnThatEndedThisMorningIsFinished() async throws {
         let home = try FixtureHome()
@@ -470,6 +515,28 @@ private struct FixtureHome {
         )
     }
 
+
+    /// A registry entry in Claude Code 2.1.325's format: no session id, no pid.
+    func writeNewFormatRegistry() throws {
+        let registry = "\(path)/.claude/sessions"
+        try FileManager.default.createDirectory(atPath: registry, withIntermediateDirectories: true)
+        try #"{"peerToken":"x","procStart":"1","pidDomain":"linux:abc"}"#.write(
+            toFile: "\(registry)/4242.json", atomically: true, encoding: .utf8
+        )
+    }
+
+    /// A stand-in `claude` at the mise path whose `agents --json` lists these sessions.
+    func writeAgentsCommand(listing sessionIDs: [String]) throws {
+        let directory = "\(path)/.local/share/mise/installs/claude/latest"
+        try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        let entries = sessionIDs
+            .map { #"{"pid":1,"sessionId":"\#($0)","kind":"interactive"}"# }
+            .joined(separator: ",")
+        let script = "#!/bin/sh\n[ \"$1\" = agents ] || exit 1\nprintf '%s' '[\(entries)]'\n"
+        let file = "\(directory)/claude"
+        try script.write(toFile: file, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: file)
+    }
 
     /// A live session: a stale transcript whose process is demonstrably
     /// running, registered the way Claude Code registers one.

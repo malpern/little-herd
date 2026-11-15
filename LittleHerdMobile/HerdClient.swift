@@ -103,6 +103,9 @@ final class HerdClient {
     private static let preferredNameKey = "watcherName"
     private static let pairingCodeKey = "watcherPairingCode"
     private var browser: NWBrowser?
+    /// Whether anything still wants the search running, so a restart that
+    /// lands after `keepFresh` has ended does not start one nobody stops.
+    private var wantsBrowsing = false
 
     /// A herd from a file instead of a Mac, for looking at states the real
     /// herd does not happen to be in — a NAS, a stalled session, a volume
@@ -153,6 +156,11 @@ final class HerdClient {
                 case let .failed(error):
                     self?.isBrowsing = false
                     self?.lastError = "Can’t look for a watcher: \(error.localizedDescription)"
+                    // A failed browser is finished, and `startBrowsing` does
+                    // nothing while one is held, so drop it and look again
+                    // shortly. Seen on 15 November: "DefunctConnection" after
+                    // a network change, and no recovery until relaunch.
+                    self?.restartBrowsing(after: .seconds(3))
                 case .cancelled: self?.isBrowsing = false
                 default: break
                 }
@@ -171,6 +179,19 @@ final class HerdClient {
         browser.start(queue: .main)
     }
 
+    /// Starts the search afresh: after it fails, and when the app comes back
+    /// to the foreground, where a browser can have gone stale unannounced.
+    func restartBrowsing(after delay: Duration = .zero) {
+        browser?.cancel()
+        browser = nil
+        isBrowsing = false
+        Task { @MainActor [weak self] in
+            if delay > .zero { try? await Task.sleep(for: delay) }
+            guard let self, self.browser == nil, self.wantsBrowsing else { return }
+            self.startBrowsing()
+        }
+    }
+
     func stopBrowsing() {
         browser?.cancel()
         browser = nil
@@ -182,8 +203,12 @@ final class HerdClient {
     /// Fetches until cancelled, every few seconds — the cadence of the Mac's
     /// own sampling, so asking faster would only reread the same answer.
     func keepFresh() async {
+        wantsBrowsing = true
         startBrowsing()
-        defer { stopBrowsing() }
+        defer {
+            wantsBrowsing = false
+            stopBrowsing()
+        }
         while !Task.isCancelled {
             await refresh()
             try? await Task.sleep(for: .seconds(5))
@@ -389,6 +414,10 @@ nonisolated enum HerdFetcher {
         try await send(method: "GET", path: path, to: endpoint, pairingCode: pairingCode)
     }
 
+    /// Long enough for a move's dry run over Tailscale on a slow network; a
+    /// read normally answers in well under a second.
+    static let requestTimeout: TimeInterval = 15
+
     static func send(
         method: String,
         path: String,
@@ -442,6 +471,16 @@ nonisolated enum HerdFetcher {
                 }
             }
             connection.start(queue: .global(qos: .userInitiated))
+            // **Every request ends.** Without this a connection that stalls,
+            // common after the app comes back from the background, waited
+            // for ever, and because `refresh` skips while one is in flight,
+            // the phone stopped reading the herd altogether: "Not updating —
+            // last read 2 min ago", seen on 15 November. `finish` runs once,
+            // so a request that already ended ignores this.
+            DispatchQueue.global().asyncAfter(deadline: .now() + requestTimeout) {
+                box.finish(.failure(Failure.unreachable("The watcher didn’t answer in time.")))
+                connection.cancel()
+            }
         }
         return try parse(received)
     }
