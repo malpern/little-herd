@@ -104,6 +104,7 @@ so nobody can talk to the session after it lands. A move should leave a live
 session on the destination, and the person chats with it in the Claude app.
 
 Proved on linux on 15 November with Claude Code 2.1.325, before any code:
+
 - `claude --bg` starts a background session that stays listed in
   `claude agents --json` and is managed with `attach`, `logs`, `stop` and `rm`.
 - `--bg --resume <id> --fork-session` continues a carried conversation; the
@@ -117,6 +118,7 @@ Proved on linux on 15 November with Claude Code 2.1.325, before any code:
   trust check, which is why one-shot moves never met it.
 
 The build:
+
 - Worktree at `<repo>/.claude/worktrees/herd-<branch>` on the transfer branch,
   with `.claude/worktrees/` added to that repo's `.git/info/exclude`.
 - Start with `claude --bg --name "<title>" --permission-mode default`, plus
@@ -203,13 +205,13 @@ Herd must make sure only one place drives a session at a time.
 
 ## Blocked on the vendors
 
-| Item                                  | Why                                                                                                    | Unblocks when                                                                                                                        |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Full conversation into Claude's cloud | The CLI can't push a local session; Desktop's Open in → Cloud sends a summary and refuses SSH sessions | Anthropic ships a push ([claude-code#11455](https://github.com/anthropics/claude-code/issues/11455))                                 |
-| Full conversation into Codex's cloud  | OpenAI doesn't support handoff to its cloud; cloud tasks return code, not chats                        | OpenAI adds it ([codex#19657](https://github.com/openai/codex/issues/19657), [#34804](https://github.com/openai/codex/issues/34804)) |
-| Full conversation, Codex → Claude     | Formats and tool calls don't map; only Codex imports the other way                                     | Anthropic adds an import                                                                                                             |
-| Chat by computer use in the desktop apps | Rejected on 15 November, not blocked: Claude desktop has Remote Control and ChatGPT has "Control this Mac", so a first-party route exists. Driving the screen needs the mini unlocked, breaks on app updates, and types into whatever window has focus | Never, while those routes exist |
-| Cloud moves between accounts          | Teleport works only within one account                                                                 | Never: by design                                                                                                                     |
+| Item                                     | Why                                                                                                                                                                                                                                                    | Unblocks when                                                                                                                        |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Full conversation into Claude's cloud    | The CLI can't push a local session; Desktop's Open in → Cloud sends a summary and refuses SSH sessions                                                                                                                                                 | Anthropic ships a push ([claude-code#11455](https://github.com/anthropics/claude-code/issues/11455))                                 |
+| Full conversation into Codex's cloud     | OpenAI doesn't support handoff to its cloud; cloud tasks return code, not chats                                                                                                                                                                        | OpenAI adds it ([codex#19657](https://github.com/openai/codex/issues/19657), [#34804](https://github.com/openai/codex/issues/34804)) |
+| Full conversation, Codex → Claude        | Formats and tool calls don't map; only Codex imports the other way                                                                                                                                                                                     | Anthropic adds an import                                                                                                             |
+| Chat by computer use in the desktop apps | Rejected on 15 November, not blocked: Claude desktop has Remote Control and ChatGPT has "Control this Mac", so a first-party route exists. Driving the screen needs the mini unlocked, breaks on app updates, and types into whatever window has focus | Never, while those routes exist                                                                                                      |
+| Cloud moves between accounts             | Teleport works only within one account                                                                                                                                                                                                                 | Never: by design                                                                                                                     |
 
 ---
 
