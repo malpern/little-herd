@@ -5,13 +5,21 @@ Mac mini, a Linux box, and a Synology NAS. Swift/SwiftUI, XcodeGen, Swift Testin
 
 ## Read this first
 
-**`Documentation/HANDOFF.md` is the roadmap and the authority. There is no other
-tracker.** It records the current state, the facts that cost hours to learn, and
-what is open. Read it before starting work, update it at the end of a session,
-and delete items that are done — a handoff nobody trusts is worse than none.
+**Two files, two jobs. There is no other tracker.**
 
-Its **Hard-won facts** section is the decision log and is permanent; **Next** is
-the work list and gets pruned. Do not start a second tracker.
+- **`Documentation/ROADMAP.md` is the plan:** what is being built, in what
+  order, each item with a status and a "done when", plus the transfer matrix
+  and the first-party watch list. Change an item's status in the same commit as
+  the work, and check the watch list at the start of any session that touches
+  moves, transport or sessions.
+- **`Documentation/HANDOFF.md` is the history and the authority on facts:** the
+  current state, the facts that cost hours to learn, and the reasoning behind
+  each item. Read it before starting work and update it at the end of a
+  session. Its **Hard-won facts** section is the decision log and is permanent;
+  **Next** keeps the detail behind roadmap items and gets pruned when they land.
+
+The roadmap deck on claude.ai is a view of `ROADMAP.md`, rebuilt from it on
+request; never track work in the deck. Do not start a third tracker.
 
 ## How to work on this, learned expensively
 

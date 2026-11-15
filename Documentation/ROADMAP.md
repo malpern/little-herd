@@ -1,0 +1,215 @@
+# Little Herd — roadmap
+
+**This file is the plan.** It says what is being built, in what order, and when
+each item counts as done. `HANDOFF.md` is the history: what happened, why, and
+the lessons. The roadmap deck
+([Little Herd Transfers Roadmap](https://claude.ai/artifact/LcMQUWwxSNbZQT8DoGTg23))
+is a view of this file, rebuilt from it on request; when the two disagree, this
+file wins.
+
+**Agents: keep it current.** Change an item's status in the same commit as the
+work that changes it. Add a line under _Done_ with the commit or PR when an item
+lands. Check the watch list at the start of any session that touches moves,
+transport or sessions, and update its dates.
+
+Status words: `todo`, `doing`, `done`, `blocked`.
+
+Last reviewed: 15 November 2026, at `ac90866` on `ios/spike-1`.
+
+---
+
+## Rules that shape every item
+
+1. **First-party first.** Use Apple's, Anthropic's or OpenAI's own feature
+   wherever one exists. Build our own only where none does, list it in
+   `HANDOFF.md` under "First-party first", and switch when a replacement ships.
+2. **Research, never a library.** Third-party tools are read for ideas, never
+   added as dependencies. On record: [marcmy/claudeimportfromcodex](https://github.com/marcmy/claudeimportfromcodex).
+3. **App automation is a stopgap.** Typing into a command-line tool under tmux
+   is acceptable. Driving a desktop app's screen is a last resort, recorded in
+   the watch list until an API ships.
+4. **Smirk stays separate.** Little Herd runs on the personal Claude account
+   (Max) and never uses the Smirk Team account, not even as a middleman. Smirk
+   work must never cross into the personal account unnoticed.
+
+---
+
+## Transfers: where they stand
+
+"Full" means the whole conversation resumes on the destination. "Brief" means
+the departing agent writes a summary and a fresh session starts from it on the
+same git branch.
+
+| Transfer                          | Today                      | Reasonable next                       | Unlikely soon        |
+| --------------------------------- | -------------------------- | ------------------------------------- | -------------------- |
+| Machine → machine, Claude         | ✅ Full (watcher Mac only) | Full from any machine (#6)            | —                    |
+| Machine → machine, Codex          | ⚠️ Brief                   | Full (#2)                             | —                    |
+| Machine → Claude cloud            | ❌                         | New session from brief (#7)           | Full                 |
+| Claude cloud → machine            | ❌                         | Full via teleport (#4)                | —                    |
+| Machine ↔ Codex cloud             | ❌                         | New task from brief (#7, unverified)  | Full                 |
+| Personal ↔ Smirk, on our machines | ⚠️ Crosses silently        | Warn or refuse (#1)                   | —                    |
+| Personal ↔ Smirk, in the cloud    | ❌                         | —                                     | Impossible by design |
+| Claude → Codex                    | ❌                         | Recent chats via Codex `/import` (#5) | —                    |
+| Codex → Claude                    | ❌                         | Brief (#8)                            | Full                 |
+
+Facts behind the "Today" column, checked against the code on 15 November:
+`TranscriptCarry.canCarry` carries Claude sessions only; `TransferDriver.carryTranscript`
+carries only sessions local to the watcher Mac and falls back to a brief
+otherwise; the successor always runs the origin's provider; nothing reads which
+Claude account a session or machine uses.
+
+---
+
+## Now: make today's moves safe and complete
+
+### 1. Guard the account line · `todo`
+
+A move can carry a Smirk session into the personal account (or back) because
+the destination resumes under whatever account it is signed into.
+
+- Read each machine's Claude account (`claude auth status`: `email`, `orgId`)
+  and each session's, and show it.
+- Refuse a move that crosses accounts unless the person confirms it, on the Mac
+  and in the phone's move sheet.
+
+**Done when:** a test pins the refusal, and a live dry run between a personal
+and a Smirk machine shows the warning.
+
+### 2. Codex keeps its conversation · `todo`
+
+- Carry the Codex session file (`~/.codex/sessions/…/rollout-*.jsonl`) and
+  resume it on the destination with `codex resume <id>`.
+- For sessions whose rollout says `originator: "Codex Desktop"`, point the
+  person to ChatGPT's own Handoff instead of running our move.
+
+**Done when:** a Codex session moved between two machines resumes with its
+history, and a desktop-app session shows the Handoff pointer.
+
+### 3. Prove the phone move · `doing`
+
+Built and installed: iPhone build 3 (TestFlight) and Mac 0.1.72 build 76 on the
+mini, from `312703d`.
+
+- Start a real move from the iPhone and follow it to its landing in the move
+  sheet.
+- Then take PR #36 out of draft (Micah's call).
+
+**Done when:** one real phone-initiated move has landed and is recorded in
+`HANDOFF.md`.
+
+---
+
+## Next: reach the cloud, and cross to Codex
+
+### 4. Pull from Claude's cloud · `todo`
+
+Run `claude --teleport <session-id>` on a chosen machine, in tmux. Little Herd
+cannot list cloud sessions, so the person picks one from the phone or pastes its
+ID. Requires the destination to be signed into the account that owns the
+session, a clean checkout of the same repo, and the branch pushed.
+
+**Done when:** a cloud session started from the Claude app resumes on linux
+through Little Herd.
+
+### 5. Claude → Codex via Codex's import · `todo`
+
+Drive Codex's interactive `/import` under tmux to bring recent Claude Code chats
+across (up to 50 from the last 30 days, local only).
+
+- First, test whether imported chats arrive in full or summarized; OpenAI's
+  page does not say.
+
+**Done when:** a Claude session's conversation is readable in Codex on the same
+machine after a Little Herd-started import.
+
+### 6. Full Claude carries from every machine · `todo`
+
+Lift the watcher-only limit in `TransferDriver.carryTranscript`: carry the
+transcript from linux and the Air over ssh, not just from the watcher Mac.
+
+**Done when:** a session on linux moves to the mini with its full conversation.
+
+---
+
+## Later: briefs where conversations can't go
+
+### 7. Into the clouds by brief · `todo`
+
+Start a new Claude cloud session (`claude --cloud "<brief>"`) or a Codex cloud
+task from the pushed branch and a brief. Verify Codex's cloud command line first.
+
+### 8. Codex → Claude by brief · `todo`
+
+The departing Codex agent writes the brief; Claude starts on the same branch.
+Read claudeimportfromcodex for ideas when designing it.
+
+### 9. Try CloudKit as the transport · `todo`
+
+Spike: the herd snapshot alone, read-only, through the private iCloud database.
+
+- Measure update delay and whether notifications arrive reliably.
+- Confirm a Developer ID provisioning profile works for the Mac app.
+- Check whether CloudKit notifications can be time-sensitive; if not, alerts
+  keep the direct APNs sender.
+
+If it holds, CloudKit replaces our server, pairing and signing (see "First-party
+first" in `HANDOFF.md`).
+
+---
+
+## Blocked on the vendors
+
+| Item                                  | Why                                                                                                    | Unblocks when                                                                                                                        |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Full conversation into Claude's cloud | The CLI can't push a local session; Desktop's Open in → Cloud sends a summary and refuses SSH sessions | Anthropic ships a push ([claude-code#11455](https://github.com/anthropics/claude-code/issues/11455))                                 |
+| Full conversation into Codex's cloud  | OpenAI doesn't support handoff to its cloud; cloud tasks return code, not chats                        | OpenAI adds it ([codex#19657](https://github.com/openai/codex/issues/19657), [#34804](https://github.com/openai/codex/issues/34804)) |
+| Full conversation, Codex → Claude     | Formats and tool calls don't map; only Codex imports the other way                                     | Anthropic adds an import                                                                                                             |
+| Cloud moves between accounts          | Teleport works only within one account                                                                 | Never: by design                                                                                                                     |
+
+---
+
+## The rest of the herd
+
+Details for each are in `HANDOFF.md` under "Next".
+
+| Item                                                        | Status    | Notes                                                                        |
+| ----------------------------------------------------------- | --------- | ---------------------------------------------------------------------------- |
+| A watcher that keeps running without the app open (item 18) | `doing`   | Alerts with nobody looking                                                   |
+| Warnings before the drop                                    | `todo`    | Say what a move will refuse while dragging                                   |
+| Quieter stall alerts                                        | `todo`    | Don't call a session stalled while it is thinking                            |
+| Provider interfaces first                                   | `todo`    | Codex App Server thread metadata, `claude agents --json` before our probes   |
+| Release verification                                        | `todo`    | A throwaway transfer per provider on the current macOS; keep macOS 15 checks |
+| Flaky test                                                  | `todo`    |                                                                              |
+| P-core / E-core awareness (item 2)                          | `blocked` | macOS gives no per-core readings                                             |
+| Local models (item 10)                                      | `blocked` | Deferred until a local agent is worth watching                               |
+
+---
+
+## Watch list
+
+Check at the start of any session that touches moves, transport or sessions:
+`gh issue view <n> --repo <repo> --json state,updatedAt,comments`, and look for
+an answer from the vendor. Update the dates here.
+
+| Issue                                                                                  | Asks for                                | State, 15 November 2026                                                     |
+| -------------------------------------------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------- |
+| [anthropics/claude-code#11455](https://github.com/anthropics/claude-code/issues/11455) | Session handoff and continuity          | Open (reopened); last activity 3 November; 42 comments, none from Anthropic |
+| [openai/codex#19657](https://github.com/openai/codex/issues/19657)                     | Native remote session handoff           | Open; last activity 3 May                                                   |
+| [openai/codex#34804](https://github.com/openai/codex/issues/34804)                     | Workspace continuity across devices     | Open; last activity 7 September                                             |
+| [openai/codex#21803](https://github.com/openai/codex/issues/21803)                     | Cross-device sync of projects and chats | Open; last activity 9 November                                              |
+
+Docs to re-read on the same occasions:
+[Claude Code cloud sessions](https://code.claude.com/docs/en/claude-code-on-the-web),
+[self-hosted environments](https://code.claude.com/docs/en/self-hosted-environments),
+[Agent SDK session storage](https://code.claude.com/docs/en/agent-sdk/session-storage),
+[ChatGPT remote connections and Handoff](https://learn.chatgpt.com/docs/remote-connections),
+[ChatGPT import from another agent](https://learn.chatgpt.com/docs/import),
+[Codex app-server](https://developers.openai.com/codex/app-server.md).
+
+---
+
+## Done
+
+- 15 Nov 2026 · The phone's move sheet follows a move to its landing (`312703d`, iPhone build 3).
+- 15 Nov 2026 · One phone server on the branch, pairing code accepted only over Tailscale, signed reads (`62192ad`).
+- 27 Sep 2026 · A move through the phone path landed, mini to linux (`HANDOFF.md` item 6). Not yet started from a physical iPhone; that is item 3.

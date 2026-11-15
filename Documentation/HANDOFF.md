@@ -2078,23 +2078,8 @@ a session or remote feature, and date each check.
 | Transfer engine, Claude sessions (git branch + ssh + transcript copy + `claude --resume`) | Moves a local session to another of our machines | **No first-party equivalent for machine-to-machine.** Anthropic's moves all go through its cloud: `claude --cloud` starts a new cloud session, `--teleport` pulls a cloud session into a terminal (one-way; the CLI cannot push a local session out), and Desktop's **Open in → Cloud** carries only a summary and refuses SSH sessions. Remote Control steers a session in place; it does not move it. **Watch:** self-hosted environments (public beta, Team/Enterprise only) run cloud sessions on our own machines, from which `--teleport` works anywhere; and the Agent SDK's `SessionStore` resumes a transcript on another host, though only for SDK sessions. Open request: [anthropics/claude-code#11455](https://github.com/anthropics/claude-code/issues/11455) (#14666, cited at first, was closed as its duplicate). |
 | Transfer engine, Codex sessions (rollout copy + `codex resume`) | Same, for Codex | **First-party equivalent exists, app-only:** the ChatGPT desktop app's **Handoff** moves a chat and its git state between this computer and a connected SSH host, which is exactly our move. It has no documented API or CLI, so Little Herd cannot call it; we keep ours and re-check. The Codex app-server's `thread/resume` is first-party and could replace our rollout handling. Open requests: [openai/codex#19657](https://github.com/openai/codex/issues/19657), [#34804](https://github.com/openai/codex/issues/34804), [#21803](https://github.com/openai/codex/issues/21803). |
 
-**Watch list. Check these at the start of any session that touches moves,
-transport or sessions** (`gh issue view <n> --repo <repo> --json state,updatedAt,comments`),
-read new comments for an answer from the vendor, and update the dates here:
-
-| Issue | State, 15 November 2026 |
-| --- | --- |
-| [anthropics/claude-code#11455](https://github.com/anthropics/claude-code/issues/11455), session handoff / continuity | Open (reopened); last activity 3 November; 42 comments, none from Anthropic |
-| [openai/codex#19657](https://github.com/openai/codex/issues/19657), native remote session handoff | Open; last activity 3 May |
-| [openai/codex#34804](https://github.com/openai/codex/issues/34804), workspace continuity across devices | Open; last activity 7 September |
-| [openai/codex#21803](https://github.com/openai/codex/issues/21803), cross-device sync of projects and chats | Open; last activity 9 November |
-
-Also re-read the docs pages these rows rest on:
-[Claude Code cloud sessions](https://code.claude.com/docs/en/claude-code-on-the-web),
-[self-hosted environments](https://code.claude.com/docs/en/self-hosted-environments),
-[Agent SDK session storage](https://code.claude.com/docs/en/agent-sdk/session-storage),
-[ChatGPT remote connections and Handoff](https://learn.chatgpt.com/docs/remote-connections),
-[Codex app-server](https://developers.openai.com/codex/app-server.md).
+**Watch list:** the issues and docs to re-check now live in
+[`ROADMAP.md`](ROADMAP.md#watch-list), with their dates.
 
 **Claude → Codex has a first-party path.** Codex's own import (`/import` in the
 CLI, Settings → Import in the desktop app) brings over recent local Claude Code
@@ -2242,6 +2227,11 @@ above it in the source.
 it; the files survived only because the directory had not been reaped yet.
 
 ## Next
+
+**The plan now lives in [`ROADMAP.md`](ROADMAP.md)**: what is being built, in
+what order, with a status and a "done when" for each item. This section keeps
+the history and reasoning behind those items; update the roadmap's status in
+the same commit as the work.
 
 **Release verification.** Run a throwaway transfer with each provider on
 the current macOS release. Keep macOS 15 in the compatibility checks.
