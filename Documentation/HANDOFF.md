@@ -2096,6 +2096,20 @@ Also re-read the docs pages these rows rest on:
 [ChatGPT remote connections and Handoff](https://learn.chatgpt.com/docs/remote-connections),
 [Codex app-server](https://developers.openai.com/codex/app-server.md).
 
+**Claude → Codex has a first-party path.** Codex's own import (`/import` in the
+CLI, Settings → Import in the desktop app) brings over recent local Claude Code
+chats plus settings, skills and memories: up to 50 chats from the last 30 days,
+from the machine it runs on, interactively only. OpenAI's page does not say
+whether chats arrive in full or summarized. Use it, driven in tmux, before
+building a Claude → Codex carry of our own. No first-party path goes the other
+way. ([ChatGPT: Import from another agent](https://learn.chatgpt.com/docs/import))
+
+**Research sources, not dependencies.** We build our own; these are read for
+ideas when designing it. Never add them as a library.
+- [marcmy/claudeimportfromcodex](https://github.com/marcmy/claudeimportfromcodex):
+  imports Codex transcripts into Claude Code, with bounded transcripts and
+  summaries. Read it before designing a Codex → Claude carry.
+
 Already first-party, nothing to replace: Bonjour discovery, APNs (called
 directly with a token), the Network framework, the agents' own CLIs.
 
