@@ -232,6 +232,21 @@ Bonjour search was never started again. Requests now give up after 15 s, and the
 search restarts after a failure and when the app returns to the foreground.
 Not yet seen recovering on the phone itself.
 
+### 14. Tidy up after a moved session ends · `todo`
+
+Every live move leaves three things behind on purpose, because the moved
+session owns them: a worktree under `<repo>/.claude/worktrees/` on the
+destination, a `transfer/...` branch there and on GitHub, and an entry in
+`claude agents`. Nothing removes them once the session is over, so they pile up
+with every move (three moves on 15 November left all three of each, cleaned by
+hand).
+
+Once a moved session has ended, Little Herd removes the worktree, `claude rm`s
+the session and deletes the branch locally and on GitHub, **only when nothing
+would be lost**: the session is not running, the worktree is clean, and every
+commit on the branch is already on the default branch. Otherwise it keeps all of
+it and says the work is still on the branch.
+
 ### 11. Answer a session from Little Herd · `todo`
 
 For command-line sessions on our machines only: send one follow-up message and
