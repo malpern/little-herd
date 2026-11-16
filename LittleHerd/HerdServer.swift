@@ -164,6 +164,7 @@ final class HerdServer {
                 if let data { reader.append(data) }
                 if var request = reader.request {
                     request.isPrivateTransport = HerdTransport.isPrivate(connection.endpoint)
+                    request.isLoopback = HerdTransport.isLoopback(connection.endpoint)
                     self.respond(to: request, on: connection)
                 } else if error != nil || isComplete || reader.isOversized {
                     connection.cancel()
@@ -264,9 +265,18 @@ final class HerdServer {
         }
 
         let deviceID: String
-        switch writes.verify(request) {
-        case .accepted(let id): deviceID = id
-        case .refused(let why): return text("403 Forbidden", why + "\n")
+        if request.path == "/move", request.isLoopback, acceptsCode(request, pairingCode: pairingCode) {
+            // **This Mac's own command line**, so a move started by automation
+            // runs in the app and shows in its window and on the phone like any
+            // other (Micah, 15 November). Loopback and the pairing code only:
+            // anything that can read the code here could already run
+            // `little-herd move --yes` itself, so this admits nothing new.
+            deviceID = "this Mac's command line"
+        } else {
+            switch writes.verify(request) {
+            case .accepted(let id): deviceID = id
+            case .refused(let why): return text("403 Forbidden", why + "\n")
+            }
         }
 
         switch request.path {
@@ -343,6 +353,9 @@ nonisolated struct HerdRequest: Equatable, Sendable {
     /// pairing code may travel. Set by the server from the connection, never
     /// from anything the request says about itself.
     var isPrivateTransport = false
+    /// Whether it came from this Mac itself. Set by the server from the
+    /// connection, like `isPrivateTransport`.
+    var isLoopback = false
 
     /// Parses a request from its bytes, or nothing if the headers have not all
     /// arrived yet.
@@ -401,6 +414,19 @@ nonisolated enum HerdTransport {
             return bytes[0..<6] == [0xFD, 0x7A, 0x11, 0x5C, 0xA1, 0xE0]
         default:
             return false
+        }
+    }
+
+    static func isLoopback(_ endpoint: NWEndpoint) -> Bool {
+        guard case .hostPort(let host, _) = endpoint else { return false }
+        switch host {
+        case .ipv4(let address): return address.rawValue.first == 127
+        case .ipv6(let address):
+            let bytes = Array(address.rawValue)
+            if address == .loopback { return true }
+            return bytes.count == 16 && bytes[0..<10].allSatisfy { $0 == 0 }
+                && bytes[10] == 0xFF && bytes[11] == 0xFF && bytes[12] == 127
+        default: return false
         }
     }
 

@@ -135,6 +135,11 @@ The build:
   `claude stop` for a background one), and left open if it is mid-turn. The
   carried transcript on the destination is removed once the fork holds its
   last message, so the herd no longer lists it as a finished second session.
+- **Automation shows in the window** (Micah, 15 November): `little-herd move
+  --yes` hands the move to the running app over loopback with the pairing code,
+  so it runs through `beginTransfer` like a drag or the phone and the window and
+  phone show every phase; the command prints the phases and exits on the
+  result. Without the app it runs the move itself, as before, and says so.
 
 **Done when:** a move started from the phone lands on linux, and the moved
 session answers a follow-up message sent from the Claude app.

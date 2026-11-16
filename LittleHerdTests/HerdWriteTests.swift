@@ -381,4 +381,70 @@ struct HerdWriteTests {
         let outcome = SuccessorOutcome(result: .couldNotStart, failingStep: nil, output: reason)
         #expect(TransferDigest.detail(phase: .finished(outcome), output: reason) == reason)
     }
+
+    // MARK: - This Mac's command line
+
+    private func moveRequest(code: String?, privateTransport: Bool, loopback: Bool) throws -> HerdRequest {
+        HerdRequest(
+            method: "POST", path: "/move",
+            headers: code.map { ["authorization": HerdWire.Pairing.headerValue($0)] } ?? [:],
+            body: try HerdWire.encoder().encode(
+                HerdWire.MoveRequest(session: "claude:x", from: "local", to: "linux", dryRun: false)
+            ),
+            isPrivateTransport: privateTransport,
+            isLoopback: loopback
+        )
+    }
+
+    private static let started = HerdWire.MoveResponse(
+        applied: true, title: "x", fromName: "mini", toName: "linux",
+        refusal: nil, fixesFirst: false, steps: []
+    )
+
+    /// A move from this Mac's own command line runs in the app, so the window
+    /// shows it.
+    @Test
+    func theCommandLineCanMoveFromThisMacWithTheCode() async throws {
+        let response = await HerdServer.response(
+            for: try moveRequest(code: Self.code, privateTransport: true, loopback: true),
+            pairingCode: Self.code,
+            snapshot: Self.herd,
+            writes: writes(store()) { _ in Self.started }
+        )
+        #expect(Self.status(response) == "HTTP/1.1 200 OK")
+    }
+
+    /// The code alone is never enough to move from another machine, even over
+    /// Tailscale: a phone must sign.
+    @Test
+    func theCodeCannotMoveFromAnotherMachine() async throws {
+        let response = await HerdServer.response(
+            for: try moveRequest(code: Self.code, privateTransport: true, loopback: false),
+            pairingCode: Self.code,
+            snapshot: Self.herd,
+            writes: writes(store()) { _ in Issue.record("must not move"); return Self.started }
+        )
+        #expect(Self.status(response) == "HTTP/1.1 403 Forbidden")
+    }
+
+    @Test
+    func thisMacStillNeedsTheCode() async throws {
+        for code: String? in [nil, "FGHJ6789"] {
+            let response = await HerdServer.response(
+                for: try moveRequest(code: code, privateTransport: true, loopback: true),
+                pairingCode: Self.code,
+                snapshot: Self.herd,
+                writes: writes(store()) { _ in Issue.record("must not move"); return Self.started }
+            )
+            #expect(Self.status(response) == "HTTP/1.1 403 Forbidden")
+        }
+    }
+
+    @Test
+    func onlyLoopbackAddressesAreThisMac() {
+        #expect(HerdTransport.isLoopback(.hostPort(host: "127.0.0.1", port: 1)))
+        #expect(HerdTransport.isLoopback(.hostPort(host: "::1", port: 1)))
+        #expect(!HerdTransport.isLoopback(.hostPort(host: "100.74.233.94", port: 1)))
+        #expect(!HerdTransport.isLoopback(.hostPort(host: "192.168.1.159", port: 1)))
+    }
 }
