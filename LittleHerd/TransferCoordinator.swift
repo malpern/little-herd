@@ -92,7 +92,14 @@ final class TransferCoordinator {
         transfers[transfer] = .finished(outcome)
     }
 
-    func begin(_ transfer: Transfer, steps: [SuccessorRun.Step]) {
+    /// - Parameter afterLanding: runs once the steps have finished and before
+    ///   the result is shown, so a live landing can end the original and say
+    ///   so in the same sentence. See `TransferDriver.retireOriginal`.
+    func begin(
+        _ transfer: Transfer,
+        steps: [SuccessorRun.Step],
+        afterLanding: (@Sendable (SuccessorOutcome) async -> SuccessorOutcome)? = nil
+    ) {
         guard tasks[transfer] == nil else { return }
 
         prepare(transfer)
@@ -112,7 +119,8 @@ final class TransferCoordinator {
                     }
                 }
             )
-            self?.transfers[transfer] = .finished(outcome)
+            let ended = await afterLanding?(outcome) ?? outcome
+            self?.transfers[transfer] = .finished(ended)
             self?.tasks[transfer] = nil
             self?.clearIfNothingToSay(transfer)
         }

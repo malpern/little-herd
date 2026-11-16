@@ -258,9 +258,35 @@ nonisolated struct SuccessorRun: Equatable {
                 purpose: .cleanup,
                 command: "rm -f \(promptFile); test -e \(marker) || "
                     + "{ git -C \(repository) worktree remove --force \(worktree) >/dev/null 2>&1; "
-                    + "rm -rf \(worktree); }",
+                    + "rm -rf \(worktree); }"
+                    + carriedCopyRemoval(plan: plan, marker: marker),
                 isFatal: false
             ),
         ]
+    }
+
+    /// **The carried copy goes once the fork holds everything in it.**
+    ///
+    /// A carried transcript lands under the destination's project folder with
+    /// the departing session's own id, so that `--resume --fork-session` can
+    /// find it. The fork writes a file of its own, and after that the copy is
+    /// a second, finished-looking session in that folder: the herd listed it
+    /// as "completed" beside the live one, which is half of why a move looked
+    /// like a duplication (15 November). The fork keeps every message's
+    /// `uuid`, so the copy is removed once another file there holds the copy's
+    /// last one, waiting up to thirty seconds. If that never shows, the copy
+    /// stays: a duplicate in the list is better than a conversation lost.
+    static func carriedCopyRemoval(plan: SuccessorLaunch.Plan, marker: String) -> String {
+        guard let carried = plan.carriedSession else { return "" }
+        let folder = "\"$HOME\"/.claude/projects/"
+            + RemoteShell.quoted(TranscriptCarry.projectDirectoryName(for: plan.workingDirectory))
+        let copy = "\(folder)/\(RemoteShell.quoted(carried + ".jsonl"))"
+        let sidecar = "\(folder)/\(RemoteShell.quoted(carried))"
+        return "; test -e \(marker) && test -f \(copy) && { "
+            + "u=$(grep -o '\"uuid\":\"[^\"]*\"' \(copy) | tail -n 1); "
+            + "test -n \"$u\" && for i in $(seq 1 30); do "
+            + "for f in \(folder)/*.jsonl; do "
+            + "if [ \"$f\" != \(copy) ] && grep -qF \"$u\" \"$f\"; then "
+            + "rm -f \(copy); rm -rf \(sidecar); break 2; fi; done; sleep 1; done; }; true"
     }
 }

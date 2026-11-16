@@ -29,6 +29,9 @@ nonisolated enum SuccessorLaunch {
         /// destination for a person to keep talking to, rather than a one-shot
         /// run that edits, is checked and pushed for, and ends. See `Live`.
         var live: Live? = nil
+        /// The carried session a live successor forks from, so the copy the
+        /// fork no longer needs can be removed. See `SuccessorRun.liveSteps`.
+        var carriedSession: String? = nil
     }
 
     /// A successor that stays: a Claude Code background session (`claude --bg`),
@@ -201,7 +204,8 @@ nonisolated enum SuccessorLaunch {
                             to: workingDirectory,
                             repository: repository
                         ),
-                    live: live
+                    live: live,
+                    carriedSession: carriedSession
                 )
             )
         }

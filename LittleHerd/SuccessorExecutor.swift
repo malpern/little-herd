@@ -46,6 +46,20 @@ nonisolated struct SuccessorOutcome: Equatable {
     /// `claude --bg` prints ("backgrounded · f606c9dd · name"); nil for a
     /// one-shot run. Its presence is what makes a landing a live one.
     var backgroundSession: String? = nil
+    /// What happened to the original after a live landing; nil when nothing
+    /// was tried. See `TransferDriver.retireOriginal`.
+    var originalRetired: TransferDriver.Retired? = nil
+
+    /// What a live landing says, on the Mac and as the phone's notification.
+    var liveLandingSentence: String {
+        originalRetired == .leftRunning
+            ? "It’s running there as a background session. The original was busy, "
+                + "so it’s still open too. Continue it in the Claude app."
+            : originalRetired == nil
+                ? "It’s running there as a background session. Continue it in the Claude app."
+                : "It’s running there as a background session, and the original was closed. "
+                    + "Continue it in the Claude app."
+    }
 
     /// The id from `claude --bg`'s first line, and nothing else that resembles one.
     static func backgroundSession(in output: String) -> String? {
@@ -69,9 +83,10 @@ nonisolated struct SuccessorOutcome: Equatable {
 /// showed: it read "nothing was changed anywhere" directly above the name of
 /// the branch holding the work.
 ///
-/// The source session is never touched by any of this. Nothing retires it, so
-/// "leave you where you started" holds for the session itself; what varies is
-/// how much of the branch exists.
+/// The source session is never touched by a failure. Only a live landing ends
+/// it (`TransferDriver.retireOriginal`), so "leave you where you started"
+/// holds for the session itself whenever a move fails; what varies is how much
+/// of the branch exists.
 nonisolated enum TransferRemnant: Equatable, Sendable {
     /// Nothing was created anywhere. The only genuinely clean failure.
     case nothing

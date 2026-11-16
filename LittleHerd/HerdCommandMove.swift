@@ -131,8 +131,10 @@ extension HerdCommand {
               to           \(plan.destination.shortName)
               branch       \(plan.branch)
 
-            The session it leaves is not retired: nothing in a transfer stops
-            it, so the worst case is work sitting on a branch nobody merged.
+            If the destination keeps a live session, the one it leaves is
+            closed once that copy is running, unless it is mid-turn. A one-shot
+            move leaves it open, so the worst case is work sitting on a branch
+            nobody merged.
             \(carryNotice(for: plan))\(fixNotice(remedy))
             Nothing has been changed. Re-run with --yes to do it.
             """
@@ -268,11 +270,18 @@ extension HerdCommand {
                 outcome.value = blocked
             case .ready(_, let steps):
                 let run = TransferRunners.arrival(for: destination)
-                outcome.value = await SuccessorExecutor.execute(
+                var landed = await SuccessorExecutor.execute(
                     steps: steps,
                     run: run,
                     progress: { purpose in log("\(purpose)") }
                 )
+                landed.originalRetired = await TransferDriver.retireOriginal(
+                    after: landed,
+                    sessionIdentifier: request.sessionIdentifier,
+                    sourceCommand: TransferRunners.command(for: origin)
+                )
+                if let retired = landed.originalRetired { log("original: \(retired)") }
+                outcome.value = landed
             }
             semaphore.signal()
         }

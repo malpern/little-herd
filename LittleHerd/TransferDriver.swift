@@ -534,3 +534,95 @@ extension TransferDriver {
         return .carried
     }
 }
+
+nonisolated extension TransferDriver {
+    /// What ending the original session came to.
+    enum Retired: Equatable, Sendable {
+        /// The original was asked to quit.
+        case retired
+        /// It was mid-turn, or its state could not be read, so it was left
+        /// running rather than cut off.
+        case leftRunning
+        /// Nothing by that id was running any more.
+        case gone
+    }
+
+    /// **A move is a move: once the copy on the destination is running, the
+    /// original ends.** Asked of Micah after the first live moves left two of
+    /// every session, both waiting on him (15 November).
+    ///
+    /// Only an idle session is ended. One that is mid-turn is left running,
+    /// because cutting off work in progress loses more than a duplicate costs.
+    /// An interactive session gets `SIGTERM`, which Claude handles like
+    /// `/exit` and keeps its transcript; a background session is stopped
+    /// through `claude stop`. The process is found from Claude's own session
+    /// registry, or from `claude agents --json` where the registry no longer
+    /// names sessions (2.1.325), and its command is checked to be Claude
+    /// before anything is signalled.
+    static func retireCommand(sessionIdentifier: String) -> String {
+        "python3 -c \(RemoteShell.quoted(retireScript)) \(RemoteShell.quoted(sessionIdentifier))"
+    }
+
+    static func retiredAnswer(_ output: String) -> Retired {
+        switch output.trimmingCharacters(in: .whitespacesAndNewlines) {
+        case "retired": .retired
+        case "gone": .gone
+        default: .leftRunning
+        }
+    }
+
+    /// Ends the original after a live landing, and nothing else: a one-shot
+    /// run leaves no session to continue on the destination, so the original
+    /// is the only conversation there is.
+    static func retireOriginal(
+        after outcome: SuccessorOutcome,
+        sessionIdentifier: String,
+        sourceCommand: @Sendable (String) async -> (output: String, succeeded: Bool)
+    ) async -> Retired? {
+        guard outcome.result == .landed, outcome.backgroundSession != nil else { return nil }
+        let answer = await sourceCommand(retireCommand(sessionIdentifier: sessionIdentifier))
+        return answer.succeeded ? retiredAnswer(answer.output) : .leftRunning
+    }
+
+    private static let retireScript = """
+        import glob, json, os, signal, subprocess, sys
+        sid = sys.argv[1]
+        home = os.path.expanduser("~")
+        found = None
+        for f in glob.glob(home + "/.claude/sessions/*.json"):
+            try:
+                s = json.load(open(f))
+            except Exception:
+                continue
+            if s.get("sessionId") == sid:
+                found = s
+                break
+        claude = None
+        for c in (home + "/.local/share/mise/installs/claude/latest/claude", "/opt/homebrew/bin/claude",
+                  "/usr/local/bin/claude", home + "/.local/bin/claude"):
+            if os.access(c, os.X_OK) and (not c.endswith("/.local/bin/claude") or os.path.islink(c)):
+                claude = c
+                break
+        if found is None and claude:
+            try:
+                listed = json.loads(subprocess.run([claude, "agents", "--json"], capture_output=True,
+                                                   text=True, timeout=8).stdout)
+                found = next((s for s in listed if s.get("sessionId") == sid), None)
+            except Exception:
+                pass
+        if not found or not found.get("pid"):
+            print("gone"); sys.exit()
+        if found.get("status") != "idle":
+            print("busy"); sys.exit()
+        pid = int(found["pid"])
+        if found.get("kind") == "background":
+            ok = claude and subprocess.run([claude, "stop", found.get("id") or sid],
+                                           capture_output=True, timeout=8).returncode == 0
+            print("retired" if ok else "busy"); sys.exit()
+        comm = subprocess.run(["ps", "-o", "comm=", "-p", str(pid)], capture_output=True, text=True).stdout
+        if "claude" not in comm:
+            print("gone"); sys.exit()
+        os.kill(pid, signal.SIGTERM)
+        print("retired")
+        """
+}

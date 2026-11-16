@@ -133,7 +133,17 @@ extension MonitorModel {
                 // Kept so the result can be read back: the diff is everything
                 // after this, and the branch carries the departure too.
                 transfers.record(departure: commit, for: request.transfer)
-                transfers.begin(request.transfer, steps: steps)
+                let sourceCommand = TransferRunners.command(for: source.configuration)
+                let session = request.sessionIdentifier
+                transfers.begin(request.transfer, steps: steps) { outcome in
+                    var outcome = outcome
+                    outcome.originalRetired = await TransferDriver.retireOriginal(
+                        after: outcome,
+                        sessionIdentifier: session,
+                        sourceCommand: sourceCommand
+                    )
+                    return outcome
+                }
             }
         }
     }

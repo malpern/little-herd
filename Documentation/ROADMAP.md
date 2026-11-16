@@ -130,6 +130,11 @@ The build:
 - Before pushing, refuse a destination repo Claude doesn't trust, and say how to
   trust it. Little Herd never answers the trust prompt.
 - Codex stays one-shot: it has no background sessions.
+- **A move, not a copy** (Micah, 15 November): once the live copy is running,
+  the original is ended if it is idle (`SIGTERM` for an interactive session,
+  `claude stop` for a background one), and left open if it is mid-turn. The
+  carried transcript on the destination is removed once the fork holds its
+  last message, so the herd no longer lists it as a finished second session.
 
 **Done when:** a move started from the phone lands on linux, and the moved
 session answers a follow-up message sent from the Claude app.

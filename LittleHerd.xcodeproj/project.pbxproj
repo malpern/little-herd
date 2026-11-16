@@ -140,6 +140,7 @@
 		9518D7315550E85D906DB85B /* FolderBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E03AE4CBF5FB2BD804CB5B3 /* FolderBrowserView.swift */; };
 		9712E66E3210EFD7244E0C4D /* MachineAgentPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C0E9354B762F8C407715028 /* MachineAgentPad.swift */; };
 		97ABDF19EE954232A1A9D5D5 /* WindowPlacementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79D386671F3A56A3353C18AF /* WindowPlacementTests.swift */; };
+		98A390FEA89EBC852AB2B83E /* RetireOriginalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733FA4243F84EB12905D4CF2 /* RetireOriginalTests.swift */; };
 		9C0016E0224A5E62D95B0E3F /* TransferRunners.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE4154437B6C32E9A8D5FB98 /* TransferRunners.swift */; };
 		9C010945B913AB251C55E53F /* AgentDragSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624537ED414B0B245438B502 /* AgentDragSession.swift */; };
 		9C4DC60AB6AFC3F1EEC79B02 /* FolderSizes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EDDF10F2439122730B9A0F7 /* FolderSizes.swift */; };
@@ -338,6 +339,7 @@
 		6E03AE4CBF5FB2BD804CB5B3 /* FolderBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderBrowserView.swift; sourceTree = "<group>"; };
 		6F548AB7DBFC0AF9202AE319 /* TransferDiffScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferDiffScene.swift; sourceTree = "<group>"; };
 		71FEC8F5DAF15B17841076B8 /* LittleHerdMobile.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LittleHerdMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		733FA4243F84EB12905D4CF2 /* RetireOriginalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetireOriginalTests.swift; sourceTree = "<group>"; };
 		74631ABBC0DF62E9034B91B7 /* StorageVolume.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageVolume.swift; sourceTree = "<group>"; };
 		758130364CC3DF20E47E3A56 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		75816BB07A0EFE6F81C52052 /* StreamingProcessRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingProcessRunner.swift; sourceTree = "<group>"; };
@@ -708,6 +710,7 @@
 				F8616BA821323505166DEB9C /* RepositoryCheckDeclarationTests.swift */,
 				1082145BBE5CD6ACAFC1375D /* RepositoryCheckProbeTests.swift */,
 				F9386B33F3E8A7D3276195B4 /* RepositoryCheckTests.swift */,
+				733FA4243F84EB12905D4CF2 /* RetireOriginalTests.swift */,
 				9964820C13B89705570C2A79 /* SecretCacheTests.swift */,
 				C36334B89B73554138E1F571 /* SSHCommandRunnerTests.swift */,
 				425C26E3AA2A37C6DFD07C35 /* StillImageRenderingTests.swift */,
@@ -1125,6 +1128,7 @@
 				E0C1AD427D0379278313F8B5 /* RepositoryCheckDeclarationTests.swift in Sources */,
 				33ADC70A518A5189BF2D6256 /* RepositoryCheckProbeTests.swift in Sources */,
 				D90265E7A563F6351F566FA4 /* RepositoryCheckTests.swift in Sources */,
+				98A390FEA89EBC852AB2B83E /* RetireOriginalTests.swift in Sources */,
 				75BE1EA5F769425A1C052A0C /* SSHCommandRunnerTests.swift in Sources */,
 				0F4B67C29C60BD0E6BEF80D9 /* SecretCacheTests.swift in Sources */,
 				BE441D34B1F20DA35883BFC3 /* StillImageRenderingTests.swift in Sources */,
