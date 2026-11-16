@@ -129,4 +129,34 @@ struct TransferCoordinatorTests {
         #expect(phase.detail.contains("still on the branch"))
         #expect(!phase.isCancellable)
     }
+
+    /// The strip lets a finished move go; the phone keeps hearing about it for
+    /// fifteen minutes, because it reads every five seconds and has no card to
+    /// show the landing. Without this its move sheet never saw one.
+    @Test
+    func aDismissedMoveIsStillReportedToThePhoneForAWhile() {
+        let coordinator = TransferCoordinator { _ in { _ in .init(text: "", succeeded: true) } }
+        let move = transfer()
+        coordinator.prepare(move)
+        coordinator.fail(move, SuccessorOutcome(result: .landed, failingStep: nil, output: ""))
+        let then = Date(timeIntervalSince1970: 1_000_000)
+        coordinator.dismiss(move, now: then)
+
+        #expect(coordinator.order.isEmpty)
+        let reported = coordinator.reportable(now: then.addingTimeInterval(60))
+        #expect(reported.map(\.transfer) == [move])
+        #expect(coordinator.reportable(now: then.addingTimeInterval(16 * 60)).isEmpty)
+    }
+
+    /// One that is still running is reported once, from the strip.
+    @Test
+    func aMoveIsNeverReportedTwice() {
+        let coordinator = TransferCoordinator { _ in { _ in .init(text: "", succeeded: true) } }
+        let move = transfer()
+        coordinator.prepare(move)
+        coordinator.fail(move, SuccessorOutcome(result: .landed, failingStep: nil, output: ""))
+        coordinator.dismiss(move)
+        coordinator.prepare(move)
+        #expect(coordinator.reportable().count == 1)
+    }
 }

@@ -835,6 +835,38 @@ nonisolated enum AgentTaskProbe {
       printf "agent_live=%s\t%s\t%s\n" "$little_herd_reg_id" \
         "${little_herd_reg_kind:-unknown}" "${little_herd_reg_entry:-unknown}"
     done
+    # Whether the list above is an answer. Without one, a finished turn has
+    # to be guessed at by its age; with one, a session that is not on the list
+    # has no process, and is not waiting for anybody.
+    little_herd_liveness=unknown
+    [ -n "$little_herd_live_ids" ] && little_herd_liveness=known
+    # **Claude Code 2.1.325 stopped writing `sessionId` and `pid` into these
+    # files** (seen on linux, 15 November: they carry only `peerToken`,
+    # `procStart` and `pidDomain`), so the loop above finds nothing there. Its
+    # documented replacement is `claude agents --json`, which lists active
+    # sessions, interactive and background, with both fields. It starts the
+    # agent, so it is asked only when the cheap read found nothing in a
+    # registry that exists. The mise install first; `~/.local/bin/claude` only
+    # when it is a symlink to a native install, because on linux it is a mise
+    # wrapper that rewrites global config each time it runs.
+    if [ -z "$little_herd_live_ids" ] && [ -n "$little_herd_reg_list" ] \
+      && command -v jq >/dev/null 2>&1; then
+      for little_herd_claude in "$HOME/.local/share/mise/installs/claude/latest/claude" \
+        "$HOME/.local/bin/claude"; do
+        [ -x "$little_herd_claude" ] || continue
+        case "$little_herd_claude" in
+          */.local/bin/claude) [ -L "$little_herd_claude" ] || continue ;;
+        esac
+        little_herd_agents=$("$little_herd_claude" agents --json 2>/dev/null) || continue
+        little_herd_agent_ids=$(printf '%s' "$little_herd_agents" \
+          | jq -r '.[]? | .sessionId // empty' 2>/dev/null) || continue
+        little_herd_live_ids="$little_herd_live_ids $(printf '%s' "$little_herd_agent_ids" | tr '\n' ' ')"
+        printf '%s' "$little_herd_agents" | jq -r \
+          '.[]? | select(.sessionId) | "agent_live=\(.sessionId)\t\(.kind // "unknown")\tunknown"' 2>/dev/null
+        little_herd_liveness=known
+        break
+      done
+    fi
     # How long a finished turn still counts as waiting for a person.
     #
     # "The agent finished its turn" is not "the session is over", and treating
@@ -952,6 +984,9 @@ nonisolated enum AgentTaskProbe {
     done
 
     little_herd_agent_version claude "$HOME/.local/bin/claude"
+    # linux keeps Claude only under mise; `latest` is mise's own symlink to the
+    # newest install, so the path survives upgrades. Measured over plain ssh.
+    little_herd_agent_version claude "$HOME/.local/share/mise/installs/claude/latest/claude"
     for little_herd_codex in \#(CodexInstallationPaths.shellPaths); do
       little_herd_agent_version codex "$little_herd_codex"
     done
@@ -1300,6 +1335,13 @@ nonisolated enum AgentTaskProbe {
             esac
             if [ "$claude_live" = "1" ] && [ "$claude_signal" != "completed" ]; then
               claude_status=active
+            elif [ "$claude_signal" = "completed" ] && [ "$little_herd_liveness" = "known" ] \
+              && [ "$claude_live" = "0" ]; then
+              # Its process has gone, so nobody can answer it and nothing is
+              # waiting: it is history however recently it spoke. Seen on
+              # 15 November: a session closed an hour earlier sat beside the
+              # live one under the same name, and the tab counted 27 waiting.
+              claude_status=completed
             elif [ "$claude_signal" = "completed" ]; then
               # A turn that ended recently leaves the session waiting on you,
               # not finished. Only once it has been quiet for hours is it

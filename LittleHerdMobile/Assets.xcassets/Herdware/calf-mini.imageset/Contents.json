@@ -1,0 +1,8 @@
+{
+  "images" : [
+    { "filename" : "calf-mini.png", "idiom" : "universal", "scale" : "1x" },
+    { "filename" : "calf-mini@2x.png", "idiom" : "universal", "scale" : "2x" },
+    { "idiom" : "universal", "scale" : "3x" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

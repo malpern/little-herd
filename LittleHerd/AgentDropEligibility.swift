@@ -44,7 +44,8 @@ nonisolated enum AgentDropEligibility {
             report: destination.report,
             repository: repository(of: activity, from: origin, in: herd),
             isAllowed: requiresApproval ? destination.mayHostSessions : true,
-            auth: destination.auth
+            auth: destination.auth,
+            provider: activity.provider
         )
     }
 

@@ -50,8 +50,8 @@ nonisolated enum HerdWire {
         /// The critical events the watcher's own alerts are raising right now —
         /// what a phone turns into notifications.
         var alerts: [Alert]? = nil
-        /// Compatibility flag the current phone checks before registering for push.
-        /// A session is only movable when its own `move` field is present.
+        /// Whether this watcher accepts signed writes (`/pair`, `/move`). A
+        /// watcher that does not is read-only, and the phone hides moving.
         var acceptsWrites: Bool? = nil
     }
 
@@ -226,6 +226,33 @@ nonisolated enum HerdWire {
     struct PairResponse: Codable, Sendable {
         let deviceID: String
         let watcherPublicKey: Data
+    }
+
+    struct MoveRequest: Codable, Sendable {
+        /// The provider-prefixed session id.
+        let session: String
+        let from: String
+        let to: String
+        /// True asks what would happen and changes nothing — the plan the
+        /// phone shows before a person confirms. The command line's exit 2.
+        let dryRun: Bool
+    }
+
+    struct MoveResponse: Codable, Hashable, Sendable {
+        /// False for a plan or a refusal: nothing was started.
+        let applied: Bool
+        let title: String
+        let fromName: String
+        let toName: String
+        /// Present when the move cannot go ahead.
+        let refusal: String?
+        /// Set up first, when the destination lacks the checkout or agent.
+        let fixesFirst: Bool
+        /// What will happen, in order, for a person deciding.
+        let steps: [String]
+        /// A command that would clear the refusal, for a person to run —
+        /// never run by the watcher.
+        var fix: String? = nil
     }
 
     struct PushRegistration: Codable, Sendable {

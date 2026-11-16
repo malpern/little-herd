@@ -36,6 +36,10 @@ nonisolated enum SuccessorBinary {
             "/.local/bin/claude",
             "/.claude/local/claude",
             "/claude.app/Contents/MacOS/claude",
+            // linux's only Claude, installed by mise. `latest` is mise's own
+            // symlink to the newest version, so the path survives upgrades.
+            // Run over plain ssh on linux, 15 November: 2.1.325 answered.
+            "/.local/share/mise/installs/claude/latest/claude",
         ],
         .codex: ["/.local/bin/codex"],
     ]

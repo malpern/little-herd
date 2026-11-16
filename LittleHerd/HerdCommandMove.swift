@@ -81,12 +81,12 @@ extension HerdCommand {
     /// Whether this move would carry the session's transcript, which is a
     /// preference the person set and a fact they should see before saying yes.
     static var carriesTranscript: Bool {
-        UserDefaults.standard.bool(forKey: LittleHerdPreferences.carriesTranscriptKey)
+        LittleHerdPreferences.carriesTranscript
     }
 
-    /// Whether the carry would go unscrubbed. Off unless deliberately turned on.
+    /// Whether the carry would go unscrubbed. On unless the scrub was turned on.
     static var carriesUnscrubbed: Bool {
-        UserDefaults.standard.bool(forKey: LittleHerdPreferences.carriesUnscrubbedTranscriptKey)
+        LittleHerdPreferences.carriesUnscrubbed
     }
 
     /// **Consent, in the plan.** A transcript is everything the session ever
@@ -131,8 +131,10 @@ extension HerdCommand {
               to           \(plan.destination.shortName)
               branch       \(plan.branch)
 
-            The session it leaves is not retired: nothing in a transfer stops
-            it, so the worst case is work sitting on a branch nobody merged.
+            If the destination keeps a live session, the one it leaves is
+            closed once that copy is running, unless it is mid-turn. A one-shot
+            move leaves it open, so the worst case is work sitting on a branch
+            nobody merged.
             \(carryNotice(for: plan))\(fixNotice(remedy))
             Nothing has been changed. Re-run with --yes to do it.
             """
@@ -268,11 +270,18 @@ extension HerdCommand {
                 outcome.value = blocked
             case .ready(_, let steps):
                 let run = TransferRunners.arrival(for: destination)
-                outcome.value = await SuccessorExecutor.execute(
+                var landed = await SuccessorExecutor.execute(
                     steps: steps,
                     run: run,
                     progress: { purpose in log("\(purpose)") }
                 )
+                landed.originalRetired = await TransferDriver.retireOriginal(
+                    after: landed,
+                    sessionIdentifier: request.sessionIdentifier,
+                    sourceCommand: TransferRunners.command(for: origin)
+                )
+                if let retired = landed.originalRetired { log("original: \(retired)") }
+                outcome.value = landed
             }
             semaphore.signal()
         }
@@ -492,6 +501,9 @@ extension HerdCommand {
             log("moving \(shortIdentifier(session.id)) from "
                 + "\(origin.shortName) to \(destination.shortName)")
         }
+        if let handed = moveThroughApp(plan, json: json, log: log) { return handed }
+        log("Little Herd isn’t running here (or its watcher is off), so this "
+            + "command runs the move itself and the window won’t show it")
         return performMove(plan, herd: herdForMove, json: json, log: log)
     }
 
@@ -551,5 +563,115 @@ extension HerdCommand {
             for: eligibility, machine: plan.destination.shortName,
             provider: plan.session.provider, originURL: originURL, slug: slug
         )
+    }
+}
+
+extension HerdCommand {
+    /// **The move goes to the running app when there is one**, so the window
+    /// and the phone show it like a drag (Micah, 15 November: automation's
+    /// moves were invisible, because this process ran them on its own).
+    ///
+    /// It is the phone's request on loopback, authorised by the pairing code
+    /// (see `HerdServer.write`), so the app runs it through `remoteMove` and
+    /// `beginTransfer`, exactly as a phone or a drag would. This process then
+    /// reads the herd until the move lands or fails, and prints each phase.
+    ///
+    /// Nil means the app could not take it — not running, or its watcher off —
+    /// and the caller runs the move here as before. A refusal is an answer,
+    /// not a reason to try again here.
+    static func moveThroughApp(
+        _ plan: Plan,
+        json: Bool,
+        log: @escaping @Sendable (String) -> Void
+    ) -> (output: String, code: Int32)? {
+        let defaults = UserDefaults.standard
+        guard let code = defaults.string(forKey: LittleHerdPreferences.herdPairingCodeKey),
+              !code.isEmpty
+        else { return nil }
+        let stored = defaults.integer(forKey: LittleHerdPreferences.herdServerPortKey)
+        let port = (1...Int(UInt16.max)).contains(stored) ? stored : Int(HerdWire.defaultPort)
+        let base = "http://127.0.0.1:\(port)"
+        let authorization = HerdWire.Pairing.headerValue(code)
+
+        let move = HerdWire.MoveRequest(
+            session: plan.session.id,
+            from: plan.origin.id.rawValue,
+            to: plan.destination.id.rawValue,
+            dryRun: false
+        )
+        guard let body = try? HerdWire.encoder().encode(move),
+              let url = URL(string: "\(base)/move")
+        else { return nil }
+        var post = URLRequest(url: url, timeoutInterval: 120)
+        post.httpMethod = "POST"
+        post.setValue(authorization, forHTTPHeaderField: HerdWire.Pairing.headerName)
+        post.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        post.httpBody = body
+        guard let answer = httpBlocking(post), answer.status == 200,
+              let response = try? HerdWire.decoder().decode(HerdWire.MoveResponse.self, from: answer.data)
+        else { return nil }
+        guard response.applied else {
+            return ("little-herd: \(response.refusal ?? "the app would not start it")", 1)
+        }
+        log("handed to Little Herd; follow it in the window")
+
+        guard let herdURL = URL(string: "\(base)/herd") else { return nil }
+        var read = URLRequest(url: herdURL, timeoutInterval: 15)
+        read.setValue(authorization, forHTTPHeaderField: HerdWire.Pairing.headerName)
+        var last: String?
+        var seen = false
+        let started = Date()
+        while Date().timeIntervalSince(started) < 70 * 60 {
+            if let answer = httpBlocking(read), answer.status == 200,
+               let snapshot = try? HerdWire.decoder().decode(HerdWire.Snapshot.self, from: answer.data),
+               let transfer = snapshot.transfers?.first(where: { $0.id == plan.branch }) {
+                seen = true
+                let said = [transfer.phase, transfer.detail].compactMap { $0 }.joined(separator: ": ")
+                if said != last { log(said); last = said }
+                if transfer.phase == "landed" || transfer.phase == "failed" {
+                    let landed = transfer.phase == "landed"
+                    if json {
+                        return (
+                            jsonArray([[
+                                "applied": landed ? "true" : "false",
+                                "result": transfer.phase,
+                                "branch": plan.branch,
+                                "detail": transfer.detail ?? "",
+                                "ran_in": "app",
+                            ]]),
+                            landed ? 0 : 1
+                        )
+                    }
+                    return (
+                        ["", transfer.detail ?? transfer.phase, "", "  branch  \(plan.branch)"]
+                            .joined(separator: "\n"),
+                        landed ? 0 : 1
+                    )
+                }
+            } else if seen {
+                // Reported and then gone: the app no longer lists it, which
+                // only happens a quarter of an hour after it ended.
+                return ("little-herd: the move stopped being reported; check the window", 1)
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(2))
+        }
+        return ("little-herd: gave up waiting for the app to report the move; check the window", 1)
+    }
+
+    /// One HTTP exchange, waited for. Nothing here touches the main actor.
+    private static func httpBlocking(_ request: URLRequest) -> (status: Int, data: Data)? {
+        let box = Handoff<(Int, Data)>()
+        let done = DispatchSemaphore(value: 0)
+        URLSession.shared.dataTask(with: request) { data, response, _ in
+            if let http = response as? HTTPURLResponse { box.value = (http.statusCode, data ?? Data()) }
+            done.signal()
+        }.resume()
+        var finished = done.wait(timeout: .now()) == .success
+        let deadline = Date().addingTimeInterval(request.timeoutInterval + 5)
+        while !finished, Date() < deadline {
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
+            finished = done.wait(timeout: .now()) == .success
+        }
+        return box.value.map { (status: $0.0, data: $0.1) }
     }
 }

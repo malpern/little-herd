@@ -47,6 +47,10 @@ struct LittleHerdApp: App {
     @State private var model: MonitorModel
     @State private var machineStore: MachineConfigurationStore
     @State private var updater = SoftwareUpdater()
+    /// Serves the herd to a phone while this Mac is the watcher. Held here
+    /// because, like the thresholds seed below, it has to exist from launch
+    /// and not from a window someone may never open.
+    @State private var herdWatcher: HerdWatcher
     @AppStorage(LittleHerdPreferences.menuBarEnabledKey)
     private var menuBarEnabled = false
 
@@ -84,7 +88,7 @@ struct LittleHerdApp: App {
             model?.applyConfigurations(machineStore.machines)
         }
         _model = State(initialValue: model)
-        model.enablePhoneRelay()
+        _herdWatcher = State(initialValue: HerdWatcher(model: model))
         model.updateWatcherFromPreferences()
 
         // Started here rather than from a view.
@@ -158,6 +162,7 @@ struct LittleHerdApp: App {
             LittleHerdSettingsView(
                 machineStore: machineStore,
                 model: model,
+                herdWatcher: herdWatcher,
                 onConfigurationsChanged: model.applyConfigurations
             )
         }
@@ -201,6 +206,14 @@ enum LittleHerdPreferences {
     /// and body are passed as arguments, never interpolated into a shell string, because
     /// a machine's name is user text and this would otherwise be an injection.
     static let alertCommandKey = "alertCommand"
+
+    /// The port the watcher serves the herd on, when not the default. There
+    /// is no interface for it: the default collides with nothing, and a
+    /// person who needs another is one who can `defaults write`.
+    static let herdServerPortKey = "herdServerPort"
+    /// The code a phone must present to read the herd. Made by `HerdWatcher`
+    /// the first time this Mac serves, shown in Settings, replaceable there.
+    static let herdPairingCodeKey = "herdPairingCode"
     /// Whether Little Herd starts CodexBar when it finds it installed and not
     /// running. Default on, because the alternative is a usage figure that
     /// silently stops moving — but a setting rather than a habit, since this
@@ -242,22 +255,35 @@ enum LittleHerdPreferences {
     static let recedesBarsUnderFanKey = "recedesBarsUnderFan"
 
     /// Whether a transfer carries the departing session's transcript instead
-    /// of asking it to write a brief. See item 17: the mechanism is measured
-    /// and the sample is one controlled run, so it arrives switched off, the
-    /// way the recede did.
+    /// of asking it to write a brief. See item 17.
+    ///
+    /// **On by default since 15 November.** It arrived switched off in 0.1.66
+    /// as an experiment measured on one run. Then moves started leaving a live
+    /// session that a person keeps talking to (roadmap item 10), and a session
+    /// that only has the brief has forgotten the conversation, which is the
+    /// whole of what the person wanted to continue. Micah chose the default.
     static let carriesTranscriptKey = "carriesTranscript"
 
     /// Whether a carried transcript is sent **unscrubbed** — every byte the session saw.
     ///
-    /// **Separate from `carriesTranscript`, and off, and deliberately awkward to turn
-    /// on.** The ordinary carry scrubs what it can recognise before sending; this
-    /// removes that step, and there is no version of it that is merely a convenience.
-    /// It exists because the scrub is best-effort and can in principle remove something
-    /// the successor needed — a config value that looked like a token. Turning it on
-    /// takes a second, explicit confirmation naming what it means, because a preference
-    /// that ships everything a session ever read should not be one click away from a
-    /// preference that ships a summary.
+    /// **On by default since 15 November, by Micah's choice.** The transcript
+    /// travels over ssh between his own machines and lands in
+    /// `~/.claude/projects` there, as exposed as it already was on the source;
+    /// the scrub is best-effort and can remove something the session needed,
+    /// such as a config value that looked like a token. Turning the scrub back
+    /// on is one click. Turning it off again still asks first, because a
+    /// preference that ships everything should not be one accidental click
+    /// away from one that ships less.
     static let carriesUnscrubbedTranscriptKey = "carriesUnscrubbedTranscript"
+
+    /// The two settings as the transfer reads them, with their defaults: an
+    /// unset key is "on", which `UserDefaults.bool` would read as off.
+    static var carriesTranscript: Bool {
+        UserDefaults.standard.object(forKey: carriesTranscriptKey) as? Bool ?? true
+    }
+    static var carriesUnscrubbed: Bool {
+        UserDefaults.standard.object(forKey: carriesUnscrubbedTranscriptKey) as? Bool ?? true
+    }
     static let networkVolumeAccessOnboardingCompletedKey =
         "networkVolumeAccessOnboardingCompleted"
 
@@ -619,6 +645,8 @@ private struct LittleHerdSettingsView: View {
     /// the checkbox can be set against what turning it on would actually get
     /// you.
     let model: MonitorModel
+    /// Read only to say whether a phone can reach this Mac, and where.
+    let herdWatcher: HerdWatcher
     let onConfigurationsChanged: ([MachineConfiguration]) -> Void
     @Environment(\.openWindow) private var openWindow
     @AppStorage(LittleHerdPreferences.menuBarEnabledKey)
@@ -631,20 +659,16 @@ private struct LittleHerdSettingsView: View {
     private var alertsSuppressed = false
     @AppStorage(LittleHerdPreferences.alertCommandKey)
     private var alertCommand = ""
-    @AppStorage(HerdPushRelay.addressKey) private var phoneAddress = ""
     @AppStorage(HerdPushRelay.keyPathKey) private var pushKeyPath = ""
     @AppStorage(HerdPushRelay.keyIDKey) private var pushKeyID = ""
-    @AppStorage(HerdPushRelay.portKey) private var phonePort = Int(HerdWire.defaultPort)
-    @AppStorage(HerdPushRelay.pairingCodeKey) private var phonePairingCode = ""
-    @State private var showsPhoneSettings = false
     @AppStorage(LittleHerdPreferences.startsUsageSourceKey)
     private var startsUsageSource = true
     @AppStorage(LittleHerdPreferences.requiresDestinationApprovalKey)
     private var requiresDestinationApproval = false
     @AppStorage(LittleHerdPreferences.carriesTranscriptKey)
-    private var carriesTranscript = false
+    private var carriesTranscript = true
     @AppStorage(LittleHerdPreferences.carriesUnscrubbedTranscriptKey)
-    private var carriesUnscrubbed = false
+    private var carriesUnscrubbed = true
     /// The second confirmation. Turning the scrub off is a two-step action on
     /// purpose — see `carriesUnscrubbedTranscriptKey`.
     @State private var confirmingUnscrubbed = false
@@ -657,6 +681,28 @@ private struct LittleHerdSettingsView: View {
     /// view and the row went on showing "Sign in again" after a sign-in that
     /// had in fact succeeded.
     @State private var credentialsRevision = 0
+
+    private var herdServingStatus: String {
+        if let error = herdWatcher.lastError {
+            return "Your iPhone can’t reach the herd from this Mac: \(error)"
+        }
+        guard herdWatcher.isServing, let port = herdWatcher.port else {
+            return "Starting to share the herd with your iPhone…"
+        }
+        let host = Host.current().localizedName ?? "this Mac"
+        let reached = herdWatcher.requestsAnswered
+        let count = reached == 0
+            ? "Nothing has read it yet."
+            : "Read \(reached) time\(reached == 1 ? "" : "s") since Little Herd started."
+        // A refused announcement is worth a sentence of its own: the port
+        // still serves, so a typed address works, but the phone will not
+        // find this Mac by itself — and that reads as "the app is broken"
+        // unless something says otherwise.
+        let reach = herdWatcher.advertisingError.map { " \($0) A typed address still works." }
+            ?? " Announced on this network."
+        return "Little Herd on your iPhone can see the herd from “\(host)”, "
+            + "port \(port).\(reach) \(count)"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -673,18 +719,85 @@ private struct LittleHerdSettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                if alertsEnabled {
-                    // Only once alerts are on: these shape *where* an alert goes, and
-                    // shaping the delivery of something switched off is noise.
-                    Toggle("This Mac watches the herd continuously", isOn: $watchesHerd)
-                        .font(.callout)
-                        .padding(.top, 4)
-                        .help(Text(
-                            "Leave this on for a Mac that stays awake. Alerts only "
-                                + "happen while Little Herd is running, so a laptop "
-                                + "that sleeps notices nothing while it is closed."
-                        ))
+                // Not behind the alerts switch: this Mac is also what a phone
+                // reads, and someone who wants the phone without alerts must
+                // still be able to find it.
+                Toggle("This Mac watches the herd continuously", isOn: $watchesHerd)
+                    .font(.callout)
+                    .padding(.top, 4)
+                    .help(Text(
+                        "Leave this on for a Mac that stays awake. Alerts only "
+                            + "happen while Little Herd is running, so a laptop "
+                            + "that sleeps notices nothing while it is closed."
+                    ))
 
+                if watchesHerd {
+                    // The watcher is also what a phone reads. Said here,
+                    // beside the switch that starts it, rather than behind
+                    // a second one — and said with the address and a count,
+                    // because "on" is not the same as "reached".
+                    Text(herdServingStatus)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 2)
+
+                    HStack(spacing: 8) {
+                        Text("Pairing code")
+                        Text(herdWatcher.pairingCode)
+                            .font(.callout.monospaced().weight(.semibold))
+                            .textSelection(.enabled)
+                        Button("New code") { herdWatcher.regeneratePairingCode() }
+                            .controlSize(.small)
+                            .help(Text("Your iPhone will ask for the new one."))
+                    }
+                    .font(.callout)
+                    .padding(.top, 2)
+
+                    Text("Type it into Little Herd on your iPhone once, while the phone "
+                        + "is on Tailscale. The code is only accepted over Tailscale; after "
+                        + "that the phone signs every request, so it also works on the home network.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    // Phones that have paired for moves, so "who can start
+                    // work on this herd" is answerable without a terminal.
+                    Text(herdWatcher.pairedDeviceNames.isEmpty
+                        ? "No phone has paired yet."
+                        : "Paired: " + herdWatcher.pairedDeviceNames.joined(separator: ", ")
+                            + ". A new code forgets them.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: 6) {
+                        Text("Push key:")
+                        TextField("~/.config/apns/AuthKey_XXXXXXXXXX.p8", text: $pushKeyPath)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.caption.monospaced())
+                        TextField("Key ID", text: $pushKeyID)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.caption.monospaced())
+                            .frame(width: 96)
+                    }
+                    .font(.callout)
+                    .padding(.top, 4)
+
+                    Text(herdWatcher.push.isConfigured
+                        ? "Alerts are pushed to paired iPhones the moment they are raised."
+                        : "An APNs key from developer.apple.com (Keys → Apple Push "
+                            + "Notifications service) lets this Mac push alerts to a phone "
+                            + "that is asleep. Without one the phone still says them "
+                            + "whenever it reads the herd.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if alertsEnabled {
+                    // These shape *where* an alert goes, and shaping the
+                    // delivery of something switched off is noise.
                     Text(
                         watchesHerd
                             ? "Turn the switch below on for your other Macs, so one event "
@@ -699,31 +812,6 @@ private struct LittleHerdSettingsView: View {
                     Toggle("Stay quiet — another Mac is watching", isOn: $alertsSuppressed)
                         .font(.callout)
                         .padding(.top, 2)
-
-                    if watchesHerd && !alertsSuppressed {
-                        DisclosureGroup("iPhone notifications", isExpanded: $showsPhoneSettings) {
-                            VStack(alignment: .leading, spacing: 7) {
-                                TextField("Tailscale IPv4 address", text: $phoneAddress)
-                                TextField("APNs key file path", text: $pushKeyPath)
-                                TextField("APNs key ID", text: $pushKeyID)
-
-                                if !phonePairingCode.isEmpty {
-                                    LabeledContent("Watcher address", value: "\(phoneAddress):\(phonePort)")
-                                        .textSelection(.enabled)
-                                    LabeledContent("Pairing code", value: HerdWire.Pairing.display(phonePairingCode))
-                                        .textSelection(.enabled)
-                                }
-                                Text("On your iPhone, open Little Herd’s Watcher settings and enter this address and pairing code while connected to Tailscale.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            .textFieldStyle(.roundedBorder)
-                            .onSubmit { model.updateWatcherFromPreferences() }
-                        }
-                        .font(.callout)
-                        .padding(.top, 4)
-                    }
 
                     HStack(spacing: 6) {
                         Text("Also run:")
@@ -754,16 +842,44 @@ private struct LittleHerdSettingsView: View {
                             + "rather than starting fresh from a written brief."
                     ))
 
-                Text(
-                    carriesTranscript
-                        ? "Recognisable secrets are removed before it is sent. That is "
-                            + "best-effort, not a guarantee."
-                        : "Off: a short brief is written instead, and the successor "
-                            + "starts from that."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                if carriesTranscript && carriesUnscrubbed {
+                    // **A privacy call-out, not a caption.** Unscrubbed is the
+                    // default, so this is the one place a person learns what a
+                    // move sends; a grey line under a toggle is easy to skip.
+                    Label {
+                        Text(
+                            "Privacy: a move sends the whole conversation to the other "
+                                + "machine, exactly as the session saw it, including any "
+                                + "passwords, API keys or tokens that appeared in files, "
+                                + "command output or anything pasted. It goes over ssh to "
+                                + "your own machine and is stored there in "
+                                + "~/.claude/projects. Turn on scrubbing below to remove "
+                                + "recognisable secrets first."
+                        )
+                        .fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: "hand.raised.fill")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(Color.orange)
+                    .padding(8)
+                    .background(
+                        Color.orange.opacity(0.1),
+                        in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    )
+                    .accessibilityElement(children: .combine)
+                } else {
+                    Text(
+                        !carriesTranscript
+                            ? "Off: a short brief is written instead, and the successor "
+                                + "starts from that."
+                            : "Recognisable secrets are removed before it is sent. That is "
+                                + "best-effort, not a guarantee."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
 
                 // Only offered once carrying is on — there is nothing to leave
                 // unscrubbed otherwise, and an option that does nothing is worse
@@ -917,9 +1033,6 @@ private struct LittleHerdSettingsView: View {
         .padding(24)
         .frame(width: 420)
         .onChange(of: alertsEnabled && watchesHerd && !alertsSuppressed) {
-            model.updateWatcherFromPreferences()
-        }
-        .onChange(of: [phoneAddress, pushKeyPath, pushKeyID]) {
             model.updateWatcherFromPreferences()
         }
         .sheet(item: $configuringNAS) { machine in

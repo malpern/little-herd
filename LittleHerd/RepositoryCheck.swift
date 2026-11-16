@@ -46,7 +46,17 @@ nonisolated enum RepositoryCheck: Equatable, Sendable {
         case .cargo:
             [["cargo", "test"]]
         case .npm(let script):
-            [["npm", "run", script]]
+            // **Dependencies first.** The check runs in a fresh worktree, which
+            // has no `node_modules`; measured on the first transfer to linux,
+            // the successor's work was right and the build died on
+            // `vinext: command not found`. `npm ci` installs exactly what the
+            // lockfile says. Install scripts run: skipping them left a native
+            // module (better-sqlite3) with no binary, and the tests load those
+            // same packages' code anyway, so skipping bought no safety.
+            [
+                ["npm", "ci", "--no-audit", "--no-fund"],
+                ["npm", "run", script],
+            ]
         case .make(let target):
             [["make", target]]
         case .none:

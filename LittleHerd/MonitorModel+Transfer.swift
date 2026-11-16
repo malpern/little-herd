@@ -104,9 +104,7 @@ extension MonitorModel {
             // The preference is read here, at the moment of the drop, so a
             // change to it takes effect on the next transfer and never on one
             // already in flight.
-            let carries = UserDefaults.standard.bool(
-                forKey: LittleHerdPreferences.carriesTranscriptKey
-            )
+            let carries = LittleHerdPreferences.carriesTranscript
             let prepared = await TransferDriver.prepare(
                 request,
                 authRefusal: authRefusal,
@@ -114,15 +112,16 @@ extension MonitorModel {
                 destinationCommand: target.map {
                     TransferRunners.command(for: $0.configuration)
                 },
+                destinationHost: target.flatMap {
+                    $0.configuration.connection == .local ? nil : $0.configuration.sshDestination
+                },
                 carry: (carries && target != nil) ? TransferDriver.Carry(
                     localSourceHome: source.isLocal ? NSHomeDirectory() : nil,
                     sourceCommand: TransferRunners.command(for: source.configuration),
                     copy: TransferRunners.copy(to: target!.configuration),
                     destinationHome: NSHomeDirectory(),
                     scratchRoot: TransferAssembly.scratchRoot,
-                    redacts: !UserDefaults.standard.bool(
-                        forKey: LittleHerdPreferences.carriesUnscrubbedTranscriptKey
-                    )
+                    redacts: !LittleHerdPreferences.carriesUnscrubbed
                 ) : nil,
                 departure: TransferRunners.departure(for: source.configuration)
             )
@@ -134,7 +133,17 @@ extension MonitorModel {
                 // Kept so the result can be read back: the diff is everything
                 // after this, and the branch carries the departure too.
                 transfers.record(departure: commit, for: request.transfer)
-                transfers.begin(request.transfer, steps: steps)
+                let sourceCommand = TransferRunners.command(for: source.configuration)
+                let session = request.sessionIdentifier
+                transfers.begin(request.transfer, steps: steps) { outcome in
+                    var outcome = outcome
+                    outcome.originalRetired = await TransferDriver.retireOriginal(
+                        after: outcome,
+                        sessionIdentifier: session,
+                        sourceCommand: sourceCommand
+                    )
+                    return outcome
+                }
             }
         }
     }

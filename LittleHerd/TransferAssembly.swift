@@ -67,7 +67,7 @@ nonisolated enum TransferAssembly {
         guard let destinationRepository = target.checkouts[slug] else {
             return .failure(.destinationLacksRepository)
         }
-        guard let installation = target.bestInstallation else {
+        guard let installation = target.installation(for: session.provider) else {
             return .failure(.destinationLacksAgent)
         }
         // **The brief runs on the source, so it needs the source's agent.**
@@ -76,7 +76,7 @@ nonisolated enum TransferAssembly {
         // the same place hid it completely; here one of them has no CLI agent
         // at all, and the step would have tried to run the other machine's
         // path locally and reported it as a missing agent.
-        guard let sourceInstallation = source.bestInstallation else {
+        guard let sourceInstallation = source.installation(for: session.provider) else {
             return .failure(.originLacksAgent)
         }
 

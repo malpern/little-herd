@@ -101,4 +101,12 @@ struct SuccessorBinaryBundleTests {
         // A codex path is not a claude path, whatever it ends in.
         #expect(SuccessorBinary.accept(Self.mini, for: .codex) == nil)
     }
+
+    /// linux's only Claude is mise's, reached through mise's `latest` link.
+    @Test
+    func linuxsMiseClaudeIsAccepted() {
+        let path = "/home/malpern/.local/share/mise/installs/claude/latest/claude"
+        #expect(SuccessorBinary.accept(path, for: .claude) == path)
+        #expect(SuccessorBinary.accept(path, for: .codex) == nil)
+    }
 }

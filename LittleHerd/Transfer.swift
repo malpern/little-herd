@@ -124,7 +124,9 @@ nonisolated enum TransferPhase: Equatable, Sendable {
         case .finished(let outcome):
             switch outcome.result {
             case .landed:
-                "The work is on the branch, tested, and not merged."
+                outcome.backgroundSession == nil
+                    ? "The work is on the branch, tested, and not merged."
+                    : outcome.liveLandingSentence
             case .checkFailed:
                 // `checkFailed` covers a failed push as well as a failed
                 // check — deliberately, rather than inventing a fifth result
@@ -170,7 +172,7 @@ nonisolated enum TransferPhase: Equatable, Sendable {
     /// Whether there is a branch to go and look at.
     ///
     /// The session you started with is untouched in every one of these cases —
-    /// nothing in a transfer retires the source — so this is the only part of
+    /// only a live landing retires the source — so this is the only part of
     /// "where you were left" that varies, and the only part worth drawing.
     ///
     /// `preparing` is the departure itself, which is what builds the branch,

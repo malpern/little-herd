@@ -17,6 +17,43 @@ nonisolated enum TransferPilot {
         /// The destination was refused before anything ran there.
         case refused(SuccessorLaunch.Refusal)
 
+        /// The failure as a person reads it: what stopped, and the agent's or
+        /// git's own last words. Never the enum's description, which reached
+        /// the phone as `departure(LittleHerd.TransferDeparture…)`.
+        var sentence: String {
+            switch self {
+            case .departure(let purpose, let output):
+                let what = switch purpose {
+                case .brief: "The session couldn’t write down where it got to"
+                case .capture: "The work couldn’t be saved to a branch"
+                case .push: "The branch couldn’t be pushed"
+                case .cleanup: "Cleaning up after the push failed"
+                }
+                let said = Self.lastWords(output)
+                let tail = remnant == .nothing ? " Nothing was moved." : ""
+                return said.isEmpty ? "\(what).\(tail)" : "\(what): \(said)\(tail)"
+            case .noCommitReported:
+                return "The branch was pushed, but the push didn’t say which commit it was."
+            case .refused(.commitNotPinned):
+                return "The destination wasn’t told which commit to expect, so it refused."
+            case .refused(.agentNotRecognised):
+                return "The destination offered an agent Little Herd hasn’t measured working, so it refused."
+            case .refused(.notATransferBranch):
+                return "There was no transfer branch for the destination to work on."
+            }
+        }
+
+        /// The last line that says anything, without a trailing period that
+        /// would double the sentence's own, and short enough for a phone.
+        static func lastWords(_ output: String) -> String {
+            let line = output.split(whereSeparator: \.isNewline)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .last { !$0.isEmpty } ?? ""
+            let clipped = line.count > 200 ? String(line.prefix(199)) + "…" : line
+            guard !clipped.isEmpty else { return "" }
+            return clipped.hasSuffix(".") ? clipped : clipped + "."
+        }
+
         /// What this failure left on the source.
         ///
         /// Derived from *where* it stopped rather than recorded as it went,
@@ -115,7 +152,8 @@ nonisolated enum TransferPilot {
         reportedAgentPath: String,
         check: RepositoryCheck,
         commitMessage: String,
-        carriedSession: String? = nil
+        carriedSession: String? = nil,
+        live: SuccessorLaunch.Live? = nil
     ) -> Result<[SuccessorRun.Step], Failure> {
         let plan = SuccessorLaunch.plan(
             briefPath: briefPath,
@@ -126,7 +164,8 @@ nonisolated enum TransferPilot {
             provider: provider,
             reportedAgentPath: reportedAgentPath,
             expectedCommit: commit,
-            carriedSession: carriedSession
+            carriedSession: carriedSession,
+            live: live
         )
 
         switch plan {

@@ -4,7 +4,12 @@ import Observation
 nonisolated enum MonitorSurface: Hashable, Sendable {
     case dashboard
     case menuBar
+    /// The install on alert duty: it keeps sampling with no window open.
     case watcher
+    /// The watcher serving a phone. Not a screen, but it reads the herd the
+    /// way a screen does, and needs readings whether or not alerts are on —
+    /// see `HerdWatcher`.
+    case phoneServer
 }
 
 /// The watcher's local sampling loop can also be exercised with controlled readings.
@@ -153,7 +158,6 @@ final class MonitorModel {
     }
     let taskTransfers = TaskTransferMonitorModel()
     let alerts: MachineAlertCenter
-    @ObservationIgnored private var phoneRelay: HerdPushRelay?
     /// What the herd has been doing, so the interface can say whether something
     /// is getting worse rather than only what it is now.
     let history = MetricHistoryStore.makeDefault()
@@ -389,24 +393,6 @@ final class MonitorModel {
             activate(.watcher)
         } else {
             deactivate(.watcher)
-        }
-        refreshPhoneRelay()
-    }
-
-    /// The relay lives with the samplers, even when there are no windows.
-    func enablePhoneRelay() {
-        guard phoneRelay == nil else { return }
-        let relay = HerdPushRelay(defaults: defaults)
-        phoneRelay = relay
-        alerts.relay = { [weak relay] title, body, machine, alert, recovery in
-            relay?.send(title: title, body: body, machine: machine, alert: alert, recovery: recovery)
-        }
-    }
-
-    private func refreshPhoneRelay() {
-        let enabled = defaults.bool(forKey: LittleHerdPreferences.watchesHerdKey) && alertsEnabled
-        phoneRelay?.reconcile(enabled: enabled) { [weak self] in
-            self?.wireSnapshot(watcherName: Host.current().localizedName ?? "Little Herd")
         }
     }
 

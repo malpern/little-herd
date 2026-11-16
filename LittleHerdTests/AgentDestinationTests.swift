@@ -258,6 +258,34 @@ struct AgentDestinationTests {
         ])
         #expect(try #require(report.bestInstallation).path == "/new")
     }
+
+    /// A machine with only Codex cannot host a Claude session, however new
+    /// its Codex is. Linux read "Can take it" for a Claude session on 15
+    /// November because the choice ignored the provider.
+    @Test
+    func aMachineWithOnlyTheOtherAgentCannotTakeTheWork() {
+        let codexOnly = report([
+            AgentInstallation(provider: .codex, version: "0.163.0", path: "/home/u/.local/bin/codex"),
+        ])
+        #expect(codexOnly.installation(for: .claude) == nil)
+        #expect(
+            DestinationEligibility.resolve(
+                report: codexOnly, repository: nil, isAllowed: true, provider: .claude
+            ) == .noAgent
+        )
+    }
+
+    /// With both installed, the session's own agent is chosen, not the one
+    /// with the bigger version number.
+    @Test
+    func theSessionsOwnAgentIsChosen() throws {
+        let both = report([
+            AgentInstallation(provider: .codex, version: "9.0.0", path: "/codex"),
+            AgentInstallation(provider: .claude, version: "2.1.325", path: "/claude"),
+        ])
+        #expect(try #require(both.installation(for: .claude)).path == "/claude")
+        #expect(try #require(both.installation(for: .codex)).path == "/codex")
+    }
 }
 
 /// Where a parked session could go, and why the rest of the herd could not.

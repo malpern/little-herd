@@ -52,6 +52,9 @@ nonisolated enum TransferDriver {
         authRefusal: String? = nil,
         destinationName: String = "the destination",
         destinationCommand: (@Sendable (String) async -> (output: String, succeeded: Bool))? = nil,
+        /// How a person on this Mac reaches the destination, for wrapping a
+        /// suggested fix in `ssh`; nil when it is this Mac.
+        destinationHost: String? = nil,
         note: (@Sendable (String) -> Void)? = nil,
         carry: Carry? = nil,
         departure: @Sendable (TransferDeparture.Step) async -> SuccessorExecutor.StepOutput
@@ -116,18 +119,20 @@ nonisolated enum TransferDriver {
             switch await discoverCheck(
                 repository: request.destinationRepository,
                 on: destinationName,
+                sshHost: destinationHost,
                 run: destinationCommand
             ) {
             case .check(let discovered):
                 check = discovered
                 note?("check: \(discovered)")
-            case .missingTool(let reason):
+            case .missingTool(let reason, let remedy):
                 return .blocked(
                     SuccessorOutcome(
                         result: .couldNotStart,
                         failingStep: nil,
                         output: reason,
-                        remnant: .nothing
+                        remnant: .nothing,
+                        remedy: remedy
                     )
                 )
             case .unknown:
@@ -149,6 +154,64 @@ nonisolated enum TransferDriver {
         // successor has the whole history, a summary of it would cost a model
         // call and can fail, and a summary it does not need is not worth
         // either. If the carry declines, the brief is written as before.
+        // **The destination's home, asked, never assumed.** The scratch folder
+        // and the carried transcript both live under it, and both used to be
+        // this Mac's home expanded here — right while every destination was a
+        // Mac with the same user name. The first move to linux asked git for
+        // `/Users/malpern/.little-herd/…` on a machine whose home is
+        // `/home/malpern`, and failed after the branch was already pushed.
+        var destinationHome: String?
+        if let destinationCommand {
+            let answer = await destinationCommand(Self.homeQuery)
+            destinationHome = answer.succeeded ? Self.home(from: answer.output) : nil
+        }
+        // **Live when the destination can hold a session, before anything is
+        // pushed.** A Claude destination whose agent has background sessions
+        // gets a session that stays (see `SuccessorLaunch.Live`); one that
+        // does not, and every Codex move, stays one-shot. A repository Claude
+        // has not trusted is refused here, with the fix, because `--bg` refuses
+        // it and Little Herd must never answer the trust prompt itself.
+        var live: SuccessorLaunch.Live?
+        if request.provider == .claude, let destinationCommand {
+            let answer = await destinationCommand(
+                Self.liveQuery(agent: request.destinationAgentPath, repository: request.destinationRepository)
+            )
+            switch Self.liveAnswer(answer.succeeded ? answer.output : "") {
+            case .oneShot:
+                note?("one-shot: the destination's Claude has no background sessions")
+            case .live:
+                live = SuccessorLaunch.Live(name: request.transfer.title)
+            case .untrusted:
+                return .blocked(
+                    SuccessorOutcome(
+                        result: .couldNotStart,
+                        failingStep: nil,
+                        output: "Claude on \(destinationName) hasn’t trusted "
+                            + "\(request.destinationRepository) yet, so a session "
+                            + "can’t stay there. Open Claude in that folder on "
+                            + "\(destinationName) once and choose “Yes, I trust "
+                            + "this folder”. Nothing was moved.",
+                        remnant: .nothing,
+                        remedy: Self.trustRemedy(
+                            agent: request.destinationAgentPath,
+                            repository: request.destinationRepository,
+                            sshHost: destinationHost
+                        )
+                    )
+                )
+            }
+        }
+
+        let scratchRoot = live != nil
+            ? SuccessorLaunch.liveRoot(repository: request.destinationRepository)
+            : destinationHome.map(Self.scratchRoot(forHome:)) ?? TransferAssembly.scratchRoot
+        var carry = carry
+        if let destinationHome { carry?.destinationHome = destinationHome }
+        // The carried transcript goes under the project folder of the directory
+        // the successor will actually run in, which is the live root for a
+        // live session.
+        carry?.scratchRoot = scratchRoot
+
         var carriedSession: String? = nil
         var departureSteps = request.departure
         if let carry {
@@ -173,7 +236,7 @@ nonisolated enum TransferDriver {
                 SuccessorOutcome(
                     result: .couldNotStart,
                     failingStep: nil,
-                    output: String(describing: failure),
+                    output: failure.sentence,
                     // Where it stopped decides what survives, and only the
                     // failure knows where it stopped.
                     remnant: failure.remnant
@@ -186,14 +249,15 @@ nonisolated enum TransferDriver {
                 briefText: "",
                 branch: request.transfer.branch,
                 repository: request.destinationRepository,
-                scratchRoot: TransferAssembly.scratchRoot,
+                scratchRoot: scratchRoot,
                 provider: request.provider,
                 reportedAgentPath: request.destinationAgentPath,
                 // The discovered one when the destination answered, and the
                 // request's otherwise.
                 check: check,
                 commitMessage: "Successor work on \(request.transfer.branch)",
-                carriedSession: carriedSession
+                carriedSession: carriedSession,
+                live: live
             )
             switch arrival {
             case .failure(let failure):
@@ -201,7 +265,7 @@ nonisolated enum TransferDriver {
                     SuccessorOutcome(
                         result: .couldNotStart,
                         failingStep: nil,
-                        output: String(describing: failure),
+                        output: failure.sentence,
                         // The departure fully succeeded to get here: the work
                         // is pushed and only the destination was refused.
                         remnant: .pushedBranch
@@ -232,7 +296,7 @@ extension TransferDriver {
         case check(RepositoryCheck)
         /// The destination has the repository and not the tool. Named, not
         /// offered: see `RepositoryCheckProbe.missingToolReason`.
-        case missingTool(String)
+        case missingTool(String, remedy: String?)
         /// Nothing could be read, so nothing is claimed. The caller falls back
         /// rather than refusing — an unreachable listing is not evidence that
         /// a machine is unsuitable, and refusing on silence would ground the
@@ -240,9 +304,68 @@ extension TransferDriver {
         case unknown
     }
 
+    /// Prints the destination's home and nothing else.
+    nonisolated static let homeQuery = "printf %s \"$HOME\""
+
+    /// A home is an absolute path on one line; anything else is no answer.
+    nonisolated static func home(from output: String) -> String? {
+        let home = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard home.hasPrefix("/"), !home.contains("\n"), home.count > 1 else { return nil }
+        return home
+    }
+
+    enum LiveAnswer: Equatable {
+        case live
+        case oneShot
+        case untrusted
+    }
+
+    /// One command, three answers: `oneshot` when the agent has no `--bg`,
+    /// otherwise whether `~/.claude.json` records trust for this repository.
+    ///
+    /// **Exact path only**, because that is what Claude does: on linux,
+    /// `~/local-code` was trusted and `~/local-code/sandpiper` inside it was
+    /// still refused. Reading the file is read-only and is a pre-flight only;
+    /// if it cannot be read the answer is `live`, and `--bg`'s own refusal
+    /// ("Workspace not trusted …") reaches the person after the push instead.
+    nonisolated static func liveQuery(agent: String, repository: String) -> String {
+        let script = "import json,os,sys\n"
+            + "r=os.path.expanduser(sys.argv[1]);k={r,os.path.realpath(r)}\n"
+            + "try:p=json.load(open(os.path.expanduser('~/.claude.json'))).get('projects',{})\n"
+            + "except Exception:print('live');sys.exit()\n"
+            + "print('live' if any(p.get(x,{}).get('hasTrustDialogAccepted') for x in k) else 'untrusted')"
+        return "\(RemoteShell.quoted(agent)) --help 2>/dev/null | grep -q -- --bg "
+            + "|| { echo oneshot; exit 0; }; "
+            + "command -v python3 >/dev/null 2>&1 || { echo live; exit 0; }; "
+            + "python3 -c \(RemoteShell.quoted(script)) \(RemoteShell.quoted(repository))"
+    }
+
+    /// Anything unrecognised, including no answer, is one-shot: the move that
+    /// has worked since September, rather than a guess at a new one.
+    nonisolated static func liveAnswer(_ output: String) -> LiveAnswer {
+        switch output.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: "\n").last {
+        case "live": .live
+        case "untrusted": .untrusted
+        default: .oneShot
+        }
+    }
+
+    /// What a person runs to trust the repository: Claude itself, in that
+    /// folder, where they answer the prompt. Never answered for them.
+    nonisolated static func trustRemedy(agent: String, repository: String, sshHost: String?) -> String {
+        let local = "cd \(RemoteShell.quoted(repository)) && \(RemoteShell.quoted(agent))"
+        guard let sshHost else { return local }
+        return "ssh -t \(sshHost) \(RemoteShell.quoted(local))"
+    }
+
+    nonisolated static func scratchRoot(forHome home: String) -> String {
+        "\(home)/.little-herd/transfers"
+    }
+
     static func discoverCheck(
         repository: String,
         on machineName: String,
+        sshHost: String? = nil,
         run: @Sendable (String) async -> (output: String, succeeded: Bool)
     ) async -> Discovered {
         let listed = await run(RepositoryCheckProbe.listing(of: repository))
@@ -269,8 +392,21 @@ extension TransferDriver {
 
         let has = await run(preflight)
         guard has.succeeded else {
+            // Then ask what the machine *does* have, so the refusal can hand a
+            // person the one line that would fix it — see `ToolRemedy`.
+            var remedy: String?
+            if let tool = check.requiredExecutable,
+               let probe = ToolchainDiagnosis.command(for: tool) {
+                let answer = await run(probe)
+                remedy = ToolRemedy.command(
+                    for: tool,
+                    diagnosis: ToolchainDiagnosis.parse(answer.output),
+                    sshHost: sshHost
+                )
+            }
             return .missingTool(
-                RepositoryCheckProbe.missingToolReason(check, on: machineName)
+                RepositoryCheckProbe.missingToolReason(check, on: machineName),
+                remedy: remedy
             )
         }
         return .check(check)
@@ -301,8 +437,8 @@ extension TransferDriver {
         /// The destination's home, for the project folder the successor will
         /// look in. Both machines on this herd share one, and the same
         /// assumption already lives in `TransferAssembly.scratchRoot`.
-        let destinationHome: String
-        let scratchRoot: String
+        var destinationHome: String
+        var scratchRoot: String
         /// Whether to scrub the transcript before it leaves this machine.
         ///
         /// **True unless somebody deliberately turned it off**, and off is a second,
@@ -397,4 +533,96 @@ extension TransferDriver {
         }
         return .carried
     }
+}
+
+nonisolated extension TransferDriver {
+    /// What ending the original session came to.
+    enum Retired: Equatable, Sendable {
+        /// The original was asked to quit.
+        case retired
+        /// It was mid-turn, or its state could not be read, so it was left
+        /// running rather than cut off.
+        case leftRunning
+        /// Nothing by that id was running any more.
+        case gone
+    }
+
+    /// **A move is a move: once the copy on the destination is running, the
+    /// original ends.** Asked of Micah after the first live moves left two of
+    /// every session, both waiting on him (15 November).
+    ///
+    /// Only an idle session is ended. One that is mid-turn is left running,
+    /// because cutting off work in progress loses more than a duplicate costs.
+    /// An interactive session gets `SIGTERM`, which Claude handles like
+    /// `/exit` and keeps its transcript; a background session is stopped
+    /// through `claude stop`. The process is found from Claude's own session
+    /// registry, or from `claude agents --json` where the registry no longer
+    /// names sessions (2.1.325), and its command is checked to be Claude
+    /// before anything is signalled.
+    static func retireCommand(sessionIdentifier: String) -> String {
+        "python3 -c \(RemoteShell.quoted(retireScript)) \(RemoteShell.quoted(sessionIdentifier))"
+    }
+
+    static func retiredAnswer(_ output: String) -> Retired {
+        switch output.trimmingCharacters(in: .whitespacesAndNewlines) {
+        case "retired": .retired
+        case "gone": .gone
+        default: .leftRunning
+        }
+    }
+
+    /// Ends the original after a live landing, and nothing else: a one-shot
+    /// run leaves no session to continue on the destination, so the original
+    /// is the only conversation there is.
+    static func retireOriginal(
+        after outcome: SuccessorOutcome,
+        sessionIdentifier: String,
+        sourceCommand: @Sendable (String) async -> (output: String, succeeded: Bool)
+    ) async -> Retired? {
+        guard outcome.result == .landed, outcome.backgroundSession != nil else { return nil }
+        let answer = await sourceCommand(retireCommand(sessionIdentifier: sessionIdentifier))
+        return answer.succeeded ? retiredAnswer(answer.output) : .leftRunning
+    }
+
+    private static let retireScript = """
+        import glob, json, os, signal, subprocess, sys
+        sid = sys.argv[1]
+        home = os.path.expanduser("~")
+        found = None
+        for f in glob.glob(home + "/.claude/sessions/*.json"):
+            try:
+                s = json.load(open(f))
+            except Exception:
+                continue
+            if s.get("sessionId") == sid:
+                found = s
+                break
+        claude = None
+        for c in (home + "/.local/share/mise/installs/claude/latest/claude", "/opt/homebrew/bin/claude",
+                  "/usr/local/bin/claude", home + "/.local/bin/claude"):
+            if os.access(c, os.X_OK) and (not c.endswith("/.local/bin/claude") or os.path.islink(c)):
+                claude = c
+                break
+        if found is None and claude:
+            try:
+                listed = json.loads(subprocess.run([claude, "agents", "--json"], capture_output=True,
+                                                   text=True, timeout=8).stdout)
+                found = next((s for s in listed if s.get("sessionId") == sid), None)
+            except Exception:
+                pass
+        if not found or not found.get("pid"):
+            print("gone"); sys.exit()
+        if found.get("status") != "idle":
+            print("busy"); sys.exit()
+        pid = int(found["pid"])
+        if found.get("kind") == "background":
+            ok = claude and subprocess.run([claude, "stop", found.get("id") or sid],
+                                           capture_output=True, timeout=8).returncode == 0
+            print("retired" if ok else "busy"); sys.exit()
+        comm = subprocess.run(["ps", "-o", "comm=", "-p", str(pid)], capture_output=True, text=True).stdout
+        if "claude" not in comm:
+            print("gone"); sys.exit()
+        os.kill(pid, signal.SIGTERM)
+        print("retired")
+        """
 }

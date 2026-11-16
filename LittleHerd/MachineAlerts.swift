@@ -157,7 +157,9 @@ final class MachineAlertCenter {
         raised.removeAll()
     }
 
-    private static func body(
+    /// Shared with the watcher's wire, so a phone's notification says what
+    /// the Mac's does.
+    static func body(
         for alert: MachineAlert,
         _ machine: MachineMonitorModel
     ) -> String {
