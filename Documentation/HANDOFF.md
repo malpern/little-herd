@@ -229,6 +229,18 @@ with a Full Disk Access flow.
 
 ## Hard-won facts
 
+**Some machines must never be logged in to; they report instead (`relay`).** The
+Sandpiper Pi is production: SSH there needs dev mode, and every login pages its
+owner, so a ten-second SSH sampler would fail all day or page all day. It pushes a
+`key=numbers` report outbound every 10 s (sandpiper `deploy/pi/herd-report`) to
+`herd-relay-receiver` on the mini (dotfiles), which keeps the latest at
+`~malpern/.local/state/herd-relay/<name>.txt`. A `.relay` machine's `hostname`/
+`sshUser` name the **relay host**, and `relayReport` names the file, so anything that
+would SSH to "the machine" (actions, folder scanning, resume commands) must refuse a
+relay machine or it lands on the mini. Rates come from the report's own
+`reported_at`, not our clock: reading an unchanged file twice must not read as idle
+CPU (`RelayMetricsSamplerTests` breaks if it does). Older than 60 s means "no report".
+
 **Read every field before trusting one.** This bit twice in a day.
 `raidType: single` does not mean "no redundancy" — it means one RAID group;
 `hasParity: true` and 8.99 TB from 4×3 TB were the tells, and the previous

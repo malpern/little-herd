@@ -384,6 +384,14 @@ extension HerdCommand {
                 platform: platform,
                 identityFile: configuration.identityFile
             ).sample()
+        case .relay:
+            // Read from the report the machine pushes, never by logging in to it.
+            guard let report = configuration.relayReport else { return nil }
+            return try? await RelayMetricsSampler(
+                relayHost: configuration.sshDestination,
+                reportName: report,
+                identityFile: configuration.identityFile
+            ).sample()
         case .smb, .dsm:
             // A share and a NAS have capacity and no sessions, and neither can
             // host work — DSM restricts a shell to administrators and has no
@@ -470,6 +478,7 @@ extension HerdCommand {
         switch configuration.connection {
         case .smb, .dsm: "(not asked — runs no agents)"
         case .local, .ssh: "(not reachable)"
+        case .relay: "(no recent report)"
         }
     }
 
