@@ -167,7 +167,7 @@ final class MonitorModel {
 
     private struct RemoteMonitor {
         let machine: MachineMonitorModel
-        let sampler: RemoteMetricsSampler
+        let sampler: any RemoteSnapshotSampling
     }
 
     private struct StorageMonitor {
@@ -480,6 +480,23 @@ final class MonitorModel {
                         )
                     )
                 )
+            case .relay:
+                guard let report = configuration.relayReport,
+                      RelayMetricsSampler.isValidReportName(report)
+                else {
+                    model.markOffline(.other("No relay report named for this machine."))
+                    continue
+                }
+                remoteMonitors.append(
+                    RemoteMonitor(
+                        machine: model,
+                        sampler: RelayMetricsSampler(
+                            relayHost: configuration.sshDestination,
+                            reportName: report,
+                            identityFile: configuration.identityFile
+                        )
+                    )
+                )
             case .smb:
                 let names = configuration.serverNames.isEmpty
                     ? [configuration.hostname]
@@ -720,7 +737,7 @@ final class MonitorModel {
 
     private func monitorRemoteMachine(
         _ machine: MachineMonitorModel,
-        with sampler: RemoteMetricsSampler
+        with sampler: any RemoteSnapshotSampling
     ) -> Task<Void, Never> {
         Task { [machine, sampler] in
             let clock = ContinuousClock()

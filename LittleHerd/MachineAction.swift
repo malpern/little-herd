@@ -117,7 +117,10 @@ nonisolated enum MachineActions {
                     )
                 )
             }
-        case .local:
+        case .local, .relay:
+            // A relayed machine is one Little Herd deliberately does not log
+            // in to, and its `hostname` is the relay host: an "Open SSH" here
+            // would open a shell on the wrong machine.
             break
         }
         return actions

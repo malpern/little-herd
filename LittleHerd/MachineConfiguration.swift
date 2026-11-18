@@ -9,6 +9,11 @@ nonisolated enum MachineConnection: String, Codable, Equatable, Sendable {
     /// depend on the Finder having a share mounted, and it can report drive
     /// health as well as capacity.
     case dsm
+    /// A machine Little Herd does not log in to. It pushes its own readings to
+    /// a receiver on another host (the mini), and they are read from there over
+    /// the SSH connection to that host. `hostname`/`sshUser` name the relay
+    /// host; `relayReport` names the report. See `RelayMetricsSampler`.
+    case relay
 }
 
 nonisolated enum MachinePlatform: String, Codable, Equatable, Sendable {
@@ -62,6 +67,10 @@ nonisolated struct MachineConfiguration: Codable, Equatable, Identifiable,
     /// Little Herd connected, recorded only when the system does not already
     /// trust that certificate. See `SynologyTrustEvaluator`.
     var dsmCertificateFingerprint: String?
+
+    /// For a `relay` machine: the report's name on the relay host, which reads
+    /// `~/.local/state/herd-relay/<name>.txt`. Only `[a-z0-9-]` is accepted.
+    var relayReport: String?
 
     /// Whether a session may be moved onto this account.
     ///

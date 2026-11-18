@@ -158,7 +158,11 @@ final class MachineMonitorModel: Identifiable {
                 ? .available(FolderSizeScanner(location: .local))
                 : .needsFullDiskAccess
         }
-        guard let remotePlatform, !isStorage else { return .unsupported }
+        // A relayed machine's SSH destination is the relay host, not the
+        // machine: scanning "its" folders would scan the mini's.
+        guard let remotePlatform, !isStorage,
+              configuration.connection != .relay
+        else { return .unsupported }
         return .available(
             FolderSizeScanner(
                 location: .ssh(
